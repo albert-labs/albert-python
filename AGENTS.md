@@ -31,6 +31,12 @@ releases, and testing edge cases.
 - **Touch only what's needed.** Don't refactor adjacent code, improve unrelated formatting, or remove pre-existing dead code unless asked. Remove only imports/symbols that *your* changes made unused.
 - **Validate at boundaries only.** Trust internal code and type hints. Only validate user input and external API responses.
 - Collections inherit from `BaseCollection` and accept an `AlbertSession`.
+- **Nested collections:** when a collection is only meaningful within a parent
+  entity's scope (for example a formula's batching instructions), expose it as a
+  property on the parent collection (e.g. `client.inventory.instructions`)
+  instead of as an `Albert` client property. The parent declares the child in a
+  `Nested Collections` docstring section; the child keeps an "accessed as
+  ``client.parent.child``" line in its class docstring.
 - Public collection methods use `@validate_call` for runtime validation.
 - **Always use keyword-only arguments (`*`) for public methods.** Place `*` immediately
   after `self` (or `cls`) on all public collection, resource, and client methods

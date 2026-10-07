@@ -8,6 +8,7 @@ from typing_extensions import deprecated
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
+from albert.collections.instructions import InstructionsCollection
 from albert.collections.tags import TagCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -82,6 +83,13 @@ class InventoryCollection(BaseCollection):
     base_path : str
         The base API route for inventory requests.
 
+    Nested Collections
+    ------------------
+    instructions : InstructionsCollection
+        Manage a formula's batching instructions
+        ([`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]),
+        accessed as ``client.inventory.instructions``.
+
     Methods
     -------
     create(inventory_item, avoid_duplicates=True) -> InventoryItem
@@ -139,6 +147,11 @@ class InventoryCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
+
+    @property
+    def instructions(self) -> InstructionsCollection:
+        """Manage the batching instructions of formulas."""
+        return InstructionsCollection(session=self.session)
 
     @validate_call
     def merge(

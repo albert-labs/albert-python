@@ -169,6 +169,7 @@ nav:
           - Files: collections/files.md
           - Hazards: collections/hazards.md
           - Inventory: collections/inventory.md
+          - Instructions: collections/instructions.md
           - Label Templates: collections/label_templates.md
           - Links: collections/links.md
           - Lists: collections/lists.md
@@ -228,6 +229,7 @@ nav:
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
           - Inventory: resources/inventory.md
+          - Instructions: resources/instructions.md
           - Interval Combinations (🧪 Beta): resources/interval_combinations.md
           - Label Templates: resources/label_templates.md
           - Links: resources/links.md
