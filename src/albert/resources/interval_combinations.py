@@ -221,8 +221,8 @@ class InventoryExclusion(BaseAlbertModel):
 
     - Exclusions match the task-level inventory tuple exactly, occurrence included,
       so duplicated inventory+lot rows are masked independently.
-    - Exclusions are edited with add/delete only; to "update" an exclusion, delete it
-      and add the replacement (they can be sent in one request via two calls).
+    - A mask has no editable fields — it *is* the pair. To change one, remove it and
+      add the replacement pair.
 
     !!! warning "Beta Feature!"
         Increased intervals combination support is currently in beta and behind a platform

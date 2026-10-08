@@ -977,27 +977,32 @@ class TaskCollection(BaseCollection):
             Albert. You might otherwise have a bad experience. This feature currently falls
             outside of the Albert support contract, but we'd love your feedback!
 
-        !!! example
+        !!! example "Masking an inventory x combination pair"
             ```python
             from albert import Albert
             from albert.resources.interval_combinations import InventoryExclusion
 
             client = Albert()
 
-            # 1. Make the task (a Property task with intervalized workflow blocks)
+            # 1. Create the task (a Property task with intervalized workflow blocks)
             task = client.tasks.create_with_combinations(task=my_property_task)
 
-            # 2. Find the IDs to reference
-            #    Inventory tuple identity (e.g. "INV123#LOT456#1"):
+            # 2. Pick the inventory row to mask. Each task inventory row carries
+            #    its identity as inv_lot_unique_id (e.g. "INV123#LOT456#1").
+            for inv in task.inventory_information:
+                print(inv.inventory_id, inv.lot_id, inv.inv_lot_unique_id)
             inv_lot_unique_id = task.inventory_information[0].inv_lot_unique_id
-            #    Combination identity (e.g. "ROW3XROW7") — list them to pick:
+
+            # 3. Pick the combination to mask it from. Each combination carries
+            #    its stable identity as interval_row_key (e.g. "ROW3XROW7").
             for combo in client.tasks.get_block_combinations(
                 task_id=task.id, block_id="BLK1"
             ):
                 print(combo.name, combo.interval_row_key)
             interval_row_key = "ROW3XROW7"
 
-            # 3. Mask the pair
+            # 4. Mask the pair. That inventory row no longer appears against
+            #    this combination on the block's grid.
             client.tasks.add_block_inventory_exclusions(
                 task_id=task.id,
                 block_id="BLK1",
@@ -1005,27 +1010,6 @@ class TaskCollection(BaseCollection):
                     InventoryExclusion(
                         inv_lot_unique_id=inv_lot_unique_id,
                         interval_row_key=interval_row_key,
-                    )
-                ],
-            )
-
-            # 4. Update: exclusions have no in-place update — remove and re-add
-            rules = client.tasks.get_block_rules(task_id=task.id, block_id="BLK1")
-            old = next(
-                e
-                for e in rules.inventory_exclusions
-                if e.inv_lot_unique_id == inv_lot_unique_id
-            )
-            client.tasks.remove_block_inventory_exclusions(
-                task_id=task.id, block_id="BLK1", exclusion_ids=[old.id]
-            )
-            client.tasks.add_block_inventory_exclusions(
-                task_id=task.id,
-                block_id="BLK1",
-                exclusions=[
-                    InventoryExclusion(
-                        inv_lot_unique_id=inv_lot_unique_id,
-                        interval_row_key="ROW3XROW8",
                     )
                 ],
             )
@@ -1076,10 +1060,7 @@ class TaskCollection(BaseCollection):
         """Remove inventory x combination exclusions ("masks") from a task block (🧪 Beta).
 
         Unmasks previously excluded inventory x combination pairs; the pairs render
-        again on property-data grids. Removing is also the first half of "updating"
-        an exclusion — remove the old one, then
-        [`add_block_inventory_exclusions`][albert.collections.tasks.TaskCollection.add_block_inventory_exclusions]
-        the replacement.
+        again on property-data grids.
 
         !!! warning "Beta Feature!"
             Increased intervals combination support is currently in beta and behind a platform
@@ -1087,16 +1068,51 @@ class TaskCollection(BaseCollection):
             Albert. You might otherwise have a bad experience. This feature currently falls
             outside of the Albert support contract, but we'd love your feedback!
 
-        !!! example
+        !!! example "Unmasking pairs"
             ```python
             from albert import Albert
 
             client = Albert()
+
+            # Read the block's current masks; each has a server-assigned id.
             rules = client.tasks.get_block_rules(task_id="TASFOR1", block_id="BLK1")
+
+            # Unmask everything on the block (or pick specific ones by id).
             client.tasks.remove_block_inventory_exclusions(
                 task_id="TASFOR1",
                 block_id="BLK1",
                 exclusion_ids=[e.id for e in rules.inventory_exclusions],
+            )
+            ```
+
+        !!! example "Changing a mask"
+            A mask has no editable fields — it *is* the pair — so changing one
+            means removing it and adding the new pair:
+
+            ```python
+            from albert import Albert
+            from albert.resources.interval_combinations import InventoryExclusion
+
+            client = Albert()
+            rules = client.tasks.get_block_rules(task_id="TASFOR1", block_id="BLK1")
+
+            # The mask pointing at the wrong combination:
+            old = next(
+                e for e in rules.inventory_exclusions
+                if e.inv_lot_unique_id == "INV123#LOT456#1"
+            )
+            client.tasks.remove_block_inventory_exclusions(
+                task_id="TASFOR1", block_id="BLK1", exclusion_ids=[old.id]
+            )
+            client.tasks.add_block_inventory_exclusions(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                exclusions=[
+                    InventoryExclusion(
+                        inv_lot_unique_id=old.inv_lot_unique_id,
+                        interval_row_key="ROW3XROW8",  # the right combination
+                    )
+                ],
             )
             ```
 
