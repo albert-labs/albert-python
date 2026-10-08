@@ -59,6 +59,7 @@ from albert.collections.teams import TeamCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
+from albert.collections.views import ViewCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
 from albert.core.async_session import AsyncAlbertSession
@@ -268,6 +269,10 @@ class Albert:
     @property
     def users(self) -> UserCollection:
         return UserCollection(session=self.session)
+
+    @property
+    def views(self) -> ViewCollection:
+        return ViewCollection(session=self.session)
 
     @property
     def entity_types(self) -> EntityTypeCollection:
