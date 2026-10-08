@@ -849,6 +849,16 @@ def test_handle_tags_none_lists_do_not_raise():
     assert handle_tags(None, None) == []
 
 
+def test_handle_tags_duplicate_updated_tag_emits_one_add_op():
+    """Test that a duplicate tag ID in updated_tags emits only one add op."""
+    updated = [Tag(id="T1", tag="a"), Tag(id="T1", tag="a"), Tag(id="T2", tag="b")]
+
+    patches = handle_tags([], updated)
+
+    ops = [(p.operation, p.new_value) for p in patches]
+    assert sorted(ops) == [("add", "T1"), ("add", "T2")]
+
+
 # ---------------------------------------------------------------------------
 # generate_data_template_patches
 # ---------------------------------------------------------------------------

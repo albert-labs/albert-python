@@ -612,29 +612,27 @@ def handle_tags(
     """Handle tags updates."""
     patches = []
 
-    existing_tag_ids = [x.id for x in existing_tags] if existing_tags is not None else []
-    updated_tag_ids = [x.id for x in updated_tags] if updated_tags is not None else []
+    existing_tag_ids = {x.id for x in existing_tags} if existing_tags is not None else set()
+    updated_tag_ids = {x.id for x in updated_tags} if updated_tags is not None else set()
     # Add new tags
-    for tag in updated_tag_ids:
-        if tag not in (existing_tag_ids):
-            patches.append(
-                PatchDatum(
-                    operation="add",
-                    attribute=attribute_name,
-                    newValue=tag,
-                )
+    for tag in updated_tag_ids - existing_tag_ids:
+        patches.append(
+            PatchDatum(
+                operation="add",
+                attribute=attribute_name,
+                newValue=tag,
             )
+        )
 
     # Remove old tags
-    for tag in existing_tag_ids:
-        if tag not in (updated_tag_ids):
-            patches.append(
-                PatchDatum(
-                    operation="delete",
-                    attribute=attribute_name,
-                    oldValue=tag,
-                )
+    for tag in existing_tag_ids - updated_tag_ids:
+        patches.append(
+            PatchDatum(
+                operation="delete",
+                attribute=attribute_name,
+                oldValue=tag,
             )
+        )
 
     return patches
 
