@@ -22,6 +22,7 @@ from albert.utils._patch import (
     create_parameters_with_enums,
     generate_parameter_group_patches,
 )
+from albert.utils.tags import resolve_tags
 
 DEFAULT_ADDITIONAL_FIELDS = [
     "acl",
@@ -540,6 +541,9 @@ class ParameterGroupCollection(BaseCollection):
         [`ParameterValue`][albert.resources.parameter_groups.ParameterValue] must reference an existing
         [`Parameter`][albert.resources.parameters.Parameter] (by ``id`` or ``parameter``).
 
+        Any tags on the group that do not yet exist in Albert are created
+        automatically (see [`TagCollection`][albert.collections.tags.TagCollection]).
+
         !!! example
             ```python
             from albert.resources.parameter_groups import (
@@ -568,6 +572,8 @@ class ParameterGroupCollection(BaseCollection):
         ParameterGroup
             The newly created group, populated with its assigned Parameter Group ID.
         """
+        if parameter_group.tags:
+            parameter_group.tags = resolve_tags(session=self.session, tags=parameter_group.tags)
 
         response = self.session.post(
             self.base_path,
@@ -637,7 +643,10 @@ class ParameterGroupCollection(BaseCollection):
         The following fields can be updated: ``description``, ``metadata``,
         ``name``, ``tags``, and, per parameter, ``value``, ``unit``, ``required``, and
         ``validation``.
+        Any tags that do not yet exist in Albert are created automatically.
         """
+        if "tags" in parameter_group.model_fields_set and parameter_group.tags:
+            parameter_group.tags = resolve_tags(session=self.session, tags=parameter_group.tags)
         existing = self.get_by_id(id=parameter_group.id)
         path = f"{self.base_path}/{existing.id}"
 
