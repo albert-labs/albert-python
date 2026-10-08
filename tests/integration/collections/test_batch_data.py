@@ -20,6 +20,7 @@ from albert.resources.tasks import (
     TaskInventoryInformation,
     TaskPriority,
 )
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
 
@@ -221,14 +222,21 @@ def test_add_and_delete_lookup_column(
         client.batch_data.add_products(
             id=task.id, products=[BatchDataProduct(id="manufacturer", name="Manufacturer")]
         )
-        grid = client.batch_data.get_by_id(id=task.id)
-        assert any(col.name == "Manufacturer" for col in grid.product or [])
+        # The store is eventually consistent; poll until the write is visible.
+        columns = poll_until(
+            lambda: client.batch_data.get_by_id(id=task.id).product or [],
+            predicate=lambda cols: any(c.name == "Manufacturer" for c in cols),
+        )
+        assert any(col.name == "Manufacturer" for col in columns)
 
         client.batch_data.delete_products(
             id=task.id, products=[BatchDataProduct(id="manufacturer")]
         )
-        grid = client.batch_data.get_by_id(id=task.id)
-        assert all(col.name != "Manufacturer" for col in grid.product or [])
+        columns = poll_until(
+            lambda: client.batch_data.get_by_id(id=task.id).product or [],
+            predicate=lambda cols: all(c.name != "Manufacturer" for c in cols),
+        )
+        assert all(col.name != "Manufacturer" for col in columns)
     finally:
         with suppress(NotFoundError, BadRequestError):
             client.tasks.delete(id=task.id)
