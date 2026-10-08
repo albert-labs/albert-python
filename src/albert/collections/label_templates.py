@@ -323,6 +323,13 @@ class LabelTemplateCollection(BaseCollection):
         Only value changes are supported: a template created without
         ``default`` cannot be made the default later, and fields cannot be
         cleared back to unset.
+
+        This method does not upload HTML. Changing ``template_file`` only
+        points the template at a different already-stored file name; it does
+        not replace the stored HTML content. To change a template's HTML,
+        create a new template with
+        [`create`][albert.collections.label_templates.LabelTemplateCollection.create]
+        (passing ``template_html``) and use it in place of the old one.
         """
         current = self.get_by_id(id=label_template.id)
         patch_payload = self._generate_patch_payload(
