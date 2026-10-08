@@ -388,6 +388,27 @@ def test_tags_added_from_empty_uses_entity_id_shape(offline_session) -> None:
     ]
 
 
+def test_tags_added_from_empty_deduplicates_by_id(offline_session) -> None:
+    """Test that a duplicate tag ID in the new list emits only one add op."""
+    existing = _item(tags=[])
+    updated = _item(
+        tags=[
+            Tag(id="TAG1", tag="alpha"),
+            Tag(id="TAG1", tag="alpha"),
+            Tag(id="TAG2", tag="beta"),
+        ]
+    )
+
+    payload = _collection(offline_session)._generate_inventory_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload["data"] == [
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG1", "entityId": "TAG1"},
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG2", "entityId": "TAG2"},
+    ]
+
+
 def test_tags_mixed_add_and_delete_uses_bare_id_shape(offline_session) -> None:
     """Test a mixed tag diff (existing non-empty) emits per-id add/delete without entityId."""
     existing = _item(tags=[Tag(id="TAG1", tag="alpha"), Tag(id="TAG2", tag="beta")])

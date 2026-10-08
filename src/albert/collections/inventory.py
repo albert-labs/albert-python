@@ -9,7 +9,6 @@ from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.instructions import InstructionsCollection
-from albert.collections.tags import TagCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
@@ -35,6 +34,7 @@ from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.users import User
 from albert.utils.inventory import _build_cas_patch_operations
+from albert.utils.tags import resolve_tags, unique_tags
 
 
 class InventoryCollection(BaseCollection):
@@ -348,13 +348,8 @@ class InventoryCollection(BaseCollection):
         if category == InventoryCategory.FORMULAS.value:
             # This will need to interact with worksheets
             raise NotImplementedError("Registrations of formulas not yet implemented")
-        tag_collection = TagCollection(session=self.session)
-        if inventory_item.tags is not None and inventory_item.tags != []:
-            all_tags = [
-                tag_collection.get_or_create(tag=t) if t.id is None else t
-                for t in inventory_item.tags
-            ]
-            inventory_item.tags = all_tags
+        if inventory_item.tags:
+            inventory_item.tags = resolve_tags(session=self.session, tags=inventory_item.tags)
         if inventory_item.company and inventory_item.company.id is None:
             company_collection = CompanyCollection(session=self.session)
             inventory_item.company = company_collection.get_or_create(
@@ -1684,7 +1679,7 @@ class InventoryCollection(BaseCollection):
 
             elif attribute == "tags":
                 if (old_value is None or old_value == []) and new_value is not None:
-                    for t in new_value:
+                    for t in unique_tags(new_value):
                         payload["data"].append(
                             {
                                 "operation": "add",
@@ -1801,7 +1796,10 @@ class InventoryCollection(BaseCollection):
         ``cas_category``, ``inventory_function``.
         ``substance_id`` can be set when adding a new CAS entry; it is not
         patchable on existing entries.
+        Any tags that do not yet exist in Albert are created automatically.
         """
+        if "tags" in inventory_item.model_fields_set and inventory_item.tags:
+            inventory_item.tags = resolve_tags(session=self.session, tags=inventory_item.tags)
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)
         # Generate the PATCH payload
@@ -1871,6 +1869,8 @@ class InventoryCollection(BaseCollection):
         ids = [item.id for item in inventory_items]
         existing_by_id = {item.id: item for item in self.get_by_ids(ids=ids)}
         for inventory_item in inventory_items:
+            if "tags" in inventory_item.model_fields_set and inventory_item.tags:
+                inventory_item.tags = resolve_tags(session=self.session, tags=inventory_item.tags)
             current_object = existing_by_id.get(inventory_item.id)
             if current_object is None:
                 # Raises NotFoundError, matching update() on an unknown ID.
