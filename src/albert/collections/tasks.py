@@ -71,6 +71,7 @@ from albert.resources.worker_jobs import (
 )
 from albert.resources.workflows import Workflow
 from albert.utils.interval_combinations import generate_interval_combinations
+from albert.utils.tags import resolve_tags
 from albert.utils.tasks import (
     CSV_EXTENSIONS,
     build_property_payload,
@@ -248,7 +249,8 @@ class TaskCollection(BaseCollection):
         Parameters
         ----------
         task : PropertyTask or GeneralTask or BatchTask
-            The task to create. ``name`` is required.
+            The task to create. ``name`` is required. Any tags that do not yet
+            exist in Albert are created automatically.
 
         Returns
         -------
@@ -256,6 +258,8 @@ class TaskCollection(BaseCollection):
             The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
             populated with its assigned Task ID.
         """
+        if task.tags:
+            task.tags = resolve_tags(session=self.session, tags=task.tags)
         payload = mirror_project_from_parent_id(
             payload=task.model_dump(mode="json", by_alias=True, exclude_none=True),
             parent_id=task.parent_id,
@@ -304,6 +308,7 @@ class TaskCollection(BaseCollection):
         tasks : list[PropertyTask or GeneralTask or BatchTask]
             The tasks to create. Must be non-empty and share one category and
             one ``parent_id``. For General tasks, ``location`` is required.
+            Any tags that do not yet exist in Albert are created automatically.
 
         Returns
         -------
@@ -325,6 +330,9 @@ class TaskCollection(BaseCollection):
         parent_ids = {task.parent_id for task in tasks}
         if len(parent_ids) != 1:
             raise AlbertException("All tasks in create_many must share the same parent_id.")
+        for t in tasks:
+            if t.tags:
+                t.tags = resolve_tags(session=self.session, tags=t.tags)
         task = tasks[0]
         payload = [
             mirror_project_from_parent_id(
@@ -2223,7 +2231,10 @@ class TaskCollection(BaseCollection):
         The following fields can be updated: ``assigned_to``, ``due_date``,
         ``inventory_information``, ``metadata``, ``name``, ``priority``, ``project``,
         ``state``, ``tags``.
+        Any tags that do not yet exist in Albert are created automatically.
         """
+        if "tags" in task.model_fields_set and task.tags:
+            task.tags = resolve_tags(session=self.session, tags=task.tags)
         existing = self.get_by_id(id=task.id)
         patch_payload = generate_adv_patch_payload(
             collection=self,
