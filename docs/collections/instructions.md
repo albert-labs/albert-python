@@ -1,1 +1,0 @@
-::: albert.collections.instructions.InstructionsCollection
