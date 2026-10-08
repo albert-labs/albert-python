@@ -61,10 +61,12 @@ class BatchSizeUnit(str, Enum):
 
     The enum values are the exact wire strings the platform expects;
     note the non-SI capitalization ``"Kg"`` (lowercase ``"kg"`` is rejected).
-    The SDK performs **no unit conversion**: ``batch_size`` and batch-data
-    amounts are stored as sent. For mass-tracked inventory, the batch-data
-    grid is denominated in kilograms regardless of this unit, so scale
-    amounts accordingly when writing used amounts.
+    The SDK performs **no unit conversion**. For mass-tracked inventory the
+    platform stores ``batch_size`` and batch-data amounts in **kilograms**
+    regardless of this unit; ``batch_size_unit`` only selects the unit used to
+    display them. Convert before sending: a 500 g batch is
+    ``batch_size=0.5`` with ``batch_size_unit=BatchSizeUnit.GRAMS``, and
+    sending ``batch_size=500`` with ``"g"`` displays as 500000 g.
 
     Attributes
     ----------
@@ -252,7 +254,11 @@ class TaskInventoryInformation(BaseAlbertModel):
     """A combined inventory-and-lot identifier used internally."""
 
     batch_size: float | None = Field(alias="batchSize", default=None)
-    """The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."""
+    """The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask].
+
+    For mass-tracked inventory this value is in kilograms, whatever the task's
+    [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit] (which only sets
+    the display unit): 500 g is ``0.5``."""
 
     selected_lot: bool | None = Field(alias="selectedLot", exclude=True, frozen=True, default=None)
     """Read-only. Whether this lot is the one selected for the task."""
@@ -548,7 +554,10 @@ class BatchTask(BaseTask):
 
     category: Literal[TaskCategory.BATCH, TaskCategory.BATCH_WITH_QC] = TaskCategory.BATCH
     batch_size_unit: BatchSizeUnit | None = Field(alias="batchSizeUnit", default=None)
-    """The unit of measure for the batch size (grams, kilograms, or pounds)."""
+    """The unit used to display the batch size (grams, kilograms, or pounds).
+
+    Does not change how ``batch_size`` is stored; mass batch sizes are always sent
+    in kilograms."""
 
     qc_task: bool | None = Field(alias="qcTask", default=None)
     """Whether this is a quality-control batch task."""

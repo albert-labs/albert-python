@@ -169,6 +169,7 @@ nav:
           - Files: collections/files.md
           - Hazards: collections/hazards.md
           - Inventory: collections/inventory.md
+          - Instructions: collections/instructions.md
           - Label Templates: collections/label_templates.md
           - Links: collections/links.md
           - Lists: collections/lists.md
@@ -201,6 +202,7 @@ nav:
           - UN Numbers: collections/un_numbers.md
           - Units: collections/units.md
           - Users: collections/users.md
+          - Views: collections/views.md
           - Workflows: collections/workflows.md
           - Worksheets: collections/worksheets.md
       - Resources:
@@ -228,6 +230,7 @@ nav:
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
           - Inventory: resources/inventory.md
+          - Instructions: resources/instructions.md
           - Interval Combinations (🧪 Beta): resources/interval_combinations.md
           - Label Templates: resources/label_templates.md
           - Links: resources/links.md
@@ -262,6 +265,7 @@ nav:
           - UN Numbers: resources/un_numbers.md
           - Units: resources/units.md
           - Users: resources/users.md
+          - Views: resources/views.md
           - Workflows: resources/workflows.md
           - Worksheets:
               - Worksheets: resources/worksheets.md

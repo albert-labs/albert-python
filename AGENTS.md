@@ -34,6 +34,12 @@ releases, and testing edge cases.
 - **Changing a field's `alias`/`serialization_alias` is a wire change** for every code path that serializes the model, including unrelated endpoints. Grep the model's `model_dump(by_alias=True)` call sites first. See `OPINIONS.md`.
 - **Bulk/batch methods short-circuit empty input.** Every bulk method (`*_many`, `add_columns`, `delete_rows`, ...) returns without firing a request when given an empty list, and the guard applies uniformly across all sibling bulk methods. A no-op `update()` (nothing in `model_fields_set`) returns the current entity without a request.
 - Collections inherit from `BaseCollection` and accept an `AlbertSession`.
+- **Nested collections:** when a collection is only meaningful within a parent
+  entity's scope (for example a formula's batching instructions), expose it as a
+  property on the parent collection (e.g. `client.inventory.instructions`)
+  instead of as an `Albert` client property. The parent declares the child in a
+  `Nested Collections` docstring section; the child keeps an "accessed as
+  ``client.parent.child``" line in its class docstring.
 - Public collection methods use `@validate_call` for runtime validation. Match sibling methods on the same collection: if they declare it, new methods do too.
 - **Always use keyword-only arguments (`*`) for public methods.** Place `*` immediately
   after `self` (or `cls`) on all public collection, resource, and client methods
