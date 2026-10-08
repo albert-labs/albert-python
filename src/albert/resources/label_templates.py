@@ -48,7 +48,9 @@ class LabelTemplate(BaseResource):
     placeholders (e.g. ``{{info.inventoryName}}``) that are filled at render
     time from the print payload for the template's ``type``: the payload's
     ``data["labels"]`` list holds one entry per printed entity, and each
-    entry's fields are read under ``info``. Templates drive the printable
+    entry's fields are read under ``info``. The template renders against
+    ``data`` itself, so it loops with ``{{#labels}} ... {{/labels}}`` (not
+    ``{{#data.labels}}``). Templates drive the printable
     outputs in Albert, such as inventory lot barcode labels, batch task
     labels, and formula reports. Label Template IDs use the ``TMP`` prefix.
 
