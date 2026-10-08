@@ -17,6 +17,7 @@ from albert.resources.custom_templates import (
     CustomTemplateSearchItem,
     TemplateCategory,
 )
+from albert.utils.tags import resolve_tags
 
 
 class CustomTemplatesCollection(BaseCollection):
@@ -93,7 +94,8 @@ class CustomTemplatesCollection(BaseCollection):
         """Create one or more custom templates.
 
         Up to 10 templates can be created in a single call. Each created template
-        is re-fetched so the returned entities are fully populated.
+        is re-fetched so the returned entities are fully populated. Any tags that
+        do not yet exist in Albert are created automatically.
 
         !!! example
             ```python
@@ -127,6 +129,12 @@ class CustomTemplatesCollection(BaseCollection):
             raise ValueError("At least one CustomTemplate must be provided.")
         if len(templates) > 10:
             raise ValueError("A maximum of 10 CustomTemplates can be created at once.")
+
+        for template in templates:
+            if template.tags:
+                template.tags = resolve_tags(session=self.session, tags=template.tags)
+            if template.data is not None and template.data.tags:
+                template.data.tags = resolve_tags(session=self.session, tags=template.data.tags)
 
         payload = []
         for template in templates:

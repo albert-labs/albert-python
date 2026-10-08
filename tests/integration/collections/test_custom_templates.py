@@ -1,13 +1,20 @@
+import uuid
+from contextlib import suppress
+
 import pytest
 
 from albert.client import Albert
+from albert.exceptions import NotFoundError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.custom_templates import (
     CustomTemplate,
     CustomTemplateSearchItem,
     CustomTemplateSearchItemData,
+    GeneralData,
+    TemplateCategory,
     _CustomTemplateDataUnion,
 )
+from albert.resources.tags import Tag
 from albert.resources.users import User
 from tests.utils.wait import poll_until
 
@@ -91,6 +98,50 @@ def test_custom_template_update_acl(
     assert updated.acl is not None
     assert updated.acl.fgclist is not None
     assert any(entry.id == static_user.id for entry in updated.acl.fgclist)
+
+
+def test_custom_template_create_resolves_and_deduplicates_tags(client: Albert, seed_prefix: str):
+    """Test creating a task template resolves new tags and stores each tag once."""
+    existing_tag = client.tags.create(tag=Tag(tag=f"TEST - {uuid.uuid4()}"))
+    top_tag_name = f"TEST - {uuid.uuid4()}"
+    data_tag_name = f"TEST - {uuid.uuid4()}"
+    created: list[CustomTemplate] = []
+    try:
+        created = client.custom_templates.create(
+            custom_template=CustomTemplate(
+                name=f"{seed_prefix}-tags",
+                category=TemplateCategory.GENERAL,
+                tags=[existing_tag, existing_tag, Tag(tag=top_tag_name)],
+                data=GeneralData(
+                    name=f"{seed_prefix}-tags",
+                    tags=[existing_tag, Tag(tag=data_tag_name), Tag(tag=data_tag_name)],
+                ),
+            )
+        )
+        template = created[0]
+
+        top_ids = [t.id for t in template.tags or []]
+        assert len(top_ids) == 2
+        assert len(set(top_ids)) == 2
+        assert existing_tag.id in top_ids
+
+        data_ids = [t.id for t in template.data.tags or []]
+        assert len(data_ids) == 2
+        assert len(set(data_ids)) == 2
+        assert existing_tag.id in data_ids
+    finally:
+        for template in created:
+            with suppress(NotFoundError):
+                client.custom_templates.delete(id=template.id)
+        auto_created_ids = set()
+        for template in created:
+            template_tags = list(template.tags or [])
+            if template.data is not None:
+                template_tags += template.data.tags or []
+            auto_created_ids |= {t.id for t in template_tags if t.id != existing_tag.id}
+        for tag_id in auto_created_ids | {existing_tag.id}:
+            with suppress(NotFoundError):
+                client.tags.delete(id=tag_id)
 
 
 def test_hydrate_custom_template(
