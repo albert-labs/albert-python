@@ -6,6 +6,7 @@ from pydantic import Field
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import BTDatasetId, BTModelId, BTModelSessionId
 from albert.core.shared.models.base import BaseResource
+from albert.resources.design import ResolvedDesignObjective, _parse_metadata_objectives
 
 
 class BTModelSessionCategory(str, Enum):
@@ -180,3 +181,12 @@ class BTModel(BaseResource, protected_namespaces=()):
 
     flag: bool = Field(default=False)
     """Boolean marker on the model. Defaults to False."""
+
+    @property
+    def objectives(self) -> list[ResolvedDesignObjective] | None:
+        """Optimization objectives the design run that owns this model optimized.
+
+        Read from the model's recorded metadata. ``None`` when the model predates
+        objective persistence or was not built for a design run.
+        """
+        return _parse_metadata_objectives(self.metadata)

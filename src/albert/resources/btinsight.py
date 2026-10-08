@@ -12,6 +12,7 @@ from albert.core.shared.identifiers import (
     ProjectId,
 )
 from albert.core.shared.models.base import BaseResource
+from albert.resources.design import ResolvedDesignObjective, _parse_metadata_objectives
 
 
 class BTInsightCategory(str, Enum):
@@ -166,3 +167,12 @@ class BTInsight(BaseResource, protected_namespaces=()):
 
     content_edited: bool | None = Field(default=None, alias="contentEdited")
     """Whether the insight's content has been manually edited."""
+
+    @property
+    def objectives(self) -> list[ResolvedDesignObjective] | None:
+        """Optimization objectives this design run optimized, as resolved by the platform.
+
+        Read from the run's recorded metadata. ``None`` when the insight predates
+        objective persistence or is not a design run.
+        """
+        return _parse_metadata_objectives(self.metadata)
