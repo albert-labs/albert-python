@@ -1,3 +1,4 @@
+import time
 from contextlib import suppress
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ from albert.resources.inventory import (
     InventoryUnitCategory,
 )
 from albert.resources.lots import Lot
+from albert.resources.projects import Project
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.tags import Tag
 from albert.resources.users import User
@@ -338,22 +340,38 @@ def test_inventory_update(client: Albert, seed_prefix: str, seeded_inventory: li
     assert updated.id == inventory_item.id
 
 
-def test_collection_blocks_formulation(client: Albert, seeded_projects):
-    """assert that trying to create a FORMULATION with a collection block raises an error"""
-
-    # create a formulation with the collection block
-    with pytest.raises(NotImplementedError):
-        r = client.inventory.create(
+def test_create_formula_inventory_item(client: Albert, seed_prefix: str, seeded_locations):
+    """Test creating a Formula inventory item under a Project."""
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - Formula parent project",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+        )
+    )
+    formula = None
+    try:
+        formula = client.inventory.create(
             inventory_item=InventoryItem(
-                name="test formulation",
+                name=f"{seed_prefix} - Test Formula",
                 category=InventoryCategory.FORMULAS,
-                project_id=seeded_projects[0].id,
+                project_id=project.id,
             )
         )
-
-        # delete the collection block in case it was created
-        client.inventory.delete(r)
-        assert not client.inventory.exists(r.id)
+        assert formula.id is not None
+        assert formula.category == InventoryCategory.FORMULAS
+        assert formula.project_id == project.id
+        assert formula.unit_category == InventoryUnitCategory.MASS
+    finally:
+        # A Formula can only be deleted once its parent Project is deleted.
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+        if formula is not None:
+            for _ in range(5):
+                try:
+                    client.inventory.delete(id=formula.id)
+                    break
+                except BadRequestError:
+                    time.sleep(1)
 
 
 def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryItem]):
