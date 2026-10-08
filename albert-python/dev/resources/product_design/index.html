@@ -8499,13 +8499,16 @@ ID is the precise key.</p>
             <p class="doc doc-class-bases">
               Bases: <code><span title="albert.core.base.BaseAlbertModel">BaseAlbertModel</span></code></p>
 
-        <p>A single flattened ingredient entry linking a formula cell to an item.</p>
+        <p>A single direct ingredient entry linking a formula cell to an item.</p>
 <p>Represents one row/column position in the unpacked formula together with the
-inventory item at that position and its amount.</p>
+inventory item at that position and its amount. Entries describe one level of
+the formula only; an entry whose item is itself a formula is not expanded, so
+summing entries does not give an ingredient's total amount across nested
+formulas.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A single flattened ingredient entry linking a formula cell to an item.\n\nRepresents one row/column position in the unpacked formula together with the\ninventory item at that position and its amount."</span><span class="p">,</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A single direct ingredient entry linking a formula cell to an item.\n\nRepresents one row/column position in the unpacked formula together with the\ninventory item at that position and its amount. Entries describe one level of\nthe formula only; an entry whose item is itself a formula is not expanded, so\nsumming entries does not give an ingredient's total amount across nested\nformulas."</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">"rowInventoryId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -9528,8 +9531,9 @@ one per formula that was unpacked. Unpacking recursively resolves the
 formulation's ingredient tree into two views: a row-level inventory list (the
 direct worksheet ingredients, some of which may be sub-formulations) and a flat
 CAS-level substance list (fully resolved raw materials with combined weight
-fractions). This object gathers the resolved ingredients, the flattened
-ingredient list, SDS details, and the CAS-level substance rollup.</p>
+fractions). This object gathers the recursively resolved ingredients
+(<code>inventories</code>), the direct ingredient list (<code>inventory_list</code>), SDS
+details, and the CAS-level substance rollup.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
@@ -10104,7 +10108,7 @@ ingredient list, SDS details, and the CAS-level substance rollup.</p>
 </span><span id="__span-0-570"><a id="__codelineno-0-570" name="__codelineno-0-570" href="#__codelineno-0-570"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-571"><a id="__codelineno-0-571" name="__codelineno-0-571" href="#__codelineno-0-571"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-572"><a id="__codelineno-0-572" name="__codelineno-0-572" href="#__codelineno-0-572"></a><span class="w">    </span><span class="nt">"UnpackedInventoryListItem"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-573"><a id="__codelineno-0-573" name="__codelineno-0-573" href="#__codelineno-0-573"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A single flattened ingredient entry linking a formula cell to an item.\n\nRepresents one row/column position in the unpacked formula together with the\ninventory item at that position and its amount."</span><span class="p">,</span>
+</span><span id="__span-0-573"><a id="__codelineno-0-573" name="__codelineno-0-573" href="#__codelineno-0-573"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A single direct ingredient entry linking a formula cell to an item.\n\nRepresents one row/column position in the unpacked formula together with the\ninventory item at that position and its amount. Entries describe one level of\nthe formula only; an entry whose item is itself a formula is not expanded, so\nsumming entries does not give an ingredient's total amount across nested\nformulas."</span><span class="p">,</span>
 </span><span id="__span-0-574"><a id="__codelineno-0-574" name="__codelineno-0-574" href="#__codelineno-0-574"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-575"><a id="__codelineno-0-575" name="__codelineno-0-575" href="#__codelineno-0-575"></a><span class="w">        </span><span class="nt">"rowInventoryId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-576"><a id="__codelineno-0-576" name="__codelineno-0-576" href="#__codelineno-0-576"></a><span class="w">          </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -10262,7 +10266,7 @@ ingredient list, SDS details, and the CAS-level substance rollup.</p>
 </span><span id="__span-0-728"><a id="__codelineno-0-728" name="__codelineno-0-728" href="#__codelineno-0-728"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-729"><a id="__codelineno-0-729" name="__codelineno-0-729" href="#__codelineno-0-729"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-730"><a id="__codelineno-0-730" name="__codelineno-0-730" href="#__codelineno-0-730"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-731"><a id="__codelineno-0-731" name="__codelineno-0-731" href="#__codelineno-0-731"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The full unpacked composition of a single formulated product.\n\nReturned by\n[`get_unpacked_products`][albert.collections.product_design.ProductDesignCollection.get_unpacked_products],\none per formula that was unpacked. Unpacking recursively resolves the\nformulation's ingredient tree into two views: a row-level inventory list (the\ndirect worksheet ingredients, some of which may be sub-formulations) and a flat\nCAS-level substance list (fully resolved raw materials with combined weight\nfractions). This object gathers the resolved ingredients, the flattened\ningredient list, SDS details, and the CAS-level substance rollup."</span><span class="p">,</span>
+</span><span id="__span-0-731"><a id="__codelineno-0-731" name="__codelineno-0-731" href="#__codelineno-0-731"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The full unpacked composition of a single formulated product.\n\nReturned by\n[`get_unpacked_products`][albert.collections.product_design.ProductDesignCollection.get_unpacked_products],\none per formula that was unpacked. Unpacking recursively resolves the\nformulation's ingredient tree into two views: a row-level inventory list (the\ndirect worksheet ingredients, some of which may be sub-formulations) and a flat\nCAS-level substance list (fully resolved raw materials with combined weight\nfractions). This object gathers the recursively resolved ingredients\n(``inventories``), the direct ingredient list (``inventory_list``), SDS\ndetails, and the CAS-level substance rollup."</span><span class="p">,</span>
 </span><span id="__span-0-732"><a id="__codelineno-0-732" name="__codelineno-0-732" href="#__codelineno-0-732"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-733"><a id="__codelineno-0-733" name="__codelineno-0-733" href="#__codelineno-0-733"></a><span class="w">    </span><span class="nt">"Inventories"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-734"><a id="__codelineno-0-734" name="__codelineno-0-734" href="#__codelineno-0-734"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -10277,7 +10281,7 @@ ingredient list, SDS details, and the CAS-level substance rollup.</p>
 </span><span id="__span-0-743"><a id="__codelineno-0-743" name="__codelineno-0-743" href="#__codelineno-0-743"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-744"><a id="__codelineno-0-744" name="__codelineno-0-744" href="#__codelineno-0-744"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-745"><a id="__codelineno-0-745" name="__codelineno-0-745" href="#__codelineno-0-745"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-746"><a id="__codelineno-0-746" name="__codelineno-0-746" href="#__codelineno-0-746"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The resolved ingredients making up the product, each with its SDS and CAS breakdown."</span><span class="p">,</span>
+</span><span id="__span-0-746"><a id="__codelineno-0-746" name="__codelineno-0-746" href="#__codelineno-0-746"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The fully unpacked ingredients making up the product, each with its SDS and CAS breakdown.\n\nNested formulas are resolved recursively, so each entry's ``value`` is that\ningredient's total amount in the product across every level. Use this list to\nanswer \"how much of ingredient X is in product Y\"."</span><span class="p">,</span>
 </span><span id="__span-0-747"><a id="__codelineno-0-747" name="__codelineno-0-747" href="#__codelineno-0-747"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Inventories"</span>
 </span><span id="__span-0-748"><a id="__codelineno-0-748" name="__codelineno-0-748" href="#__codelineno-0-748"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-749"><a id="__codelineno-0-749" name="__codelineno-0-749" href="#__codelineno-0-749"></a><span class="w">    </span><span class="nt">"inventoryList"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -10293,7 +10297,7 @@ ingredient list, SDS details, and the CAS-level substance rollup.</p>
 </span><span id="__span-0-759"><a id="__codelineno-0-759" name="__codelineno-0-759" href="#__codelineno-0-759"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-760"><a id="__codelineno-0-760" name="__codelineno-0-760" href="#__codelineno-0-760"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-761"><a id="__codelineno-0-761" name="__codelineno-0-761" href="#__codelineno-0-761"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-762"><a id="__codelineno-0-762" name="__codelineno-0-762" href="#__codelineno-0-762"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The flattened list of ingredient entries by formula position."</span><span class="p">,</span>
+</span><span id="__span-0-762"><a id="__codelineno-0-762" name="__codelineno-0-762" href="#__codelineno-0-762"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The direct (one-level) ingredient entries by formula position.\n\nNot recursive: sub-formulations appear as single entries and are not expanded.\nFor an ingredient's total amount across nested formulas, read\n[`inventories`][albert.resources.product_design.UnpackedProductDesign.inventories]."</span><span class="p">,</span>
 </span><span id="__span-0-763"><a id="__codelineno-0-763" name="__codelineno-0-763" href="#__codelineno-0-763"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Inventorylist"</span>
 </span><span id="__span-0-764"><a id="__codelineno-0-764" name="__codelineno-0-764" href="#__codelineno-0-764"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-765"><a id="__codelineno-0-765" name="__codelineno-0-765" href="#__codelineno-0-765"></a><span class="w">    </span><span class="nt">"inventorySDSList"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -10357,7 +10361,7 @@ ingredient list, SDS details, and the CAS-level substance rollup.</p>
 </span><span id="__span-0-823"><a id="__codelineno-0-823" name="__codelineno-0-823" href="#__codelineno-0-823"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-824"><a id="__codelineno-0-824" name="__codelineno-0-824" href="#__codelineno-0-824"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-825"><a id="__codelineno-0-825" name="__codelineno-0-825" href="#__codelineno-0-825"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-826"><a id="__codelineno-0-826" name="__codelineno-0-826" href="#__codelineno-0-826"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The CAS substances with their normalized proportions in the product."</span><span class="p">,</span>
+</span><span id="__span-0-826"><a id="__codelineno-0-826" name="__codelineno-0-826" href="#__codelineno-0-826"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The CAS substances with their normalized proportions in the product.\n\nProportions are adjusted for the purity of each ingredient's CAS constituents,\nso they can differ from the ingredient amounts in\n[`inventories`][albert.resources.product_design.UnpackedProductDesign.inventories]."</span><span class="p">,</span>
 </span><span id="__span-0-827"><a id="__codelineno-0-827" name="__codelineno-0-827" href="#__codelineno-0-827"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Normalizedcaslist"</span>
 </span><span id="__span-0-828"><a id="__codelineno-0-828" name="__codelineno-0-828" href="#__codelineno-0-828"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-829"><a id="__codelineno-0-829" name="__codelineno-0-829" href="#__codelineno-0-829"></a><span class="w">  </span><span class="p">},</span>
@@ -10421,7 +10425,10 @@ ingredient list, SDS details, and the CAS-level substance rollup.</p>
 
     <div class="doc doc-contents ">
 
-        <p>The resolved ingredients making up the product, each with its SDS and CAS breakdown.</p>
+        <p>The fully unpacked ingredients making up the product, each with its SDS and CAS breakdown.</p>
+<p>Nested formulas are resolved recursively, so each entry's <code>value</code> is that
+ingredient's total amount in the product across every level. Use this list to
+answer "how much of ingredient X is in product Y".</p>
 
     </div>
 
@@ -10443,7 +10450,10 @@ ingredient list, SDS details, and the CAS-level substance rollup.</p>
 
     <div class="doc doc-contents ">
 
-        <p>The flattened list of ingredient entries by formula position.</p>
+        <p>The direct (one-level) ingredient entries by formula position.</p>
+<p>Not recursive: sub-formulations appear as single entries and are not expanded.
+For an ingredient's total amount across nested formulas, read
+<a class="autorefs autorefs-internal" href="#albert.resources.product_design.UnpackedProductDesign.inventories"><code>inventories</code></a>.</p>
 
     </div>
 
@@ -10524,6 +10534,9 @@ ingredient list, SDS details, and the CAS-level substance rollup.</p>
     <div class="doc doc-contents ">
 
         <p>The CAS substances with their normalized proportions in the product.</p>
+<p>Proportions are adjusted for the purity of each ingredient's CAS constituents,
+so they can differ from the ingredient amounts in
+<a class="autorefs autorefs-internal" href="#albert.resources.product_design.UnpackedProductDesign.inventories"><code>inventories</code></a>.</p>
 
     </div>
 

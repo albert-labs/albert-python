@@ -13169,10 +13169,12 @@ equipment calibration). Corresponds to <a class="autorefs autorefs-internal" hre
         <p>Unit of measure for the size of a batch made in a <a class="autorefs autorefs-internal" href="#albert.resources.tasks.BatchTask"><code>BatchTask</code></a>.</p>
 <p>The enum values are the exact wire strings the platform expects;
 note the non-SI capitalization <code>"Kg"</code> (lowercase <code>"kg"</code> is rejected).
-The SDK performs <strong>no unit conversion</strong>: <code>batch_size</code> and batch-data
-amounts are stored as sent. For mass-tracked inventory, the batch-data
-grid is denominated in kilograms regardless of this unit, so scale
-amounts accordingly when writing used amounts.</p>
+The SDK performs <strong>no unit conversion</strong>. For mass-tracked inventory the
+platform stores <code>batch_size</code> and batch-data amounts in <strong>kilograms</strong>
+regardless of this unit; <code>batch_size_unit</code> only selects the unit used to
+display them. Convert before sending: a 500 g batch is
+<code>batch_size=0.5</code> with <code>batch_size_unit=BatchSizeUnit.GRAMS</code>, and
+sending <code>batch_size=500</code> with <code>"g"</code> displays as 500000 g.</p>
 
 
 <p><span class="doc-section-title">Attributes:</span></p>
@@ -15627,7 +15629,7 @@ task type:</p>
 </span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."</span><span class="p">,</span>
+</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask].\n\nFor mass-tracked inventory this value is in kilograms, whatever the task's\n[`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit] (which only sets\nthe display unit): 500 g is ``0.5``."</span><span class="p">,</span>
 </span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Batchsize"</span>
 </span><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="w">    </span><span class="nt">"selectedLot"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -15821,7 +15823,10 @@ task type:</p>
 
     <div class="doc doc-contents ">
 
-        <p>The quantity to make of the related inventory item. Required for <a class="autorefs autorefs-internal" href="#albert.resources.tasks.BatchTask"><code>BatchTask</code></a>; the unit is given by <a class="autorefs autorefs-internal" href="#albert.resources.tasks.BatchTask.batch_size_unit"><code>batch_size_unit</code></a>.</p>
+        <p>The quantity to make of the related inventory item. Required for <a class="autorefs autorefs-internal" href="#albert.resources.tasks.BatchTask"><code>BatchTask</code></a>.</p>
+<p>For mass-tracked inventory this value is in kilograms, whatever the task's
+<a class="autorefs autorefs-internal" href="#albert.resources.tasks.BatchTask.batch_size_unit"><code>batch_size_unit</code></a> (which only sets
+the display unit): 500 g is <code>0.5</code>.</p>
 
     </div>
 
@@ -22649,7 +22654,7 @@ automatically by each one. Task IDs look like <code>"TAS..."</code>.</p>
 </span><span id="__span-0-1029"><a id="__codelineno-0-1029" name="__codelineno-0-1029" href="#__codelineno-0-1029"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-1030"><a id="__codelineno-0-1030" name="__codelineno-0-1030" href="#__codelineno-0-1030"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-1031"><a id="__codelineno-0-1031" name="__codelineno-0-1031" href="#__codelineno-0-1031"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-1032"><a id="__codelineno-0-1032" name="__codelineno-0-1032" href="#__codelineno-0-1032"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."</span><span class="p">,</span>
+</span><span id="__span-0-1032"><a id="__codelineno-0-1032" name="__codelineno-0-1032" href="#__codelineno-0-1032"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask].\n\nFor mass-tracked inventory this value is in kilograms, whatever the task's\n[`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit] (which only sets\nthe display unit): 500 g is ``0.5``."</span><span class="p">,</span>
 </span><span id="__span-0-1033"><a id="__codelineno-0-1033" name="__codelineno-0-1033" href="#__codelineno-0-1033"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Batchsize"</span>
 </span><span id="__span-0-1034"><a id="__codelineno-0-1034" name="__codelineno-0-1034" href="#__codelineno-0-1034"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-1035"><a id="__codelineno-0-1035" name="__codelineno-0-1035" href="#__codelineno-0-1035"></a><span class="w">        </span><span class="nt">"selectedLot"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -28883,7 +28888,7 @@ blocks with <a class="autorefs autorefs-internal" href="../../collections/tasks/
 </span><span id="__span-0-4785"><a id="__codelineno-0-4785" name="__codelineno-0-4785" href="#__codelineno-0-4785"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-4786"><a id="__codelineno-0-4786" name="__codelineno-0-4786" href="#__codelineno-0-4786"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-4787"><a id="__codelineno-0-4787" name="__codelineno-0-4787" href="#__codelineno-0-4787"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-4788"><a id="__codelineno-0-4788" name="__codelineno-0-4788" href="#__codelineno-0-4788"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."</span><span class="p">,</span>
+</span><span id="__span-0-4788"><a id="__codelineno-0-4788" name="__codelineno-0-4788" href="#__codelineno-0-4788"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask].\n\nFor mass-tracked inventory this value is in kilograms, whatever the task's\n[`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit] (which only sets\nthe display unit): 500 g is ``0.5``."</span><span class="p">,</span>
 </span><span id="__span-0-4789"><a id="__codelineno-0-4789" name="__codelineno-0-4789" href="#__codelineno-0-4789"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Batchsize"</span>
 </span><span id="__span-0-4790"><a id="__codelineno-0-4790" name="__codelineno-0-4790" href="#__codelineno-0-4790"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-4791"><a id="__codelineno-0-4791" name="__codelineno-0-4791" href="#__codelineno-0-4791"></a><span class="w">        </span><span class="nt">"selectedLot"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -30498,7 +30503,7 @@ quality-control data is attached). Create and manage batch tasks with
 </span><span id="__span-0-91"><a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-92"><a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-93"><a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a><span class="w">    </span><span class="nt">"BatchSizeUnit"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Unit of measure for the size of a batch made in a [`BatchTask`][albert.resources.tasks.BatchTask].\n\nThe enum values are the exact wire strings the platform expects;\nnote the non-SI capitalization ``\"Kg\"`` (lowercase ``\"kg\"`` is rejected).\nThe SDK performs **no unit conversion**: ``batch_size`` and batch-data\namounts are stored as sent. For mass-tracked inventory, the batch-data\ngrid is denominated in kilograms regardless of this unit, so scale\namounts accordingly when writing used amounts.\n\nAttributes\n----------\nGRAMS : str\n    Grams (``\"g\"``).\nKILOGRAMS : str\n    Kilograms (``\"Kg\"``).\nPOUNDS : str\n    Pounds (``\"lbs\"``)."</span><span class="p">,</span>
+</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Unit of measure for the size of a batch made in a [`BatchTask`][albert.resources.tasks.BatchTask].\n\nThe enum values are the exact wire strings the platform expects;\nnote the non-SI capitalization ``\"Kg\"`` (lowercase ``\"kg\"`` is rejected).\nThe SDK performs **no unit conversion**. For mass-tracked inventory the\nplatform stores ``batch_size`` and batch-data amounts in **kilograms**\nregardless of this unit; ``batch_size_unit`` only selects the unit used to\ndisplay them. Convert before sending: a 500 g batch is\n``batch_size=0.5`` with ``batch_size_unit=BatchSizeUnit.GRAMS``, and\nsending ``batch_size=500`` with ``\"g\"`` displays as 500000 g.\n\nAttributes\n----------\nGRAMS : str\n    Grams (``\"g\"``).\nKILOGRAMS : str\n    Kilograms (``\"Kg\"``).\nPOUNDS : str\n    Pounds (``\"lbs\"``)."</span><span class="p">,</span>
 </span><span id="__span-0-95"><a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a><span class="w">      </span><span class="nt">"enum"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a><span class="w">        </span><span class="s2">"g"</span><span class="p">,</span>
 </span><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97" href="#__codelineno-0-97"></a><span class="w">        </span><span class="s2">"Kg"</span><span class="p">,</span>
@@ -35305,7 +35310,7 @@ quality-control data is attached). Create and manage batch tasks with
 </span><span id="__span-0-4898"><a id="__codelineno-0-4898" name="__codelineno-0-4898" href="#__codelineno-0-4898"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-4899"><a id="__codelineno-0-4899" name="__codelineno-0-4899" href="#__codelineno-0-4899"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-4900"><a id="__codelineno-0-4900" name="__codelineno-0-4900" href="#__codelineno-0-4900"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-4901"><a id="__codelineno-0-4901" name="__codelineno-0-4901" href="#__codelineno-0-4901"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."</span><span class="p">,</span>
+</span><span id="__span-0-4901"><a id="__codelineno-0-4901" name="__codelineno-0-4901" href="#__codelineno-0-4901"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask].\n\nFor mass-tracked inventory this value is in kilograms, whatever the task's\n[`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit] (which only sets\nthe display unit): 500 g is ``0.5``."</span><span class="p">,</span>
 </span><span id="__span-0-4902"><a id="__codelineno-0-4902" name="__codelineno-0-4902" href="#__codelineno-0-4902"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Batchsize"</span>
 </span><span id="__span-0-4903"><a id="__codelineno-0-4903" name="__codelineno-0-4903" href="#__codelineno-0-4903"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-4904"><a id="__codelineno-0-4904" name="__codelineno-0-4904" href="#__codelineno-0-4904"></a><span class="w">        </span><span class="nt">"selectedLot"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -36480,7 +36485,7 @@ quality-control data is attached). Create and manage batch tasks with
 </span><span id="__span-0-6073"><a id="__codelineno-0-6073" name="__codelineno-0-6073" href="#__codelineno-0-6073"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-6074"><a id="__codelineno-0-6074" name="__codelineno-0-6074" href="#__codelineno-0-6074"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-6075"><a id="__codelineno-0-6075" name="__codelineno-0-6075" href="#__codelineno-0-6075"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-6076"><a id="__codelineno-0-6076" name="__codelineno-0-6076" href="#__codelineno-0-6076"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unit of measure for the batch size (grams, kilograms, or pounds)."</span>
+</span><span id="__span-0-6076"><a id="__codelineno-0-6076" name="__codelineno-0-6076" href="#__codelineno-0-6076"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unit used to display the batch size (grams, kilograms, or pounds).\n\nDoes not change how ``batch_size`` is stored; mass batch sizes are always sent\nin kilograms."</span>
 </span><span id="__span-0-6077"><a id="__codelineno-0-6077" name="__codelineno-0-6077" href="#__codelineno-0-6077"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-6078"><a id="__codelineno-0-6078" name="__codelineno-0-6078" href="#__codelineno-0-6078"></a><span class="w">    </span><span class="nt">"qcTask"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-6079"><a id="__codelineno-0-6079" name="__codelineno-0-6079" href="#__codelineno-0-6079"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -36770,7 +36775,9 @@ quality-control data is attached). Create and manage batch tasks with
 
     <div class="doc doc-contents ">
 
-        <p>The unit of measure for the batch size (grams, kilograms, or pounds).</p>
+        <p>The unit used to display the batch size (grams, kilograms, or pounds).</p>
+<p>Does not change how <code>batch_size</code> is stored; mass batch sizes are always sent
+in kilograms.</p>
 
     </div>
 
@@ -37968,7 +37975,7 @@ Create and manage general tasks with
 </span><span id="__span-0-1018"><a id="__codelineno-0-1018" name="__codelineno-0-1018" href="#__codelineno-0-1018"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-1019"><a id="__codelineno-0-1019" name="__codelineno-0-1019" href="#__codelineno-0-1019"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-1020"><a id="__codelineno-0-1020" name="__codelineno-0-1020" href="#__codelineno-0-1020"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-1021"><a id="__codelineno-0-1021" name="__codelineno-0-1021" href="#__codelineno-0-1021"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."</span><span class="p">,</span>
+</span><span id="__span-0-1021"><a id="__codelineno-0-1021" name="__codelineno-0-1021" href="#__codelineno-0-1021"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask].\n\nFor mass-tracked inventory this value is in kilograms, whatever the task's\n[`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit] (which only sets\nthe display unit): 500 g is ``0.5``."</span><span class="p">,</span>
 </span><span id="__span-0-1022"><a id="__codelineno-0-1022" name="__codelineno-0-1022" href="#__codelineno-0-1022"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Batchsize"</span>
 </span><span id="__span-0-1023"><a id="__codelineno-0-1023" name="__codelineno-0-1023" href="#__codelineno-0-1023"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-1024"><a id="__codelineno-0-1024" name="__codelineno-0-1024" href="#__codelineno-0-1024"></a><span class="w">        </span><span class="nt">"selectedLot"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -47329,16 +47336,7 @@ on) recorded for a task.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/tasks.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-864">864</a></span>
-<span class="normal"><a href="#__codelineno-0-865">865</a></span>
-<span class="normal"><a href="#__codelineno-0-866">866</a></span>
-<span class="normal"><a href="#__codelineno-0-867">867</a></span>
-<span class="normal"><a href="#__codelineno-0-868">868</a></span>
-<span class="normal"><a href="#__codelineno-0-869">869</a></span>
-<span class="normal"><a href="#__codelineno-0-870">870</a></span>
-<span class="normal"><a href="#__codelineno-0-871">871</a></span>
-<span class="normal"><a href="#__codelineno-0-872">872</a></span>
-<span class="normal"><a href="#__codelineno-0-873">873</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-873">873</a></span>
 <span class="normal"><a href="#__codelineno-0-874">874</a></span>
 <span class="normal"><a href="#__codelineno-0-875">875</a></span>
 <span class="normal"><a href="#__codelineno-0-876">876</a></span>
@@ -47349,27 +47347,36 @@ on) recorded for a task.</p>
 <span class="normal"><a href="#__codelineno-0-881">881</a></span>
 <span class="normal"><a href="#__codelineno-0-882">882</a></span>
 <span class="normal"><a href="#__codelineno-0-883">883</a></span>
-<span class="normal"><a href="#__codelineno-0-884">884</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-864"><a id="__codelineno-0-864" name="__codelineno-0-864"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_payload_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="__span-0-865"><a id="__codelineno-0-865" name="__codelineno-0-865"></a><span class="w">    </span><span class="sd">"""Serialize TaskMetadata according to schemaVersion (v1 or v2).</span>
-</span><span id="__span-0-866"><a id="__codelineno-0-866" name="__codelineno-0-866"></a>
-</span><span id="__span-0-867"><a id="__codelineno-0-867" name="__codelineno-0-867"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-868"><a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="sd">    -------</span>
-</span><span id="__span-0-869"><a id="__codelineno-0-869" name="__codelineno-0-869"></a><span class="sd">    dict[str, Any]</span>
-</span><span id="__span-0-870"><a id="__codelineno-0-870" name="__codelineno-0-870"></a><span class="sd">        The serialized task metadata dictionary formatted for v1 or v2.</span>
-</span><span id="__span-0-871"><a id="__codelineno-0-871" name="__codelineno-0-871"></a><span class="sd">    """</span>
-</span><span id="__span-0-872"><a id="__codelineno-0-872" name="__codelineno-0-872"></a>    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-0-873"><a id="__codelineno-0-873" name="__codelineno-0-873"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema_version</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-</span><span id="__span-0-874"><a id="__codelineno-0-874" name="__codelineno-0-874"></a>        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"Blockdata"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="__span-0-875"><a id="__codelineno-0-875" name="__codelineno-0-875"></a>        <span class="n">data</span><span class="p">[</span><span class="s2">"schemaVersion"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
-</span><span id="__span-0-876"><a id="__codelineno-0-876" name="__codelineno-0-876"></a>        <span class="k">if</span> <span class="s2">"Inventories"</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-</span><span id="__span-0-877"><a id="__codelineno-0-877" name="__codelineno-0-877"></a>            <span class="n">data</span><span class="p">[</span><span class="s2">"inventories"</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"Inventories"</span><span class="p">)</span>
-</span><span id="__span-0-878"><a id="__codelineno-0-878" name="__codelineno-0-878"></a>    <span class="k">else</span><span class="p">:</span>
-</span><span id="__span-0-879"><a id="__codelineno-0-879" name="__codelineno-0-879"></a>        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"schemaVersion"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="__span-0-880"><a id="__codelineno-0-880" name="__codelineno-0-880"></a>        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"dataTemplateId"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="__span-0-881"><a id="__codelineno-0-881" name="__codelineno-0-881"></a>        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"intervals"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="__span-0-882"><a id="__codelineno-0-882" name="__codelineno-0-882"></a>        <span class="k">if</span> <span class="s2">"inventories"</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-</span><span id="__span-0-883"><a id="__codelineno-0-883" name="__codelineno-0-883"></a>            <span class="n">data</span><span class="p">[</span><span class="s2">"Inventories"</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"inventories"</span><span class="p">)</span>
-</span><span id="__span-0-884"><a id="__codelineno-0-884" name="__codelineno-0-884"></a>    <span class="k">return</span> <span class="n">data</span>
+<span class="normal"><a href="#__codelineno-0-884">884</a></span>
+<span class="normal"><a href="#__codelineno-0-885">885</a></span>
+<span class="normal"><a href="#__codelineno-0-886">886</a></span>
+<span class="normal"><a href="#__codelineno-0-887">887</a></span>
+<span class="normal"><a href="#__codelineno-0-888">888</a></span>
+<span class="normal"><a href="#__codelineno-0-889">889</a></span>
+<span class="normal"><a href="#__codelineno-0-890">890</a></span>
+<span class="normal"><a href="#__codelineno-0-891">891</a></span>
+<span class="normal"><a href="#__codelineno-0-892">892</a></span>
+<span class="normal"><a href="#__codelineno-0-893">893</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-873"><a id="__codelineno-0-873" name="__codelineno-0-873"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_payload_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="__span-0-874"><a id="__codelineno-0-874" name="__codelineno-0-874"></a><span class="w">    </span><span class="sd">"""Serialize TaskMetadata according to schemaVersion (v1 or v2).</span>
+</span><span id="__span-0-875"><a id="__codelineno-0-875" name="__codelineno-0-875"></a>
+</span><span id="__span-0-876"><a id="__codelineno-0-876" name="__codelineno-0-876"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-877"><a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">    -------</span>
+</span><span id="__span-0-878"><a id="__codelineno-0-878" name="__codelineno-0-878"></a><span class="sd">    dict[str, Any]</span>
+</span><span id="__span-0-879"><a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">        The serialized task metadata dictionary formatted for v1 or v2.</span>
+</span><span id="__span-0-880"><a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="sd">    """</span>
+</span><span id="__span-0-881"><a id="__codelineno-0-881" name="__codelineno-0-881"></a>    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-882"><a id="__codelineno-0-882" name="__codelineno-0-882"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema_version</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="__span-0-883"><a id="__codelineno-0-883" name="__codelineno-0-883"></a>        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"Blockdata"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-0-884"><a id="__codelineno-0-884" name="__codelineno-0-884"></a>        <span class="n">data</span><span class="p">[</span><span class="s2">"schemaVersion"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+</span><span id="__span-0-885"><a id="__codelineno-0-885" name="__codelineno-0-885"></a>        <span class="k">if</span> <span class="s2">"Inventories"</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+</span><span id="__span-0-886"><a id="__codelineno-0-886" name="__codelineno-0-886"></a>            <span class="n">data</span><span class="p">[</span><span class="s2">"inventories"</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"Inventories"</span><span class="p">)</span>
+</span><span id="__span-0-887"><a id="__codelineno-0-887" name="__codelineno-0-887"></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-888"><a id="__codelineno-0-888" name="__codelineno-0-888"></a>        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"schemaVersion"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-0-889"><a id="__codelineno-0-889" name="__codelineno-0-889"></a>        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"dataTemplateId"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-0-890"><a id="__codelineno-0-890" name="__codelineno-0-890"></a>        <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"intervals"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-0-891"><a id="__codelineno-0-891" name="__codelineno-0-891"></a>        <span class="k">if</span> <span class="s2">"inventories"</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+</span><span id="__span-0-892"><a id="__codelineno-0-892" name="__codelineno-0-892"></a>            <span class="n">data</span><span class="p">[</span><span class="s2">"Inventories"</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"inventories"</span><span class="p">)</span>
+</span><span id="__span-0-893"><a id="__codelineno-0-893" name="__codelineno-0-893"></a>    <span class="k">return</span> <span class="n">data</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -48425,27 +48432,27 @@ on) recorded for a task.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/tasks.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-895">895</a></span>
-<span class="normal"><a href="#__codelineno-0-896">896</a></span>
-<span class="normal"><a href="#__codelineno-0-897">897</a></span>
-<span class="normal"><a href="#__codelineno-0-898">898</a></span>
-<span class="normal"><a href="#__codelineno-0-899">899</a></span>
-<span class="normal"><a href="#__codelineno-0-900">900</a></span>
-<span class="normal"><a href="#__codelineno-0-901">901</a></span>
-<span class="normal"><a href="#__codelineno-0-902">902</a></span>
-<span class="normal"><a href="#__codelineno-0-903">903</a></span>
-<span class="normal"><a href="#__codelineno-0-904">904</a></span>
-<span class="normal"><a href="#__codelineno-0-905">905</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-895"><a id="__codelineno-0-895" name="__codelineno-0-895"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_payload_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="__span-0-896"><a id="__codelineno-0-896" name="__codelineno-0-896"></a><span class="w">    </span><span class="sd">"""Serialize payload for the v1 CSV table proxy endpoint.</span>
-</span><span id="__span-0-897"><a id="__codelineno-0-897" name="__codelineno-0-897"></a>
-</span><span id="__span-0-898"><a id="__codelineno-0-898" name="__codelineno-0-898"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-899"><a id="__codelineno-0-899" name="__codelineno-0-899"></a><span class="sd">    -------</span>
-</span><span id="__span-0-900"><a id="__codelineno-0-900" name="__codelineno-0-900"></a><span class="sd">    dict[str, Any]</span>
-</span><span id="__span-0-901"><a id="__codelineno-0-901" name="__codelineno-0-901"></a><span class="sd">        The serialized request dictionary formatted for v1.</span>
-</span><span id="__span-0-902"><a id="__codelineno-0-902" name="__codelineno-0-902"></a><span class="sd">    """</span>
-</span><span id="__span-0-903"><a id="__codelineno-0-903" name="__codelineno-0-903"></a>    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-0-904"><a id="__codelineno-0-904" name="__codelineno-0-904"></a>    <span class="n">data</span><span class="p">[</span><span class="s2">"TaskMetadata"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_metadata</span><span class="o">.</span><span class="n">to_payload_dict</span><span class="p">()</span>
-</span><span id="__span-0-905"><a id="__codelineno-0-905" name="__codelineno-0-905"></a>    <span class="k">return</span> <span class="n">data</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-904">904</a></span>
+<span class="normal"><a href="#__codelineno-0-905">905</a></span>
+<span class="normal"><a href="#__codelineno-0-906">906</a></span>
+<span class="normal"><a href="#__codelineno-0-907">907</a></span>
+<span class="normal"><a href="#__codelineno-0-908">908</a></span>
+<span class="normal"><a href="#__codelineno-0-909">909</a></span>
+<span class="normal"><a href="#__codelineno-0-910">910</a></span>
+<span class="normal"><a href="#__codelineno-0-911">911</a></span>
+<span class="normal"><a href="#__codelineno-0-912">912</a></span>
+<span class="normal"><a href="#__codelineno-0-913">913</a></span>
+<span class="normal"><a href="#__codelineno-0-914">914</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-904"><a id="__codelineno-0-904" name="__codelineno-0-904"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_payload_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="__span-0-905"><a id="__codelineno-0-905" name="__codelineno-0-905"></a><span class="w">    </span><span class="sd">"""Serialize payload for the v1 CSV table proxy endpoint.</span>
+</span><span id="__span-0-906"><a id="__codelineno-0-906" name="__codelineno-0-906"></a>
+</span><span id="__span-0-907"><a id="__codelineno-0-907" name="__codelineno-0-907"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-908"><a id="__codelineno-0-908" name="__codelineno-0-908"></a><span class="sd">    -------</span>
+</span><span id="__span-0-909"><a id="__codelineno-0-909" name="__codelineno-0-909"></a><span class="sd">    dict[str, Any]</span>
+</span><span id="__span-0-910"><a id="__codelineno-0-910" name="__codelineno-0-910"></a><span class="sd">        The serialized request dictionary formatted for v1.</span>
+</span><span id="__span-0-911"><a id="__codelineno-0-911" name="__codelineno-0-911"></a><span class="sd">    """</span>
+</span><span id="__span-0-912"><a id="__codelineno-0-912" name="__codelineno-0-912"></a>    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-913"><a id="__codelineno-0-913" name="__codelineno-0-913"></a>    <span class="n">data</span><span class="p">[</span><span class="s2">"TaskMetadata"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_metadata</span><span class="o">.</span><span class="n">to_payload_dict</span><span class="p">()</span>
+</span><span id="__span-0-914"><a id="__codelineno-0-914" name="__codelineno-0-914"></a>    <span class="k">return</span> <span class="n">data</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -49739,27 +49746,27 @@ on) recorded for a task.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/tasks.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-925">925</a></span>
-<span class="normal"><a href="#__codelineno-0-926">926</a></span>
-<span class="normal"><a href="#__codelineno-0-927">927</a></span>
-<span class="normal"><a href="#__codelineno-0-928">928</a></span>
-<span class="normal"><a href="#__codelineno-0-929">929</a></span>
-<span class="normal"><a href="#__codelineno-0-930">930</a></span>
-<span class="normal"><a href="#__codelineno-0-931">931</a></span>
-<span class="normal"><a href="#__codelineno-0-932">932</a></span>
-<span class="normal"><a href="#__codelineno-0-933">933</a></span>
-<span class="normal"><a href="#__codelineno-0-934">934</a></span>
-<span class="normal"><a href="#__codelineno-0-935">935</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-925"><a id="__codelineno-0-925" name="__codelineno-0-925"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_payload_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="__span-0-926"><a id="__codelineno-0-926" name="__codelineno-0-926"></a><span class="w">    </span><span class="sd">"""Serialize payload for the v2 CSV table proxy endpoint.</span>
-</span><span id="__span-0-927"><a id="__codelineno-0-927" name="__codelineno-0-927"></a>
-</span><span id="__span-0-928"><a id="__codelineno-0-928" name="__codelineno-0-928"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-929"><a id="__codelineno-0-929" name="__codelineno-0-929"></a><span class="sd">    -------</span>
-</span><span id="__span-0-930"><a id="__codelineno-0-930" name="__codelineno-0-930"></a><span class="sd">    dict[str, Any]</span>
-</span><span id="__span-0-931"><a id="__codelineno-0-931" name="__codelineno-0-931"></a><span class="sd">        The serialized request dictionary formatted for v2.</span>
-</span><span id="__span-0-932"><a id="__codelineno-0-932" name="__codelineno-0-932"></a><span class="sd">    """</span>
-</span><span id="__span-0-933"><a id="__codelineno-0-933" name="__codelineno-0-933"></a>    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-0-934"><a id="__codelineno-0-934" name="__codelineno-0-934"></a>    <span class="n">data</span><span class="p">[</span><span class="s2">"TaskMetadata"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_metadata</span><span class="o">.</span><span class="n">to_payload_dict</span><span class="p">()</span>
-</span><span id="__span-0-935"><a id="__codelineno-0-935" name="__codelineno-0-935"></a>    <span class="k">return</span> <span class="n">data</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-934">934</a></span>
+<span class="normal"><a href="#__codelineno-0-935">935</a></span>
+<span class="normal"><a href="#__codelineno-0-936">936</a></span>
+<span class="normal"><a href="#__codelineno-0-937">937</a></span>
+<span class="normal"><a href="#__codelineno-0-938">938</a></span>
+<span class="normal"><a href="#__codelineno-0-939">939</a></span>
+<span class="normal"><a href="#__codelineno-0-940">940</a></span>
+<span class="normal"><a href="#__codelineno-0-941">941</a></span>
+<span class="normal"><a href="#__codelineno-0-942">942</a></span>
+<span class="normal"><a href="#__codelineno-0-943">943</a></span>
+<span class="normal"><a href="#__codelineno-0-944">944</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-934"><a id="__codelineno-0-934" name="__codelineno-0-934"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_payload_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="__span-0-935"><a id="__codelineno-0-935" name="__codelineno-0-935"></a><span class="w">    </span><span class="sd">"""Serialize payload for the v2 CSV table proxy endpoint.</span>
+</span><span id="__span-0-936"><a id="__codelineno-0-936" name="__codelineno-0-936"></a>
+</span><span id="__span-0-937"><a id="__codelineno-0-937" name="__codelineno-0-937"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-938"><a id="__codelineno-0-938" name="__codelineno-0-938"></a><span class="sd">    -------</span>
+</span><span id="__span-0-939"><a id="__codelineno-0-939" name="__codelineno-0-939"></a><span class="sd">    dict[str, Any]</span>
+</span><span id="__span-0-940"><a id="__codelineno-0-940" name="__codelineno-0-940"></a><span class="sd">        The serialized request dictionary formatted for v2.</span>
+</span><span id="__span-0-941"><a id="__codelineno-0-941" name="__codelineno-0-941"></a><span class="sd">    """</span>
+</span><span id="__span-0-942"><a id="__codelineno-0-942" name="__codelineno-0-942"></a>    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-943"><a id="__codelineno-0-943" name="__codelineno-0-943"></a>    <span class="n">data</span><span class="p">[</span><span class="s2">"TaskMetadata"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_metadata</span><span class="o">.</span><span class="n">to_payload_dict</span><span class="p">()</span>
+</span><span id="__span-0-944"><a id="__codelineno-0-944" name="__codelineno-0-944"></a>    <span class="k">return</span> <span class="n">data</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
