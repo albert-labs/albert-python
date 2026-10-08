@@ -8,7 +8,6 @@ from typing_extensions import deprecated
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
-from albert.collections.instructions import InstructionsCollection
 from albert.collections.tags import TagCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -21,6 +20,14 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.utils import ensure_list
 from albert.resources.facet import FacetItem
+from albert.resources.instructions import (
+    Instruction,
+    InstructionCopyResult,
+    InstructionLayout,
+    InstructionSequence,
+    InstructionSet,
+    SequencePosition,
+)
 from albert.resources.inventory import (
     ALL_MERGE_MODULES,
     InventoryCategory,
@@ -34,7 +41,21 @@ from albert.resources.inventory import (
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.users import User
+from albert.utils.instructions import (
+    _build_instruction_create_payload,
+    _build_instruction_name_patch,
+    _build_instruction_row_sequence_payload,
+    _build_instruction_sequence_move_payload,
+    _resolve_instruction_list_params,
+    _validate_instruction_for_create,
+)
 from albert.utils.inventory import _build_cas_patch_operations
+
+# Instruction list calls return at most this many instructions per fetch.
+_INSTRUCTIONS_PAGE_SIZE = 100
+
+# Bulk instruction reads accept at most this many formula IDs per call.
+_INSTRUCTIONS_BULK_MAX_IDS = 15
 
 
 class InventoryCollection(BaseCollection):
@@ -83,13 +104,6 @@ class InventoryCollection(BaseCollection):
     base_path : str
         The base API route for inventory requests.
 
-    Nested Collections
-    ------------------
-    instructions : InstructionsCollection
-        Manage a formula's batching instructions
-        ([`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]),
-        accessed as ``client.inventory.instructions``.
-
     Methods
     -------
     create(inventory_item, avoid_duplicates=True) -> InventoryItem
@@ -124,6 +138,28 @@ class InventoryCollection(BaseCollection):
         Get facet groups (aggregated filter counts) for a query.
     get_facet_by_name(name, ...) -> list[FacetItem]
         Get a single named facet group for a query.
+    get_instructions(parent_id, created_by, updated_by, max_items) -> Iterator[Instruction]
+        Get a formula's batching instructions, filtered to one formula or one author.
+    get_instruction_by_id(parent_id, id) -> Instruction
+        Get a single instruction by its ID.
+    get_instructions_by_parent_ids(parent_ids) -> list[InstructionSet]
+        Get the instructions of several formulas in one call.
+    create_instruction(instruction) -> Instruction
+        Add an instruction to a formula.
+    update_instruction(instruction) -> Instruction
+        Update an existing instruction's text.
+    delete_instruction(parent_id, id) -> None
+        Delete an instruction from a formula.
+    update_instruction_row_sequence(parent_id, instruction_ids, design_row_id) -> InstructionSet
+        Reorder the instructions within one row of a formula.
+    copy_instructions(source_id, target_ids) -> InstructionCopyResult
+        Copy a formula's instructions and their order to other formulas.
+    get_instruction_layout(inventory_id) -> InstructionLayout
+        Get the procedure table of a formula: its rows with their values.
+    get_instruction_sequence(inventory_id, exclude_hidden=False) -> InstructionSequence
+        Get the row order of a formula's procedure.
+    update_instruction_sequence(inventory_id, source_id, reference_id, position, version) -> InstructionSequence
+        Move a parameter group row to a new position in the row order.
     """
 
     _api_version = "v3"
@@ -147,11 +183,7 @@ class InventoryCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
-
-    @property
-    def instructions(self) -> InstructionsCollection:
-        """Manage the batching instructions of formulas."""
-        return InstructionsCollection(session=self.session)
+        self._instructions_base_path = f"/api/{InventoryCollection._api_version}/instructions"
 
     @validate_call
     def merge(
@@ -1882,3 +1914,505 @@ class InventoryCollection(BaseCollection):
                 url=f"{self.base_path}/{inventory_item.id}", patch_payload=patch_payload
             )
         return self.get_by_ids(ids=ids)
+
+    @validate_call
+    def get_instructions(
+        self,
+        *,
+        parent_id: InventoryId | None = None,
+        created_by: str | None = None,
+        updated_by: str | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[Instruction]:
+        """Get a formula's batching instructions, filtered to one formula or one author.
+
+        Exactly one filter must be provided: a formula (``parent_id``), a creator
+        (``created_by``), or a last editor (``updated_by``). Results are returned
+        as a lazily paginated iterator; when filtering by formula, instructions
+        come back in display order (formula-level instructions first, then each
+        ingredient row's).
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            for instruction in client.inventory.get_instructions(parent_id="INV123"):
+                print(instruction.id, instruction.name)
+            ```
+
+        Parameters
+        ----------
+        parent_id : InventoryId, optional
+            Only instructions belonging to this formula (format ``INV...``).
+        created_by : str, optional
+            Only instructions created by this user ID.
+        updated_by : str, optional
+            Only instructions last edited by this user ID.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+
+        Returns
+        -------
+        Iterator[Instruction]
+            A lazily paginated iterator of matching instructions.
+
+        Raises
+        ------
+        ValueError
+            If zero or more than one of the filters is provided.
+        """
+        params = _resolve_instruction_list_params(
+            parent_id=parent_id, created_by=created_by, updated_by=updated_by
+        )
+        params["limit"] = _INSTRUCTIONS_PAGE_SIZE
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self._instructions_base_path,
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [Instruction.model_validate(x) for x in items],
+        )
+
+    @validate_call
+    def get_instruction_by_id(self, *, parent_id: InventoryId, id: str) -> Instruction:
+        """Get a single instruction by its ID.
+
+        !!! example
+            ```python
+            instruction = client.inventory.get_instruction_by_id(
+                parent_id="INV123", id="ABI100"
+            )
+            instruction.name
+            # 'Take the pH of the batch'
+            ```
+
+        Parameters
+        ----------
+        parent_id : InventoryId
+            The ID of the formula the instruction belongs to (format ``INV...``).
+        id : str
+            The ID of the instruction to retrieve (format ``ABI...``).
+
+        Returns
+        -------
+        Instruction
+            The fully populated instruction.
+        """
+        response = self.session.get(
+            f"{self._instructions_base_path}/{parent_id}", params={"id": id}
+        )
+        return Instruction(**response.json())
+
+    @validate_call
+    def get_instructions_by_parent_ids(
+        self, *, parent_ids: list[InventoryId]
+    ) -> list[InstructionSet]:
+        """Get the instructions of several formulas in one call.
+
+        Each formula comes back with its instructions in display order and the
+        per-row ordering of those instructions. Formulas without instructions
+        yet are returned empty. At most 15 formulas can be fetched per call.
+
+        !!! example
+            ```python
+            sets = client.inventory.get_instructions_by_parent_ids(
+                parent_ids=["INV123", "INV456"]
+            )
+            for s in sets:
+                print(s.id, len(s.instructions))
+            ```
+
+        Parameters
+        ----------
+        parent_ids : list[InventoryId]
+            The IDs of the formulas to fetch instructions for (format ``INV...``).
+            Maximum 15 per call.
+
+        Returns
+        -------
+        list[InstructionSet]
+            One entry per requested formula, with its instructions and ordering.
+
+        Raises
+        ------
+        ValueError
+            If more than 15 formula IDs are provided.
+        """
+        if not parent_ids or len(parent_ids) > _INSTRUCTIONS_BULK_MAX_IDS:
+            raise ValueError("Provide between 1 and 15 formula IDs.")
+        response = self.session.get(
+            f"{self._instructions_base_path}/ids", params={"id": parent_ids}
+        )
+        return [InstructionSet(**x) for x in response.json()["Items"]]
+
+    @validate_call
+    def create_instruction(self, *, instruction: Instruction) -> Instruction:
+        """Add an instruction to a formula.
+
+        The instruction's ``parent_id`` selects the formula and is required.
+        To pin the instruction to a specific ingredient row, set
+        ``design.design_row_id`` to that row's unique ID (format
+        ``DES...#ROW...``; match rows by name in
+        [`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]
+        results and read ``row_unique_id``). Without a row link, the instruction
+        is formula-level. A new instruction is appended at the end of its order
+        by default (its row's, or the formula-level one); reorder with
+        [`update_instruction_row_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_row_sequence].
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.instructions import Instruction
+
+            client = Albert()
+            instruction = client.inventory.create_instruction(
+                instruction=Instruction(
+                    name="Take the pH of the batch", parent_id="INV123"
+                )
+            )
+            print(instruction.id)
+            ```
+
+        Parameters
+        ----------
+        instruction : Instruction
+            The instruction to create. Requires ``name`` and ``parent_id``.
+
+        Returns
+        -------
+        Instruction
+            The created instruction, populated with its assigned ID.
+
+        Raises
+        ------
+        ValueError
+            If the instruction has no ``name`` or ``parent_id``, or its
+            ``design.product_id`` does not match ``parent_id``.
+        """
+        _validate_instruction_for_create(instruction)
+        response = self.session.post(
+            f"{self._instructions_base_path}/{instruction.parent_id}",
+            json=_build_instruction_create_payload(instruction=instruction),
+        )
+        return Instruction(**response.json())
+
+    @validate_call
+    def update_instruction(self, *, instruction: Instruction) -> Instruction:
+        """Update an instruction's text.
+
+        Fetch an instruction (e.g. via [`get_instruction_by_id`][albert.collections.inventory.InventoryCollection.get_instruction_by_id]),
+        modify its ``name``, then pass it here. The instruction is matched by its
+        ``id`` and ``parent_id``. If nothing changed, the existing instruction is
+        returned unmodified.
+
+        !!! example
+            ```python
+            instruction = client.inventory.get_instruction_by_id(
+                parent_id="INV123", id="ABI100"
+            )
+            instruction.name = "Take the pH of the batch twice"
+            updated = client.inventory.update_instruction(instruction=instruction)
+            ```
+
+        Parameters
+        ----------
+        instruction : Instruction
+            The instruction with updated fields. Must include ``id`` and
+            ``parent_id``.
+
+        Returns
+        -------
+        Instruction
+            The updated instruction.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``. Renames that change only
+        letter casing are rejected. An unset ``name`` (never assigned on the
+        model) is left unchanged rather than cleared.
+        """
+        existing = self.get_instruction_by_id(parent_id=instruction.parent_id, id=instruction.id)
+        payload = _build_instruction_name_patch(existing=existing, updated=instruction)
+        if payload is None:
+            return existing
+        self.session.patch(f"{self._instructions_base_path}/{instruction.parent_id}", json=payload)
+        return self.get_instruction_by_id(parent_id=instruction.parent_id, id=instruction.id)
+
+    @validate_call
+    def delete_instruction(self, *, parent_id: InventoryId, id: str) -> None:
+        """Delete an instruction from a formula.
+
+        !!! example
+            ```python
+            client.inventory.delete_instruction(parent_id="INV123", id="ABI100")
+            ```
+
+        Parameters
+        ----------
+        parent_id : InventoryId
+            The ID of the formula the instruction belongs to (format ``INV...``).
+        id : str
+            The ID of the instruction to delete (format ``ABI...``).
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self._instructions_base_path}/{parent_id}", json={"id": id})
+
+    @validate_call
+    def update_instruction_row_sequence(
+        self,
+        *,
+        parent_id: InventoryId,
+        instruction_ids: list[str],
+        design_row_id: str | None = None,
+    ) -> InstructionSet:
+        """Reorder the instructions within one row of a formula.
+
+        Instructions are ordered independently inside each row they are pinned
+        to, with one extra order for the formula-level (unpinned) instructions.
+        Pass the row's full set of instruction IDs in the desired order; omit
+        ``design_row_id`` to reorder the formula-level instructions. This does
+        not change the order of the rows themselves (see
+        [`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence]).
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            current = client.inventory.get_instructions_by_parent_ids(parent_ids=["INV123"])[0]
+            ids = [i.id for i in current.instructions]
+            updated = client.inventory.update_instruction_row_sequence(
+                parent_id="INV123", instruction_ids=list(reversed(ids))
+            )
+            ```
+
+        Parameters
+        ----------
+        parent_id : InventoryId
+            The ID of the formula whose instructions are reordered (format
+            ``INV...``).
+        instruction_ids : list[str]
+            The IDs of the row's instructions in the desired order (format
+            ``ABI...``). Must contain exactly the instructions currently in the
+            row.
+        design_row_id : str, optional
+            The unique ID of the ingredient row whose instructions are reordered
+            (format ``DES...#ROW...``). When None, the formula-level instructions
+            are reordered.
+
+        Returns
+        -------
+        InstructionSet
+            The formula's instructions with their updated ordering.
+
+        Raises
+        ------
+        ValueError
+            If ``instruction_ids`` is not exactly the row's current set of
+            instruction IDs, or the row has no instructions.
+        """
+        current = self.get_instructions_by_parent_ids(parent_ids=[parent_id])[0]
+        payload = _build_instruction_row_sequence_payload(
+            sequence=current.sequence,
+            design_row_id=design_row_id,
+            instruction_ids=instruction_ids,
+        )
+        self.session.patch(f"{self._instructions_base_path}/{parent_id}/sequence", json=payload)
+        return self.get_instructions_by_parent_ids(parent_ids=[parent_id])[0]
+
+    @validate_call
+    def copy_instructions(
+        self, *, source_id: InventoryId, target_ids: list[InventoryId]
+    ) -> InstructionCopyResult:
+        """Copy a formula's instructions and their order to other formulas.
+
+        Every instruction of the source formula is recreated on each target
+        formula with a fresh ID, keeping the same row pins and order. Formulas
+        that already have instructions are skipped, not overwritten.
+
+        !!! example
+            ```python
+            result = client.inventory.copy_instructions(
+                source_id="INV123", target_ids=["INV456", "INV789"]
+            )
+            print(result.copied, result.skipped)
+            ```
+
+        Parameters
+        ----------
+        source_id : InventoryId
+            The ID of the formula to copy instructions from (format ``INV...``).
+        target_ids : list[InventoryId]
+            The IDs of the formulas to copy instructions to (format ``INV...``).
+
+        Returns
+        -------
+        InstructionCopyResult
+            How many target formulas received the instructions and how many were
+            skipped.
+        """
+        payload = {"sourceId": source_id, "targets": target_ids}
+        response = self.session.post(f"{self._instructions_base_path}/copy", json=payload)
+        return InstructionCopyResult(**response.json())
+
+    @validate_call
+    def get_instruction_layout(self, *, inventory_id: InventoryId) -> InstructionLayout:
+        """Get the procedure table of a formula: its rows with their values.
+
+        Returns every row of the formula's procedure in display order:
+        ingredient rows, parameter groups (procedure stages), and parameter
+        rows, each with its values for the relevant Worksheet columns. To get
+        only the row order without the values, use
+        [`get_instruction_sequence`][albert.collections.inventory.InventoryCollection.get_instruction_sequence].
+        See the [`albert.resources.instructions`][albert.resources.instructions]
+        models for how the overall order is determined.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            layout = client.inventory.get_instruction_layout(inventory_id="INV123")
+            for row in layout.rows:
+                print(row.type, row.name)
+            ```
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the formula inventory item (format ``INV...``).
+
+        Returns
+        -------
+        InstructionLayout
+            The formula's procedure table, including the version of the row
+            order.
+        """
+        path = f"{self.base_path}/{inventory_id}/instructions"
+        response = self.session.get(path)
+        return InstructionLayout(**response.json())
+
+    @validate_call
+    def get_instruction_sequence(
+        self, *, inventory_id: InventoryId, exclude_hidden: bool = False
+    ) -> InstructionSequence:
+        """Get the row order of a formula's procedure.
+
+        Lists every row of the formula's procedure in display order, including
+        rows that have no values for the formula yet. If the order has never
+        been customized, it matches the Sheet the formula lives on; see the
+        [`albert.resources.instructions`][albert.resources.instructions] models
+        for how the order is determined. The returned ``version`` is required
+        when reordering rows with
+        [`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence].
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            sequence = client.inventory.get_instruction_sequence(inventory_id="INV123")
+            for row in sequence.rows:
+                print(row.row_id, row.is_hidden)
+            ```
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the formula inventory item (format ``INV...``).
+        exclude_hidden : bool, optional
+            When True, omit rows that are currently hidden on the Worksheet.
+            Default is False.
+
+        Returns
+        -------
+        InstructionSequence
+            The formula's row order, including its ``version``.
+        """
+        path = f"{self.base_path}/{inventory_id}/instructions/sequence"
+        response = self.session.get(path, params={"excludeHiddenItems": exclude_hidden})
+        return InstructionSequence(**response.json())
+
+    @validate_call
+    def update_instruction_sequence(
+        self,
+        *,
+        inventory_id: InventoryId,
+        source_id: str,
+        reference_id: str,
+        position: SequencePosition,
+        version: int,
+    ) -> InstructionSequence:
+        """Move a parameter group row to a new position in the row order.
+
+        Only parameter group rows (the stages of the procedure) can be
+        reordered; ingredient rows always follow the Sheet's Product Design. The
+        row identified by ``source_id`` is placed directly above or below the row
+        identified by ``reference_id``, which can be an ingredient row or another
+        parameter group row.
+
+        Both IDs use the unique row format ``DES...#ROW...``, which users rarely
+        know directly. Find them by matching display names in the formula's
+        procedure table, as in the example below; each row's ``row_unique_id``
+        is the value to pass here.
+
+        The ``version`` guards against conflicting edits: it must match the row
+        order's current version, or the move is rejected and the row order
+        should be re-fetched before retrying. The updated row order (with its
+        new version) is returned, so consecutive moves can chain off each
+        result.
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.instructions import SequencePosition
+
+            client = Albert()
+            layout = client.inventory.get_instruction_layout(inventory_id="INV123")
+            ids_by_name = {row.name: row.row_unique_id for row in layout.rows}
+
+            sequence = client.inventory.get_instruction_sequence(inventory_id="INV123")
+            updated = client.inventory.update_instruction_sequence(
+                inventory_id="INV123",
+                source_id=ids_by_name["Heating"],
+                reference_id=ids_by_name["Premix"],
+                position=SequencePosition.BELOW,
+                version=sequence.version,
+            )
+            print(updated.version)
+            ```
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the formula inventory item (format ``INV...``).
+        source_id : str
+            The unique ID of the parameter group row to move (format ``DES...#ROW...``).
+        reference_id : str
+            The unique ID of the row to place the moved row next to (format
+            ``DES...#ROW...``). Can be an ingredient row or another parameter
+            group row.
+        position : SequencePosition
+            Whether to place the moved row ``above`` or ``below`` the reference row.
+        version : int
+            The row order's current version, as returned by
+            [`get_instruction_sequence`][albert.collections.inventory.InventoryCollection.get_instruction_sequence].
+
+        Returns
+        -------
+        InstructionSequence
+            The updated row order, including its new ``version``.
+
+        Notes
+        -----
+        Reordering is available only when it is enabled for the tenant; otherwise
+        the call is rejected as not applicable.
+        """
+        path = f"{self.base_path}/{inventory_id}/instructions/sequence"
+        payload = _build_instruction_sequence_move_payload(
+            source_id=source_id, reference_id=reference_id, position=position, version=version
+        )
+        self.session.patch(path, json=payload)
+        return self.get_instruction_sequence(inventory_id=inventory_id)
