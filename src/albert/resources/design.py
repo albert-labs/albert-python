@@ -42,6 +42,20 @@ class DesignRunViolationCode(StrEnum):
     JOB_TIMEOUT = "job_timeout"
 
 
+def _parse_metadata_objectives(
+    metadata: dict | None,
+) -> list[ResolvedDesignObjective] | None:
+    """Read the objectives a design run persisted under ``metadata["objectives"]``.
+
+    Returns ``None`` when no objectives were recorded (older runs, or non-design-run
+    resources), so callers can tell "not recorded" apart from an empty list.
+    """
+    entries = (metadata or {}).get("objectives")
+    if entries is None:
+        return None
+    return [ResolvedDesignObjective.model_validate(entry) for entry in entries]
+
+
 class DesignRunViolation(BaseAlbertModel):
     """A single validation failure for a design-run configuration."""
 
@@ -55,6 +69,57 @@ class DesignRunViolation(BaseAlbertModel):
     """Target id when the violation is scoped to one performance target."""
 
 
+class ResolvedDesignObjective(BaseAlbertModel):
+    """An optimization objective as the run will use it, resolved against the dataset scope."""
+
+    target_id: TargetId = Field(alias="targetId")
+    """Id of the performance target (format ``TAR...``)."""
+
+    target_name: str = Field(alias="targetName")
+    """Display name of the target."""
+
+    data_column_id: str = Field(alias="dataColumnId")
+    """Id of the data column (format ``DAC...``) the target measures."""
+
+    unit_id: str | None = Field(default=None, alias="unitId")
+    """Id of the unit (format ``UNI...``) of the target value, when the target declares one."""
+
+    criterion: Criterion
+    """Success criterion applied to the target."""
+
+    weight: float
+    """How much this objective counts relative to the others on the run."""
+
+
+class ValidationMetricEstimate(BaseAlbertModel):
+    """A cross-validated metric estimate (mean/std across folds and replicates)."""
+
+    mean: float
+    """Estimated mean of the metric."""
+
+    std: float | None = None
+    """Estimated standard deviation of the metric."""
+
+
+class TargetValidationMetrics(BaseAlbertModel):
+    """Preflight cross-validation metrics for one performance target."""
+
+    rmse: ValidationMetricEstimate | None = None
+    """Root mean squared error estimate; ``None`` when it could not be computed."""
+
+    r2: ValidationMetricEstimate | None = None
+    """R² estimate; ``None`` when it could not be computed."""
+
+    mae: ValidationMetricEstimate | None = None
+    """Mean absolute error estimate; ``None`` when it could not be computed."""
+
+    num_folds: int = Field(alias="numFolds")
+    """Number of cross-validation folds used."""
+
+    num_replicates: int = Field(alias="numReplicates")
+    """Number of cross-validation replicates used."""
+
+
 class DesignRunValidationResponse(BaseAlbertModel):
     """Preflight result for a design-run configuration."""
 
@@ -66,6 +131,20 @@ class DesignRunValidationResponse(BaseAlbertModel):
 
     target_sample_counts: dict[str, int] | None = Field(default=None, alias="targetSampleCounts")
     """Non-null measurement count per performance target in the dataset scope."""
+
+    objectives: list[ResolvedDesignObjective] | None = None
+    """Objectives the run would optimize, resolved against the dataset scope.
+
+    Present on successful optimization (``generate``) validations; ``None`` for
+    space-filling runs or when objective resolution failed."""
+
+    validation_metrics: dict[str, TargetValidationMetrics] | None = Field(
+        default=None, alias="validationMetrics"
+    )
+    """Best-effort preflight cross-validation metrics per target id.
+
+    ``None`` when the metrics could not be computed; a target's individual
+    metrics are ``None`` when undefined (e.g. R² on a constant fold)."""
 
 
 class OptimizationRunSettings(BaseAlbertModel):
