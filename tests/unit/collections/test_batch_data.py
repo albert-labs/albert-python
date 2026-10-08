@@ -1,13 +1,17 @@
-"""Unit tests for the pure helpers of ``albert.collections.batch_data``."""
+"""Unit tests for ``albert.collections.batch_data``."""
 
 import json
 
 import pytest
 import requests
+import responses
 
 from albert.collections.batch_data import BatchDataCollection
 from albert.exceptions import AlbertPartialError
 from albert.resources.batch_data import RawCostEntry
+from tests.unit.conftest import UNIT_BASE_URL
+
+_RESYNC_URL = f"{UNIT_BASE_URL}/api/v3/batchdata/resync"
 
 
 def _make_response(status_code: int, body) -> requests.Response:
@@ -92,3 +96,41 @@ def test_raise_on_partial_failure_passes_on_empty_failed_items():
     response = _make_response(206, {"FailedItems": []})
 
     BatchDataCollection._raise_on_partial_failure(response)
+
+
+# --- resync request body ---
+
+
+@responses.activate
+def test_resync_omits_unset_formula_keys(offline_session):
+    """Test that unset optional filters are omitted rather than sent as JSON null.
+
+    The gateway validates against the OpenAPI spec, where these fields are typed
+    ``string`` (not nullable), so a ``null`` would be rejected.
+    """
+    responses.patch(_RESYNC_URL, status=204)
+
+    BatchDataCollection(session=offline_session).resync(
+        design_id="DES100", formula_id="INV456", col_id="COL4"
+    )
+
+    body = json.loads(responses.calls[0].request.body)
+    assert body == {"Formula": {"designId": "DES100", "formulaId": "INV456", "colId": "COL4"}}
+
+
+@responses.activate
+def test_resync_sends_set_formula_keys(offline_session):
+    """Test that explicit optional filters are included in the request body."""
+    responses.patch(_RESYNC_URL, status=204)
+
+    BatchDataCollection(session=offline_session).resync(
+        design_id="DES100",
+        formula_id="INV456",
+        col_id="COL4",
+        task_id="TAS789",
+        total_updated_at="2024-10-31T00:00:00.000Z",
+    )
+
+    body = json.loads(responses.calls[0].request.body)
+    assert body["Formula"]["taskId"] == "TAS789"
+    assert body["Formula"]["totalUpdatedAt"] == "2024-10-31T00:00:00.000Z"

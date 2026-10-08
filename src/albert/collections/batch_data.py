@@ -575,18 +575,16 @@ class BatchDataCollection(BaseCollection):
         AlbertPartialError
             If only some tasks were synced successfully.
         """
-        response = self.session.patch(
-            f"{self.base_path}/resync",
-            json={
-                "Formula": {
-                    "designId": design_id,
-                    "taskId": task_id,
-                    "formulaId": formula_id,
-                    "colId": col_id,
-                    "totalUpdatedAt": total_updated_at,
-                }
-            },
-        )
+        formula: dict[str, Any] = {
+            "designId": design_id,
+            "formulaId": formula_id,
+            "colId": col_id,
+        }
+        if task_id is not None:
+            formula["taskId"] = task_id
+        if total_updated_at is not None:
+            formula["totalUpdatedAt"] = total_updated_at
+        response = self.session.patch(f"{self.base_path}/resync", json={"Formula": formula})
         self._raise_on_partial_failure(response)
 
     @validate_call
