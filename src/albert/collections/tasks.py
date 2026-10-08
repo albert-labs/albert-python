@@ -45,6 +45,7 @@ from albert.resources.interval_combinations import (
     CombinationOverride,
     ExclusionRule,
     IntervalCombinationItem,
+    InventoryExclusion,
 )
 from albert.resources.tasks import (
     BaseTask,
@@ -184,6 +185,10 @@ class TaskCollection(BaseCollection):
         Get combination rules and overrides for a block.
     set_block_rules(task_id, block_id, rules=None, overrides=None, generate_combinations=True, old_workflow_id=None, wait=True) -> BlockRules (🧪 Beta)
         Set combination rules and overrides for a block, automatically regenerating combinations.
+    add_block_inventory_exclusions(task_id, block_id, exclusions) -> BlockRules (🧪 Beta)
+        Mask inventory x combination pairs on a block.
+    remove_block_inventory_exclusions(task_id, block_id, exclusion_ids) -> BlockRules (🧪 Beta)
+        Unmask inventory x combination pairs on a block.
     generate_block_combinations(task_id, block_id, old_workflow_id=None, wait=True) -> WorkerJob (🧪 Beta)
         Generate child-workflow interval combinations for a task block.
     import_results(...) -> BaseTask
@@ -942,7 +947,187 @@ class TaskCollection(BaseCollection):
             block_id=data["blockId"],
             rules=all_rules,
             overrides=data.get("overrides", []),
+            inventory_exclusions=data.get("inventoryExclusions", []),
         )
+
+    @validate_call
+    def add_block_inventory_exclusions(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        exclusions: list[InventoryExclusion],
+    ) -> BlockRules:
+        """Add inventory x combination exclusions ("masks") to a task block (🧪 Beta).
+
+        Each exclusion marks one task-level inventory tuple
+        (``inv_lot_unique_id``, occurrence included) as excluded from one interval
+        combination (``interval_row_key``). Excluded pairs are omitted from
+        property-data grids, exports, and data-completeness checks for the block.
+
+        Exclusions are validated on save: both the inventory tuple and the
+        combination row key must exist on the task/block, and masking the same pair
+        twice is rejected. Additions are idempotent-safe via
+        [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]
+        — check ``inventory_exclusions`` first if re-running a script.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.interval_combinations import InventoryExclusion
+
+            client = Albert()
+
+            # 1. Make the task (a Property task with intervalized workflow blocks)
+            task = client.tasks.create_with_combinations(task=my_property_task)
+
+            # 2. Find the IDs to reference
+            #    Inventory tuple identity (e.g. "INV123#LOT456#1"):
+            inv_lot_unique_id = task.inventory_information[0].inv_lot_unique_id
+            #    Combination identity (e.g. "ROW3XROW7") — list them to pick:
+            for combo in client.tasks.get_block_combinations(
+                task_id=task.id, block_id="BLK1"
+            ):
+                print(combo.name, combo.interval_row_key)
+            interval_row_key = "ROW3XROW7"
+
+            # 3. Mask the pair
+            client.tasks.add_block_inventory_exclusions(
+                task_id=task.id,
+                block_id="BLK1",
+                exclusions=[
+                    InventoryExclusion(
+                        inv_lot_unique_id=inv_lot_unique_id,
+                        interval_row_key=interval_row_key,
+                    )
+                ],
+            )
+
+            # 4. Update: exclusions have no in-place update — remove and re-add
+            rules = client.tasks.get_block_rules(task_id=task.id, block_id="BLK1")
+            old = next(
+                e
+                for e in rules.inventory_exclusions
+                if e.inv_lot_unique_id == inv_lot_unique_id
+            )
+            client.tasks.remove_block_inventory_exclusions(
+                task_id=task.id, block_id="BLK1", exclusion_ids=[old.id]
+            )
+            client.tasks.add_block_inventory_exclusions(
+                task_id=task.id,
+                block_id="BLK1",
+                exclusions=[
+                    InventoryExclusion(
+                        inv_lot_unique_id=inv_lot_unique_id,
+                        interval_row_key="ROW3XROW8",
+                    )
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block ID whose exclusions to add (format ``BLK...``), obtained
+            from ``task.blocks[i].id`` on a fetched task.
+        exclusions : list[InventoryExclusion]
+            Exclusions to add. An empty list is a no-op (no request is fired).
+
+        Returns
+        -------
+        BlockRules
+            The block's rules, overrides, and inventory exclusions after the change.
+        """
+        if not exclusions:
+            return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+        url = f"{self.base_path}/{task_id}/blocks/{block_id}/rules"
+        payload = {
+            "data": [
+                {
+                    "operation": "add",
+                    "attribute": "inventoryExclusion",
+                    "newValue": [
+                        e.model_dump(by_alias=True, mode="json", exclude={"id"})
+                        for e in exclusions
+                    ],
+                }
+            ]
+        }
+        self.session.patch(url, json=payload)
+        return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+    @validate_call
+    def remove_block_inventory_exclusions(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        exclusion_ids: list[str],
+    ) -> BlockRules:
+        """Remove inventory x combination exclusions ("masks") from a task block (🧪 Beta).
+
+        Unmasks previously excluded inventory x combination pairs; the pairs render
+        again on property-data grids. Removing is also the first half of "updating"
+        an exclusion — remove the old one, then
+        [`add_block_inventory_exclusions`][albert.collections.tasks.TaskCollection.add_block_inventory_exclusions]
+        the replacement.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            rules = client.tasks.get_block_rules(task_id="TASFOR1", block_id="BLK1")
+            client.tasks.remove_block_inventory_exclusions(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                exclusion_ids=[e.id for e in rules.inventory_exclusions],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block ID whose exclusions to remove (format ``BLK...``).
+        exclusion_ids : list[str]
+            Server-assigned exclusion IDs (UUIDs), from
+            ``get_block_rules(...).inventory_exclusions[i].id``. An empty list is a
+            no-op (no request is fired).
+
+        Returns
+        -------
+        BlockRules
+            The block's rules, overrides, and inventory exclusions after the change.
+        """
+        if not exclusion_ids:
+            return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+        url = f"{self.base_path}/{task_id}/blocks/{block_id}/rules"
+        payload = {
+            "data": [
+                {"operation": "delete", "attribute": "inventoryExclusion", "id": exclusion_id}
+                for exclusion_id in exclusion_ids
+            ]
+        }
+        self.session.patch(url, json=payload)
+        return self.get_block_rules(task_id=task_id, block_id=block_id)
 
     @staticmethod
     def _get_block_current_workflow_id(block: Block) -> str | None:

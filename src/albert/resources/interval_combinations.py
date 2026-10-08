@@ -211,6 +211,36 @@ class CombinationOverride(BaseAlbertModel):
     """Whether the override was manually added."""
 
 
+class InventoryExclusion(BaseAlbertModel):
+    """An inventory x combination exclusion ("mask") for a task block (🧪 Beta).
+
+    Marks one task-level inventory tuple (``inv_lot_unique_id``, e.g.
+    ``"INV123#LOT456#1"``) as excluded from one interval combination
+    (``interval_row_key``, e.g. ``"ROW3XROW7"``). Excluded pairs are omitted from
+    property-data grids, exports, and data-completeness checks for the block.
+
+    - Exclusions match the task-level inventory tuple exactly, occurrence included,
+      so duplicated inventory+lot rows are masked independently.
+    - Exclusions are edited with add/delete only; to "update" an exclusion, delete it
+      and add the replacement (they can be sent in one request via two calls).
+
+    !!! warning "Beta Feature!"
+        Increased intervals combination support is currently in beta and behind a platform
+        feature flag. Please do not use in production or without explicit guidance from
+        Albert. You might otherwise have a bad experience. This feature currently falls
+        outside of the Albert support contract, but we'd love your feedback!
+    """
+
+    id: str | None = None
+    """Server-assigned exclusion ID (UUID). Assigned when persisted."""
+
+    inv_lot_unique_id: str = Field(alias="invLotUniqueId")
+    """Task-level inventory tuple identifier (format ``{inventoryId}#{lotId|LOT}#{occurrence}``), available on ``task.inventory_information[i].inv_lot_unique_id``."""
+
+    interval_row_key: str = Field(alias="intervalRowKey")
+    """Stable combination identity (format ``ROW...XROW...``), available on ``IntervalCombinationItem.interval_row_key``."""
+
+
 class BlockRules(BaseAlbertModel):
     """Combination rules and overrides for a task block (🧪 Beta).
 
@@ -243,6 +273,11 @@ class BlockRules(BaseAlbertModel):
 
     overrides: list[CombinationOverride] = Field(default_factory=list)
     """Combination overrides configured on this block."""
+
+    inventory_exclusions: list[InventoryExclusion] = Field(
+        default_factory=list, alias="inventoryExclusions"
+    )
+    """Inventory x combination exclusions ("masks") configured on this block."""
 
     job: WorkerJob | None = Field(default=None, exclude=True)
     """Background worker job when combinations are regenerated during [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]."""

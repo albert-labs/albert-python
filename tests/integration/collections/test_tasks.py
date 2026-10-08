@@ -8,6 +8,7 @@ from albert.resources.interval_combinations import (
     BlockRules,
     CombinationOverride,
     ExclusionRule,
+    InventoryExclusion,
     OverrideAction,
     RuleCondition,
     RuleOperator,
@@ -410,6 +411,61 @@ def test_get_and_set_block_rules(
         assert cleared.rules == []
         assert cleared.overrides == []
         assert cleared.job is not None
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_add_and_remove_block_inventory_exclusions(
+    client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
+):
+    """Test masking and unmasking inventory x combination pairs on a block."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    inv_lot_unique_id = task.inventory_information[0].inv_lot_unique_id
+    combo = next(client.tasks.get_block_combinations(task_id=task.id, block_id=block.id))
+    try:
+        added = client.tasks.add_block_inventory_exclusions(
+            task_id=task.id,
+            block_id=block.id,
+            exclusions=[
+                InventoryExclusion(
+                    inv_lot_unique_id=inv_lot_unique_id,
+                    interval_row_key=combo.interval_row_key,
+                )
+            ],
+        )
+        assert len(added.inventory_exclusions) == 1
+        assert added.inventory_exclusions[0].id is not None
+        assert added.inventory_exclusions[0].inv_lot_unique_id == inv_lot_unique_id
+        assert added.inventory_exclusions[0].interval_row_key == combo.interval_row_key
+
+        # Adding the same pair again is rejected
+        with pytest.raises(BadRequestError):
+            client.tasks.add_block_inventory_exclusions(
+                task_id=task.id,
+                block_id=block.id,
+                exclusions=[
+                    InventoryExclusion(
+                        inv_lot_unique_id=inv_lot_unique_id,
+                        interval_row_key=combo.interval_row_key,
+                    )
+                ],
+            )
+
+        removed = client.tasks.remove_block_inventory_exclusions(
+            task_id=task.id,
+            block_id=block.id,
+            exclusion_ids=[added.inventory_exclusions[0].id],
+        )
+        assert removed.inventory_exclusions == []
     finally:
         client.tasks.remove_block(task_id=task.id, block_id=block.id)
 
