@@ -139,13 +139,13 @@ class InventoryCollection(BaseCollection):
     get_facet_by_name(name, ...) -> list[FacetItem]
         Get a single named facet group for a query.
     get_instructions(parent_id, created_by, updated_by, max_items) -> Iterator[Instruction]
-        Get a formula's batching instructions, filtered to one formula or one author.
+        Get a formula's batch instruction steps, filtered to one formula or one author.
     get_instruction_by_id(parent_id, id) -> Instruction
         Get a single instruction by its ID.
     get_instructions_by_parent_ids(parent_ids) -> list[InstructionSet]
         Get the instructions of several formulas in one call.
     create_instruction(instruction) -> Instruction
-        Add an instruction to a formula.
+        Add a batch instruction step to a formula.
     update_instruction(instruction) -> Instruction
         Update an existing instruction's text.
     delete_instruction(parent_id, id) -> None
@@ -155,7 +155,7 @@ class InventoryCollection(BaseCollection):
     copy_instructions(source_id, target_ids) -> InstructionCopyResult
         Copy a formula's instructions and their order to other formulas.
     get_instruction_layout(inventory_id) -> InstructionLayout
-        Get the procedure table of a formula: its rows with their values.
+        Get a formula's batch instruction procedure: ingredients, stages, and readings.
     get_instruction_sequence(inventory_id, exclude_hidden=False) -> InstructionSequence
         Get the row order of a formula's procedure.
     update_instruction_sequence(inventory_id, source_id, reference_id, position, version) -> InstructionSequence
@@ -411,6 +411,12 @@ class InventoryCollection(BaseCollection):
     @validate_call
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
         """Get a single, fully populated inventory item by its ID.
+
+        A formula's batch instructions are not included; read them with
+        [`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]
+        (procedure table) and
+        [`get_instructions`][albert.collections.inventory.InventoryCollection.get_instructions]
+        (instruction steps).
 
         For retrieving many items at once, use [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids]. To find items
         without knowing their IDs, use [`search`][albert.collections.inventory.InventoryCollection.search] or [`get_all`][albert.collections.inventory.InventoryCollection.get_all].
@@ -1924,7 +1930,7 @@ class InventoryCollection(BaseCollection):
         updated_by: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Instruction]:
-        """Get a formula's batching instructions, filtered to one formula or one author.
+        """Get a formula's batch instruction steps, filtered to one formula or one author.
 
         Exactly one filter must be provided: a formula (``parent_id``), a creator
         (``created_by``), or a last editor (``updated_by``). Results are returned
@@ -2049,16 +2055,11 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def create_instruction(self, *, instruction: Instruction) -> Instruction:
-        """Add an instruction to a formula.
+        """Add a batch instruction step (e.g. "Take the pH of the batch") to a formula.
 
         The instruction's ``parent_id`` selects the formula and is required.
-        To pin the instruction to a specific ingredient row, set
-        ``design.design_row_id`` to that row's unique ID (format
-        ``DES...#ROW...``; match rows by name in
-        [`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]
-        results and read ``row_unique_id``). Without a row link, the instruction
-        is formula-level. A new instruction is appended at the end of its order
-        by default (its row's, or the formula-level one); reorder with
+        A new instruction is appended at the end of its order by default (its
+        row's, or the formula-level one); reorder with
         [`update_instruction_row_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_row_sequence].
 
         !!! example
@@ -2079,6 +2080,12 @@ class InventoryCollection(BaseCollection):
         ----------
         instruction : Instruction
             The instruction to create. Requires ``name`` and ``parent_id``.
+            To pin the instruction to a specific ingredient row, set
+            ``design.design_row_id`` to that row's unique ID (format
+            ``DES...#ROW...``; match rows by name in
+            [`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]
+            results and read ``row_unique_id``). Without a row link, the
+            instruction is formula-level.
 
         Returns
         -------
@@ -2261,7 +2268,7 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_instruction_layout(self, *, inventory_id: InventoryId) -> InstructionLayout:
-        """Get the procedure table of a formula: its rows with their values.
+        """Get a formula's batch instruction procedure: ingredients, stages, and readings.
 
         Returns every row of the formula's procedure in display order:
         ingredient rows, parameter groups (procedure stages), and parameter
