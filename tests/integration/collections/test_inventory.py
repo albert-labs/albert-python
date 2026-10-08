@@ -437,6 +437,27 @@ def test_update_many_inventory_items(client: Albert, seeded_inventory: list[Inve
         assert updated_by_id[item.id].description == f"update_many description {i}"
 
 
+def test_update_many_inventory_items_tags_and_company(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seeded_companies: list[Company],
+    seeded_tags: list[Tag],
+):
+    """Test update_many applies tag and company changes in one call."""
+    items = seeded_inventory[:2]
+    to_update = [
+        items[0].model_copy(update={"company": seeded_companies[1], "tags": [seeded_tags[1]]}),
+        items[1].model_copy(update={"tags": [seeded_tags[2]]}),
+    ]
+
+    updated = client.inventory.update_many(inventory_items=to_update)
+
+    updated_by_id = {item.id: item for item in updated}
+    assert updated_by_id[items[0].id].company.id == seeded_companies[1].id
+    assert {t.id for t in updated_by_id[items[0].id].tags} == {seeded_tags[1].id}
+    assert {t.id for t in updated_by_id[items[1].id].tags} == {seeded_tags[2].id}
+
+
 def test_update_inventory_item_advanced_attributes(
     client: Albert,
     seeded_inventory: list[InventoryItem],

@@ -199,6 +199,66 @@ def _build_cas_update_operations(existing: CasAmount, updated: CasAmount) -> lis
     return operations
 
 
+def _split_bulk_patch_operations(
+    patch_data: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split one item's patch operations into bulk-update operations and per-item operations.
+
+    The bulk inventory update accepts ``tagId`` adds and deletes (each as a single
+    operation carrying an array of ``{"id": ...}`` entries) and ``companyId`` updates
+    that carry the new company's ``name``. All other operations stay on the per-item
+    update route.
+
+    Parameters
+    ----------
+    patch_data : list[dict[str, Any]]
+        One item's generated patch operations.
+
+    Returns
+    -------
+    tuple[list[dict[str, Any]], list[dict[str, Any]]]
+        The bulk-update operations and the remaining per-item operations.
+    """
+    tag_ids_to_add: list[str] = []
+    tag_ids_to_delete: list[str] = []
+    company_updates: list[dict[str, Any]] = []
+    remaining: list[dict[str, Any]] = []
+    for operation in patch_data:
+        attribute = operation.get("attribute")
+        if attribute == "tagId" and operation.get("operation") == "add":
+            tag_ids_to_add.append(operation["newValue"])
+        elif attribute == "tagId" and operation.get("operation") == "delete":
+            tag_ids_to_delete.append(operation["oldValue"])
+        elif (
+            attribute == "companyId"
+            and operation.get("operation") == "update"
+            and operation.get("name")
+        ):
+            company_updates.append(operation)
+        else:
+            remaining.append(operation)
+
+    bulk_operations: list[dict[str, Any]] = []
+    if tag_ids_to_add:
+        bulk_operations.append(
+            {
+                "operation": "add",
+                "attribute": "tagId",
+                "newValue": [{"id": tag_id} for tag_id in tag_ids_to_add],
+            }
+        )
+    if tag_ids_to_delete:
+        bulk_operations.append(
+            {
+                "operation": "delete",
+                "attribute": "tagId",
+                "oldValue": [{"id": tag_id} for tag_id in tag_ids_to_delete],
+            }
+        )
+    bulk_operations.extend(company_updates)
+    return bulk_operations, remaining
+
+
 def _build_cas_patch_operations(
     *,
     existing: list[CasAmount] | None,

@@ -1,7 +1,8 @@
-"""Unit tests for the inventory CAS patch builder.
+"""Unit tests for the inventory patch builders.
 
 Allowed under the patch-builder exception in OPINIONS.md: these guard non-obvious
-diff behavior in ``_build_cas_patch_operations`` with no I/O to fake.
+diff behavior in ``_build_cas_patch_operations`` and ``_split_bulk_patch_operations``
+with no I/O to fake.
 """
 
 import pytest
@@ -20,6 +21,7 @@ from albert.utils.inventory import (
     _cas_identifier,
     _ensure_unique_cas_amounts,
     _normalize_inventory_function_ids,
+    _split_bulk_patch_operations,
 )
 
 # ---------------------------------------------------------------------------
@@ -401,6 +403,147 @@ def test_build_cas_update_operations_never_emits_substance_id_op():
     operations = _build_cas_update_operations(existing, updated)
 
     assert all(op["attribute"] != "substanceId" for op in operations)
+
+
+# ---------------------------------------------------------------------------
+# _split_bulk_patch_operations
+# ---------------------------------------------------------------------------
+
+
+def test_split_bulk_patch_operations_empty_input():
+    """Test that no patch operations produce no bulk and no remaining operations."""
+    assert _split_bulk_patch_operations([]) == ([], [])
+
+
+def test_split_bulk_patch_operations_merges_tag_adds_into_one_operation():
+    """Test that per-tag add operations merge into one bulk add with id entries."""
+    patch_data = [
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG1", "entityId": "TAG1"},
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG2"},
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == [
+        {
+            "operation": "add",
+            "attribute": "tagId",
+            "newValue": [{"id": "TAG1"}, {"id": "TAG2"}],
+        }
+    ]
+    assert remaining == []
+
+
+def test_split_bulk_patch_operations_merges_tag_deletes_into_one_operation():
+    """Test that per-tag delete operations merge into one bulk delete with id entries."""
+    patch_data = [
+        {"operation": "delete", "attribute": "tagId", "oldValue": "TAG1"},
+        {"operation": "delete", "attribute": "tagId", "oldValue": "TAG2"},
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == [
+        {
+            "operation": "delete",
+            "attribute": "tagId",
+            "oldValue": [{"id": "TAG1"}, {"id": "TAG2"}],
+        }
+    ]
+    assert remaining == []
+
+
+def test_split_bulk_patch_operations_company_update_with_name_goes_to_bulk():
+    """Test that a companyId update carrying the company name is bulk-eligible."""
+    patch_data = [
+        {
+            "operation": "update",
+            "attribute": "companyId",
+            "oldValue": "COM1",
+            "newValue": "COM2",
+            "name": "Acme Chemicals",
+        }
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == patch_data
+    assert remaining == []
+
+
+def test_split_bulk_patch_operations_company_update_without_name_stays_per_item():
+    """Test that a companyId update without a name stays on the per-item route."""
+    patch_data = [
+        {
+            "operation": "update",
+            "attribute": "companyId",
+            "oldValue": "COM1",
+            "newValue": "COM2",
+        }
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == []
+    assert remaining == patch_data
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        pytest.param(
+            {"operation": "add", "attribute": "companyId", "newValue": "COM1"},
+            id="company-add",
+        ),
+        pytest.param(
+            {"operation": "delete", "attribute": "companyId", "entityId": "COM1"},
+            id="company-delete",
+        ),
+        pytest.param(
+            {"operation": "update", "attribute": "name", "oldValue": "a", "newValue": "b"},
+            id="scalar-attribute",
+        ),
+        pytest.param(
+            {"operation": "add", "attribute": "Metadata.IDH", "newValue": "LST1"},
+            id="metadata-attribute",
+        ),
+        pytest.param(
+            {"operation": "add", "attribute": "casId", "newValue": "CAS1"},
+            id="cas-attribute",
+        ),
+    ],
+)
+def test_split_bulk_patch_operations_unsupported_attributes_stay_per_item(operation):
+    """Test that operations the bulk update does not accept stay on the per-item route."""
+    bulk_operations, remaining = _split_bulk_patch_operations([operation])
+
+    assert bulk_operations == []
+    assert remaining == [operation]
+
+
+def test_split_bulk_patch_operations_mixed_operations_preserve_remaining_order():
+    """Test that remaining operations keep their order around merged bulk operations."""
+    name_operation = {
+        "operation": "update",
+        "attribute": "name",
+        "oldValue": "a",
+        "newValue": "b",
+    }
+    metadata_operation = {"operation": "add", "attribute": "Metadata.IDH", "newValue": "LST1"}
+    patch_data = [
+        name_operation,
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG1"},
+        metadata_operation,
+        {"operation": "delete", "attribute": "tagId", "oldValue": "TAG2"},
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == [
+        {"operation": "add", "attribute": "tagId", "newValue": [{"id": "TAG1"}]},
+        {"operation": "delete", "attribute": "tagId", "oldValue": [{"id": "TAG2"}]},
+    ]
+    assert remaining == [name_operation, metadata_operation]
 
 
 # ---------------------------------------------------------------------------
