@@ -2039,34 +2039,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../collections/instructions/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Instructions
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../collections/label_templates/" class="md-nav__link">
         
   
@@ -7288,9 +7260,33 @@ They come in two layers, which this module's models reflect:</p>
   within each row (or at formula level) is an
   <a class="autorefs autorefs-internal" href="#albert.resources.instructions.InstructionOrder"><code>InstructionOrder</code></a>.</li>
 </ul>
+<p>The row order is held in an
+<a class="autorefs autorefs-internal" href="#albert.resources.instructions.InstructionSequence"><code>InstructionSequence</code></a>
+and the instruction-text order in
+<a class="autorefs autorefs-internal" href="#albert.resources.instructions.InstructionOrder"><code>InstructionOrder</code></a>
+buckets. Both are determined as follows:</p>
+<ul>
+<li>Ingredient rows always follow the order set on the Sheet's Product Design;
+  they cannot be reordered per formula.</li>
+<li>Parameter group rows default to the Sheet's Process Design order, but each
+  formula can override the order of its own groups, placing a group above or
+  below any other row (ingredient or parameter group). A parameter group stays
+  with the ingredient it follows, so reordering ingredients on the Sheet
+  carries the formula's groups along; groups newly added to the Sheet are
+  appended at the end.</li>
+<li>Parameter rows (the readings and targets inside a group, such as
+  temperature or mixing time) belong to their parent parameter group and
+  move with it; they are not individually reorderable.</li>
+<li>Instruction texts order independently of the rows: each ingredient row
+  has its own order for the instructions pinned to it, plus one order for
+  the formula-level instructions. New instructions are appended at the end
+  of their order by default. When instructions are listed for a formula, the
+  formula-level instructions come first, then each row's instructions.</li>
+</ul>
 <p>Most models here are read-only views returned by the
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection"><code>InstructionsCollection</code></a>
-(accessed as <code>client.inventory.instructions</code>); only
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection"><code>InventoryCollection</code></a>
+instruction methods (<code>client.inventory.get_instruction_layout</code>,
+<code>client.inventory.get_instructions_by_parent_ids</code>, and siblings); only
 <a class="autorefs autorefs-internal" href="#albert.resources.instructions.Instruction"><code>Instruction</code></a> and
 <a class="autorefs autorefs-internal" href="#albert.resources.instructions.InstructionDesignLink"><code>InstructionDesignLink</code></a>
 are constructed directly, to author instruction texts.</p>
@@ -8294,10 +8290,10 @@ rich values such as calculated amounts.</p>
 (blank separator, batch total). <code>type</code> says which, and <code>values</code> carries
 the row's content per column.</p>
 <p>Read-only view returned by
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.get_by_inventory_id"><code>get_by_inventory_id</code></a>.
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.get_instruction_layout"><code>get_instruction_layout</code></a>.
 Row content is edited on the Worksheet; only the order of parameter group
 rows can be changed through the SDK, via
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.update_sequence"><code>update_sequence</code></a>.</p>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.update_instruction_sequence"><code>update_instruction_sequence</code></a>.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
@@ -8482,7 +8478,7 @@ rows can be changed through the SDK, via
 </span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180" href="#__codelineno-0-180"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181" href="#__codelineno-0-181"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182" href="#__codelineno-0-182"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183" href="#__codelineno-0-183"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"One row of a formula's procedure table.\n\nA row is one line of the procedure: an ingredient, a procedure stage\n(parameter group), a single reading (parameter), or a structural row\n(blank separator, batch total). ``type`` says which, and ``values`` carries\nthe row's content per column.\n\nRead-only view returned by\n[`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id].\nRow content is edited on the Worksheet; only the order of parameter group\nrows can be changed through the SDK, via\n[`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence]."</span><span class="p">,</span>
+</span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183" href="#__codelineno-0-183"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"One row of a formula's procedure table.\n\nA row is one line of the procedure: an ingredient, a procedure stage\n(parameter group), a single reading (parameter), or a structural row\n(blank separator, batch total). ``type`` says which, and ``values`` carries\nthe row's content per column.\n\nRead-only view returned by\n[`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout].\nRow content is edited on the Worksheet; only the order of parameter group\nrows can be changed through the SDK, via\n[`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence]."</span><span class="p">,</span>
 </span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184" href="#__codelineno-0-184"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185" href="#__codelineno-0-185"></a><span class="w">    </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-186"><a id="__codelineno-0-186" name="__codelineno-0-186" href="#__codelineno-0-186"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -8520,7 +8516,7 @@ rows can be changed through the SDK, via
 </span><span id="__span-0-218"><a id="__codelineno-0-218" name="__codelineno-0-218" href="#__codelineno-0-218"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-219"><a id="__codelineno-0-219" name="__codelineno-0-219" href="#__codelineno-0-219"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-220"><a id="__codelineno-0-220" name="__codelineno-0-220" href="#__codelineno-0-220"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221" href="#__codelineno-0-221"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The globally unique row ID, combining the design ID and row ID\n(format ``DES...#ROW...``). This is the value to pass when reordering rows\nwith\n[`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence];\nmatch rows by ``name`` or ``id`` to find it."</span><span class="p">,</span>
+</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221" href="#__codelineno-0-221"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The globally unique row ID, combining the design ID and row ID\n(format ``DES...#ROW...``). This is the value to pass when reordering rows\nwith\n[`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence];\nmatch rows by ``name`` or ``id`` to find it."</span><span class="p">,</span>
 </span><span id="__span-0-222"><a id="__codelineno-0-222" name="__codelineno-0-222" href="#__codelineno-0-222"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Rowuniqueid"</span>
 </span><span id="__span-0-223"><a id="__codelineno-0-223" name="__codelineno-0-223" href="#__codelineno-0-223"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-224"><a id="__codelineno-0-224" name="__codelineno-0-224" href="#__codelineno-0-224"></a><span class="w">    </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -8811,7 +8807,7 @@ rows. Useful for matching a row to an entity you already know.</p>
         <p>The globally unique row ID, combining the design ID and row ID
 (format <code>DES...#ROW...</code>). This is the value to pass when reordering rows
 with
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.update_sequence"><code>update_sequence</code></a>;
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.update_instruction_sequence"><code>update_instruction_sequence</code></a>;
 match rows by <code>name</code> or <code>id</code> to find it.</p>
 
     </div>
@@ -9069,15 +9065,15 @@ match rows by <code>name</code> or <code>id</code> to find it.</p>
 ingredients with their amounts, procedure stages and their readings, and
 any batch instruction text entered per row.</p>
 <p>Read-only view returned by
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.get_by_inventory_id"><code>get_by_inventory_id</code></a>.
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.get_instruction_layout"><code>get_instruction_layout</code></a>.
 The row order alone (without values) is available from
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.get_sequence"><code>get_sequence</code></a>.</p>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.get_instruction_sequence"><code>get_instruction_sequence</code></a>.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"$defs"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">"InstructionRow"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"One row of a formula's procedure table.\n\nA row is one line of the procedure: an ingredient, a procedure stage\n(parameter group), a single reading (parameter), or a structural row\n(blank separator, batch total). ``type`` says which, and ``values`` carries\nthe row's content per column.\n\nRead-only view returned by\n[`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id].\nRow content is edited on the Worksheet; only the order of parameter group\nrows can be changed through the SDK, via\n[`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence]."</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"One row of a formula's procedure table.\n\nA row is one line of the procedure: an ingredient, a procedure stage\n(parameter group), a single reading (parameter), or a structural row\n(blank separator, batch total). ``type`` says which, and ``values`` carries\nthe row's content per column.\n\nRead-only view returned by\n[`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout].\nRow content is edited on the Worksheet; only the order of parameter group\nrows can be changed through the SDK, via\n[`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence]."</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">          </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -9115,7 +9111,7 @@ The row order alone (without values) is available from
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The globally unique row ID, combining the design ID and row ID\n(format ``DES...#ROW...``). This is the value to pass when reordering rows\nwith\n[`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence];\nmatch rows by ``name`` or ``id`` to find it."</span><span class="p">,</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The globally unique row ID, combining the design ID and row ID\n(format ``DES...#ROW...``). This is the value to pass when reordering rows\nwith\n[`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence];\nmatch rows by ``name`` or ``id`` to find it."</span><span class="p">,</span>
 </span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Rowuniqueid"</span>
 </span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">        </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -9451,7 +9447,7 @@ The row order alone (without values) is available from
 </span><span id="__span-0-375"><a id="__codelineno-0-375" name="__codelineno-0-375" href="#__codelineno-0-375"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-376"><a id="__codelineno-0-376" name="__codelineno-0-376" href="#__codelineno-0-376"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-377"><a id="__codelineno-0-377" name="__codelineno-0-377" href="#__codelineno-0-377"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-378"><a id="__codelineno-0-378" name="__codelineno-0-378" href="#__codelineno-0-378"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The procedure table of a single formula: its rows with their values.\n\nCovers everything the formula's procedure involves, in display order:\ningredients with their amounts, procedure stages and their readings, and\nany batch instruction text entered per row.\n\nRead-only view returned by\n[`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id].\nThe row order alone (without values) is available from\n[`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence]."</span><span class="p">,</span>
+</span><span id="__span-0-378"><a id="__codelineno-0-378" name="__codelineno-0-378" href="#__codelineno-0-378"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The procedure table of a single formula: its rows with their values.\n\nCovers everything the formula's procedure involves, in display order:\ningredients with their amounts, procedure stages and their readings, and\nany batch instruction text entered per row.\n\nRead-only view returned by\n[`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout].\nThe row order alone (without values) is available from\n[`get_instruction_sequence`][albert.collections.inventory.InventoryCollection.get_instruction_sequence]."</span><span class="p">,</span>
 </span><span id="__span-0-379"><a id="__codelineno-0-379" name="__codelineno-0-379" href="#__codelineno-0-379"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-380"><a id="__codelineno-0-380" name="__codelineno-0-380" href="#__codelineno-0-380"></a><span class="w">    </span><span class="nt">"total"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-381"><a id="__codelineno-0-381" name="__codelineno-0-381" href="#__codelineno-0-381"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -9675,7 +9671,7 @@ rows so simultaneous edits are detected.</p>
 </span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The globally unique row ID (format ``DES...#ROW...``). To find the ID for\na row you know by name, match it in\n[`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]\nresults and read its ``row_unique_id``."</span><span class="p">,</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The globally unique row ID (format ``DES...#ROW...``). To find the ID for\na row you know by name, match it in\n[`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]\nresults and read its ``row_unique_id``."</span><span class="p">,</span>
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Rowid"</span>
 </span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">    </span><span class="nt">"designType"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -9754,7 +9750,7 @@ rows so simultaneous edits are detected.</p>
 
         <p>The globally unique row ID (format <code>DES...#ROW...</code>). To find the ID for
 a row you know by name, match it in
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.get_by_inventory_id"><code>get_by_inventory_id</code></a>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.get_instruction_layout"><code>get_instruction_layout</code></a>
 results and read its <code>row_unique_id</code>.</p>
 
     </div>
@@ -9833,14 +9829,13 @@ results and read its <code>row_unique_id</code>.</p>
 <code>version</code> used to detect conflicting edits. Ingredient rows always follow
 the order set on the Sheet's Product Design, while parameter group rows
 can be reordered per formula via
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.update_sequence"><code>update_sequence</code></a>.
-See
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection"><code>InstructionsCollection</code></a>
-for the full picture of how the order is determined.</p>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.update_instruction_sequence"><code>update_instruction_sequence</code></a>.
+See the <a class="autorefs autorefs-internal" href="#albert.resources.instructions"><code>albert.resources.instructions</code></a>
+module for the full picture of how the order is determined.</p>
 <p>Read-only view returned by
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.get_sequence"><code>get_sequence</code></a>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.get_instruction_sequence"><code>get_instruction_sequence</code></a>
 and
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.update_sequence"><code>update_sequence</code></a>.</p>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.update_instruction_sequence"><code>update_instruction_sequence</code></a>.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
@@ -9867,7 +9862,7 @@ and
 </span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The globally unique row ID (format ``DES...#ROW...``). To find the ID for\na row you know by name, match it in\n[`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]\nresults and read its ``row_unique_id``."</span><span class="p">,</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The globally unique row ID (format ``DES...#ROW...``). To find the ID for\na row you know by name, match it in\n[`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]\nresults and read its ``row_unique_id``."</span><span class="p">,</span>
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Rowid"</span>
 </span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">        </span><span class="nt">"designType"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -9900,7 +9895,7 @@ and
 </span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The row order of a single formula's batching instructions.\n\nLists every row of the formula's procedure in display order, along with the\n``version`` used to detect conflicting edits. Ingredient rows always follow\nthe order set on the Sheet's Product Design, while parameter group rows\ncan be reordered per formula via\n[`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].\nSee\n[`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]\nfor the full picture of how the order is determined.\n\nRead-only view returned by\n[`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence]\nand\n[`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence]."</span><span class="p">,</span>
+</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The row order of a single formula's batching instructions.\n\nLists every row of the formula's procedure in display order, along with the\n``version`` used to detect conflicting edits. Ingredient rows always follow\nthe order set on the Sheet's Product Design, while parameter group rows\ncan be reordered per formula via\n[`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence].\nSee the [`albert.resources.instructions`][albert.resources.instructions]\nmodule for the full picture of how the order is determined.\n\nRead-only view returned by\n[`get_instruction_sequence`][albert.collections.inventory.InventoryCollection.get_instruction_sequence]\nand\n[`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence]."</span><span class="p">,</span>
 </span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="w">    </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -10127,7 +10122,7 @@ row link it is a formula-level instruction.</p>
 </span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unique ID of the ingredient row the instruction is pinned to\n(format ``DES...#ROW...``). When None, the instruction applies to the\nformula as a whole. Match rows by name in\n[`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]\nresults and read their ``row_unique_id`` to find this value."</span><span class="p">,</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unique ID of the ingredient row the instruction is pinned to\n(format ``DES...#ROW...``). When None, the instruction applies to the\nformula as a whole. Match rows by name in\n[`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]\nresults and read their ``row_unique_id`` to find this value."</span><span class="p">,</span>
 </span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Designrowid"</span>
 </span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">    </span><span class="nt">"designInvId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -10215,7 +10210,7 @@ row link it is a formula-level instruction.</p>
         <p>The unique ID of the ingredient row the instruction is pinned to
 (format <code>DES...#ROW...</code>). When None, the instruction applies to the
 formula as a whole. Match rows by name in
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.get_by_inventory_id"><code>get_by_inventory_id</code></a>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.get_instruction_layout"><code>get_instruction_layout</code></a>
 results and read their <code>row_unique_id</code> to find this value.</p>
 
     </div>
@@ -10275,10 +10270,10 @@ the formula's batching instructions in the Albert interface. Every
 instruction belongs to exactly one formula (its <code>parent_id</code>) and can
 optionally be pinned to one of the formula's ingredient rows via <code>design</code>.</p>
 <p>Construct this model to author an instruction through
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.create"><code>create</code></a>.
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.create_instruction"><code>create_instruction</code></a>.
 <code>id</code>, <code>status</code>, <code>created</code>, and <code>updated</code> are assigned by Albert and
 read-only. After creation, only <code>name</code> can be changed, via
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.update"><code>update</code></a>.</p>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.update_instruction"><code>update_instruction</code></a>.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.instructions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Instruction</span>
@@ -10352,7 +10347,7 @@ read-only. After creation, only <code>name</code> can be changed, via
 </span><span id="__span-0-63"><a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-66"><a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unique ID of the ingredient row the instruction is pinned to\n(format ``DES...#ROW...``). When None, the instruction applies to the\nformula as a whole. Match rows by name in\n[`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]\nresults and read their ``row_unique_id`` to find this value."</span><span class="p">,</span>
+</span><span id="__span-0-66"><a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unique ID of the ingredient row the instruction is pinned to\n(format ``DES...#ROW...``). When None, the instruction applies to the\nformula as a whole. Match rows by name in\n[`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]\nresults and read their ``row_unique_id`` to find this value."</span><span class="p">,</span>
 </span><span id="__span-0-67"><a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Designrowid"</span>
 </span><span id="__span-0-68"><a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-69"><a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a><span class="w">        </span><span class="nt">"designInvId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -10382,7 +10377,7 @@ read-only. After creation, only <code>name</code> can be changed, via
 </span><span id="__span-0-93"><a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-95"><a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"An authored instruction text on a formula.\n\nA free-text procedure note, such as \"Take the pH of the batch\", shown with\nthe formula's batching instructions in the Albert interface. Every\ninstruction belongs to exactly one formula (its ``parent_id``) and can\noptionally be pinned to one of the formula's ingredient rows via ``design``.\n\nConstruct this model to author an instruction through\n[`create`][albert.collections.instructions.InstructionsCollection.create].\n``id``, ``status``, ``created``, and ``updated`` are assigned by Albert and\nread-only. After creation, only ``name`` can be changed, via\n[`update`][albert.collections.instructions.InstructionsCollection.update].\n\n!!! example\n    ```python\n    from albert.resources.instructions import Instruction\n    instruction = Instruction(name=\"Take the pH of the batch\", parent_id=\"INV123\")\n    ```"</span><span class="p">,</span>
+</span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"An authored instruction text on a formula.\n\nA free-text procedure note, such as \"Take the pH of the batch\", shown with\nthe formula's batching instructions in the Albert interface. Every\ninstruction belongs to exactly one formula (its ``parent_id``) and can\noptionally be pinned to one of the formula's ingredient rows via ``design``.\n\nConstruct this model to author an instruction through\n[`create_instruction`][albert.collections.inventory.InventoryCollection.create_instruction].\n``id``, ``status``, ``created``, and ``updated`` are assigned by Albert and\nread-only. After creation, only ``name`` can be changed, via\n[`update_instruction`][albert.collections.inventory.InventoryCollection.update_instruction].\n\n!!! example\n    ```python\n    from albert.resources.instructions import Instruction\n    instruction = Instruction(name=\"Take the pH of the batch\", parent_id=\"INV123\")\n    ```"</span><span class="p">,</span>
 </span><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97" href="#__codelineno-0-97"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-98"><a id="__codelineno-0-98" name="__codelineno-0-98" href="#__codelineno-0-98"></a><span class="w">    </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99" href="#__codelineno-0-99"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -10640,11 +10635,11 @@ bucket with no <code>design_row_id</code>).</p>
 <p>Read-only view returned as part of
 <a class="autorefs autorefs-internal" href="#albert.resources.instructions.InstructionSet"><code>InstructionSet</code></a>. Change the
 order with
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.update_row_sequence"><code>update_row_sequence</code></a>.</p>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.update_instruction_row_sequence"><code>update_instruction_row_sequence</code></a>.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The display order of the instruction texts pinned to one row.\n\nInstruction texts are ordered independently within each pin: one order per\ningredient row, plus one order for the formula-level instructions (the\nbucket with no ``design_row_id``).\n\nRead-only view returned as part of\n[`InstructionSet`][albert.resources.instructions.InstructionSet]. Change the\norder with\n[`update_row_sequence`][albert.collections.instructions.InstructionsCollection.update_row_sequence]."</span><span class="p">,</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The display order of the instruction texts pinned to one row.\n\nInstruction texts are ordered independently within each pin: one order per\ningredient row, plus one order for the formula-level instructions (the\nbucket with no ``design_row_id``).\n\nRead-only view returned as part of\n[`InstructionSet`][albert.resources.instructions.InstructionSet]. Change the\norder with\n[`update_instruction_row_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_row_sequence]."</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">"designRowId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -10767,9 +10762,9 @@ order with
 
         <p>The instruction texts authored on a single formula, with their order.</p>
 <p>Read-only view returned by
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.get_by_parent_ids"><code>get_by_parent_ids</code></a>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.get_instructions_by_parent_ids"><code>get_instructions_by_parent_ids</code></a>
 and
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.update_row_sequence"><code>update_row_sequence</code></a>.</p>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.update_instruction_row_sequence"><code>update_instruction_row_sequence</code></a>.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
@@ -10812,7 +10807,7 @@ and
 </span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">    </span><span class="nt">"Instruction"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"An authored instruction text on a formula.\n\nA free-text procedure note, such as \"Take the pH of the batch\", shown with\nthe formula's batching instructions in the Albert interface. Every\ninstruction belongs to exactly one formula (its ``parent_id``) and can\noptionally be pinned to one of the formula's ingredient rows via ``design``.\n\nConstruct this model to author an instruction through\n[`create`][albert.collections.instructions.InstructionsCollection.create].\n``id``, ``status``, ``created``, and ``updated`` are assigned by Albert and\nread-only. After creation, only ``name`` can be changed, via\n[`update`][albert.collections.instructions.InstructionsCollection.update].\n\n!!! example\n    ```python\n    from albert.resources.instructions import Instruction\n    instruction = Instruction(name=\"Take the pH of the batch\", parent_id=\"INV123\")\n    ```"</span><span class="p">,</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"An authored instruction text on a formula.\n\nA free-text procedure note, such as \"Take the pH of the batch\", shown with\nthe formula's batching instructions in the Albert interface. Every\ninstruction belongs to exactly one formula (its ``parent_id``) and can\noptionally be pinned to one of the formula's ingredient rows via ``design``.\n\nConstruct this model to author an instruction through\n[`create_instruction`][albert.collections.inventory.InventoryCollection.create_instruction].\n``id``, ``status``, ``created``, and ``updated`` are assigned by Albert and\nread-only. After creation, only ``name`` can be changed, via\n[`update_instruction`][albert.collections.inventory.InventoryCollection.update_instruction].\n\n!!! example\n    ```python\n    from albert.resources.instructions import Instruction\n    instruction = Instruction(name=\"Take the pH of the batch\", parent_id=\"INV123\")\n    ```"</span><span class="p">,</span>
 </span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">        </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">          </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -10932,7 +10927,7 @@ and
 </span><span id="__span-0-158"><a id="__codelineno-0-158" name="__codelineno-0-158" href="#__codelineno-0-158"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159" href="#__codelineno-0-159"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160" href="#__codelineno-0-160"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161" href="#__codelineno-0-161"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unique ID of the ingredient row the instruction is pinned to\n(format ``DES...#ROW...``). When None, the instruction applies to the\nformula as a whole. Match rows by name in\n[`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]\nresults and read their ``row_unique_id`` to find this value."</span><span class="p">,</span>
+</span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161" href="#__codelineno-0-161"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unique ID of the ingredient row the instruction is pinned to\n(format ``DES...#ROW...``). When None, the instruction applies to the\nformula as a whole. Match rows by name in\n[`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]\nresults and read their ``row_unique_id`` to find this value."</span><span class="p">,</span>
 </span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162" href="#__codelineno-0-162"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Designrowid"</span>
 </span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163" href="#__codelineno-0-163"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-164"><a id="__codelineno-0-164" name="__codelineno-0-164" href="#__codelineno-0-164"></a><span class="w">        </span><span class="nt">"designInvId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -10953,7 +10948,7 @@ and
 </span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179" href="#__codelineno-0-179"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180" href="#__codelineno-0-180"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181" href="#__codelineno-0-181"></a><span class="w">    </span><span class="nt">"InstructionOrder"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182" href="#__codelineno-0-182"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The display order of the instruction texts pinned to one row.\n\nInstruction texts are ordered independently within each pin: one order per\ningredient row, plus one order for the formula-level instructions (the\nbucket with no ``design_row_id``).\n\nRead-only view returned as part of\n[`InstructionSet`][albert.resources.instructions.InstructionSet]. Change the\norder with\n[`update_row_sequence`][albert.collections.instructions.InstructionsCollection.update_row_sequence]."</span><span class="p">,</span>
+</span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182" href="#__codelineno-0-182"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The display order of the instruction texts pinned to one row.\n\nInstruction texts are ordered independently within each pin: one order per\ningredient row, plus one order for the formula-level instructions (the\nbucket with no ``design_row_id``).\n\nRead-only view returned as part of\n[`InstructionSet`][albert.resources.instructions.InstructionSet]. Change the\norder with\n[`update_instruction_row_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_row_sequence]."</span><span class="p">,</span>
 </span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183" href="#__codelineno-0-183"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184" href="#__codelineno-0-184"></a><span class="w">        </span><span class="nt">"designRowId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185" href="#__codelineno-0-185"></a><span class="w">          </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -10990,7 +10985,7 @@ and
 </span><span id="__span-0-216"><a id="__codelineno-0-216" name="__codelineno-0-216" href="#__codelineno-0-216"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-217"><a id="__codelineno-0-217" name="__codelineno-0-217" href="#__codelineno-0-217"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-218"><a id="__codelineno-0-218" name="__codelineno-0-218" href="#__codelineno-0-218"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-219"><a id="__codelineno-0-219" name="__codelineno-0-219" href="#__codelineno-0-219"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The instruction texts authored on a single formula, with their order.\n\nRead-only view returned by\n[`get_by_parent_ids`][albert.collections.instructions.InstructionsCollection.get_by_parent_ids]\nand\n[`update_row_sequence`][albert.collections.instructions.InstructionsCollection.update_row_sequence]."</span><span class="p">,</span>
+</span><span id="__span-0-219"><a id="__codelineno-0-219" name="__codelineno-0-219" href="#__codelineno-0-219"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The instruction texts authored on a single formula, with their order.\n\nRead-only view returned by\n[`get_instructions_by_parent_ids`][albert.collections.inventory.InventoryCollection.get_instructions_by_parent_ids]\nand\n[`update_instruction_row_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_row_sequence]."</span><span class="p">,</span>
 </span><span id="__span-0-220"><a id="__codelineno-0-220" name="__codelineno-0-220" href="#__codelineno-0-220"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221" href="#__codelineno-0-221"></a><span class="w">    </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-222"><a id="__codelineno-0-222" name="__codelineno-0-222" href="#__codelineno-0-222"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -11181,11 +11176,11 @@ and
 
         <p>The outcome of copying instruction texts from one formula to others.</p>
 <p>Read-only view returned by
-<a class="autorefs autorefs-internal" href="../../collections/instructions/#albert.collections.instructions.InstructionsCollection.copy"><code>copy</code></a>.</p>
+<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.copy_instructions"><code>copy_instructions</code></a>.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The outcome of copying instruction texts from one formula to others.\n\nRead-only view returned by\n[`copy`][albert.collections.instructions.InstructionsCollection.copy]."</span><span class="p">,</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The outcome of copying instruction texts from one formula to others.\n\nRead-only view returned by\n[`copy_instructions`][albert.collections.inventory.InventoryCollection.copy_instructions]."</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">"copied"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
