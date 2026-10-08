@@ -216,27 +216,29 @@ def test_add_and_delete_lookup_column(
         seeded_locations=seeded_locations,
         static_user=static_user,
     )
+    # Unique per-run id/name: the seeded formula's design carries its own lookup
+    # columns, so a fixed name could collide with a column that is not ours.
+    lkp_id = f"{seed_prefix.lower()}-lkp"
+    lkp_name = f"{seed_prefix} LKP"
     try:
         _ensure_batch_data(client, task.id)
 
         client.batch_data.add_products(
-            id=task.id, products=[BatchDataProduct(id="manufacturer", name="Manufacturer")]
+            id=task.id, products=[BatchDataProduct(id=lkp_id, name=lkp_name)]
         )
         # The store is eventually consistent; poll until the write is visible.
         columns = poll_until(
             lambda: client.batch_data.get_by_id(id=task.id).product or [],
-            predicate=lambda cols: any(c.name == "Manufacturer" for c in cols),
+            predicate=lambda cols: any(c.name == lkp_name for c in cols),
         )
-        assert any(col.name == "Manufacturer" for col in columns)
+        assert any(col.name == lkp_name for col in columns)
 
-        client.batch_data.delete_products(
-            id=task.id, products=[BatchDataProduct(id="manufacturer")]
-        )
+        client.batch_data.delete_products(id=task.id, products=[BatchDataProduct(id=lkp_id)])
         columns = poll_until(
             lambda: client.batch_data.get_by_id(id=task.id).product or [],
-            predicate=lambda cols: all(c.name != "Manufacturer" for c in cols),
+            predicate=lambda cols: all(c.name != lkp_name for c in cols),
         )
-        assert all(col.name != "Manufacturer" for col in columns)
+        assert all(col.name != lkp_name for col in columns)
     finally:
         with suppress(NotFoundError, BadRequestError):
             client.tasks.delete(id=task.id)
