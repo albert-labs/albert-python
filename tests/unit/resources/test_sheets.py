@@ -252,6 +252,132 @@ def test_add_formulation_restores_cleared_column_when_write_fails(monkeypatch):
     assert writes[-1] == [original]
 
 
+def _empty_sheet() -> Sheet:
+    return Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+
+
+def test_filter_cells_matches_nested_cell_id():
+    """A 206 body with ``id: {rowId, colId}`` splits updated and failed cells."""
+    sheet = _empty_sheet()
+    cells = [
+        Cell(colId="COL1", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL2", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+    ]
+    updated, failed = sheet._filter_cells(
+        cells=cells,
+        response_dict={"UpdatedItems": [{"id": {"rowId": "ROW1", "colId": "COL1"}}]},
+    )
+    assert [cell.column_id for cell in updated] == ["COL1"]
+    assert [cell.column_id for cell in failed] == ["COL2"]
+
+
+def test_filter_cells_string_id_does_not_raise():
+    """Partial success may return inventory records whose ``id`` is a string."""
+    sheet = _empty_sheet()
+    cells = [
+        Cell(colId="COL6", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL5", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+    ]
+    updated, failed = sheet._filter_cells(
+        cells=cells,
+        response_dict={
+            "UpdatedItems": [{"id": "INVKENV1", "rowId": "ROW1", "colId": "COL5", "name": "Open"}],
+            "FailedItems": [
+                {
+                    "id": {"rowId": "ROW1", "colId": "COL6"},
+                    "msg": "You cannot edit values in formulas that are locked",
+                }
+            ],
+        },
+    )
+    assert [cell.column_id for cell in updated] == ["COL5"]
+    assert [cell.column_id for cell in failed] == ["COL6"]
+
+
+def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch):
+    """A new ingredient row must not rewrite Total formulas on locked columns."""
+    sheet = _empty_sheet()
+    total_row = Row(
+        rowId="ROW1",
+        type=CellType.TOTAL,
+        design=sheet.product_design,
+        sheet=sheet,
+    )
+    new_column = Column(
+        colId="COL5", name="New", type=CellType.INVENTORY, sheet=sheet, locked=False
+    )
+    unlocked = Column(
+        colId="COL2", name="Open", type=CellType.INVENTORY, sheet=sheet, locked=False
+    )
+    locked = Column(colId="COL6", name="Locked", type=CellType.INVENTORY, sheet=sheet, locked=True)
+    written: list[list[Cell]] = []
+
+    def _cells(self):
+        return [
+            Cell(
+                colId=self.column_id,
+                rowId="ROW1",
+                value="10",
+                calculation="=old",
+                type=CellType.TOTAL,
+                row_type=CellType.TOTAL,
+                design_id="DES1",
+            )
+        ]
+
+    def _add_row(self, *, inventory_id, existing_cells, enforce_order, product_rows):
+        product_rows.append(
+            Row(
+                rowId="ROW9",
+                type=CellType.INVENTORY,
+                design=self.product_design,
+                sheet=self,
+                inventory_id=inventory_id,
+                name="New ingredient",
+            )
+        )
+        return "ROW9"
+
+    def _update_cells(self, *, cells):
+        written.append(list(cells))
+        return ([], [])
+
+    monkeypatch.setattr(Design, "rows", property(lambda self: [total_row]))
+    monkeypatch.setattr(Sheet, "columns", property(lambda self: [unlocked, locked]))
+    monkeypatch.setattr(Column, "cells", property(_cells))
+    monkeypatch.setattr(Sheet, "add_formulation_columns", lambda self, **_: [new_column])
+    monkeypatch.setattr(Sheet, "get_column", lambda self, **_: new_column)
+    monkeypatch.setattr(Sheet, "_get_row_id_for_component", _add_row)
+    monkeypatch.setattr(Sheet, "update_cells", _update_cells)
+
+    sheet.add_formulation(
+        formulation_name="New",
+        components=[Component(inventory_id="INVA1", amount=5.0)],
+        clear=False,
+    )
+
+    total_column_ids = [
+        cell.column_id
+        for batch in written
+        for cell in batch
+        if cell.type == CellType.TOTAL or cell.row_type == CellType.TOTAL
+    ]
+    assert "COL5" in total_column_ids
+    assert "COL2" in total_column_ids
+    assert "COL6" not in total_column_ids
+
+
 def test_add_parameter_group_row_requires_process_design():
     """Test that adding a PRG row fails when the sheet has no Process Design."""
     sheet = Sheet(
