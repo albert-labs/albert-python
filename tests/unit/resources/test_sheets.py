@@ -55,7 +55,7 @@ def test_get_current_cell_exact_row_match():
         name="ROW22",
     )
 
-    sheet._grid = pd.DataFrame(
+    sheet.product_design._grid = pd.DataFrame(
         [[row_220_cell], [row_22_cell]],
         index=["DES1#ROW220", "DES1#ROW22"],
         columns=[column_label],
@@ -74,6 +74,69 @@ def test_get_current_cell_exact_row_match():
 
     assert result is row_22_cell
     assert result.row_id == "ROW22"
+
+
+@responses.activate
+def test_get_current_cell_loads_only_the_matching_design_grid(offline_session):
+    """Test that the update baseline reads only the grid of the design being patched."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+            {"albertId": "DES4", "designType": "process", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=offline_session,
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Row 1",
+                    "type": "INV",
+                    "Values": [{"colId": "COL1", "value": "7", "id": "INV1", "type": "INV"}],
+                }
+            ],
+            "Formulas": [],
+        },
+    )
+
+    result = sheet._get_current_cell(
+        cell=Cell(colId="COL1", rowId="ROW1", type=CellType.INVENTORY, design_id="DES1")
+    )
+
+    assert result is not None
+    assert result.value == "7"
+    assert len(responses.calls) == 1
+    assert sheet.result_design._grid is None
+    assert sheet.app_design._grid is None
+    assert sheet.process_design._grid is None
+
+
+def test_get_current_cell_unknown_design_returns_none_without_grid_read():
+    """Test that a cell for an unknown design resolves to no baseline without a grid read."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+    )
+
+    result = sheet._get_current_cell(
+        cell=Cell(colId="COL1", rowId="ROW1", type=CellType.INVENTORY, design_id="DES9")
+    )
+
+    assert result is None
 
 
 def _sheet_with_formatted_cell() -> Sheet:
@@ -97,7 +160,9 @@ def _sheet_with_formatted_cell() -> Sheet:
         design_id="DES1",
         cellFormat={"precision": 2},
     )
-    sheet._grid = pd.DataFrame([[existing]], index=["DES1#ROW1"], columns=["COL1#INV1"])
+    sheet.product_design._grid = pd.DataFrame(
+        [[existing]], index=["DES1#ROW1"], columns=["COL1#INV1"]
+    )
     return sheet
 
 
