@@ -8,6 +8,7 @@ fake. ``_apply_inventory_patch_payload`` batching is covered with ``responses``
 since it only asserts on the requests the SDK sends.
 """
 
+import pytest
 import responses
 
 from albert.collections.inventory import InventoryCollection
@@ -786,3 +787,20 @@ def test_apply_sends_nothing_when_no_changes(offline_session) -> None:
     )
 
     assert len(responses.calls) == 0
+
+
+# --- _dedup_applies_to ---
+
+
+def test_dedup_applies_to_formula_is_false() -> None:
+    """Test that duplicate matching is skipped for Formulas."""
+    assert InventoryCollection._dedup_applies_to(category=InventoryCategory.FORMULAS) is False
+
+
+@pytest.mark.parametrize(
+    "category",
+    [InventoryCategory.RAW_MATERIALS, InventoryCategory.CONSUMABLES, InventoryCategory.EQUIPMENT],
+)
+def test_dedup_applies_to_non_formula_categories(category: InventoryCategory) -> None:
+    """Test that duplicate matching applies to non-Formula categories."""
+    assert InventoryCollection._dedup_applies_to(category=category) is True
