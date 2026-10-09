@@ -42,20 +42,23 @@ def admin(identities: dict[str, Identity]) -> Albert:
 
 @pytest.fixture(scope="session")
 def user_ids(identities: dict[str, Identity], admin: Albert) -> dict[str, str]:
-    """Preflight: resolve ids and confirm admin/standard user classes."""
+    """Preflight: resolve userA/userB ids and confirm they are distinct standard users.
+
+    The admin token is trusted as-is: dev tokens and API keys do not resolve to a user.
+    """
     ids = {}
-    for name, ident in identities.items():
-        info = whoami(ident.client() if name != "admin" else admin)
+    for name in ("userA", "userB"):
+        info = whoami(identities[name].client())
         uid = info.get("userId") or info.get("albertId")
         if not uid:
             raise AclSetupError(f"{name}: validatejwt returned no userId")
         ids[name] = uid
-    if len(set(ids.values())) != 3:
-        raise AclSetupError(f"identities must be three distinct users, got {ids}")
-    for name, want in (("admin", "admin"), ("userA", "standard"), ("userB", "standard")):
+    if ids["userA"] == ids["userB"]:
+        raise AclSetupError(f"userA and userB must be different users, both are {ids['userA']}")
+    for name in ("userA", "userB"):
         got = (user_record(admin, ids[name]).get("userClass") or "").lower()
-        if got != want:
-            raise AclSetupError(f"{name} must have userClass={want}, has {got!r}")
+        if got != "standard":
+            raise AclSetupError(f"{name} must have userClass=standard, has {got!r}")
     return ids
 
 

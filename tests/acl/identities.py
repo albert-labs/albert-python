@@ -15,7 +15,7 @@ mutated after creation, so a cached role cannot carry stale grants.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from albert import Albert, AlbertClientCredentials
 from tests.acl.http import call
@@ -38,8 +38,8 @@ class AclSetupError(RuntimeError):
 class Identity:
     name: str
     client_id: str | None
-    secret: str | None
-    token: str | None
+    secret: str | None = field(repr=False)
+    token: str | None = field(repr=False)
     base_url: str
 
     @property
