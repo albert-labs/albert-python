@@ -19,6 +19,7 @@ from albert.core.shared.identifiers import (
     WorksheetId,
 )
 from albert.core.utils import ensure_list
+from albert.exceptions import AlbertPartialError
 from albert.resources.facet import FacetItem
 from albert.resources.instructions import (
     Instruction,
@@ -49,7 +50,7 @@ from albert.utils.instructions import (
     _resolve_instruction_list_params,
     _validate_instruction_for_create,
 )
-from albert.utils.inventory import _build_cas_patch_operations
+from albert.utils.inventory import _build_cas_patch_operations, _split_bulk_patch_operations
 
 # Instruction list calls return at most this many instructions per fetch.
 _INSTRUCTIONS_PAGE_SIZE = 100
@@ -1775,14 +1776,15 @@ class InventoryCollection(BaseCollection):
                         {"operation": "delete", "attribute": "companyId", "entityId": old_value.id}
                     )
                 elif old_value.id != new_value.id:
-                    payload["data"].append(
-                        {
-                            "operation": "update",
-                            "attribute": "companyId",
-                            "oldValue": old_value.id,
-                            "newValue": new_value.id,
-                        }
-                    )
+                    company_update = {
+                        "operation": "update",
+                        "attribute": "companyId",
+                        "oldValue": old_value.id,
+                        "newValue": new_value.id,
+                    }
+                    if getattr(new_value, "name", None):
+                        company_update["name"] = new_value.name
+                    payload["data"].append(company_update)
         return payload
 
     @staticmethod
@@ -1828,6 +1830,12 @@ class InventoryCollection(BaseCollection):
         InventoryItem
             The updated item.
 
+        Raises
+        ------
+        AlbertPartialError
+            If a tag or company change only partially succeeds. The error carries
+            the succeeded (``created_items``) and failed (``failed_items``) items.
+
         Notes
         -----
         The following fields can be updated: ``acls``, ``alias``, ``company``,
@@ -1847,12 +1855,46 @@ class InventoryCollection(BaseCollection):
             existing=current_object, updated=inventory_item
         )
 
-        self._apply_inventory_patch_payload(
-            url=f"{self.base_path}/{inventory_item.id}", patch_payload=patch_payload
-        )
+        self._apply_inventory_patch_payloads(patch_payloads=[(inventory_item.id, patch_payload)])
 
         updated_inv = self.get_by_id(id=inventory_item.id)
         return updated_inv
+
+    def _apply_inventory_patch_payloads(self, *, patch_payloads: list[tuple[str, dict]]) -> None:
+        """Apply generated patch payloads for one or more items.
+
+        Tag and company changes are batched across items (up to 300 per call);
+        all other changes are applied per item.
+        """
+        bulk_operations_by_id: dict[str, list[dict]] = {}
+        for inventory_id, patch_payload in patch_payloads:
+            bulk_operations, remaining_operations = _split_bulk_patch_operations(
+                patch_payload["data"]
+            )
+            if bulk_operations:
+                bulk_operations_by_id.setdefault(inventory_id, []).extend(bulk_operations)
+            if remaining_operations:
+                self._apply_inventory_patch_payload(
+                    url=f"{self.base_path}/{inventory_id}",
+                    patch_payload={"data": remaining_operations},
+                )
+        entries = [
+            {"id": inventory_id, "data": operations}
+            for inventory_id, operations in bulk_operations_by_id.items()
+        ]
+        batch_size = 300
+        for i in range(0, len(entries), batch_size):
+            response = self.session.patch(self.base_path, json=entries[i : i + batch_size])
+            if response.status_code == 206:
+                data = response.json()
+                failed_items = data.get("FailedItems") or []
+                if failed_items:
+                    raise AlbertPartialError(
+                        f"Bulk inventory update partially succeeded: "
+                        f"{len(failed_items)} item(s) failed. Failures: {failed_items}",
+                        created_items=data.get("CreatedItems") or [],
+                        failed_items=failed_items,
+                    )
 
     def _apply_inventory_patch_payload(self, *, url: str, patch_payload: dict) -> None:
         # Complex patching does not work for some fields, so I'm going to do this in a loop :(
@@ -1897,28 +1939,40 @@ class InventoryCollection(BaseCollection):
         list[InventoryItem]
             The updated items. Order is not guaranteed to match the input list.
 
+        Raises
+        ------
+        AlbertPartialError
+            If a batched tag or company change only partially succeeds. The error
+            carries the succeeded (``created_items``) and failed (``failed_items``)
+            items.
+
         Notes
         -----
         The same fields can be updated as with
         [`update`][albert.collections.inventory.InventoryCollection.update].
-        Updates are applied sequentially per item; if an error occurs mid-batch,
-        earlier updates are not rolled back.
+        Tag and company changes are applied together in batches of up to 300
+        items; all other changes are applied per item. If an error occurs
+        mid-batch, earlier updates are not rolled back.
         """
         if not inventory_items:
             return []
         ids = [item.id for item in inventory_items]
         existing_by_id = {item.id: item for item in self.get_by_ids(ids=ids)}
+        patch_payloads = []
         for inventory_item in inventory_items:
             current_object = existing_by_id.get(inventory_item.id)
             if current_object is None:
                 # Raises NotFoundError, matching update() on an unknown ID.
                 current_object = self.get_by_id(id=inventory_item.id)
-            patch_payload = self._generate_inventory_patch_payload(
-                existing=current_object, updated=inventory_item
+            patch_payloads.append(
+                (
+                    inventory_item.id,
+                    self._generate_inventory_patch_payload(
+                        existing=current_object, updated=inventory_item
+                    ),
+                )
             )
-            self._apply_inventory_patch_payload(
-                url=f"{self.base_path}/{inventory_item.id}", patch_payload=patch_payload
-            )
+        self._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
         return self.get_by_ids(ids=ids)
 
     @validate_call

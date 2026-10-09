@@ -8,9 +8,13 @@ fake. ``_apply_inventory_patch_payload`` batching is covered with ``responses``
 since it only asserts on the requests the SDK sends.
 """
 
+import json
+
+import pytest
 import responses
 
 from albert.collections.inventory import InventoryCollection
+from albert.exceptions import AlbertPartialError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
@@ -295,9 +299,29 @@ def test_company_cleared_emits_delete_with_entity_id(offline_session) -> None:
 
 
 def test_company_changed_emits_update_with_bare_ids(offline_session) -> None:
-    """Test that changing company emits an update op with bare old/new ids."""
+    """Test that changing company emits an update op with bare old/new ids and the new name."""
     existing = _item(company=Company(id="COM1", name="Acme"))
     updated = _item(company=Company(id="COM2", name="Beta"))
+
+    payload = _collection(offline_session)._generate_inventory_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload["data"] == [
+        {
+            "operation": "update",
+            "attribute": "companyId",
+            "oldValue": "COM1",
+            "newValue": "COM2",
+            "name": "Beta",
+        }
+    ]
+
+
+def test_company_changed_without_name_emits_update_without_name(offline_session) -> None:
+    """Test that a nameless new company emits an update op without a name key."""
+    existing = _item(company=Company(id="COM1", name="Acme"))
+    updated = _item(company=Company.model_construct(id="COM2"))
 
     payload = _collection(offline_session)._generate_inventory_patch_payload(
         existing=existing, updated=updated
@@ -786,3 +810,138 @@ def test_apply_sends_nothing_when_no_changes(offline_session) -> None:
     )
 
     assert len(responses.calls) == 0
+
+
+# --- _apply_inventory_patch_payloads bulk batching ---
+
+
+@responses.activate
+def test_apply_many_routes_tag_and_company_ops_to_bulk_endpoint(offline_session) -> None:
+    """Test that tag and company changes go to the bulk route after per-item changes."""
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/inventories", json={})
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/inventories/INVA1", json={})
+
+    patch_payloads = [
+        (
+            "INVA1",
+            {
+                "data": [
+                    {
+                        "attribute": "alias",
+                        "operation": "update",
+                        "oldValue": "a",
+                        "newValue": "b",
+                    },
+                    {"operation": "add", "attribute": "tagId", "newValue": "TAG1"},
+                    {"operation": "delete", "attribute": "tagId", "oldValue": "TAG2"},
+                    {
+                        "operation": "update",
+                        "attribute": "companyId",
+                        "oldValue": "COM1",
+                        "newValue": "COM2",
+                        "name": "Beta",
+                    },
+                ]
+            },
+        )
+    ]
+
+    _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+    assert len(responses.calls) == 2
+    per_item_call, bulk_call = responses.calls
+    assert per_item_call.request.url == f"{UNIT_BASE_URL}/api/v3/inventories/INVA1"
+    assert json.loads(per_item_call.request.body) == {"data": [patch_payloads[0][1]["data"][0]]}
+    assert bulk_call.request.url == f"{UNIT_BASE_URL}/api/v3/inventories"
+    assert json.loads(bulk_call.request.body) == [
+        {
+            "id": "INVA1",
+            "data": [
+                {"operation": "add", "attribute": "tagId", "newValue": [{"id": "TAG1"}]},
+                {"operation": "delete", "attribute": "tagId", "oldValue": [{"id": "TAG2"}]},
+                {
+                    "operation": "update",
+                    "attribute": "companyId",
+                    "oldValue": "COM1",
+                    "newValue": "COM2",
+                    "name": "Beta",
+                },
+            ],
+        }
+    ]
+
+
+@responses.activate
+def test_apply_many_merges_bulk_ops_for_duplicate_ids(offline_session) -> None:
+    """Test that two payloads for one item merge into a single bulk entry."""
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/inventories", json={})
+
+    patch_payloads = [
+        ("INVA1", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG1"}]}),
+        ("INVA1", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG2"}]}),
+    ]
+
+    _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+    assert len(responses.calls) == 1
+    assert json.loads(responses.calls[0].request.body) == [
+        {
+            "id": "INVA1",
+            "data": [
+                {"operation": "add", "attribute": "tagId", "newValue": [{"id": "TAG1"}]},
+                {"operation": "add", "attribute": "tagId", "newValue": [{"id": "TAG2"}]},
+            ],
+        }
+    ]
+
+
+@responses.activate
+def test_apply_many_chunks_bulk_entries_at_300(offline_session) -> None:
+    """Test that bulk entries are sent in chunks of at most 300 items."""
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/inventories", json={})
+
+    patch_payloads = [
+        (f"INVA{i}", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG1"}]})
+        for i in range(301)
+    ]
+
+    _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+    assert len(responses.calls) == 2
+    assert len(json.loads(responses.calls[0].request.body)) == 300
+    assert len(json.loads(responses.calls[1].request.body)) == 1
+
+
+@responses.activate
+def test_apply_many_raises_on_partial_success(offline_session) -> None:
+    """Test that a partial success with failed items raises AlbertPartialError."""
+    responses.patch(
+        f"{UNIT_BASE_URL}/api/v3/inventories",
+        status=206,
+        json={"FailedItems": [{"id": "INVA1", "message": "boom"}], "CreatedItems": []},
+    )
+
+    patch_payloads = [
+        ("INVA1", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG1"}]})
+    ]
+
+    with pytest.raises(AlbertPartialError, match="partially succeeded"):
+        _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+
+@responses.activate
+def test_apply_many_ignores_206_without_failed_items(offline_session) -> None:
+    """Test that a partial-success status with no failed items does not raise."""
+    responses.patch(
+        f"{UNIT_BASE_URL}/api/v3/inventories",
+        status=206,
+        json={"FailedItems": [], "CreatedItems": [{"id": "INVA1"}]},
+    )
+
+    patch_payloads = [
+        ("INVA1", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG1"}]})
+    ]
+
+    _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+    assert len(responses.calls) == 1
