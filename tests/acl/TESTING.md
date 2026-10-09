@@ -3,10 +3,12 @@
 Live, opt-in. Skipped unless `--run-acl` is passed. Never runs in CI.
 
 ```bash
-export ALBERT_BASE_URL=https://app.albertinventdev.com
-export ALBERT_ACL_ADMIN_TEST=<client_id>:<client_secret>   # admin userClass
-export ALBERT_ACL_USERA_TEST=<client_id>:<client_secret>   # standard; role is swapped
-export ALBERT_ACL_USERB_TEST=<client_id>:<client_secret>   # standard; fixed baseline role
+export ALBERT_BASE_URL_DEV=https://app.albertinventdev.com
+export ALBERT_ADMIN_CLIENT_SECRET_DEV=<admin JWT>          # bearer token, admin userClass
+export ALBERT_USER_A_CLIENT_ID_DEV=<client_id>             # standard; role is swapped
+export ALBERT_USER_A_CLIENT_SECRET_DEV=<client_secret>
+export ALBERT_USER_B_CLIENT_ID_DEV=<client_id>             # standard; fixed baseline role
+export ALBERT_USER_B_CLIENT_SECRET_DEV=<client_secret>
 uv run pytest tests/acl --run-acl
 ```
 
@@ -38,6 +40,7 @@ Output: `acl-report/acl-report.md` and `.csv`, with findings grouped by policy o
 - userA gets stable roles named `SDK-ACL-<label>`. They are created once and never
   mutated; a mismatch raises. userA's original role is restored at teardown. Clients use
   `retries=0` because the SDK retries 403 by default.
+- The admin JWT expires; refresh it before long runs.
 - The prod guard refuses prod URLs unless `ALBERT_ACL_ALLOW_PROD=1`.
 - Preflight checks that there are three distinct users, that admin has userClass=admin,
   and that userA and userB are standard.

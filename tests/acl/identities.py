@@ -1,12 +1,14 @@
 """Test identities and single-policy role swapping.
 
-Env (``client_id:client_secret`` each; a raw token is accepted with ``token:<jwt>`` but
-cannot be role-swapped):
+Env (same names as the dev permission tests):
 
-- ``ALBERT_ACL_ADMIN_TEST``: tenant admin; seeds data, swaps roles, positive control.
-- ``ALBERT_ACL_USERA_TEST``: standard user whose role is swapped per scenario.
-- ``ALBERT_ACL_USERB_TEST``: standard user with a fixed baseline role (never swapped).
-- ``ALBERT_BASE_URL``: shared base URL.
+- ``ALBERT_BASE_URL_DEV``: shared base URL.
+- ``ALBERT_ADMIN_CLIENT_SECRET_DEV``: admin bearer token (JWT). Seeds data, swaps roles,
+  positive control.
+- ``ALBERT_USER_A_CLIENT_ID_DEV`` / ``ALBERT_USER_A_CLIENT_SECRET_DEV``: standard user
+  whose role is swapped per scenario.
+- ``ALBERT_USER_B_CLIENT_ID_DEV`` / ``ALBERT_USER_B_CLIENT_SECRET_DEV``: standard user
+  with a fixed baseline role (never swapped).
 
 Roles named ``SDK-ACL-<label>`` are created once and reused; their policy sets are never
 mutated after creation, so a cached role cannot carry stale grants.
@@ -20,10 +22,11 @@ from tests.acl.http import call
 
 ROLE_PREFIX = "SDK-ACL-"
 PROD_MARKERS = ("app.albertinvent.com", "albertinvent.com/")
-ENV = {
-    "admin": "ALBERT_ACL_ADMIN_TEST",
-    "userA": "ALBERT_ACL_USERA_TEST",
-    "userB": "ALBERT_ACL_USERB_TEST",
+BASE_URL_ENV = "ALBERT_BASE_URL_DEV"
+ADMIN_TOKEN_ENV = "ALBERT_ADMIN_CLIENT_SECRET_DEV"
+USER_ENV = {
+    "userA": ("ALBERT_USER_A_CLIENT_ID_DEV", "ALBERT_USER_A_CLIENT_SECRET_DEV"),
+    "userB": ("ALBERT_USER_B_CLIENT_ID_DEV", "ALBERT_USER_B_CLIENT_SECRET_DEV"),
 }
 
 
@@ -45,7 +48,7 @@ class Identity:
 
     def client(self) -> Albert:
         if self.token:
-            return Albert(token=self.token, base_url=self.base_url, retries=0)
+            return Albert.from_token(base_url=self.base_url, token=self.token)
         creds = AlbertClientCredentials(
             id=self.client_id, secret=self.secret, base_url=self.base_url
         )
@@ -53,9 +56,9 @@ class Identity:
 
 
 def base_url() -> str:
-    url = os.environ.get("ALBERT_BASE_URL")
+    url = os.environ.get(BASE_URL_ENV)
     if not url:
-        raise AclSetupError("ALBERT_BASE_URL is not set")
+        raise AclSetupError(f"{BASE_URL_ENV} is not set")
     is_prod = any(m in url for m in PROD_MARKERS) and not any(
         env in url for env in ("dev", "staging", "qa", "sandbox")
     )
@@ -67,15 +70,16 @@ def base_url() -> str:
 
 
 def load_identity(name: str, url: str) -> Identity:
-    raw = os.environ.get(ENV[name])
-    if not raw:
-        raise AclSetupError(f"{ENV[name]} is not set")
-    if raw.startswith("token:"):
-        return Identity(name, None, None, raw.removeprefix("token:"), url)
-    client_id, sep, secret = raw.partition(":")
-    if not sep or not client_id or not secret:
-        raise AclSetupError(f"{ENV[name]} must be client_id:client_secret")
-    return Identity(name, client_id, secret, None, url)
+    if name == "admin":
+        token = (os.environ.get(ADMIN_TOKEN_ENV) or "").strip()
+        if not token:
+            raise AclSetupError(f"{ADMIN_TOKEN_ENV} is not set")
+        return Identity(name, None, None, token, url)
+    id_env, secret_env = USER_ENV[name]
+    client_id, secret = os.environ.get(id_env), os.environ.get(secret_env)
+    if not client_id or not secret:
+        raise AclSetupError(f"{id_env} and {secret_env} must be set")
+    return Identity(name, client_id.strip(), secret.strip(), None, url)
 
 
 def whoami(client: Albert) -> dict:
