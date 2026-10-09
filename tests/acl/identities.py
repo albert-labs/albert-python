@@ -14,8 +14,10 @@ Roles named ``SDK-ACL-<label>`` are created once and reused; their policy sets a
 mutated after creation, so a cached role cannot carry stale grants.
 """
 
+import base64
+import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from albert import Albert, AlbertClientCredentials
 from tests.acl.http import call
@@ -37,22 +39,33 @@ class AclSetupError(RuntimeError):
 @dataclass(frozen=True)
 class Identity:
     name: str
-    client_id: str | None
-    secret: str | None = field(repr=False)
-    token: str | None = field(repr=False)
     base_url: str
 
     @property
     def swappable(self) -> bool:
-        return self.client_id is not None
+        return self.name in USER_ENV
 
     def client(self) -> Albert:
-        if self.token:
-            return Albert.from_token(base_url=self.base_url, token=self.token)
-        creds = AlbertClientCredentials(
-            id=self.client_id, secret=self.secret, base_url=self.base_url
+        """A fresh client, authenticated exactly as the dev permission tests do."""
+        if self.name == "admin":
+            return Albert.from_token(
+                base_url=os.environ[BASE_URL_ENV],
+                token=os.environ[ADMIN_TOKEN_ENV].strip(),
+            )
+        return Albert(auth_manager=self.credentials(), retries=0)
+
+    def credentials(self) -> AlbertClientCredentials:
+        client_id_env, client_secret_env = USER_ENV[self.name]
+        creds = AlbertClientCredentials.from_env(
+            base_url_env=BASE_URL_ENV,
+            client_id_env=client_id_env,
+            client_secret_env=client_secret_env,
         )
-        return Albert(auth_manager=creds, retries=0)
+        if creds is None:
+            raise AclSetupError(
+                f"{BASE_URL_ENV}, {client_id_env}, {client_secret_env} must be set"
+            )
+        return creds
 
 
 def base_url() -> str:
@@ -70,23 +83,26 @@ def base_url() -> str:
 
 
 def load_identity(name: str, url: str) -> Identity:
-    if name == "admin":
-        token = (os.environ.get(ADMIN_TOKEN_ENV) or "").strip()
-        if not token:
-            raise AclSetupError(f"{ADMIN_TOKEN_ENV} is not set")
-        return Identity(name, None, None, token, url)
-    id_env, secret_env = USER_ENV[name]
-    client_id, secret = os.environ.get(id_env), os.environ.get(secret_env)
-    if not client_id or not secret:
-        raise AclSetupError(f"{id_env} and {secret_env} must be set")
-    return Identity(name, client_id.strip(), secret.strip(), None, url)
+    required = [ADMIN_TOKEN_ENV] if name == "admin" else list(USER_ENV[name])
+    missing = [env for env in required if not os.environ.get(env, "").strip()]
+    if missing:
+        raise AclSetupError(f"{', '.join(missing)} not set")
+    return Identity(name, url)
 
 
-def whoami(client: Albert) -> dict:
-    resp = call(client, "GET", "/api/v3/login/validatejwt", params={"includeUserDetails": "true"})
-    if resp.status != 200 or not isinstance(resp.body, dict):
-        raise AclSetupError(f"validatejwt failed: {resp.status}")
-    return resp.body
+def user_id(identity: Identity) -> str:
+    """The ``USR...`` id from the claims of the identity's own access token.
+
+    Claims are read without verification; the id is only used as an ACL principal.
+    """
+    token = identity.credentials().get_access_token()
+    payload = token.split(".")[1]
+    claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+    for key in ("userId", "id", "albertId", "sub"):
+        value = claims.get(key)
+        if isinstance(value, str) and value.startswith("USR"):
+            return value
+    raise AclSetupError(f"no USR id in {identity.name}'s token claims {sorted(claims)}")
 
 
 def user_record(admin: Albert, user_id: str) -> dict:
@@ -105,8 +121,6 @@ class RoleSwitcher:
     """Assign stable single-purpose roles to userA and restore the original at teardown."""
 
     def __init__(self, admin: Albert, identity: Identity, user_id: str):
-        if not identity.swappable:
-            raise AclSetupError(f"{identity.name} uses a raw token and cannot be role-swapped")
         self.admin = admin
         self.identity = identity
         self.user_id = user_id

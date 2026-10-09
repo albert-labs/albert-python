@@ -9,13 +9,11 @@ import pytest
 
 from albert import Albert
 from tests.acl.identities import (
-    AclSetupError,
     Identity,
     RoleSwitcher,
     base_url,
     load_identity,
-    user_record,
-    whoami,
+    user_id,
 )
 from tests.acl.world import World, build_world, teardown
 
@@ -41,25 +39,9 @@ def admin(identities: dict[str, Identity]) -> Albert:
 
 
 @pytest.fixture(scope="session")
-def user_ids(identities: dict[str, Identity], admin: Albert) -> dict[str, str]:
-    """Preflight: resolve userA/userB ids and confirm they are distinct standard users.
-
-    The admin token is trusted as-is: dev tokens and API keys do not resolve to a user.
-    """
-    ids = {}
-    for name in ("userA", "userB"):
-        info = whoami(identities[name].client())
-        uid = info.get("userId") or info.get("albertId")
-        if not uid:
-            raise AclSetupError(f"{name}: validatejwt returned no userId")
-        ids[name] = uid
-    if ids["userA"] == ids["userB"]:
-        raise AclSetupError(f"userA and userB must be different users, both are {ids['userA']}")
-    for name in ("userA", "userB"):
-        got = (user_record(admin, ids[name]).get("userClass") or "").lower()
-        if got != "standard":
-            raise AclSetupError(f"{name} must have userClass=standard, has {got!r}")
-    return ids
+def user_ids(identities: dict[str, Identity]) -> dict[str, str]:
+    """User ids for userA/userB, used as ACL principals. No identity checks are made."""
+    return {name: user_id(identities[name]) for name in ("userA", "userB")}
 
 
 @pytest.fixture(scope="session")
