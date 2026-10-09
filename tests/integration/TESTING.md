@@ -41,7 +41,7 @@ Pick the group whose worker already builds the fixtures you need:
 | `sheetcolumns` | `seeded_worksheet`, `seeded_sheet` (own worker copy). Column-mutation tests split from `resources/test_sheets` so the two groups run on different workers. | resources/test_sheets_columns |
 | `inventory` | `seeded_inventory`, `seeded_lots`, `seeded_pricings`, `seeded_label_templates`. `test_attributes` stays here because value tests bind to inventory/lots. | test_inventory, test_attachments, test_lots, test_pricings, test_label_templates, test_attributes |
 | `datatemplates` | `seeded_data_templates`, `seeded_data_columns`, `seeded_units`, `seeded_parameters`, `seeded_parameter_groups`, `seeded_targets`, `seeded_smart_dataset` | test_data_templates, test_data_columns, test_units, test_parameters, test_parameter_groups, test_targets, test_smart_datasets, test_design_runs |
-| `projects` | `seeded_projects`, `seeded_locations`, `seeded_storage_locations`, `seeded_cas`, `seeded_companies`, `seeded_notebooks`. Also `static_custom_fields` (used by `test_substance_v4`). | test_projects, test_notebooks, test_locations, test_storage_locations, test_cas, test_company, test_substance_v4 |
+| `projects` | `seeded_projects`, `seeded_locations`, `seeded_storage_locations`, `seeded_cas`, `seeded_companies`, `seeded_notebooks`. Also `static_custom_fields` (used by `test_substance_v4`). | test_projects, test_notebooks, test_locations, test_storage_locations, test_company, test_substance_v4 |
 | `bt` | `seeded_btdataset`, `seeded_btmodelsession`, `seeded_btmodel`, `seeded_btinsight` | test_btdataset, test_btmodel, test_btinsight |
 | `entitytypes`, `teams`, `tags`, `customtemplates`, `lists`, `customfields` | one small fixture family each | the matching single file |
 

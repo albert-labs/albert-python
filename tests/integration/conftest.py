@@ -23,14 +23,6 @@ from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight
 from albert.resources.btmodel import BTModel, BTModelSession
 from albert.resources.cas import Cas
-from albert.resources.chats import (
-    ChatComponentType,
-    ChatFolder,
-    ChatMessage,
-    ChatRole,
-    ChatSession,
-    ChatUserType,
-)
 from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
 from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
@@ -1139,48 +1131,3 @@ def seeded_built_smart_dataset(
     yield created
     with suppress(NotFoundError, BadRequestError):
         client.smart_datasets.delete(id=created.id)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_folder(
-    async_client: AsyncAlbert, seed_prefix: str
-) -> AsyncGenerator[ChatFolder, None]:
-    folder = await async_client.chat_folders.create(
-        folder=ChatFolder(name=f"{seed_prefix} Chat Folder")
-    )
-    yield folder
-    with suppress(NotFoundError):
-        await async_client.chat_folders.delete(id=folder.id)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_session(
-    async_client: AsyncAlbert, seed_prefix: str, seeded_folder: ChatFolder
-) -> AsyncGenerator[ChatSession, None]:
-    session = await async_client.chat_sessions.create(
-        session=ChatSession(
-            name=f"{seed_prefix} Chat Session",
-            parent_id=seeded_folder.id,
-            source_session_id=str(uuid.uuid4()),
-        )
-    )
-    yield session
-    with suppress(NotFoundError):
-        await async_client.chat_sessions.delete(id=session.id)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_message(
-    async_client: AsyncAlbert, seeded_session: ChatSession
-) -> AsyncGenerator[ChatMessage, None]:
-    message = await async_client.chat_messages.create(
-        message=ChatMessage(
-            component_type=ChatComponentType.TEXT,
-            user_type=ChatUserType.USER,
-            role=ChatRole.USER,
-            content={"message": "Hello from SDK tests"},
-            parent_id=seeded_session.id,
-            sequence="000",
-        )
-    )
-    yield message
