@@ -93,3 +93,4 @@ site/
 # Claude Code
 .claude/*
 !.claude/settings.json
+acl-report/

@@ -99,4 +99,6 @@ asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 markers = [
     "slow: long-running integration tests",
+    "acl: live ACL suite (tests/acl); opt-in via --run-acl",
+    "acl_likely: ACL M1 likely-scenario tests",
 ]
