@@ -199,15 +199,6 @@ def test_adjust_set(client: Albert, seeded_lot: Lot):
     assert updated_lot.inventory_on_hand == pytest.approx(target_quantity)
 
 
-def test_adjust_zero(client: Albert, seeded_lot: Lot):
-    updated_lot = client.lots.adjust(
-        lot_id=seeded_lot.id,
-        action=LotAdjustmentAction.ZERO,
-        description="zero test",
-    )
-    assert updated_lot.inventory_on_hand == pytest.approx(0)
-
-
 @pytest.mark.parametrize(
     "action, quantity, error_message",
     [
@@ -343,10 +334,12 @@ def test_adjust_set_no_op(client: Albert, seeded_lot: Lot):
 
 
 def test_adjust_zero_no_op(client: Albert, seeded_lot: Lot):
-    """Test that ZERO on a lot already at zero does not raise an error."""
-    # First zero it out
-    client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
-    # Zero again — should be a no-op without error
+    """Test that ZERO empties a lot, and repeating it on an empty lot does not raise."""
+    zeroed = client.lots.adjust(
+        lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO, description="zero test"
+    )
+    assert zeroed.inventory_on_hand == pytest.approx(0)
+    # Zero again; should be a no-op without error
     result = client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
     assert result.inventory_on_hand == pytest.approx(0)
 
