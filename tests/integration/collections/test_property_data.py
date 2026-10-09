@@ -94,22 +94,6 @@ def test_check_for_interval_data(client: Albert, seeded_tasks, seeded_workflows)
                 assert isinstance(check, CheckPropertyData)
 
 
-def test_add_to_inv(client: Albert, seeded_inventory, seeded_data_columns):
-    data_columns = [
-        InventoryDataColumn(
-            data_column_id=seeded_data_columns[0].id,
-            value="55.5",
-        )
-    ]
-    r = client.property_data.add_properties_to_inventory(
-        inventory_id=seeded_inventory[2].id, properties=data_columns
-    )
-    assert isinstance(r[0], InventoryPropertyDataCreate)
-    assert r[0].inventory_id == seeded_inventory[2].id
-    assert r[0].data_columns[0].data_column_id == seeded_data_columns[0].id
-    assert r[0].data_columns[0].value == "55.5"
-
-
 def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: list[BaseTask]):
     # add some properties to the tasks
     pvalues = [22.4, 55.6, 52.4]
@@ -258,6 +242,8 @@ def test_add_and_update_property_data_on_inventory(
     assert r[0].inventory_id == inv.id
     assert r[0].data_columns[0].data_column_id == seeded_data_columns[0].id
     assert r[0].data_columns[0].value == "55.5"
+    assert r[0].data_columns[1].data_column_id == seeded_data_columns[1].id
+    assert r[0].data_columns[1].value == "66.6"
 
 
 def test_update_property_on_inventory_adds_then_updates(

@@ -1,7 +1,6 @@
 import pytest
 
 from albert import Albert
-from albert.exceptions import BadRequestError
 from albert.resources.batch_data import (
     BatchData,
     BatchValueId,
@@ -19,27 +18,6 @@ def test_get_by_id(client: Albert, seeded_tasks: list[BaseTask]):
     assert batch_data.id == batch_task.id
 
 
-@pytest.mark.xfail(
-    reason="Batch data creation is currently not idempotent, so this test may fail if batch data already exists for the task."
-)
-def test_create_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
-    batch_tasks = [t for t in seeded_tasks if isinstance(t, BatchTask)]
-
-    for bt in batch_tasks:
-        # Check that the batch data is empty
-        existing_batch_data = client.batch_data.get_by_id(id=bt.id)
-        if len(existing_batch_data.product) == 0:
-            try:
-                client.batch_data.create_batch_data(task_id=bt.id)
-            except BadRequestError as exc:
-                if "already exist" not in str(exc):
-                    raise
-            created_batch_data = client.batch_data.get_by_id(id=bt.id)
-            # Make sure it was created
-            assert isinstance(created_batch_data, BatchData)
-            assert len(created_batch_data.product) > 0
-
-
 def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
     batch_task = [t for t in seeded_tasks if isinstance(t, BatchTask)][0]
 
@@ -47,6 +25,7 @@ def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
 
     if existing_batch_data.product == []:
         existing_batch_data = client.batch_data.create_batch_data(task_id=batch_task.id)
+        assert isinstance(existing_batch_data, BatchData)
 
     # Check that there is no lot/batch info to start
     for row in existing_batch_data.rows:

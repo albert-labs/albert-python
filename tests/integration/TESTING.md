@@ -36,7 +36,7 @@ Pick the group whose worker already builds the fixtures you need:
 
 | Group | Owns fixture chain | Files (non-exhaustive) |
 |---|---|---|
-| `tasks` | `seeded_tasks` and everything under it (`seeded_workflows`, `seeded_notes`, `seeded_links`, `seeded_reports`). Also pulls `seeded_products` (one formulation) for the batch-task seed. Do not add tests here unless they need `seeded_tasks`. | test_tasks, test_batch_data, test_property_data, test_notes, test_links, test_reports, test_workflows |
+| `tasks` | `seeded_tasks` and everything under it (`seeded_workflows`, `seeded_notes`, `seeded_links`, `seeded_reports`). Also pulls `seeded_products` (one formulation) for the batch-task seed. Do not add tests here unless they need `seeded_tasks`. | test_tasks, test_batch_data, test_property_data, test_notes, test_links, test_reports, test_workflows, resources/test_sheets_task_rows |
 | `sheets` | `seeded_worksheet`, `seeded_sheet`, `seeded_products` (one formulation) | test_worksheet, test_product_design, resources/test_sheets, test_sds |
 | `sheetcolumns` | `seeded_worksheet`, `seeded_sheet` (own worker copy). Column-mutation tests split from `resources/test_sheets` so the two groups run on different workers. | resources/test_sheets_columns |
 | `inventory` | `seeded_inventory`, `seeded_lots`, `seeded_pricings`, `seeded_label_templates`. `test_attributes` stays here because value tests bind to inventory/lots. | test_inventory, test_attachments, test_lots, test_pricings, test_label_templates, test_attributes |
@@ -54,8 +54,16 @@ Guidelines:
   the scheduler can balance it freely. The moment it grows a `seeded_*` dependency, add a mark.
 - Never split one file across groups; `pytestmark` applies to the whole module. If two tests in
   one file genuinely need different heavy chains, that is a sign they belong in different files.
-- Group assignment affects wall time: the `tasks` worker is the critical path. Do not add
-  slow tests to `tasks` if another group's fixtures suffice.
+- Group assignment affects wall time. `sheets` and `sheetcolumns` are the critical path
+  (every `add_formulation` costs tens of seconds), followed by `tasks`. Do not add slow tests
+  to these groups if another group's fixtures suffice; a test that builds its own sheet
+  (like `resources/test_sheets_task_rows`) belongs with the group that owns its other seeds.
+- The heaviest groups are listed in `_HEAVY_XDIST_GROUPS` in `conftest.py` and are scheduled
+  first (`--no-loadscope-reorder` keeps that order). Add a group there only after CI
+  `--durations` show it on the critical path.
+- Before adding a test, check that no existing test already calls the same method with the
+  same assertions. Extend the existing test instead of adding a near-duplicate, and keep
+  client-side validation checks (no server call) in `tests/unit/`.
 
 ## Rule 2: treat shared seeded fixtures as read-only
 

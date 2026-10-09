@@ -97,6 +97,25 @@ from tests.integration.seeding import (
     pick_report_type_id,
 )
 
+_HEAVY_XDIST_GROUPS = ("tasks", "sheets", "sheetcolumns", "inventory", "projects", "datatemplates")
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Schedule the slowest xdist groups first so they never queue behind light ones.
+
+    With ``--no-loadscope-reorder`` xdist hands out groups in collection order; the
+    default orders by test count, which can start the slowest group last.
+    """
+
+    def _rank(item: pytest.Item) -> int:
+        mark = item.get_closest_marker("xdist_group")
+        name = mark.args[0] if mark and mark.args else None
+        if name in _HEAVY_XDIST_GROUPS:
+            return _HEAVY_XDIST_GROUPS.index(name)
+        return len(_HEAVY_XDIST_GROUPS)
+
+    items.sort(key=_rank)
+
 
 def _pmap(fn: Callable, items) -> list:
     """Run independent seeding API calls concurrently, preserving input order.
