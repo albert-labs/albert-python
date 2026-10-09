@@ -242,8 +242,8 @@ def test_add_and_update_property_data_on_inventory(
     assert r[0].inventory_id == inv.id
     assert r[0].data_columns[0].data_column_id == seeded_data_columns[0].id
     assert r[0].data_columns[0].value == "55.5"
-    assert r[0].data_columns[1].data_column_id == seeded_data_columns[1].id
-    assert r[0].data_columns[1].value == "66.6"
+    assert r[1].data_columns[0].data_column_id == seeded_data_columns[1].id
+    assert r[1].data_columns[0].value == "66.6"
 
 
 def test_update_property_on_inventory_adds_then_updates(
