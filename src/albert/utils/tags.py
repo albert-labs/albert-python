@@ -14,6 +14,7 @@ def unique_tags(tags: list[Tag]) -> list[Tag]:
     for tag in tags:
         key = ("id", tag.id) if tag.id else ("name", tag.tag.casefold())
         if key in seen:
+            logger.info("Duplicate tag %r de-duplicated.", tag.tag)
             continue
         seen.add(key)
         unique.append(tag)
