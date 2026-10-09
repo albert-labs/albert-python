@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.62.0](https://github.com/albert-labs/albert-python/compare/v1.61.0...v1.62.0) (2026-10-09)
+
+
+### Features
+
+* **batch_data:** add missing batch data collection methods ([#827](https://github.com/albert-labs/albert-python/issues/827)) ([d3ad1b5](https://github.com/albert-labs/albert-python/commit/d3ad1b5c334e78f5b2022eaa13ff0a3fc1841b2d))
+* **instructions:** add support for advanced batch instructions. ([#822](https://github.com/albert-labs/albert-python/issues/822)) ([2298570](https://github.com/albert-labs/albert-python/commit/22985709e9d8ca670f3c9a3bf85ffab01cca350e))
+* **inventory:** add reactivate for deleted inventory items ([#817](https://github.com/albert-labs/albert-python/issues/817)) ([f4cfbc0](https://github.com/albert-labs/albert-python/commit/f4cfbc0becad39c0b89e02e272037e2047c1c824))
+* **inventory:** batch tag and company updates in update/update_many ([#831](https://github.com/albert-labs/albert-python/issues/831)) ([586220e](https://github.com/albert-labs/albert-python/commit/586220e35ee3b9fe07080ed5929945e8b0b1b177))
+* **projects:** add reference formula designations ([#810](https://github.com/albert-labs/albert-python/issues/810)) ([b053f4a](https://github.com/albert-labs/albert-python/commit/b053f4a90a6e453b67138e6812d5d038d3679942))
+* **tasks:** support dual-flow v1/v2 payloads in import_results and TaskMetadata ([#811](https://github.com/albert-labs/albert-python/issues/811)) ([#819](https://github.com/albert-labs/albert-python/issues/819)) ([e0c6dd2](https://github.com/albert-labs/albert-python/commit/e0c6dd2d057c19534669dfbcba1114b8c9dfe1e1))
+* **views:** add ViewCollection for saved grid views ([#821](https://github.com/albert-labs/albert-python/issues/821)) ([9cdee52](https://github.com/albert-labs/albert-python/commit/9cdee52c7cbd5256a0f67eaac9e98a7ec2b1399d))
+
+
+### Bug Fixes
+
+* **property_data:** patch image cells on filled trials ([#818](https://github.com/albert-labs/albert-python/issues/818)) ([591e44d](https://github.com/albert-labs/albert-python/commit/591e44de696632611f09f41da3675d118b9f5a42))
+* **sheets:** scope update_cells baseline reads to the patched design ([#830](https://github.com/albert-labs/albert-python/issues/830)) ([ca2ee3f](https://github.com/albert-labs/albert-python/commit/ca2ee3fe77e12c508f8fc907e8ec4584ff57d5f9))
+
+
+### Documentation
+
+* clarify unpacked totals, mass storage units and label template updates ([#828](https://github.com/albert-labs/albert-python/issues/828)) ([8f06c45](https://github.com/albert-labs/albert-python/commit/8f06c450c6c48e29b068bd1fcbbc83cb80d59d6e))
+* codify recurring PR-review patterns in agent guidance ([#824](https://github.com/albert-labs/albert-python/issues/824)) ([2bd1082](https://github.com/albert-labs/albert-python/commit/2bd1082d6407da9ba86272f0a5df4666442cfb93))
+
 ## [1.61.0](https://github.com/albert-labs/albert-python/compare/v1.60.0...v1.61.0) (2026-10-05)
 
 
