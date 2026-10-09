@@ -28,7 +28,7 @@ def test_get_by_inventory_id(client: Albert, seeded_products: list[InventoryItem
     """Test the seeded formula's instructions come back with rows and a version."""
     formula = seeded_products[0]
 
-    instructions = client.inventory.instructions.get_by_inventory_id(inventory_id=formula.id)
+    instructions = client.inventory.get_instruction_layout(inventory_id=formula.id)
 
     assert isinstance(instructions, InstructionLayout)
     assert instructions.inventory_id == formula.id
@@ -43,7 +43,7 @@ def test_get_sequence(client: Albert, seeded_products: list[InventoryItem]):
     """Test the seeded formula's sequence comes back ordered with a version."""
     formula = seeded_products[0]
 
-    sequence = client.inventory.instructions.get_sequence(inventory_id=formula.id)
+    sequence = client.inventory.get_instruction_sequence(inventory_id=formula.id)
 
     assert isinstance(sequence, InstructionSequence)
     assert sequence.id == formula.id
@@ -53,7 +53,7 @@ def test_get_sequence(client: Albert, seeded_products: list[InventoryItem]):
 
 def test_get_sequence_exclude_hidden(client: Albert, seeded_products: list[InventoryItem]):
     """Test exclude_hidden filters the sequence down to visible rows only."""
-    sequence = client.inventory.instructions.get_sequence(
+    sequence = client.inventory.get_instruction_sequence(
         inventory_id=seeded_products[0].id, exclude_hidden=True
     )
 
@@ -81,13 +81,13 @@ def test_update_sequence_moves_process_group_row(
         design_id = seeded_sheet.process_design.id
         row_ids = [f"{design_id}#{row.row_id}" for row in added_rows]
 
-        sequence = client.inventory.instructions.get_sequence(inventory_id=formula_id)
+        sequence = client.inventory.get_instruction_sequence(inventory_id=formula_id)
         positions = _sequence_positions(sequence, row_ids)
         assert set(positions) == set(row_ids), (
             "Expected the new process group rows in the sequence"
         )
 
-        updated = client.inventory.instructions.update_sequence(
+        updated = client.inventory.update_instruction_sequence(
             inventory_id=formula_id,
             source_id=row_ids[1],
             reference_id=row_ids[0],
@@ -101,8 +101,8 @@ def test_update_sequence_moves_process_group_row(
         assert updated_positions[row_ids[1]] == updated_positions[row_ids[0]] - 1
     finally:
         if moved:
-            fresh = client.inventory.instructions.get_sequence(inventory_id=formula_id)
-            client.inventory.instructions.update_sequence(
+            fresh = client.inventory.get_instruction_sequence(inventory_id=formula_id)
+            client.inventory.update_instruction_sequence(
                 inventory_id=formula_id,
                 source_id=row_ids[1],
                 reference_id=row_ids[0],
@@ -120,7 +120,7 @@ def test_get_by_parent_ids(client: Albert, seeded_products: list[InventoryItem])
     """Test a formula's instructions come back as a set keyed by the formula."""
     formula = seeded_products[0]
 
-    sets = client.inventory.instructions.get_by_parent_ids(parent_ids=[formula.id])
+    sets = client.inventory.get_instructions_by_parent_ids(parent_ids=[formula.id])
 
     assert len(sets) == 1
     assert sets[0].id == formula.id
@@ -130,34 +130,34 @@ def test_get_by_parent_ids(client: Albert, seeded_products: list[InventoryItem])
 def test_instruction_crud(client: Albert, seeded_products: list[InventoryItem]):
     """Test creating, reading, renaming, reordering, and deleting instructions."""
     formula = seeded_products[0]
-    instructions = client.inventory.instructions
+    instructions = client.inventory
     created_first = None
     created_second = None
     try:
-        created_first = instructions.create(
+        created_first = instructions.create_instruction(
             instruction=Instruction(name="Take the pH of the batch", parent_id=formula.id)
         )
-        created_second = instructions.create(
+        created_second = instructions.create_instruction(
             instruction=Instruction(name="Mix for 5 minutes", parent_id=formula.id)
         )
         assert created_first.id
         assert created_second.id
 
-        fetched = instructions.get_by_id(parent_id=formula.id, id=created_first.id)
+        fetched = instructions.get_instruction_by_id(parent_id=formula.id, id=created_first.id)
         assert fetched.name == "Take the pH of the batch"
 
         listed = poll_until(
-            lambda: [i.id for i in instructions.get_all(parent_id=formula.id)],
+            lambda: [i.id for i in instructions.get_instructions(parent_id=formula.id)],
             predicate=lambda ids: created_first.id in ids and created_second.id in ids,
         )
         assert created_first.id in listed
         assert created_second.id in listed
 
         fetched.name = "Take the pH of the batch twice"
-        updated = instructions.update(instruction=fetched)
+        updated = instructions.update_instruction(instruction=fetched)
         assert updated.name == "Take the pH of the batch twice"
 
-        reordered = instructions.update_row_sequence(
+        reordered = instructions.update_instruction_row_sequence(
             parent_id=formula.id,
             instruction_ids=[created_second.id, created_first.id],
         )
@@ -166,13 +166,13 @@ def test_instruction_crud(client: Albert, seeded_products: list[InventoryItem]):
     finally:
         created_ids = [c.id for c in (created_first, created_second) if c and c.id]
         for instruction_id in created_ids:
-            instructions.delete(parent_id=formula.id, id=instruction_id)
+            instructions.delete_instruction(parent_id=formula.id, id=instruction_id)
 
         if created_ids:
             remaining = poll_until(
                 lambda: [
                     i.id
-                    for i in instructions.get_by_parent_ids(parent_ids=[formula.id])[
+                    for i in instructions.get_instructions_by_parent_ids(parent_ids=[formula.id])[
                         0
                     ].instructions
                 ],
@@ -190,7 +190,7 @@ def test_copy_instructions(
 ):
     """Test a formula's instructions copy onto a fresh formula."""
     source = seeded_products[0]
-    instructions = client.inventory.instructions
+    instructions = client.inventory
     target_column = seeded_sheet.add_formulation(
         formulation_name=f"{seed_prefix} - instructions copy target",
         components=[Component(inventory_item=seeded_inventory[0], amount=100)],
@@ -198,18 +198,18 @@ def test_copy_instructions(
     target_id = target_column.inventory_id
     created = None
     try:
-        created = instructions.create(
+        created = instructions.create_instruction(
             instruction=Instruction(name="Take the pH of the batch", parent_id=source.id)
         )
 
-        result = instructions.copy(source_id=source.id, target_ids=[target_id])
+        result = instructions.copy_instructions(source_id=source.id, target_ids=[target_id])
 
         assert result.copied + result.skipped == 1
         if result.copied == 1:
-            copied_set = instructions.get_by_parent_ids(parent_ids=[target_id])[0]
+            copied_set = instructions.get_instructions_by_parent_ids(parent_ids=[target_id])[0]
             assert [i.name for i in copied_set.instructions] == ["Take the pH of the batch"]
             for instruction in copied_set.instructions:
-                instructions.delete(parent_id=target_id, id=instruction.id)
+                instructions.delete_instruction(parent_id=target_id, id=instruction.id)
     finally:
         if created and created.id:
-            instructions.delete(parent_id=source.id, id=created.id)
+            instructions.delete_instruction(parent_id=source.id, id=created.id)

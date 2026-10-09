@@ -30,14 +30,11 @@ releases, and testing edge cases.
 - **Follow existing patterns.** Check similar code before writing new code. Match style and structure.
 - **Touch only what's needed.** Don't refactor adjacent code, improve unrelated formatting, or remove pre-existing dead code unless asked. Remove only imports/symbols that *your* changes made unused.
 - **Validate at boundaries only.** Trust internal code and type hints. Only validate user input and external API responses.
+- **Catch narrow exceptions.** Never `except Exception` (or bare `except`) in SDK code; catch `AlbertHTTPError` or the specific subclass the code can handle. See `OPINIONS.md`.
+- **Changing a field's `alias`/`serialization_alias` is a wire change** for every code path that serializes the model, including unrelated endpoints. Grep the model's `model_dump(by_alias=True)` call sites first. See `OPINIONS.md`.
+- **Bulk/batch methods short-circuit empty input.** Every bulk method (`*_many`, `add_columns`, `delete_rows`, ...) returns without firing a request when given an empty list, and the guard applies uniformly across all sibling bulk methods. A no-op `update()` (nothing in `model_fields_set`) returns the current entity without a request.
 - Collections inherit from `BaseCollection` and accept an `AlbertSession`.
-- **Nested collections:** when a collection is only meaningful within a parent
-  entity's scope (for example a formula's batching instructions), expose it as a
-  property on the parent collection (e.g. `client.inventory.instructions`)
-  instead of as an `Albert` client property. The parent declares the child in a
-  `Nested Collections` docstring section; the child keeps an "accessed as
-  ``client.parent.child``" line in its class docstring.
-- Public collection methods use `@validate_call` for runtime validation.
+- Public collection methods use `@validate_call` for runtime validation. Match sibling methods on the same collection: if they declare it, new methods do too.
 - **Always use keyword-only arguments (`*`) for public methods.** Place `*` immediately
   after `self` (or `cls`) on all public collection, resource, and client methods
   (e.g. `def get_by_id(self, *, id: str) -> Cas:`). Never expose positional parameters on
@@ -140,6 +137,7 @@ Many list/search methods use `AlbertPaginator` (`src/albert/core/pagination.py`)
 
 - **Offset** (`PaginationMode.OFFSET`) — uses `offset` param, defaults to `limit=1000`, stops when `Items` is empty.
 - **Key** (`PaginationMode.KEY`) — uses `startKey`, expects `lastKey` in response. Do not pass `limit` from the SDK; the backend controls page size.
+- **Choose the mode from response-shape evidence, not habit.** A `total` field in the payload signals OFFSET; a `lastKey` continuation token signals KEY. For a brand-new endpoint, verify the whole envelope (`Items` key, continuation key, accepted query params) against the backend handler, the OpenAPI spec, or a live call before merge. The wrong mode silently truncates results after the first page. See `OPINIONS.md`.
 
 Expose a `max_items` parameter on public list/search methods where appropriate to allow early stopping.
 
@@ -206,6 +204,8 @@ Exception: when a backend caps page size below `DEFAULT_LIMIT` (1000), set `limi
   5. Bug fix: add the failing case as a test first; if it was pinned with `xfail`, remove
      the marker.
 - Test docstrings should be crisp, start with "Test ...", and avoid implementation details.
+- **Assert what the docstring guarantees.** If a method documents ordering (`in the order requested`) or a limit, tests assert order (not just `len(...) == N`) and cross the documented boundary (e.g. chunk size + 1 ids). A documented guarantee without a matching assertion is an assumption.
+- **Numeric constants tied to backend caps** (chunk sizes, page-size caps) carry a code comment citing the OpenAPI spec or handler that defines the cap, and are defined once (module-level or shared) rather than inlined per collection.
 - Verify changes work, don't assume: always run `uv run pytest tests/unit`, and run the
   related integration files with `-n 4`.
 - Rationale for the unit vs integration split: `OPINIONS.md`.
@@ -309,6 +309,7 @@ class CasCollection(BaseCollection):
 - Instantiate the client zero-arg (`client = Albert()`); show it once in the class-level example and reuse `client` in method examples.
 - Async collections (e.g. chat) use `async with AsyncAlbert() as client:` and `await`.
 - Show returned values as `# comment` lines. Verify example values against the model fields.
+- Examples must be paste-runnable: no undefined variables or stale names. After renaming any model, field, or variable, grep all docstring examples for the old identifier; a stale name in an `!!! example` block is a user-facing bug.
 
 ### Wording conventions (keep consistent across the SDK)
 
@@ -327,6 +328,10 @@ class CasCollection(BaseCollection):
   - Right: `"""Update an attachment."""`
   - Wrong: `The updated attachment returned by the API.`
   - Right: `The updated Attachment.`
+  - The ban also covers **request-mechanics phrasing**, the most common evasion: `in batches`, `batched calls`, `round trip(s)`, `re-fetched`, `its own request`, `avoids N requests`, `required by the endpoint`. Describe the caller outcome, not the wire mechanics.
+    - Wrong: `Workflows are created in batches and re-fetched automatically.`
+    - Right: `Created workflows are fully populated.`
+- **Docstrings are the Ask Albert tool-search surface.** Include common user synonyms in the summary line so prompts match (e.g. `Star (pin) a project.`). When a behavior change invalidates a comparative claim in a sibling docstring (`Unlike X, ...`), update that docstring in the same PR; stale comparatives actively misdirect the agent.
 - Every collection class docstring must include a `Methods` section listing all public methods:
 
 ```python
@@ -375,10 +380,13 @@ uv run pytest tests/integration/<relevant_test_file>.py -v
 
 Run the full integration suite (`uv run pytest tests/integration -n 4`) if the change is broad.
 
+After merging `main` into a PR branch, re-run `ruff check` and `ruff format` before re-requesting review; merges regularly introduce duplicate imports (F811) and formatting drift.
+
 ## Commits & Releases
 
 - Prefer multiple focused commits over one large commit.
 - Use Conventional Commits: `feat(scope): summary`, `fix(scope): summary`, `chore(scope): summary`.
+- A change that adds a caller-visible capability (method, parameter, model, option) is `feat`, even when motivated by a bug. See `OPINIONS.md`.
 - Version bumps and commit-type gotchas: `OPINIONS.md`.
 
 Example commit:
