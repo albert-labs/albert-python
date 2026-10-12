@@ -78,17 +78,32 @@ def test_lot_get_all_basic(client: Albert, seeded_lots):
 def test_search_from_on_hand(client: Albert, seeded_lots: list[Lot]):
     """Test that search(from_on_hand=...) returns only lots with inventory on hand above the threshold."""
     seeded_ids = {lot.id for lot in seeded_lots}
+    parent_id = seeded_lots[0].inventory_id
+
+    # Wait for the seeded lots to become visible in search before asserting on the filter.
+    poll_until(
+        lambda: [
+            item
+            for item in client.lots.search(inventory_id=parent_id, max_items=100)
+            if item.id in seeded_ids
+        ],
+        predicate=lambda items: seeded_lots[0].id in {item.id for item in items},
+        timeout=60.0,
+    )
+
     # seeded_lots[0] has 90 on hand, seeded_lots[1] has 400; both share the same parent.
     results = poll_until(
         lambda: [
             item
             for item in client.lots.search(
-                inventory_id=seeded_lots[0].inventory_id,
+                inventory_id=parent_id,
                 from_on_hand=95.0,
                 max_items=100,
             )
             if item.id in seeded_ids
-        ]
+        ],
+        predicate=lambda items: seeded_lots[1].id in {item.id for item in items},
+        timeout=60.0,
     )
     result_ids = {item.id for item in results}
     assert seeded_lots[1].id in result_ids
