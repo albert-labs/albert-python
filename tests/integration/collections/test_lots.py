@@ -10,6 +10,7 @@ from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.lots import Lot, LotAdjustmentAction, LotVolumeUnit
 from albert.resources.storage_locations import StorageLocation
 from tests.integration.seeding import generate_lot_seeds
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("inventory")
 
@@ -72,6 +73,26 @@ def test_lot_get_all_basic(client: Albert, seeded_lots):
     results = list(client.lots.get_all(parent_id=parent_id, max_items=10))
     assert_valid_lot_items(results)
     assert any(lot.id == seeded_lots[0].id for lot in results)
+
+
+def test_search_from_on_hand(client: Albert, seeded_lots: list[Lot]):
+    """Test that search(from_on_hand=...) returns only lots with inventory on hand above the threshold."""
+    seeded_ids = {lot.id for lot in seeded_lots}
+    # seeded_lots[0] has 90 on hand, seeded_lots[1] has 400; both share the same parent.
+    results = poll_until(
+        lambda: [
+            item
+            for item in client.lots.search(
+                inventory_id=seeded_lots[0].inventory_id,
+                from_on_hand=95.0,
+                max_items=100,
+            )
+            if item.id in seeded_ids
+        ]
+    )
+    result_ids = {item.id for item in results}
+    assert seeded_lots[1].id in result_ids
+    assert seeded_lots[0].id not in result_ids
 
 
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):

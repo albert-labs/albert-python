@@ -322,6 +322,7 @@ class LotCollection(BaseCollection):
         owner: list[str] | None = None,
         status: list[str] | None = None,
         to_expiration_date: str | None = None,
+        from_on_hand: float | None = None,
         is_drop_down: bool | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -395,6 +396,8 @@ class LotCollection(BaseCollection):
             Filter by lot status values.
         to_expiration_date : str, optional
             Only include lots expiring on or before this date (ISO 8601).
+        from_on_hand : float, optional
+            Only include lots with inventory on hand greater than this value.
         is_drop_down : bool, optional
             Apply dropdown sanitization to the search text when True.
         order_by : OrderBy, optional
@@ -428,6 +431,7 @@ class LotCollection(BaseCollection):
             "searchField": ensure_list(search_field),
             "sourceField": ensure_list(source_field),
             "additionalField": ensure_list(additional_field),
+            "fromOnHand": from_on_hand,
         }
 
         post_only_params: dict[str, Any] = {
