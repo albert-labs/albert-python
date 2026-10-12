@@ -219,11 +219,13 @@ class CustomTemplatesCollection(BaseCollection):
 
         Custom templates store tags on the data section; the create schema
         rejects a top-level Tags key. Top-level tags are appended after any
-        data-level tags.
+        data-level tags, and the top-level list is cleared so it is not
+        sent on create.
         """
         if template.data is None or not template.tags:
             return
         template.data.tags = [*(template.data.tags or []), *template.tags]
+        template.tags = None
 
     def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
         """Get a single, fully populated custom template by its ID.

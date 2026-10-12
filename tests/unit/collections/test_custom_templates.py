@@ -12,7 +12,7 @@ def _template(**kwargs) -> CustomTemplate:
 
 
 def test_fold_tags_into_data_appends_top_level_after_data_tags() -> None:
-    """Test that top-level tags are appended after existing data tags."""
+    """Test that top-level tags are appended after existing data tags and cleared."""
     template = _template(
         tags=[Tag(id="TAG1", tag="alpha")],
         data=GeneralData(name="tpl", tags=[Tag(id="TAG2", tag="beta")]),
@@ -21,6 +21,7 @@ def test_fold_tags_into_data_appends_top_level_after_data_tags() -> None:
     CustomTemplatesCollection._fold_tags_into_data(template=template)
 
     assert [t.id for t in template.data.tags] == ["TAG2", "TAG1"]
+    assert template.tags is None
 
 
 def test_fold_tags_into_data_sets_data_tags_when_only_top_level() -> None:
@@ -30,6 +31,7 @@ def test_fold_tags_into_data_sets_data_tags_when_only_top_level() -> None:
     CustomTemplatesCollection._fold_tags_into_data(template=template)
 
     assert [t.id for t in template.data.tags] == ["TAG1"]
+    assert template.tags is None
 
 
 def test_fold_tags_into_data_noops_without_top_level_tags() -> None:
