@@ -95,7 +95,7 @@ class CustomTemplatesCollection(BaseCollection):
 
         Up to 10 templates can be created in a single call. Created templates
         are fully populated. Any tags that do not yet exist in Albert are
-        created automatically.
+        created automatically. Tags are stored on the template's data section.
 
         !!! example
             ```python
@@ -131,8 +131,7 @@ class CustomTemplatesCollection(BaseCollection):
             raise ValueError("A maximum of 10 CustomTemplates can be created at once.")
 
         for template in templates:
-            if template.tags:
-                template.tags = resolve_tags(session=self.session, tags=template.tags)
+            self._fold_tags_into_data(template=template)
             if template.data is not None and template.data.tags:
                 template.data.tags = resolve_tags(session=self.session, tags=template.data.tags)
 
@@ -144,6 +143,9 @@ class CustomTemplatesCollection(BaseCollection):
                 exclude_none=True,
                 exclude_unset=True,
             )
+            # The create schema stores tags only on the data section and rejects a
+            # top-level Tags key (additionalProperties: false in the OpenAPI spec).
+            dumped.pop("Tags", None)
             # ``category`` defaults on the model, so ``exclude_unset`` drops it
             # when the caller did not set it explicitly; the API requires it.
             dumped.setdefault("category", template.category.value)
@@ -210,6 +212,18 @@ class CustomTemplatesCollection(BaseCollection):
             hydrated_templates.append(hydrated)
 
         return hydrated_templates
+
+    @staticmethod
+    def _fold_tags_into_data(*, template: CustomTemplate) -> None:
+        """Fold top-level tags into the template's data section.
+
+        Custom templates store tags on the data section; the create schema
+        rejects a top-level Tags key. Top-level tags are appended after any
+        data-level tags.
+        """
+        if template.data is None or not template.tags:
+            return
+        template.data.tags = [*(template.data.tags or []), *template.tags]
 
     def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
         """Get a single, fully populated custom template by its ID.

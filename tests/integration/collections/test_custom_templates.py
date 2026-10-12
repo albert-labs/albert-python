@@ -120,15 +120,14 @@ def test_custom_template_create_resolves_and_deduplicates_tags(client: Albert, s
         )
         template = created[0]
 
-        top_ids = [t.id for t in template.tags or []]
-        assert len(top_ids) == 2
-        assert len(set(top_ids)) == 2
-        assert existing_tag.id in top_ids
-
         data_ids = [t.id for t in template.data.tags or []]
-        assert len(data_ids) == 2
-        assert len(set(data_ids)) == 2
+        assert len(data_ids) == 3
+        assert len(set(data_ids)) == 3
         assert existing_tag.id in data_ids
+
+        # Top-level tags fold into the data section on create and surface on read.
+        top_ids = [t.id for t in template.tags or []]
+        assert set(top_ids) == set(data_ids)
     finally:
         for template in created:
             with suppress(NotFoundError):
