@@ -1,4 +1,5 @@
 from albert.collections.tags import TagCollection
+from albert.core.logging import logger
 from albert.core.session import AlbertSession
 from albert.resources.tags import Tag
 
