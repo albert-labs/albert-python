@@ -104,6 +104,23 @@ def test_search_from_on_hand(client: Albert, seeded_lots: list[Lot]):
     assert seeded_lots[0].id not in result_ids
 
 
+def test_search_by_inventory_id(client: Albert, seeded_lots: list[Lot]):
+    """Test that search(inventory_id=...) matches lots by their standard parent Inventory ID."""
+    seeded_ids = {lot.id for lot in seeded_lots}
+    # seeded_lots[0] and seeded_lots[1] share the same parent inventory item.
+    expected_ids = {seeded_lots[0].id, seeded_lots[1].id}
+    results = poll_until(
+        lambda: [
+            item
+            for item in client.lots.search(inventory_id=seeded_lots[0].inventory_id, max_items=100)
+            if item.id in seeded_ids
+        ],
+        predicate=lambda items: expected_ids <= {item.id for item in items},
+        timeout=60.0,
+    )
+    assert expected_ids <= {item.id for item in results}
+
+
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):
     got_lot = client.lots.get_by_id(id=seeded_lots[0].id)
     assert got_lot.id == seeded_lots[0].id

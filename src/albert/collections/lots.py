@@ -116,6 +116,27 @@ class LotCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{LotCollection._api_version}/lots"
 
+    @staticmethod
+    def _inventory_id_search_variants(
+        inventory_id: InventoryId | list[InventoryId] | None,
+    ) -> list[str] | None:
+        """Return each Inventory ID with and without the ``INV`` prefix.
+
+        Lot search indexes the parent inventory ID without the ``INV`` prefix,
+        so a standard ID alone would match nothing; supplying both forms keeps
+        the filter correct regardless of the stored format.
+        """
+        ids = ensure_list(inventory_id)
+        if ids is None:
+            return None
+        variants: list[str] = []
+        for value in ids:
+            variants.append(value)
+            stripped = value.removeprefix("INV")
+            if stripped != value:
+                variants.append(stripped)
+        return variants
+
     def create(self, *, lots: list[Lot]) -> list[Lot]:
         """Create one or more new lots.
 
@@ -423,7 +444,7 @@ class LotCollection(BaseCollection):
             "text": search_text,
             "sortBy": sort_by,
             "isDropDown": is_drop_down,
-            "inventoryId": ensure_list(inventory_id),
+            "inventoryId": self._inventory_id_search_variants(inventory_id),
             "locationId": ensure_list(location_id),
             "storageLocationId": ensure_list(storage_location_id),
             "taskId": ensure_list(task_id),
