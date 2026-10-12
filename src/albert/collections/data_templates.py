@@ -43,6 +43,7 @@ from albert.utils.data_template import (
     get_target_data_column,
     validate_data_column_type,
 )
+from albert.utils.tags import resolve_tags
 
 DEFAULT_ADDITIONAL_FIELDS = [
     "acl",
@@ -173,12 +174,15 @@ class DataTemplateCollection(BaseCollection):
             The template to create. ``name`` is required. Populate
             ``data_column_values`` with the results the test captures and
             ``parameter_values`` with the conditions under which it is run.
+            Any tags that do not yet exist in Albert are created automatically.
 
         Returns
         -------
         DataTemplate
             The newly created template, populated with its assigned Data Template ID.
         """
+        if data_template.tags:
+            data_template.tags = resolve_tags(session=self.session, tags=data_template.tags)
         if (
             isinstance(data_template.data_column_values, list)
             and len(data_template.data_column_values) == 0
@@ -565,12 +569,16 @@ class DataTemplateCollection(BaseCollection):
         ``metadata``, and ``tags`` on the template itself, and per-parameter ``value``, ``unit``,
         ``required``, and ``validation``.
 
+        Any tags that do not yet exist in Albert are created automatically.
+
         Warnings
         --------
         Only scalar data column values (text, number, dropdown) can be updated with
         this method. Use [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example] or [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example] to set
         example values for curve and image data column types.
         """
+        if "tags" in data_template.model_fields_set and data_template.tags:
+            data_template.tags = resolve_tags(session=self.session, tags=data_template.tags)
 
         existing = self.get_by_id(id=data_template.id)
 
