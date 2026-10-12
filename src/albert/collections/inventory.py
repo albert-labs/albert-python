@@ -1842,6 +1842,7 @@ class InventoryCollection(BaseCollection):
         ``cas_category``, ``inventory_function``.
         ``substance_id`` can be set when adding a new CAS entry; it is not
         patchable on existing entries.
+
         Any tags that do not yet exist in Albert are created automatically.
         """
         if "tags" in inventory_item.model_fields_set and inventory_item.tags:

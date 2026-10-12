@@ -1,7 +1,7 @@
 """Unit tests for the pure tag-deduplication helper in ``albert.utils.tags``.
 
 ``resolve_tags`` wraps ``TagCollection.get_or_create`` (network I/O) and is covered by
-integration tests instead; see ``tests/integration/collections/test_inventory.py``.
+integration tests instead; see ``tests/integration/collections/test_custom_templates.py``.
 """
 
 from albert.resources.tags import Tag

@@ -568,6 +568,7 @@ class DataTemplateCollection(BaseCollection):
         The following fields can be updated: ``name``, ``description``,
         ``metadata``, and ``tags`` on the template itself, and per-parameter ``value``, ``unit``,
         ``required``, and ``validation``.
+
         Any tags that do not yet exist in Albert are created automatically.
 
         Warnings

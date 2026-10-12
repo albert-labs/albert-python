@@ -2231,6 +2231,7 @@ class TaskCollection(BaseCollection):
         The following fields can be updated: ``assigned_to``, ``due_date``,
         ``inventory_information``, ``metadata``, ``name``, ``priority``, ``project``,
         ``state``, ``tags``.
+
         Any tags that do not yet exist in Albert are created automatically.
         """
         if "tags" in task.model_fields_set and task.tags:

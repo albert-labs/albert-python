@@ -93,9 +93,9 @@ class CustomTemplatesCollection(BaseCollection):
     ) -> list[CustomTemplate]:
         """Create one or more custom templates.
 
-        Up to 10 templates can be created in a single call. Each created template
-        is re-fetched so the returned entities are fully populated. Any tags that
-        do not yet exist in Albert are created automatically.
+        Up to 10 templates can be created in a single call. Created templates
+        are fully populated. Any tags that do not yet exist in Albert are
+        created automatically.
 
         !!! example
             ```python
