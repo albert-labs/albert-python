@@ -79,6 +79,7 @@ jobs:
           ALBERT_CLIENT_SECRET_SDK: ${{ secrets.ALBERT_CLIENT_SECRET_SDK }}
           ALBERT_BASE_URL: ${{ secrets.ALBERT_BASE_URL }}
         run: |
+          set -o pipefail
           uv run pytest tests/integration -n 4 -v --tb=short -r fEsxX --durations=15 2>&1 | tee /tmp/pytest-output.log
 
       - name: Post failure summary
