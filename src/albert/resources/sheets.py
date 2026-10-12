@@ -1877,13 +1877,19 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 return False
             return row_parts[0] == cell.design_id and row_parts[1] == cell.row_id
 
-        filtered_columns = [col for col in self.grid.columns if _matches_column(col)]
-        filtered_rows = [idx for idx in self.grid.index if _matches_row(idx)]
+        # Load only the grid of the design being patched, not all sheet designs.
+        design = next((d for d in self.designs if d.id == cell.design_id), None)
+        if design is None:
+            return None
+        grid = design.grid
+
+        filtered_columns = [col for col in grid.columns if _matches_column(col)]
+        filtered_rows = [idx for idx in grid.index if _matches_row(idx)]
 
         for row in filtered_rows:
             for col in filtered_columns:
                 # grid.loc may return numpy.NaN for missing cells
-                value = self.grid.loc[row, col]
+                value = grid.loc[row, col]
                 if isinstance(value, Cell):
                     return value
         return None
