@@ -75,43 +75,28 @@ def test_lot_get_all_basic(client: Albert, seeded_lots):
     assert any(lot.id == seeded_lots[0].id for lot in results)
 
 
-# Remove xfail once the lot search index applies inventoryOnHand correctly in the
-# test environment (SUP-2308): from_on_hand currently filters out every lot there,
-# including lots with on-hand quantities above the threshold.
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "lot search from_on_hand filters out all lots in the test environment, "
-        "including lots above the threshold (SUP-2308)."
-    ),
-)
 def test_search_from_on_hand(client: Albert, seeded_lots: list[Lot]):
     """Test that search(from_on_hand=...) returns only lots with inventory on hand above the threshold."""
-    seeded_ids = {lot.id for lot in seeded_lots}
-    parent_id = seeded_lots[0].inventory_id
+    # Scope by the seeded lots' unique external barcode IDs; the lot search index
+    # stores inventoryId without the "INV" prefix, so inventory_id cannot scope this.
+    barcode_ids = [seeded_lots[0].external_barcode_id, seeded_lots[1].external_barcode_id]
 
     # Wait for the seeded lots to become visible in search before asserting on the filter.
     poll_until(
-        lambda: [
-            item
-            for item in client.lots.search(inventory_id=parent_id, max_items=100)
-            if item.id in seeded_ids
-        ],
+        lambda: list(client.lots.search(external_barcode_id=barcode_ids, max_items=100)),
         predicate=lambda items: seeded_lots[0].id in {item.id for item in items},
         timeout=60.0,
     )
 
-    # seeded_lots[0] has 90 on hand, seeded_lots[1] has 400; both share the same parent.
+    # seeded_lots[0] has 90 on hand, seeded_lots[1] has 400.
     results = poll_until(
-        lambda: [
-            item
-            for item in client.lots.search(
-                inventory_id=parent_id,
+        lambda: list(
+            client.lots.search(
+                external_barcode_id=barcode_ids,
                 from_on_hand=95.0,
                 max_items=100,
             )
-            if item.id in seeded_ids
-        ],
+        ),
         predicate=lambda items: seeded_lots[1].id in {item.id for item in items},
     )
     result_ids = {item.id for item in results}
