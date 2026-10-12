@@ -17,6 +17,7 @@ from albert.resources.custom_templates import (
     CustomTemplateSearchItem,
     TemplateCategory,
 )
+from albert.utils.tags import resolve_tags
 
 
 class CustomTemplatesCollection(BaseCollection):
@@ -92,8 +93,9 @@ class CustomTemplatesCollection(BaseCollection):
     ) -> list[CustomTemplate]:
         """Create one or more custom templates.
 
-        Up to 10 templates can be created in a single call. Each created template
-        is re-fetched so the returned entities are fully populated.
+        Up to 10 templates can be created in a single call. Created templates
+        are fully populated. Any tags that do not yet exist in Albert are
+        created automatically. Tags are stored on the template's data section.
 
         !!! example
             ```python
@@ -128,6 +130,11 @@ class CustomTemplatesCollection(BaseCollection):
         if len(templates) > 10:
             raise ValueError("A maximum of 10 CustomTemplates can be created at once.")
 
+        for template in templates:
+            self._fold_tags_into_data(template=template)
+            if template.data is not None and template.data.tags:
+                template.data.tags = resolve_tags(session=self.session, tags=template.data.tags)
+
         payload = []
         for template in templates:
             dumped = template.model_dump(
@@ -136,6 +143,9 @@ class CustomTemplatesCollection(BaseCollection):
                 exclude_none=True,
                 exclude_unset=True,
             )
+            # The create schema stores tags only on the data section and rejects a
+            # top-level Tags key (additionalProperties: false in the OpenAPI spec).
+            dumped.pop("Tags", None)
             # ``category`` defaults on the model, so ``exclude_unset`` drops it
             # when the caller did not set it explicitly; the API requires it.
             dumped.setdefault("category", template.category.value)
@@ -202,6 +212,20 @@ class CustomTemplatesCollection(BaseCollection):
             hydrated_templates.append(hydrated)
 
         return hydrated_templates
+
+    @staticmethod
+    def _fold_tags_into_data(*, template: CustomTemplate) -> None:
+        """Fold top-level tags into the template's data section.
+
+        Custom templates store tags on the data section; the create schema
+        rejects a top-level Tags key. Top-level tags are appended after any
+        data-level tags, and the top-level list is cleared so it is not
+        sent on create.
+        """
+        if template.data is None or not template.tags:
+            return
+        template.data.tags = [*(template.data.tags or []), *template.tags]
+        template.tags = None
 
     def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
         """Get a single, fully populated custom template by its ID.
