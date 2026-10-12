@@ -397,7 +397,8 @@ class LotCollection(BaseCollection):
         to_expiration_date : str, optional
             Only include lots expiring on or before this date (ISO 8601).
         from_on_hand : float, optional
-            Only include lots with inventory on hand greater than this value.
+            Only include lots with inventory on hand strictly greater than this
+            value. Pass ``0`` to exclude zeroed-out lots.
         is_drop_down : bool, optional
             Apply dropdown sanitization to the search text when True.
         order_by : OrderBy, optional
