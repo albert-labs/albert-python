@@ -6,7 +6,10 @@ from pathlib import Path
 import pytest
 
 from tests.acl.contract.fgc import (
+    CONTENT_PATHS,
+    DIRECT_PATHS,
     INVENTORY_LEVELS,
+    POLICY_TASKS,
     PROJECT_LEVELS,
     AccessClass,
     Kind,
@@ -86,6 +89,12 @@ def test_property_task_level_is_formula_and_batch_blind():
     assert lv.expect(Kind.BATCH_TASK, Verb.READ) is Expect.DENY
 
 
+def test_project_levels_do_not_govern_policy_tasks():
+    """Test that no project FGC level has cells for general or property tasks."""
+    for lv in PROJECT_LEVELS.values():
+        assert not POLICY_TASKS & (lv.grants.keys() | lv.undecided.keys()), lv.level
+
+
 def test_strict_viewer_is_read_only():
     """Test that ProjectStrictViewer grants nothing beyond read (and report create)."""
     lv = PROJECT_LEVELS["ProjectStrictViewer"]
@@ -108,10 +117,23 @@ def test_confidential_never_readable_without_grant():
         assert class_expect(AccessClass.CONFIDENTIAL, Verb.READ, path) is Expect.DENY
 
 
-def test_private_direct_read_denied_list_undecided():
-    """Test that private direct reads are denied while implicit list stays an open question."""
-    assert class_expect(AccessClass.PRIVATE, Verb.READ, ReadPath.GET_BY_ID) is Expect.DENY
-    assert class_expect(AccessClass.PRIVATE, Verb.READ, ReadPath.SEARCH_GET) is Expect.UNDECIDED
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        (path, Expect.DENY if path in DIRECT_PATHS | CONTENT_PATHS else Expect.ALLOW)
+        for path in ReadPath
+    ],
+    ids=lambda v: getattr(v, "value", v),
+)
+def test_private_listable_but_not_directly_readable(path, expected):
+    """Test that a private record is visible on list paths but denied on direct and contents
+    reads (PLSV-827)."""
+    assert class_expect(AccessClass.PRIVATE, Verb.READ, path) is expected
+
+
+def test_private_write_denied_without_grant():
+    """Test that a no-grant user may never update a private record."""
+    assert class_expect(AccessClass.PRIVATE, Verb.UPDATE, ReadPath.SEARCH_GET) is Expect.DENY
 
 
 BANNED = re.compile(

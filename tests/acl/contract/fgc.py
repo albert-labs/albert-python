@@ -1,10 +1,16 @@
 """Record-level contract: FGC level x child kind -> verbs, plus class semantics.
 
 Sources: FGC level names, PLSV-780 §3, the class matrix in the ACL functional spec, and
-Lenore's SDK-216 decisions (ProjectAllTask sees formulas and batch/property tasks;
+AN-1204 (private records are listable, not directly readable), PLSV-827 (private contents
+such as documents and formulas never surface without a grant), and
+Lenore's SDK-216 decisions (ProjectAllTask sees formulas and batch tasks;
 ProjectPropertyTask sees only the lots its property tasks test; ProjectViewer is the
 legacy technician; sharing needs a Full policy plus an owner-level FGC; project delete is
 admin-only). Cells marked undecided are open product questions and skip with a reason.
+
+Only batch tasks inherit project access. General and property tasks are governed by the
+caller's Tasks policies, never by the parent project's FGC or class, so they have no cells
+here (``POLICY_TASKS``).
 """
 
 from dataclasses import dataclass, field
@@ -44,11 +50,7 @@ class LevelContract:
 
 
 K = Kind
-_TASKS_ALL = (K.GENERAL_TASK, K.PROPERTY_TASK, K.BATCH_TASK)
-
-
-def _all(kinds, verbs) -> dict[Kind, frozenset[Verb]]:
-    return {k: frozenset(verbs) for k in kinds}
+POLICY_TASKS = frozenset({K.GENERAL_TASK, K.PROPERTY_TASK})
 
 
 PROJECT_LEVELS: dict[str, LevelContract] = {
@@ -57,7 +59,7 @@ PROJECT_LEVELS: dict[str, LevelContract] = {
         {
             K.PROJECT: frozenset({R, U, S}),
             K.FORMULA: RCUD,
-            **_all(_TASKS_ALL, RCUD),
+            K.BATCH_TASK: RCUD,
             K.LOT: RCUD,
             K.TASK_CHILD: RCUD,
             K.PROJECT_CHILD: RCUD,
@@ -69,7 +71,7 @@ PROJECT_LEVELS: dict[str, LevelContract] = {
         {
             K.PROJECT: RU,
             K.FORMULA: RCUD,
-            **_all(_TASKS_ALL, RCUD),
+            K.BATCH_TASK: RCUD,
             K.LOT: RCUD,
             K.TASK_CHILD: RCUD,
             K.PROJECT_CHILD: RCUD,
@@ -81,7 +83,7 @@ PROJECT_LEVELS: dict[str, LevelContract] = {
         {
             K.PROJECT: RO,
             K.FORMULA: RO,
-            **_all(_TASKS_ALL, RCU),
+            K.BATCH_TASK: RCU,
             K.LOT: RCU,
             K.TASK_CHILD: RCUD,
             K.PROJECT_CHILD: RO,
@@ -93,16 +95,13 @@ PROJECT_LEVELS: dict[str, LevelContract] = {
         {
             K.PROJECT: RO,
             K.FORMULA: RO,
-            K.PROPERTY_TASK: RCU,
             K.BATCH_TASK: RCU,
             K.LOT: RCU,
             K.TASK_CHILD: RCUD,
             K.REPORT: frozenset({R, C}),
         },
         undecided={
-            K.PROPERTY_TASK: frozenset({Verb.DELETE}),
             K.BATCH_TASK: frozenset({Verb.DELETE}),
-            K.GENERAL_TASK: frozenset({R, C, U, Verb.DELETE}),
             K.PROJECT_CHILD: frozenset({R}),
         },
     ),
@@ -110,14 +109,10 @@ PROJECT_LEVELS: dict[str, LevelContract] = {
         "ProjectPropertyTask",
         {
             K.PROJECT: RO,
-            K.PROPERTY_TASK: RCU,
             K.LOT: RU,
-            K.TASK_CHILD: RCUD,
             K.REPORT: frozenset({R, C}),
         },
         undecided={
-            K.PROPERTY_TASK: frozenset({Verb.DELETE}),
-            K.GENERAL_TASK: frozenset({R, C, U, Verb.DELETE}),
             K.PROJECT_CHILD: frozenset({R}),
         },
     ),
@@ -126,7 +121,7 @@ PROJECT_LEVELS: dict[str, LevelContract] = {
         {
             K.PROJECT: RO,
             K.FORMULA: RO,
-            **_all(_TASKS_ALL, RO),
+            K.BATCH_TASK: RO,
             K.LOT: RO,
             K.TASK_CHILD: RO,
             K.PROJECT_CHILD: RO,
@@ -181,6 +176,7 @@ class ReadPath(str, Enum):
 
 
 DIRECT_PATHS = frozenset({ReadPath.GET_BY_ID, ReadPath.BULK_IDS})
+CONTENT_PATHS = frozenset({ReadPath.DOCUMENT_SEARCH})
 
 
 def class_expect(cls: AccessClass, verb: Verb, path: ReadPath | None = None) -> Expect:
@@ -188,21 +184,17 @@ def class_expect(cls: AccessClass, verb: Verb, path: ReadPath | None = None) -> 
 
     Functional spec matrix (standard user, implicit / explicit):
     Shared I-All; Restricted I-Read/List; Private I-List; Confidential none.
+
+    Private records appear in list and search results for every standard user (confirmed
+    intended on AN-1204), but a direct read by id is denied without a grant, and so is
+    anything that exposes their contents, such as document search (PLSV-827).
     """
     if cls is AccessClass.SHARED:
         return Expect.ALLOW if verb in (R, U) else Expect.DENY
     if cls is AccessClass.RESTRICTED:
         return Expect.ALLOW if verb is R else Expect.DENY
     if cls is AccessClass.PRIVATE:
-        if verb is not R:
-            return Expect.DENY
-        if path is not None and path in DIRECT_PATHS:
-            return Expect.DENY
-        return Expect.UNDECIDED
+        if verb is R and path is not None and path not in DIRECT_PATHS | CONTENT_PATHS:
+            return Expect.ALLOW
+        return Expect.DENY
     return Expect.DENY
-
-
-PRIVATE_LIST_UNDECIDED = (
-    "Private implicit List: functional spec says Standard users may list Private records; "
-    "SDK docs say Private is visible only to ACL members"
-)

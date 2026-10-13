@@ -10,18 +10,18 @@ import pytest
 
 from tests.acl.actions import DIRECT, READ_PATHS
 from tests.acl.checks import check
-from tests.acl.contract.fgc import PRIVATE_LIST_UNDECIDED, AccessClass, Kind, class_expect
+from tests.acl.contract.fgc import AccessClass, Kind, ReadPath, class_expect
 from tests.acl.contract.model import Expect, Verb
-from tests.acl.http import Response, call
+from tests.acl.http import Response, call, call_all_pages
+from tests.acl.world import INVENTORY_CLASSES, PROJECT_CLASSES
 from tests.utils.wait import poll_until
-
-CLASSES = [AccessClass.SHARED, AccessClass.PRIVATE, AccessClass.CONFIDENTIAL]
 
 
 def _cases():
-    for kind in (Kind.PROJECT, Kind.GENERAL_TASK, Kind.INVENTORY):
+    for kind in (Kind.PROJECT, Kind.BATCH_TASK, Kind.INVENTORY):
+        classes = INVENTORY_CLASSES if kind is Kind.INVENTORY else PROJECT_CLASSES
         for path in READ_PATHS[kind]:
-            for cls in CLASSES:
+            for cls in classes:
                 yield pytest.param(kind, path, cls, id=f"{kind.value}-{path.value}-{cls.value}")
 
 
@@ -29,34 +29,69 @@ def _tree(world, kind, cls):
     return (world.inventories if kind is Kind.INVENTORY else world.projects)[cls]
 
 
-@pytest.mark.parametrize(("kind", "path", "cls"), list(_cases()))
-def test_read_path_visibility(request, admin, user_b, world, kind, path, cls):
-    """Test that a read path exposes a record to a no-grant user only as the class allows."""
-    tree = _tree(world, kind, cls)
+def _check_visibility(request, admin, user, tree, kind, path, *, scenario, expect):
     rid, canary = tree.ids[kind], tree.canary
-    method, url, kwargs = READ_PATHS[kind][path](rid, canary)
+    method, url, kwargs = READ_PATHS[kind][path](rid, canary, tree.ids)
     token = rid if path in DIRECT else canary
 
+    def fetch(client):
+        if path is ReadPath.LIST:
+            return call_all_pages(client, method, url, token=token, **kwargs)
+        return call(client, method, url, **kwargs)
+
     def admin_sees():
-        r = call(admin, method, url, **kwargs)
+        r = fetch(admin)
         return [r] if 200 <= r.status < 300 and r.contains(token) else []
 
-    if not poll_until(admin_sees, timeout=60, interval=3):
+    timeout = 120 if path is ReadPath.DOCUMENT_SEARCH else 60
+    if not poll_until(admin_sees, timeout=timeout, interval=5):
         pytest.fail(
             f"harness error: admin never saw {token} via {path.value}; path may not index "
             "this field",
             pytrace=False,
         )
-    expect = class_expect(cls, Verb.READ, path)
     check(
         request,
-        scenario="read_path",
-        subject=f"class={cls.value}",
+        scenario=scenario,
+        subject=f"class={tree.access_class.value}",
         action=f"{kind.value}.{path.value}",
         expect=expect,
-        resp=call(user_b, method, url, **kwargs),
+        resp=fetch(user),
         canary=token,
-        detail=PRIVATE_LIST_UNDECIDED if expect is Expect.UNDECIDED else "",
+    )
+
+
+@pytest.mark.parametrize(("kind", "path", "cls"), list(_cases()))
+def test_read_path_visibility(request, admin, user_b, world, kind, path, cls):
+    """Test that a read path exposes a record to a no-grant user only as the class allows."""
+    _check_visibility(
+        request,
+        admin,
+        user_b,
+        _tree(world, kind, cls),
+        kind,
+        path,
+        scenario="read_path",
+        expect=class_expect(cls, Verb.READ, path),
+    )
+
+
+@pytest.mark.parametrize("path", list(READ_PATHS[Kind.FORMULA]), ids=lambda p: p.value)
+@pytest.mark.parametrize(
+    "cls", [AccessClass.PRIVATE, AccessClass.CONFIDENTIAL], ids=lambda c: c.value
+)
+def test_hidden_project_formula_not_on_inventory_paths(request, admin, user_b, world, cls, path):
+    """Test that a no-grant user never finds a private/confidential project's formula on an
+    inventory read path (PLSV-827; formulas inherit project ACL per PLSV-780 section 4)."""
+    _check_visibility(
+        request,
+        admin,
+        user_b,
+        world.projects[cls],
+        Kind.FORMULA,
+        path,
+        scenario="PLSV-827:formula_inventory_paths",
+        expect=Expect.DENY,
     )
 
 

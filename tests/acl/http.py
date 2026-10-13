@@ -44,3 +44,23 @@ def call(client: Albert, method: str, path: str, **kwargs) -> Response:
     except ValueError:
         body = resp.text
     return Response(status=resp.status_code, body=body)
+
+
+def call_all_pages(
+    client: Albert, method: str, path: str, *, token: str, params: dict | None = None, **kwargs
+) -> Response:
+    """Follow ``lastKey`` until ``token`` appears or the listing ends.
+
+    A non-2xx page is returned as-is so denials keep their status.
+    """
+    params = dict(params or {})
+    items: list = []
+    while True:
+        resp = call(client, method, path, params=params, **kwargs)
+        if not 200 <= resp.status < 300:
+            return resp
+        items += resp.items()
+        last_key = resp.body.get("lastKey") if isinstance(resp.body, dict) else None
+        if resp.contains(token) or not last_key:
+            return Response(resp.status, {"Items": items})
+        params["startKey"] = last_key

@@ -2,11 +2,13 @@
 
 Chains (seeded in ``world.py``):
 
-- Project -> GeneralTask -> Note / Attachment note / Notebook
+- Project -> BatchTask -> Note / Attachment note / Notebook
 - Project -> Notebook
 - Project -> Formula -> Lot
-- Project -> BatchTask
-- Inventory (private) -> Lot / Pricing / Note
+
+General and property tasks are not in the chain: they follow the caller's Tasks policies,
+not project access.
+- Inventory (confidential) -> Lot / Pricing / Note
 
 Patterns: top-only grant (children readable), no grant (every link denied, including
 children reached by id), child-only grant under a private parent (child readable, parent
@@ -23,7 +25,6 @@ from tests.acl.world import grant, revoke
 
 PROJECT_CHAIN = {
     "project": ("/api/v3/projects/{}", lambda t: t.ids[Kind.PROJECT]),
-    "general_task": ("/api/v3/tasks/{}", lambda t: t.ids[Kind.GENERAL_TASK]),
     "task_note": ("/api/v3/notes/{}", lambda t: t.ids[Kind.TASK_CHILD]),
     "task_attachment_note": ("/api/v3/notes/{}", lambda t: t.extra["task_attachment_note"]),
     "task_notebook": ("/api/v3/notebooks/{}", lambda t: t.extra["task_notebook"]),
@@ -45,7 +46,6 @@ CHAIN_POLICIES = [
     "FormulaFullAccess",
     "TasksFullAccess",
     "InventoryFullAccess",
-    "NotesFullAccess",
     "PricingFullAccess",
 ]
 
@@ -122,9 +122,9 @@ def test_inventory_chain_top_grant(request, admin, chain_user, user_ids, world, 
 
 
 def test_child_only_grant_does_not_expose_parent(request, admin, chain_user, user_ids, world):
-    """Test that a grant on a task inside a private project does not expose the project."""
+    """Test that a grant on a batch task inside a private project does not expose the project."""
     tree = world.projects[AccessClass.PRIVATE]
-    tid = tree.ids[Kind.GENERAL_TASK]
+    tid = tree.ids[Kind.BATCH_TASK]
     grant(admin, tid, user_ids["userA"], "ProjectOwner")
     try:
         path = f"/api/v3/projects/{tree.ids[Kind.PROJECT]}"

@@ -6,6 +6,7 @@ granting policy.
 """
 
 from dataclasses import dataclass
+from datetime import date
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,11 @@ ALWAYS_ON: tuple[Probe, ...] = (
 )
 
 NOT_ALWAYS_ON: tuple[Probe, ...] = (
-    Probe("activities_audit", "GET", "/api/v3/activities", {"limit": 5}),
+    Probe(
+        "activities_audit",
+        "GET",
+        "/api/v3/activities",
+        {"type": "date", "id": date.today().isoformat()},
+    ),
     Probe("roles_list", "GET", "/api/v3/acl/roles"),
 )

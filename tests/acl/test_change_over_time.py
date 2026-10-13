@@ -40,7 +40,6 @@ def project_user(switcher):
             "FormulaFullAccess",
             "TasksFullAccess",
             "InventoryFullAccess",
-            "NotesFullAccess",
             "ReportsFullAccess",
             "PricingFullAccess",
         ],
@@ -48,9 +47,17 @@ def project_user(switcher):
 
 
 def test_revoke_takes_effect_on_children(request, admin, project_user, user_ids, world):
-    """Test that after revoking a project grant, a child task becomes unreadable."""
+    """Test that after revoking a project grant, a child batch task becomes unreadable."""
     tree = world.projects[AccessClass.PRIVATE]
-    pid, tid = tree.ids[Kind.PROJECT], tree.ids[Kind.GENERAL_TASK]
+    pid, tid = tree.ids[Kind.PROJECT], tree.ids[Kind.BATCH_TASK]
+    check(
+        request,
+        scenario="change:revoke",
+        subject="no-grant",
+        action="batch_task.read_before_grant",
+        expect=Expect.DENY,
+        resp=call(project_user, "GET", f"/api/v3/tasks/{tid}"),
+    )
     grant(admin, pid, user_ids["userA"], "ProjectEditor")
     _wait_for(project_user, f"/api/v3/tasks/{tid}", want_ok=True)
     revoke(admin, pid, user_ids["userA"])
@@ -59,7 +66,7 @@ def test_revoke_takes_effect_on_children(request, admin, project_user, user_ids,
         request,
         scenario="change:revoke",
         subject="ProjectEditor",
-        action="general_task.read_after_revoke",
+        action="batch_task.read_after_revoke",
         expect=Expect.DENY,
         resp=resp,
         detail=f"delay={delay}s",

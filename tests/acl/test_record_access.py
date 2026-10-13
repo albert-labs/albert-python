@@ -19,14 +19,13 @@ from tests.acl.contract.fgc import (
 )
 from tests.acl.contract.model import Expect, Verb
 from tests.acl.http import call
-from tests.acl.world import World, grant, revoke
+from tests.acl.world import INVENTORY_CLASSES, PROJECT_CLASSES, World, grant, revoke
 
 BROAD_POLICIES = [
     "ProjectsFullAccess",
     "FormulaFullAccess",
     "TasksFullAccess",
     "InventoryFullAccess",
-    "NotesFullAccess",
     "ReportsFullAccess",
     "PricingFullAccess",
 ]
@@ -34,7 +33,6 @@ BROAD_POLICIES = [
 READ_PATH = {
     Kind.PROJECT: "/api/v3/projects/{}",
     Kind.FORMULA: "/api/v3/inventories/{}",
-    Kind.GENERAL_TASK: "/api/v3/tasks/{}",
     Kind.BATCH_TASK: "/api/v3/tasks/{}",
     Kind.LOT: "/api/v3/lots/{}",
     Kind.TASK_CHILD: "/api/v3/notes/{}",
@@ -105,8 +103,8 @@ def test_project_fgc(request, admin, broad_user, user_ids, world: World, level, 
 @pytest.mark.parametrize("level", list(INVENTORY_LEVELS.values()), ids=lambda lv: lv.level)
 @pytest.mark.parametrize("kind", [Kind.INVENTORY, Kind.LOT, Kind.INVENTORY_CHILD])
 def test_inventory_fgc_read(request, admin, broad_user, user_ids, world: World, level, kind):
-    """Test that an inventory FGC grant on a private item yields the contracted read."""
-    tree = world.inventories[AccessClass.PRIVATE]
+    """Test that an inventory FGC grant on a confidential item yields the contracted read."""
+    tree = world.inventories[AccessClass.CONFIDENTIAL]
     inv = tree.ids[Kind.INVENTORY]
     path = READ_PATH[kind].format(tree.ids[kind])
     grant(admin, inv, user_ids["userA"], level.level)
@@ -125,9 +123,11 @@ def test_inventory_fgc_read(request, admin, broad_user, user_ids, world: World, 
 
 
 @pytest.mark.parametrize(
-    "cls", [AccessClass.SHARED, AccessClass.PRIVATE, AccessClass.CONFIDENTIAL]
+    ("kind", "cls"),
+    [(Kind.PROJECT, cls) for cls in PROJECT_CLASSES]
+    + [(Kind.INVENTORY, cls) for cls in INVENTORY_CLASSES],
+    ids=lambda v: v.value,
 )
-@pytest.mark.parametrize("kind", [Kind.PROJECT, Kind.INVENTORY])
 def test_class_without_grant(request, admin, user_b, world: World, cls, kind):
     """Test that a standard user with no ACL entry gets the class-default direct read."""
     tree = (world.projects if kind is Kind.PROJECT else world.inventories)[cls]
@@ -146,7 +146,10 @@ def test_class_without_grant(request, admin, user_b, world: World, cls, kind):
 @pytest.mark.parametrize("kind", [Kind.PROJECT, Kind.INVENTORY])
 def test_share_requires_full_policy_and_owner(request, admin, switcher, user_ids, world, kind):
     """Test that Edit-level policy plus owner FGC cannot share (SDK-216 decision)."""
-    tree = (world.projects if kind is Kind.PROJECT else world.inventories)[AccessClass.PRIVATE]
+    if kind is Kind.PROJECT:
+        tree = world.projects[AccessClass.PRIVATE]
+    else:
+        tree = world.inventories[AccessClass.CONFIDENTIAL]
     rid = tree.ids[kind]
     owner = "ProjectOwner" if kind is Kind.PROJECT else "InventoryOwner"
     edit_policy = "ProjectsEditAccess" if kind is Kind.PROJECT else "InventoryEditAccess"

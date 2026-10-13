@@ -57,8 +57,8 @@ def test_note_edit_on_hidden_parent(request, user_b, world, kind):
 
 def test_note_reparent_into_hidden_record(request, admin, user_b, world):
     """Test that a user cannot move their note under a confidential record via parentId."""
-    shared_task = world.projects[AccessClass.SHARED].ids[Kind.GENERAL_TASK]
-    hidden_task = world.projects[AccessClass.CONFIDENTIAL].ids[Kind.GENERAL_TASK]
+    shared_task = world.projects[AccessClass.SHARED].ids[Kind.BATCH_TASK]
+    hidden_task = world.projects[AccessClass.CONFIDENTIAL].ids[Kind.BATCH_TASK]
     created = call(user_b, "POST", "/api/v3/notes", json={"parentId": shared_task, "note": "acl"})
     if not 200 <= created.status < 300:
         pytest.fail(

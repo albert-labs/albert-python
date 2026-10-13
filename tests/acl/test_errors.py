@@ -82,13 +82,13 @@ def test_unknown_category_is_clean(empty_user):
     assert resp.status < 500, f"unknown category returned {resp.status}"
 
 
-@pytest.mark.parametrize("kind", [Kind.PROJECT, Kind.GENERAL_TASK, Kind.INVENTORY])
+@pytest.mark.parametrize("kind", [Kind.PROJECT, Kind.BATCH_TASK, Kind.INVENTORY])
 def test_denial_is_clean(request, user_b, world, kind):
     """Test that reading a confidential record without a grant is 403/404, never 5xx."""
     tree = (world.inventories if kind is Kind.INVENTORY else world.projects)[
         AccessClass.CONFIDENTIAL
     ]
-    base = {Kind.PROJECT: "projects", Kind.GENERAL_TASK: "tasks", Kind.INVENTORY: "inventories"}
+    base = {Kind.PROJECT: "projects", Kind.BATCH_TASK: "tasks", Kind.INVENTORY: "inventories"}
     resp = call(user_b, "GET", f"/api/v3/{base[kind]}/{tree.ids[kind]}")
     check(
         request,
