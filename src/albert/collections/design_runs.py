@@ -46,11 +46,11 @@ class DesignRunCollection(BaseCollection):
         Validates a space-filling run configuration without starting a job.
     """
 
-    _api_version = "v3"
+    _api_version = "v4.0"
 
     def __init__(self, *, session: AlbertSession):
         super().__init__(session=session)
-        self.base_path = f"/api/{DesignRunCollection._api_version}/designruns"
+        self.base_path = f"/api/{DesignRunCollection._api_version}/design/runs"
 
     @validate_call
     def create_optimization(
@@ -103,6 +103,14 @@ class DesignRunCollection(BaseCollection):
             A handle to the run. Poll its ``state`` via
             ``client.btinsights.get_by_id(id=insight.id)`` for completion and view
             candidates in the insight viewer.
+
+        Raises
+        ------
+        AlbertClientError
+            The run configuration was rejected (e.g. dataset not ``READY``, objective
+            out of scope, invalid settings).
+        AlbertHTTPError
+            Other failures.
         """
         body = OptimizationDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -165,6 +173,14 @@ class DesignRunCollection(BaseCollection):
             A handle to the run. Poll its ``state`` via
             ``client.btinsights.get_by_id(id=insight.id)`` for completion and view
             candidates in the insight viewer.
+
+        Raises
+        ------
+        AlbertClientError
+            The run configuration was rejected (e.g. dataset not ``READY``, invalid
+            settings).
+        AlbertHTTPError
+            Other failures.
         """
         body = DOEDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -226,7 +242,7 @@ class DesignRunCollection(BaseCollection):
             objectives=objectives,
             settings=settings,
         ).model_dump(by_alias=True, mode="json", exclude_none=True)
-        response = self.session.post(f"{self.base_path}/validate", json=body)
+        response = self.session.post(f"{self.base_path}/validation", json=body)
         return DesignRunValidationResponse(**response.json())
 
     @validate_call
@@ -279,5 +295,5 @@ class DesignRunCollection(BaseCollection):
             settings=settings,
             anchor_targets=anchor_targets,
         ).model_dump(by_alias=True, mode="json", exclude_none=True)
-        response = self.session.post(f"{self.base_path}/validate", json=body)
+        response = self.session.post(f"{self.base_path}/validation", json=body)
         return DesignRunValidationResponse(**response.json())

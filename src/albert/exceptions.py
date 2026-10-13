@@ -52,7 +52,7 @@ class AlbertHTTPError(AlbertException):
     def _format_message(cls, response: requests.Response | httpx.Response) -> str:
         try:
             payload = response.json()
-            errors = payload.get("errors") or payload
+            errors = payload.get("errors") or payload.get("message") or payload
         except ValueError:
             errors = response.text.strip()
         reason = (
