@@ -31,11 +31,6 @@ READ_PATHS: dict[Kind, dict[ReadPath, ProbeFn]] = {
             "/api/v3/projects/suggest",
             {"params": {"text": c}},
         ),
-        P.DOCUMENT_SEARCH: lambda i, c, ids: (
-            "GET",
-            "/api/v3/projects/documentsearch",
-            {"params": {"linkedTo": i}},
-        ),
     },
     Kind.BATCH_TASK: {
         P.GET_BY_ID: lambda i, c, ids: ("GET", f"/api/v3/tasks/{i}", {}),

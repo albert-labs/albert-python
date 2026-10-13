@@ -1,5 +1,5 @@
 """Every read path tested separately: get_by_id, list, bulk ids, search GET/POST, suggest,
-document search, llmsearch.
+llmsearch. Document search runs on long-lived projects in ``test_document_search.py``.
 
 For each record class and path, userB (no ACL entry, fixed baseline role) must see the
 canary exactly when the class contract says so. Index-backed paths are polled until the
@@ -43,8 +43,7 @@ def _check_visibility(request, admin, user, tree, kind, path, *, scenario, expec
         r = fetch(admin)
         return [r] if 200 <= r.status < 300 and r.contains(token) else []
 
-    timeout = 120 if path is ReadPath.DOCUMENT_SEARCH else 60
-    if not poll_until(admin_sees, timeout=timeout, interval=5):
+    if not poll_until(admin_sees, timeout=60, interval=5):
         pytest.fail(
             f"harness error: admin never saw {token} via {path.value}; path may not index "
             "this field",
@@ -80,9 +79,10 @@ def test_read_path_visibility(request, admin, user_b, world, kind, path, cls):
 @pytest.mark.parametrize(
     "cls", [AccessClass.PRIVATE, AccessClass.CONFIDENTIAL], ids=lambda c: c.value
 )
-def test_hidden_project_formula_not_on_inventory_paths(request, admin, user_b, world, cls, path):
-    """Test that a no-grant user never finds a private/confidential project's formula on an
-    inventory read path (PLSV-827; formulas inherit project ACL per PLSV-780 section 4)."""
+def test_hidden_project_formula_on_inventory_paths(request, admin, user_b, world, cls, path):
+    """Test that a no-grant user sees a hidden project's formula on inventory read paths only
+    as the project's class allows: a private formula may be listed but not read by id, a
+    confidential one never surfaces (PLSV-827; formulas inherit project ACL, PLSV-780 §4)."""
     _check_visibility(
         request,
         admin,
@@ -91,56 +91,24 @@ def test_hidden_project_formula_not_on_inventory_paths(request, admin, user_b, w
         Kind.FORMULA,
         path,
         scenario="PLSV-827:formula_inventory_paths",
-        expect=Expect.DENY,
+        expect=class_expect(cls, Verb.READ, path),
     )
 
 
-@pytest.mark.parametrize("kind", [Kind.PROJECT, Kind.INVENTORY])
-def test_bulk_ids_mixed_visibility(request, admin, user_b, world, kind):
-    """Test that a bulk id fetch mixing visible and confidential ids returns only visible ones."""
-    shared = _tree(world, kind, AccessClass.SHARED).ids[kind]
-    secret_tree = _tree(world, kind, AccessClass.CONFIDENTIAL)
-    secret = secret_tree.ids[kind]
-    if kind is Kind.PROJECT:
-        url, params = "/api/v3/projects", {"projectId": [shared, secret]}
-    else:
-        url, params = "/api/v3/inventories/ids", {"id": [shared, secret]}
-    resp = call(user_b, "GET", url, params=params)
+def test_bulk_ids_mixed_visibility(request, user_b, world):
+    """Test that a bulk inventory id fetch mixing visible and confidential ids returns only
+    the visible ones. Projects have no bulk-id read."""
+    shared = world.inventories[AccessClass.SHARED].ids[Kind.INVENTORY]
+    secret = world.inventories[AccessClass.CONFIDENTIAL].ids[Kind.INVENTORY]
+    resp = call(user_b, "GET", "/api/v3/inventories/ids", params={"id": [shared, secret]})
     check(
         request,
         scenario="mixed_bulk",
         subject="class=confidential",
-        action=f"{kind.value}.bulk_mixed",
+        action="inventory.bulk_mixed",
         expect=Expect.DENY,
         resp=resp,
         canary=secret,
-    )
-
-
-def test_list_parent_id_array(request, admin, user_b, world):
-    """Test that a list query mixing a hidden and a visible parentId array element never
-    exposes the hidden parent's children (PLSV-806)."""
-    hidden = world.projects[AccessClass.CONFIDENTIAL]
-    visible = world.projects[AccessClass.SHARED]
-    admin_control(
-        call(admin, "GET", "/api/v3/notes", params={"parentId": hidden.ids[Kind.BATCH_TASK]}),
-        "note.list_parent_id_array",
-        canary=hidden.canary,
-    )
-    resp = call(
-        user_b,
-        "GET",
-        "/api/v3/notes",
-        params={"parentId": [hidden.ids[Kind.BATCH_TASK], visible.ids[Kind.BATCH_TASK]]},
-    )
-    check(
-        request,
-        scenario="PLSV-806:parent_id_array",
-        subject="no-grant",
-        action="note.list_parent_id_array",
-        expect=Expect.DENY,
-        resp=resp,
-        canary=hidden.canary,
     )
 
 

@@ -12,9 +12,7 @@ from tests.acl.report import Row, record
 def live_policies(admin: Albert) -> dict[str, dict]:
     resp = call(admin, "GET", "/api/v3/acl/policies")
     assert resp.status == 200, f"getPolicies failed: {resp.status}"
-    body = resp.body
-    items = body[0].get("Items") if isinstance(body, list) and body else resp.items()
-    return {p["id"]: p for p in items or []}
+    return {p["id"]: p for p in resp.items()}
 
 
 def test_every_contracted_policy_exists(request, live_policies):

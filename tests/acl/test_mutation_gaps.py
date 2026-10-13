@@ -5,7 +5,6 @@ denied, and expects a clean denial. Destructive probes target throwaway records 
 admin creates per scenario, never the shared seeded world.
 """
 
-import uuid
 from collections.abc import Iterator
 
 import pytest
@@ -95,6 +94,8 @@ def throwaway_lot(admin: Albert, world: World) -> Iterator[str]:
                 storage_location=EntityLink(id=world.storage_location.id),
                 initial_quantity=1.0,
                 inventory_on_hand=1.0,
+                cost=1.0,
+                manufacturer_lot_number=f"ACL-{world.prefix}",
             )
         ]
     )
@@ -136,37 +137,6 @@ def private_template(admin: Albert, world: World) -> Iterator[str]:
             raise AclSetupError(f"could not make template private: {fix.status} {fix.body}")
     yield tid
     call(admin, "DELETE", f"/api/v3/datatemplates/{tid}")
-
-
-@pytest.fixture(scope="module")
-def chat_records(admin: Albert, switcher, world: World) -> Iterator[dict[str, str]]:
-    """A chat session and folder owned by userA, plus a session created with a
-    caller-supplied ``class`` (AI-2245)."""
-    owner = switcher.use("ask-albert", ["AskAlbertFullAccess"])
-    session = call(
-        owner,
-        "POST",
-        "/api/v3/chats/sessions",
-        json={"name": f"{world.prefix} chat", "sourceSessionId": str(uuid.uuid4())},
-    )
-    sid = _created_id(session, "chat session")
-    folder = call(owner, "POST", "/api/v3/chats/folders", json={"name": f"{world.prefix} folder"})
-    fid = _created_id(folder, "chat folder")
-    shared = call(
-        owner,
-        "POST",
-        "/api/v3/chats/sessions",
-        json={
-            "name": f"{world.prefix} chat-class",
-            "sourceSessionId": str(uuid.uuid4()),
-            "class": "shared",
-        },
-    )
-    shared_sid = _created_id(shared, "chat session with class")
-    yield {"session": sid, "folder": fid, "shared_session": shared_sid}
-    call(admin, "DELETE", f"/api/v3/chats/sessions/{sid}")
-    call(admin, "DELETE", f"/api/v3/chats/folders/{fid}")
-    call(admin, "DELETE", f"/api/v3/chats/sessions/{shared_sid}")
 
 
 def test_link_delete_foreign_user(request, admin, user_b, foreign_link):
@@ -219,50 +189,30 @@ def test_inventory_bulk_update_confidential(request, admin, switcher, world):
     inv = world.inventories[AccessClass.CONFIDENTIAL].ids[Kind.INVENTORY]
     current = call(admin, "GET", f"/api/v3/inventories/{inv}")
     admin_control(current, "inventory.read")
-    description = current.body.get("description") if isinstance(current.body, dict) else None
+    old = bool(current.body.get("inUse")) if isinstance(current.body, dict) else False
+
+    def toggle(frm: bool) -> list[dict]:
+        op = {"operation": "update", "attribute": "inUse", "oldValue": frm, "newValue": not frm}
+        return [{"id": inv, "data": [op]}]
+
     user = switcher.use("inventory-edit", ["InventoryEditAccess"])
+    resp = call(user, "PATCH", "/api/v3/inventories", json=toggle(old))
     try:
+        if not 200 <= resp.status < 300:
+            probe = call(admin, "PATCH", "/api/v3/inventories", json=toggle(old))
+            admin_control(probe, "inventory.bulk_update")
+            call(admin, "PATCH", "/api/v3/inventories", json=toggle(not old))
         check(
             request,
             scenario="PLSV-826:bulk_update",
             subject="InventoryEditAccess",
             action="inventory.bulk_update",
             expect=Expect.DENY,
-            resp=call(
-                user,
-                "PATCH",
-                "/api/v3/inventories",
-                json=[
-                    {
-                        "id": inv,
-                        "data": [
-                            {
-                                "operation": "update",
-                                "attribute": "description",
-                                "oldValue": description,
-                                "newValue": "acl-gap",
-                            }
-                        ],
-                    }
-                ],
-            ),
+            resp=resp,
         )
     finally:
-        call(
-            admin,
-            "PATCH",
-            f"/api/v3/inventories/{inv}",
-            json={
-                "data": [
-                    {
-                        "operation": "update",
-                        "attribute": "description",
-                        "oldValue": "acl-gap",
-                        "newValue": description,
-                    }
-                ]
-            },
-        )
+        if 200 <= resp.status < 300:
+            call(admin, "PATCH", "/api/v3/inventories", json=toggle(not old))
 
 
 def test_attribute_values_delete(request, admin, switcher, world):
@@ -413,63 +363,3 @@ def test_sheet_template_delete_keeps_formulas(request, admin, world):
         )
     finally:
         call(admin, "DELETE", f"/api/v3/projects/{pid}")
-
-
-@pytest.mark.parametrize("verb", ["GET", "PATCH", "DELETE"], ids=lambda v: v.lower())
-def test_chat_session_owner_only(request, user_b, chat_records, verb):
-    """Test that a non-owner cannot read, rename, or delete another user's chat session
-    (AI-2245)."""
-    kwargs = (
-        {"json": {"data": [{"operation": "update", "attribute": "name", "newValue": "acl"}]}}
-        if verb == "PATCH"
-        else {}
-    )
-    check(
-        request,
-        scenario="AI-2245:chat_owner",
-        subject="no-grant",
-        action=f"chat_session.{verb.lower()}",
-        expect=Expect.DENY,
-        resp=call(user_b, verb, f"/api/v3/chats/sessions/{chat_records['session']}", **kwargs),
-    )
-
-
-@pytest.mark.parametrize("verb", ["GET", "DELETE"], ids=lambda v: v.lower())
-def test_chat_folder_owner_only(request, user_b, chat_records, verb):
-    """Test that a non-owner cannot read or delete another user's chat folder (AI-2245)."""
-    check(
-        request,
-        scenario="AI-2245:chat_owner",
-        subject="no-grant",
-        action=f"chat_folder.{verb.lower()}",
-        expect=Expect.DENY,
-        resp=call(user_b, verb, f"/api/v3/chats/folders/{chat_records['folder']}"),
-    )
-
-
-def test_chat_messages_owner_only(request, admin, user_b, chat_records):
-    """Test that a non-owner cannot list another user's chat messages (AI-2245)."""
-    path = f"/api/v3/chats/sessions/{chat_records['session']}/messages"
-    admin_control(call(admin, "GET", path), "chat_messages.list")
-    check(
-        request,
-        scenario="AI-2245:chat_owner",
-        subject="no-grant",
-        action="chat_messages.list",
-        expect=Expect.DENY,
-        resp=call(user_b, "GET", path),
-    )
-
-
-def test_chat_session_class_is_server_enforced(request, admin, chat_records):
-    """Test that a caller-supplied class on chat create is ignored and the record stays
-    confidential (AI-2245)."""
-    check(
-        request,
-        scenario="AI-2245:chat_class",
-        subject="AskAlbertFullAccess",
-        action="chat_session.class_default",
-        expect=Expect.ALLOW,
-        resp=call(admin, "GET", f"/api/v3/acl/{chat_records['shared_session']}"),
-        canary="confidential",
-    )

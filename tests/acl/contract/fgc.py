@@ -4,13 +4,15 @@ Sources: FGC level names, PLSV-780 §3, the class matrix in the ACL functional s
 AN-1204 (private records are listable, not directly readable), PLSV-827 (private contents
 such as documents and formulas never surface without a grant), and
 Lenore's SDK-216 decisions (ProjectAllTask sees formulas and batch tasks;
-ProjectPropertyTask sees only the lots its property tasks test; ProjectViewer is the
-legacy technician; sharing needs a Full policy plus an owner-level FGC; project delete is
+ProjectViewer is the
+legacy technician; a ProjectOwner may share a project, inventory sharing needs a Full
+policy plus an owner-level FGC; project delete is
 admin-only). Cells marked undecided are open product questions and skip with a reason.
 
 Only batch tasks inherit project access. General and property tasks are governed by the
 caller's Tasks policies, never by the parent project's FGC or class, so they have no cells
-here (``POLICY_TASKS``).
+here (``POLICY_TASKS``). For the same reason ``ProjectPropertyTask`` is not a project
+level: it is gated by the normal property-task policies, not by the project.
 """
 
 from dataclasses import dataclass, field
@@ -105,17 +107,6 @@ PROJECT_LEVELS: dict[str, LevelContract] = {
             K.PROJECT_CHILD: frozenset({R}),
         },
     ),
-    "ProjectPropertyTask": LevelContract(
-        "ProjectPropertyTask",
-        {
-            K.PROJECT: RO,
-            K.LOT: RU,
-            K.REPORT: frozenset({R, C}),
-        },
-        undecided={
-            K.PROJECT_CHILD: frozenset({R}),
-        },
-    ),
     "ProjectStrictViewer": LevelContract(
         "ProjectStrictViewer",
         {
@@ -146,10 +137,7 @@ INVENTORY_LEVELS: dict[str, LevelContract] = {
     ),
 }
 
-SHARE_REQUIRES_FULL_POLICY = {
-    K.PROJECT: "ProjectsFullAccess",
-    K.INVENTORY: "InventoryFullAccess",
-}
+SHARE_REQUIRES_FULL_POLICY = {K.INVENTORY: "InventoryFullAccess"}
 
 OWNER_LEVELS = frozenset({"ProjectOwner", "InventoryOwner"})
 

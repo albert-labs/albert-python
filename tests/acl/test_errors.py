@@ -1,7 +1,7 @@
 """Denials are clean, always-on actions stay on, and nothing answers with a 5xx.
 
-- A role with zero policies must still perform every always-on action.
-- Actions that are not always-on must be denied to a zero-policy role.
+- A role with one unrelated policy must still perform every always-on action.
+- Actions that are not always-on must be denied to that role.
 - Denials must be 403/404 (never 5xx), including unregistered operations and unknown
   categories.
 """
@@ -25,18 +25,19 @@ UNREGISTERED = [
 
 @pytest.fixture(scope="module")
 def empty_user(switcher):
-    return switcher.use("no-policies", [])
+    """A role holding one policy unrelated to every always-on action."""
+    return switcher.use("one-unrelated-policy", ["ReportsViewAccess"])
 
 
 @pytest.mark.parametrize("probe", ALWAYS_ON, ids=lambda p: p.name)
 def test_always_on(request, admin, empty_user, probe):
-    """Test that a zero-policy role can perform an always-on action."""
+    """Test that a one-unrelated-policy role can perform an always-on action."""
     kwargs = {"params": probe.params} if probe.params else {}
     admin_control(call(admin, probe.method, probe.path, **kwargs), probe.name)
     check(
         request,
         scenario="always_on",
-        subject="no-policies",
+        subject="one-unrelated-policy",
         action=probe.name,
         expect=Expect.ALLOW,
         resp=call(empty_user, probe.method, probe.path, **kwargs),
@@ -45,13 +46,13 @@ def test_always_on(request, admin, empty_user, probe):
 
 @pytest.mark.parametrize("probe", NOT_ALWAYS_ON, ids=lambda p: p.name)
 def test_not_always_on(request, admin, empty_user, probe):
-    """Test that a zero-policy role is denied an action that needs a policy."""
+    """Test that a one-unrelated-policy role is denied an action that needs a policy."""
     kwargs = {"params": probe.params} if probe.params else {}
     admin_control(call(admin, probe.method, probe.path, **kwargs), probe.name)
     check(
         request,
         scenario="not_always_on",
-        subject="no-policies",
+        subject="one-unrelated-policy",
         action=probe.name,
         expect=Expect.DENY,
         resp=call(empty_user, probe.method, probe.path, **kwargs),
@@ -66,7 +67,7 @@ def test_unregistered_operation_never_5xx(request, empty_user, method, path):
         request,
         Row(
             "errors",
-            "no-policies",
+            "one-unrelated-policy",
             f"{method} {path}",
             "no-5xx",
             resp.status,

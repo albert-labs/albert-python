@@ -41,20 +41,25 @@ READ_PATH = {
     Kind.INVENTORY_CHILD: "/api/v3/notes/{}",
 }
 
-UPDATE_BODY = {
-    Kind.PROJECT: lambda: {
-        "data": [{"operation": "update", "attribute": "description", "newValue": "acl-edit"}]
-    },
-    Kind.TASK_CHILD: lambda: {
-        "data": [{"operation": "update", "attribute": "note", "newValue": "acl-edit"}]
-    },
-    Kind.INVENTORY: lambda: {
-        "data": [{"operation": "update", "attribute": "description", "newValue": "acl-edit"}]
-    },
-    Kind.LOT: lambda: {
-        "data": [{"operation": "update", "attribute": "notes", "newValue": "acl-edit"}]
-    },
+# (attribute, new value from old). Edits append so the seeded canary stays searchable.
+UPDATE_ATTR = {
+    Kind.PROJECT: ("description", lambda old: f"{old} e"),
+    Kind.TASK_CHILD: ("note", lambda old: f"{old} e"),
+    Kind.INVENTORY: ("description", lambda old: f"{old} e"),
+    Kind.LOT: ("inventoryOnHand", lambda old: (old or 0) + 1),
 }
+
+
+def update_body(admin: Albert, kind: Kind, path: str) -> dict:
+    current = call(admin, "GET", path)
+    admin_control(current, f"{kind.value}.read")
+    attribute, new = UPDATE_ATTR[kind]
+    old = current.body.get(attribute)
+    return {
+        "data": [
+            {"operation": "update", "attribute": attribute, "oldValue": old, "newValue": new(old)}
+        ]
+    }
 
 
 @pytest.fixture(scope="module")
@@ -68,7 +73,7 @@ def _project_cases():
             if kind in (Kind.INVENTORY, Kind.INVENTORY_CHILD):
                 continue
             yield pytest.param(level, kind, Verb.READ, id=f"{level.level}-{kind.value}-read")
-        for kind in UPDATE_BODY:
+        for kind in UPDATE_ATTR:
             if kind in (Kind.INVENTORY,):
                 continue
             yield pytest.param(level, kind, Verb.UPDATE, id=f"{level.level}-{kind.value}-update")
@@ -87,7 +92,7 @@ def test_project_fgc(request, admin, broad_user, user_ids, world: World, level, 
             admin_control(call(admin, "GET", path), f"{kind.value}.read")
             resp = call(broad_user, "GET", path)
         else:
-            resp = call(broad_user, "PATCH", path, json=UPDATE_BODY[kind]())
+            resp = call(broad_user, "PATCH", path, json=update_body(admin, kind, path))
         check(
             request,
             scenario="record_fgc",
@@ -144,8 +149,9 @@ def test_class_without_grant(request, admin, user_b, world: World, cls, kind):
 
 
 @pytest.mark.parametrize("kind", [Kind.PROJECT, Kind.INVENTORY])
-def test_share_requires_full_policy_and_owner(request, admin, switcher, user_ids, world, kind):
-    """Test that Edit-level policy plus owner FGC cannot share (SDK-216 decision)."""
+def test_share_with_edit_policy_and_owner(request, admin, switcher, user_ids, world, kind):
+    """Test sharing with an Edit-level policy plus an owner FGC: a ProjectOwner may share a
+    project; an inventory share still needs Inventory Full Access (SDK-216)."""
     if kind is Kind.PROJECT:
         tree = world.projects[AccessClass.PRIVATE]
     else:
@@ -175,7 +181,7 @@ def test_share_requires_full_policy_and_owner(request, admin, switcher, user_ids
             scenario="share",
             subject=f"{edit_policy}+{owner}",
             action=f"{kind.value}.share",
-            expect=Expect.DENY,
+            expect=Expect.ALLOW if kind is Kind.PROJECT else Expect.DENY,
             resp=resp,
         )
     finally:

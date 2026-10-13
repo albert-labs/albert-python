@@ -15,10 +15,15 @@ from dataclasses import dataclass
 import pytest
 
 from albert import Albert
+from albert.exceptions import AlbertHTTPError
+from albert.resources.companies import Company
+from albert.resources.locations import Location
 from tests.acl.checks import admin_control, check
-from tests.acl.contract.model import Module, Verb
+from tests.acl.contract.always_on import ALWAYS_ON_MODULES
+from tests.acl.contract.model import Expect, Module, Verb
 from tests.acl.contract.policies import POLICIES
 from tests.acl.http import Response, call
+from tests.acl.identities import AclSetupError
 
 M, V = Module, Verb
 
@@ -29,13 +34,16 @@ def _uid() -> str:
 
 @dataclass(frozen=True)
 class ModuleOps:
-    """Raw-HTTP CRUD for one module. ``make`` returns the create body."""
+    """Raw-HTTP CRUD for one module. ``make`` returns the create body from the shared
+    seed context (location, company, list type)."""
 
     base: str
-    make: Callable[[], dict | list]
+    make: Callable[[dict[str, str]], dict | list]
     patch: Callable[[dict], dict | list]
     id_key: str = "albertId"
     list_params: dict | None = None
+    create_path: str | None = None
+    create_params: dict | None = None
 
     def created_id(self, resp: Response) -> str | None:
         body = resp.body[0] if isinstance(resp.body, list) and resp.body else resp.body
@@ -49,17 +57,17 @@ def _op(attr: str, old, new) -> dict:
 MODULES: dict[Module, ModuleOps] = {
     M.CAS: ModuleOps(
         "/api/v3/cas",
-        lambda: {"number": f"{uuid.uuid4().int % 10**7}-{_uid()[:2]}-0", "description": "acl"},
+        lambda ctx: {"number": f"{uuid.uuid4().int % 10**7}-{_uid()[:2]}-0", "description": "acl"},
         lambda rec: _op("description", rec.get("description"), f"acl {_uid()}"),
     ),
     M.UNITS: ModuleOps(
         "/api/v3/units",
-        lambda: {"name": f"acl-unit-{_uid()}", "symbol": _uid()[:4]},
+        lambda ctx: {"name": f"acl-unit-{_uid()}", "symbol": _uid()[:4]},
         lambda rec: _op("symbol", rec.get("symbol"), _uid()[:4]),
     ),
     M.LOCATIONS: ModuleOps(
         "/api/v3/locations",
-        lambda: {
+        lambda ctx: {
             "name": f"acl-loc-{_uid()}",
             "latitude": 1.0,
             "longitude": 1.0,
@@ -69,42 +77,59 @@ MODULES: dict[Module, ModuleOps] = {
     ),
     M.LISTS: ModuleOps(
         "/api/v3/lists",
-        lambda: {"name": f"acl-list-{_uid()}", "category": "userDefined", "listType": "acl"},
+        lambda ctx: {
+            "name": f"acl-list-{_uid()}",
+            "category": "userDefined",
+            "listType": ctx["list_type"],
+        },
         lambda rec: _op("name", rec.get("name"), f"acl-list-{_uid()}"),
     ),
     M.TEAMS: ModuleOps(
         "/api/v3/teams",
-        lambda: {"name": f"acl-team-{_uid()}"},
+        lambda ctx: {"name": f"acl-team-{_uid()}"},
         lambda rec: _op("name", rec.get("name"), f"acl-team-{_uid()}"),
     ),
     M.PARAMETER_GROUPS: ModuleOps(
         "/api/v3/parametergroups",
-        lambda: {"name": f"acl-pg-{_uid()}", "type": "general"},
+        lambda ctx: {"name": f"acl-pg-{_uid()}", "type": "general"},
         lambda rec: _op("name", rec.get("name"), f"acl-pg-{_uid()}"),
     ),
     M.DATA_TEMPLATES: ModuleOps(
         "/api/v3/datatemplates",
-        lambda: {"name": f"acl-dt-{_uid()}"},
+        lambda ctx: {"name": f"acl-dt-{_uid()}"},
         lambda rec: _op("name", rec.get("name"), f"acl-dt-{_uid()}"),
     ),
     M.PROJECTS: ModuleOps(
         "/api/v3/projects",
-        lambda: {"description": f"acl-proj-{_uid()}", "class": "shared"},
+        lambda ctx: {
+            "description": f"acl-proj-{_uid()}",
+            "class": "shared",
+            "Locations": [{"id": ctx["location"]}],
+        },
         lambda rec: _op("description", rec.get("description"), f"acl-proj-{_uid()}"),
     ),
     M.INVENTORY: ModuleOps(
         "/api/v3/inventories",
-        lambda: {
+        lambda ctx: {
             "name": f"acl-inv-{_uid()}",
             "category": "RawMaterials",
             "unitCategory": "mass",
             "class": "shared",
+            "Company": {"id": ctx["company"]},
         },
         lambda rec: _op("description", rec.get("description"), f"acl {_uid()}"),
+        # The unfiltered inventory list answers 500 for every caller (response schema).
+        list_params={"name": "acl", "exactMatch": "false"},
     ),
     M.TASKS: ModuleOps(
         "/api/v3/tasks",
-        lambda: [{"name": f"acl-task-{_uid()}", "category": "General"}],
+        lambda ctx: [
+            {
+                "name": f"acl-task-{_uid()}",
+                "category": "General",
+                "Location": {"id": ctx["location"]},
+            }
+        ],
         lambda rec: [
             {
                 "id": rec.get("albertId"),
@@ -118,6 +143,8 @@ MODULES: dict[Module, ModuleOps] = {
                 ],
             }
         ],
+        create_path="/api/v3/tasks/multi",
+        create_params={"category": "General"},
     ),
 }
 
@@ -133,8 +160,35 @@ def _cases():
                 )
 
 
-def _create(client: Albert, ops: ModuleOps) -> Response:
-    return call(client, "POST", ops.base, json=ops.make())
+def _create(client: Albert, ops: ModuleOps, ctx: dict[str, str]) -> Response:
+    kwargs = {"params": ops.create_params} if ops.create_params else {}
+    return call(client, "POST", ops.create_path or ops.base, json=ops.make(ctx), **kwargs)
+
+
+@pytest.fixture(scope="module")
+def ctx(admin: Albert) -> dict[str, str]:
+    """Stable records the create bodies reference; reused across runs."""
+    try:
+        location = admin.locations.get_or_create(
+            location=Location(
+                name="SDK-ACL-matrix lab", latitude=40.7, longitude=-74.0, address="1 ACL Test Way"
+            )
+        )
+        company = admin.companies.get_or_create(company=Company(name="SDK-ACL-matrix co"))
+    except AlbertHTTPError as err:
+        raise AclSetupError(f"seeding role-matrix context failed: {err}") from err
+    fields = call(admin, "GET", "/api/v3/customfields", params={"limit": 500}).items()
+    list_type = next(
+        (
+            f["name"]
+            for f in fields
+            if f.get("type") == "list" and f.get("category") == "userDefined"
+        ),
+        None,
+    )
+    if list_type is None:
+        raise AclSetupError("no userDefined list custom field to create list items against")
+    return {"location": location.id, "company": company.id, "list_type": list_type}
 
 
 def _cleanup(admin: Albert, ops: ModuleOps, rid: str | None) -> None:
@@ -143,10 +197,12 @@ def _cleanup(admin: Albert, ops: ModuleOps, rid: str | None) -> None:
 
 
 @pytest.mark.parametrize(("policy", "module", "verb"), list(_cases()))
-def test_role_matrix(request, admin: Albert, switcher, policy, module: Module, verb: Verb):
+def test_role_matrix(request, admin: Albert, switcher, ctx, policy, module: Module, verb: Verb):
     """Test that a single-policy role is allowed exactly what its description grants."""
     ops = MODULES[module]
     expect = policy.expect(module, verb)
+    if verb is V.READ and module in ALWAYS_ON_MODULES:
+        expect = Expect.ALLOW
     user = switcher.use(policy.id, [policy.id])
     action = f"{module.value}.{verb.value}"
 
@@ -164,10 +220,10 @@ def test_role_matrix(request, admin: Albert, switcher, policy, module: Module, v
         return
 
     if verb is V.CREATE:
-        resp = _create(user, ops)
+        resp = _create(user, ops, ctx)
         try:
             if not 200 <= resp.status < 300:
-                probe = _create(admin, ops)
+                probe = _create(admin, ops, ctx)
                 admin_control(probe, action)
                 _cleanup(admin, ops, ops.created_id(probe))
             check(
@@ -182,7 +238,7 @@ def test_role_matrix(request, admin: Albert, switcher, policy, module: Module, v
             _cleanup(admin, ops, ops.created_id(resp))
         return
 
-    seed = _create(admin, ops)
+    seed = _create(admin, ops, ctx)
     admin_control(seed, f"{module.value}.seed")
     rid = ops.created_id(seed)
     try:

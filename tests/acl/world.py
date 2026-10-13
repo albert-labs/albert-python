@@ -144,7 +144,7 @@ def _seed_inventory(admin: Albert, world: World, cls: AccessClass) -> Tree:
         f"{cls} inventory",
         lambda: admin.inventory.create(
             inventory_item=InventoryItem(
-                name=f"{world.prefix} {canary} RM {cls.value}",
+                name=f"{canary} {world.prefix} RM {cls.value}",
                 description=f"ACL canary {canary}",
                 category=InventoryCategory.RAW_MATERIALS,
                 unit_category=InventoryUnitCategory.MASS,

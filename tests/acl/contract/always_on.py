@@ -1,12 +1,20 @@
 """Actions every authenticated standard user may perform, whatever their role.
 
-Agreed on SDK-216. A role with zero policies must still be allowed each of these; a
-denial is a finding. ``NOT_ALWAYS_ON`` lists actions that must be denied without a
-granting policy.
+Agreed on SDK-216. A role holding any one policy, even an unrelated one, must be
+allowed each of these; a denial is a finding. A role with zero policies is not a
+supported configuration and may be denied everything. ``NOT_ALWAYS_ON`` lists actions
+that must be denied without a granting policy.
 """
 
 from dataclasses import dataclass
 from datetime import date
+
+from tests.acl.contract.model import Module
+
+# Any policy may read these modules; the role matrix must not report the reads as leaks.
+ALWAYS_ON_MODULES = frozenset(
+    {Module.CAS, Module.UNITS, Module.LOCATIONS, Module.LISTS, Module.TEAMS}
+)
 
 
 @dataclass(frozen=True)

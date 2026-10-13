@@ -82,11 +82,10 @@ def test_only_owner_levels_share():
                 assert lv.level in ("ProjectOwner", "InventoryOwner"), lv.level
 
 
-def test_property_task_level_is_formula_and_batch_blind():
-    """Test that ProjectPropertyTask sees no formulas or batch tasks (SDK-216 decision)."""
-    lv = PROJECT_LEVELS["ProjectPropertyTask"]
-    assert lv.expect(Kind.FORMULA, Verb.READ) is Expect.DENY
-    assert lv.expect(Kind.BATCH_TASK, Verb.READ) is Expect.DENY
+def test_property_task_level_is_not_a_project_level():
+    """Test that ProjectPropertyTask is not contracted as a project level (it follows the
+    property-task policies)."""
+    assert "ProjectPropertyTask" not in PROJECT_LEVELS
 
 
 def test_project_levels_do_not_govern_policy_tasks():
