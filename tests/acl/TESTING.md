@@ -31,9 +31,13 @@ Output: `acl-report/acl-report.md` and `.csv`, with findings grouped by policy o
   - 400 is inconclusive (a probe bug, not a finding).
 - Every check runs an admin positive control first. If admin fails, it is a harness
   error, not a finding. Seed and identity problems raise `AclSetupError`.
-- Each read path (get_by_id, list, bulk ids, search GET/POST, suggest, document search,
-  llmsearch) is a separate action and report row. List paths use raw HTTP, never SDK
-  `get_all`.
+- This is an SDK suite: only probe routes an SDK method calls, with the method and request
+  shape that method sends. Routes the SDK cannot reach (suggest, plain project/task/inventory
+  lists, tenant-wide document search, parent-keyed deletes, `/acl/{id}`, class changes) are
+  out of scope. Harness setup run as admin may use other routes.
+- Each read path (get_by_id, bulk ids, search GET/POST, document search, llmsearch) is a
+  separate action and report row. Probes may send the request directly (to see the exact
+  status) as long as an SDK method sends the same request.
 
 ## Mechanics
 

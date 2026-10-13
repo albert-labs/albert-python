@@ -21,7 +21,7 @@ from tests.acl.contract.fgc import AccessClass, Kind
 from tests.acl.contract.model import Expect
 from tests.acl.http import call
 from tests.acl.identities import AclSetupError
-from tests.acl.world import World, grant, revoke
+from tests.acl.world import World
 
 
 def _created_id(resp, what: str) -> str:
@@ -46,22 +46,6 @@ def _create_project(admin: Albert, world: World, cls: ProjectClass) -> str:
     except AlbertHTTPError as err:
         raise AclSetupError(f"seeding {cls.value} project failed: {err}") from err
     return project.id
-
-
-@pytest.fixture(scope="module")
-def private_project(admin: Albert, world: World) -> Iterator[str]:
-    """A throwaway private project, the target for parent-keyed deletes (PLSV-813)."""
-    pid = _create_project(admin, world, ProjectClass.PRIVATE)
-    yield pid
-    call(admin, "DELETE", f"/api/v3/projects/{pid}")
-
-
-@pytest.fixture(scope="module")
-def shared_project(admin: Albert, world: World) -> Iterator[str]:
-    """A throwaway shared project, the target for class changes (PLSV-829)."""
-    pid = _create_project(admin, world, ProjectClass.SHARED)
-    yield pid
-    call(admin, "DELETE", f"/api/v3/projects/{pid}")
 
 
 @pytest.fixture(scope="module")
@@ -106,39 +90,6 @@ def throwaway_lot(admin: Albert, world: World) -> Iterator[str]:
     call(admin, "DELETE", "/api/v3/lots", params={"id": lid})
 
 
-@pytest.fixture(scope="module")
-def private_template(admin: Albert, world: World) -> Iterator[str]:
-    """A private data template, the target for a class change (PLSV-830)."""
-    resp = call(
-        admin,
-        "POST",
-        "/api/v3/datatemplates",
-        json={"name": f"{world.prefix} acl-template", "class": "private"},
-    )
-    tid = _created_id(resp, "data template")
-    current = call(admin, "GET", f"/api/v3/datatemplates/{tid}")
-    if isinstance(current.body, dict) and current.body.get("class") != "private":
-        fix = call(
-            admin,
-            "PATCH",
-            f"/api/v3/datatemplates/{tid}",
-            json={
-                "data": [
-                    {
-                        "operation": "update",
-                        "attribute": "class",
-                        "oldValue": current.body.get("class"),
-                        "newValue": "private",
-                    }
-                ]
-            },
-        )
-        if fix.status >= 300:
-            raise AclSetupError(f"could not make template private: {fix.status} {fix.body}")
-    yield tid
-    call(admin, "DELETE", f"/api/v3/datatemplates/{tid}")
-
-
 def test_link_delete_foreign_user(request, admin, user_b, foreign_link):
     """Test that a standard user cannot delete another user's link (PLSV-826)."""
     admin_control(call(admin, "GET", f"/api/v3/links/{foreign_link}"), "link.read")
@@ -149,22 +100,6 @@ def test_link_delete_foreign_user(request, admin, user_b, foreign_link):
         action="link.delete",
         expect=Expect.DENY,
         resp=call(user_b, "DELETE", f"/api/v3/links/{foreign_link}"),
-    )
-
-
-@pytest.mark.parametrize("base", ["tasks", "inventories"], ids=lambda b: b)
-def test_parent_keyed_delete(request, admin, user_b, private_project, base):
-    """Test that a no-grant user cannot run a parent-keyed delete against a private
-    project (PLSV-813)."""
-    path = f"/api/v3/{base}/project/{private_project}"
-    admin_control(call(admin, "GET", f"/api/v3/projects/{private_project}"), f"{base}.parent")
-    check(
-        request,
-        scenario="PLSV-813:parent_delete",
-        subject="no-grant",
-        action=f"{base}.delete_by_parent",
-        expect=Expect.DENY,
-        resp=call(user_b, "DELETE", path),
     )
 
 
@@ -189,19 +124,23 @@ def test_inventory_bulk_update_confidential(request, admin, switcher, world):
     inv = world.inventories[AccessClass.CONFIDENTIAL].ids[Kind.INVENTORY]
     current = call(admin, "GET", f"/api/v3/inventories/{inv}")
     admin_control(current, "inventory.read")
-    old = bool(current.body.get("inUse")) if isinstance(current.body, dict) else False
+    old = float(current.body.get("onHand") or 0) if isinstance(current.body, dict) else 0.0
 
-    def toggle(frm: bool) -> list[dict]:
-        op = {"operation": "update", "attribute": "inUse", "oldValue": frm, "newValue": not frm}
-        return [{"id": inv, "data": [op]}]
+    def set_on_hand(value: float) -> list[dict]:
+        return [
+            {
+                "id": inv,
+                "data": [{"operation": "update", "attribute": "onHand", "newValue": value}],
+            }
+        ]
 
     user = switcher.use("inventory-edit", ["InventoryEditAccess"])
-    resp = call(user, "PATCH", "/api/v3/inventories", json=toggle(old))
+    resp = call(user, "PATCH", "/api/v3/inventories", json=set_on_hand(old + 1))
     try:
         if not 200 <= resp.status < 300:
-            probe = call(admin, "PATCH", "/api/v3/inventories", json=toggle(old))
+            probe = call(admin, "PATCH", "/api/v3/inventories", json=set_on_hand(old + 1))
             admin_control(probe, "inventory.bulk_update")
-            call(admin, "PATCH", "/api/v3/inventories", json=toggle(not old))
+            call(admin, "PATCH", "/api/v3/inventories", json=set_on_hand(old))
         check(
             request,
             scenario="PLSV-826:bulk_update",
@@ -212,7 +151,7 @@ def test_inventory_bulk_update_confidential(request, admin, switcher, world):
         )
     finally:
         if 200 <= resp.status < 300:
-            call(admin, "PATCH", "/api/v3/inventories", json=toggle(not old))
+            call(admin, "PATCH", "/api/v3/inventories", json=set_on_hand(old))
 
 
 def test_attribute_values_delete(request, admin, switcher, world):
@@ -237,86 +176,6 @@ def test_attribute_values_delete(request, admin, switcher, world):
             "DELETE",
             f"/api/v3/attributes/values/{inv}",
             params={"attributeId": [attribute_id]},
-        ),
-    )
-
-
-def test_project_class_change(request, admin, switcher, user_ids, shared_project):
-    """Test that only an owner-level grant may change a project's class (PLSV-829)."""
-    body = {
-        "data": [
-            {
-                "operation": "update",
-                "attribute": "class",
-                "oldValue": "shared",
-                "newValue": "confidential",
-            }
-        ]
-    }
-    path = f"/api/v3/projects/{shared_project}"
-    grant(admin, shared_project, user_ids["userA"], "ProjectEditor")
-    try:
-        editor = switcher.use("projects-edit", ["ProjectsEditAccess"])
-        check(
-            request,
-            scenario="PLSV-829:class_change",
-            subject="ProjectsEditAccess+ProjectEditor",
-            action="project.class_change",
-            expect=Expect.DENY,
-            resp=call(editor, "PATCH", path, json=body),
-        )
-        revoke(admin, shared_project, user_ids["userA"])
-        grant(admin, shared_project, user_ids["userA"], "ProjectOwner")
-        current = call(admin, "GET", path)
-        admin_control(current, "project.read")
-        old_value = current.body.get("class", "shared")
-        owner_body = {
-            "data": [
-                {
-                    "operation": "update",
-                    "attribute": "class",
-                    "oldValue": old_value,
-                    "newValue": "confidential" if old_value != "confidential" else "shared",
-                }
-            ]
-        }
-        owner = switcher.use("projects-full", ["ProjectsFullAccess"])
-        check(
-            request,
-            scenario="PLSV-829:class_change",
-            subject="ProjectsFullAccess+ProjectOwner",
-            action="project.class_change",
-            expect=Expect.ALLOW,
-            resp=call(owner, "PATCH", path, json=owner_body),
-        )
-    finally:
-        revoke(admin, shared_project, user_ids["userA"])
-
-
-def test_datatemplate_class_change(request, switcher, private_template):
-    """Test that a Data Templates Edit policy holder cannot flip a template's class to
-    a wider audience (PLSV-830)."""
-    user = switcher.use("datatemplates-edit", ["DataTemplatesEditAccess"])
-    check(
-        request,
-        scenario="PLSV-830:class_change",
-        subject="DataTemplatesEditAccess",
-        action="datatemplate.class_change",
-        expect=Expect.DENY,
-        resp=call(
-            user,
-            "PATCH",
-            f"/api/v3/datatemplates/{private_template}",
-            json={
-                "data": [
-                    {
-                        "operation": "update",
-                        "attribute": "class",
-                        "oldValue": "private",
-                        "newValue": "restricted",
-                    }
-                ]
-            },
         ),
     )
 

@@ -2,14 +2,15 @@
 (PLSV-827).
 
 Runs against long-lived projects (``static_docs.py``) so the documents are already
-indexed. Each check runs scoped to the project (``linked``), as a text search for the
-file name (``title``), and as a text search for words inside a file (``content``), the
-ways a document surfaces in someone's search results.
+indexed. Requests match the SDK's ``projects.document_search``, which always scopes to one
+project (``linked_to``): the project's documents (``linked``), a text search for a file
+name within it (``linked_title``), and a text search for words inside a file
+(``linked_content``).
 """
 
 import pytest
 
-from tests.acl.checks import admin_control, check
+from tests.acl.checks import check
 from tests.acl.contract.fgc import AccessClass, ReadPath, class_expect
 from tests.acl.contract.model import Expect, Verb
 from tests.acl.http import Response, call
@@ -26,13 +27,22 @@ def static_docs(admin) -> dict[AccessClass, StaticDoc]:
     return {cls: ensure_static_doc(admin, cls) for cls in PROJECT_CLASSES}
 
 
-# mode -> (query params, token that marks the document in the results). The index keys
-# documents by the project id without its ``PRO`` prefix. A content search matches the
-# text file's body token, which no file name contains, so the hit is marked by file name.
+def _linked(doc: StaticDoc) -> dict:
+    # The SDK strips the ``PRO`` prefix from ``linked_to`` (``SearchProjectId``).
+    return {"linkedTo": doc.project_id.removeprefix("PRO")}
+
+
+# mode -> (query params, token that marks the document in the results). A content search
+# matches the text file's body token, which no file name contains, so the hit is marked by
+# file name.
+
 MODES = {
-    "linked": (lambda d: {"linkedTo": d.project_id.removeprefix("PRO")}, lambda d: d.canary),
-    "title": (lambda d: {"text": d.canary}, lambda d: d.canary),
-    "content": (lambda d: {"text": d.content_token}, lambda d: d.content_file),
+    "linked": (_linked, lambda d: d.canary),
+    "linked_title": (lambda d: {**_linked(d), "text": d.canary}, lambda d: d.canary),
+    "linked_content": (
+        lambda d: {**_linked(d), "text": d.content_token},
+        lambda d: d.content_file,
+    ),
 }
 mode_param = pytest.mark.parametrize("mode", list(MODES))
 
@@ -105,47 +115,6 @@ def test_non_member_document_visibility(request, admin, user_b, static_docs, cls
         resp=_search(user_b, doc, mode),
         canary=_token(doc, mode),
     )
-
-
-def _attachment_ids(resp: Response) -> list[str]:
-    """Attachment ids in document-search hits. Hits key attachments as ``ATT...`` or
-    ``<project>#<note>#ATT...``; notebook image blocks carry no attachment id."""
-    ids = []
-    for hit in resp.items():
-        last = str(hit.get("albertId", "")).split("#")[-1]
-        if last.startswith("ATT"):
-            ids.append(last)
-    return ids
-
-
-@pytest.mark.parametrize(
-    "cls", [AccessClass.PRIVATE, AccessClass.CONFIDENTIAL], ids=lambda c: c.value
-)
-def test_non_member_cannot_download_found_documents(request, admin, user_b, static_docs, cls):
-    """Test that a non-member cannot download any attachment they find by title or content
-    search (PLSV-827: unfiltered search hits plus an attachment fetch that skips the parent)."""
-    doc = static_docs[cls]
-    found = []
-    for mode in ("title", "content"):
-        _admin_sees(admin, doc, mode)
-        found += _attachment_ids(_search(user_b, doc, mode))
-    leaks = []
-    for aid in dict.fromkeys(found):
-        path = f"/api/v3/attachments/{aid}"
-        admin_control(call(admin, "GET", path), f"attachment {aid}.read", canary="signedURL")
-        try:
-            check(
-                request,
-                scenario="PLSV-827:document_download",
-                subject="non-member",
-                action=f"project[{cls.value}].attachment[{aid}].download",
-                expect=Expect.DENY,
-                resp=call(user_b, "GET", path),
-                canary="signedURL",
-            )
-        except AssertionError as err:
-            leaks.append(str(err))
-    assert not leaks, "\n".join(leaks)
 
 
 @mode_param

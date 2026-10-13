@@ -42,8 +42,16 @@ class ModuleOps:
     patch: Callable[[dict], dict | list]
     id_key: str = "albertId"
     list_params: dict | None = None
+    # The SDK's list route when it is not ``GET base``: (method, path suffix, request kwargs).
+    read: tuple[str, str, dict] | None = None
     create_path: str | None = None
     create_params: dict | None = None
+
+    def read_request(self) -> tuple[str, str, dict]:
+        if self.read is not None:
+            method, suffix, kwargs = self.read
+            return method, f"{self.base}{suffix}", kwargs
+        return "GET", self.base, {"params": self.list_params or {"limit": 5}}
 
     def created_id(self, resp: Response) -> str | None:
         body = resp.body[0] if isinstance(resp.body, list) and resp.body else resp.body
@@ -93,11 +101,13 @@ MODULES: dict[Module, ModuleOps] = {
         "/api/v3/parametergroups",
         lambda ctx: {"name": f"acl-pg-{_uid()}", "type": "general"},
         lambda rec: _op("name", rec.get("name"), f"acl-pg-{_uid()}"),
+        read=("POST", "/search", {"json": {"limit": 5, "offset": 0}}),
     ),
     M.DATA_TEMPLATES: ModuleOps(
         "/api/v3/datatemplates",
         lambda ctx: {"name": f"acl-dt-{_uid()}"},
         lambda rec: _op("name", rec.get("name"), f"acl-dt-{_uid()}"),
+        read=("POST", "/search", {"json": {"limit": 5, "offset": 0}}),
     ),
     M.PROJECTS: ModuleOps(
         "/api/v3/projects",
@@ -107,6 +117,7 @@ MODULES: dict[Module, ModuleOps] = {
             "Locations": [{"id": ctx["location"]}],
         },
         lambda rec: _op("description", rec.get("description"), f"acl-proj-{_uid()}"),
+        read=("POST", "/search", {"json": {"limit": 5, "offset": 0}}),
     ),
     M.INVENTORY: ModuleOps(
         "/api/v3/inventories",
@@ -118,8 +129,7 @@ MODULES: dict[Module, ModuleOps] = {
             "Company": {"id": ctx["company"]},
         },
         lambda rec: _op("description", rec.get("description"), f"acl {_uid()}"),
-        # The unfiltered inventory list answers 500 for every caller (response schema).
-        list_params={"name": "acl", "exactMatch": "false"},
+        read=("GET", "/search", {"params": {"limit": 5}}),
     ),
     M.TASKS: ModuleOps(
         "/api/v3/tasks",
@@ -143,6 +153,7 @@ MODULES: dict[Module, ModuleOps] = {
                 ],
             }
         ],
+        read=("GET", "/search", {"params": {"limit": 5}}),
         create_path="/api/v3/tasks/multi",
         create_params={"category": "General"},
     ),
@@ -177,7 +188,7 @@ def ctx(admin: Albert) -> dict[str, str]:
         company = admin.companies.get_or_create(company=Company(name="SDK-ACL-matrix co"))
     except AlbertHTTPError as err:
         raise AclSetupError(f"seeding role-matrix context failed: {err}") from err
-    fields = call(admin, "GET", "/api/v3/customfields", params={"limit": 500}).items()
+    fields = call(admin, "GET", "/api/v3/customfields", params={"limit": 200}).items()
     list_type = next(
         (
             f["name"]
@@ -207,8 +218,9 @@ def test_role_matrix(request, admin: Albert, switcher, ctx, policy, module: Modu
     action = f"{module.value}.{verb.value}"
 
     if verb is V.READ:
-        admin_control(call(admin, "GET", ops.base, params=ops.list_params or {"limit": 5}), action)
-        resp = call(user, "GET", ops.base, params=ops.list_params or {"limit": 5})
+        method, path, kwargs = ops.read_request()
+        admin_control(call(admin, method, path, **kwargs), action)
+        resp = call(user, method, path, **kwargs)
         check(
             request,
             scenario="role_matrix",

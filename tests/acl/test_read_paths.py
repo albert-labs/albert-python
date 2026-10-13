@@ -116,11 +116,9 @@ def test_bulk_ids_mixed_visibility(request, user_b, world):
     "cls", [AccessClass.PRIVATE, AccessClass.CONFIDENTIAL], ids=lambda c: c.value
 )
 def test_worksheet_denied_without_grant(request, admin, user_b, world, cls):
-    """Test that a no-grant user cannot read a hidden project's worksheet or expand its
-    formula's ingredients (DE-2314)."""
+    """Test that a no-grant user cannot read a hidden project's worksheet (DE-2314)."""
     tree = world.projects[cls]
-    pid, fid = tree.ids[Kind.PROJECT], tree.ids[Kind.FORMULA]
-    destination = world.projects[AccessClass.SHARED].ids[Kind.PROJECT]
+    pid = tree.ids[Kind.PROJECT]
     admin_control(
         call(admin, "GET", "/api/v3/worksheet", params={"type": "project", "id": pid}),
         f"worksheet[{cls.value}].read",
@@ -134,36 +132,17 @@ def test_worksheet_denied_without_grant(request, admin, user_b, world, cls):
         resp=call(user_b, "GET", "/api/v3/worksheet", params={"type": "project", "id": pid}),
         canary=tree.canary,
     )
-    admin_control(
-        call(
-            admin,
-            "POST",
-            f"/api/v3/worksheet/project/{pid}/formula/{fid}/expansion",
-            params={"destination": destination},
-            json={},
-        ),
-        f"worksheet[{cls.value}].expand",
-    )
-    check(
-        request,
-        scenario="DE-2314:worksheet",
-        subject="no-grant",
-        action=f"worksheet[{cls.value}].expand",
-        expect=Expect.DENY,
-        resp=call(
-            user_b,
-            "POST",
-            f"/api/v3/worksheet/project/{pid}/formula/{fid}/expansion",
-            params={"destination": destination},
-            json={},
-        ),
-    )
 
 
 def test_list_total_excludes_hidden(request, user_b, world):
     """Test that a search total for a confidential-only canary is zero for a no-grant user."""
     tree = world.projects[AccessClass.CONFIDENTIAL]
-    resp = call(user_b, "GET", "/api/v3/projects/search", params={"text": tree.canary})
+    resp = call(
+        user_b,
+        "POST",
+        "/api/v3/projects/search",
+        json={"text": tree.canary, "limit": 50, "offset": 0},
+    )
     body = resp.body if isinstance(resp.body, dict) else {}
     total = int(body.get("total") or body.get("Total") or 0)
     check(

@@ -23,11 +23,11 @@ class Probe:
     method: str
     path: str
     params: dict | None = None
+    json: dict | None = None
 
 
 ALWAYS_ON: tuple[Probe, ...] = (
     Probe("own_profile", "GET", "/api/v3/login/validatejwt", {"includeUserDetails": "true"}),
-    Probe("personal_view_order", "GET", "/api/v3/views/sequence", {"entity": "projects"}),
     Probe("parameters_read", "GET", "/api/v3/parameters", {"limit": 5}),
     Probe("data_columns_read", "GET", "/api/v3/datacolumns", {"limit": 5}),
     Probe("units_read", "GET", "/api/v3/units", {"limit": 5}),
@@ -37,8 +37,18 @@ ALWAYS_ON: tuple[Probe, ...] = (
     Probe("companies_read", "GET", "/api/v3/companies", {"limit": 5}),
     Probe("cas_read", "GET", "/api/v3/cas", {"limit": 5}),
     Probe("attributes_read", "GET", "/api/v3/attributes", {"limit": 5}),
-    Probe("user_picker_search", "GET", "/api/v3/users/search", {"text": "a", "limit": 5}),
-    Probe("team_picker_search", "GET", "/api/v3/teams/search", {"text": "a", "limit": 5}),
+    Probe(
+        "user_picker_search",
+        "POST",
+        "/api/v3/users/search",
+        json={"text": "a", "limit": 5, "offset": 0},
+    ),
+    Probe(
+        "team_picker_search",
+        "POST",
+        "/api/v3/teams/search",
+        json={"text": "a", "limit": 5, "offset": 0},
+    ),
     Probe(
         "jurisdictions_languages",
         "GET",

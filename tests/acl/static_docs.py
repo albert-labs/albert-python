@@ -11,12 +11,17 @@ import io
 from dataclasses import dataclass
 
 from albert import Albert
+from albert.collections.worksheets import WorksheetCollection
 from albert.core.shared.models.base import EntityLink
+from albert.exceptions import AlbertHTTPError
+from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
 from albert.resources.notebooks import Notebook
 from albert.resources.projects import Project, ProjectClass
+from albert.resources.sheets import Component
 from tests.acl.contract.fgc import AccessClass
 from tests.acl.http import call
+from tests.acl.identities import AclSetupError
 from tests.acl.world import _must, _seed_children, _seed_notebook_image
 
 STATIC_PREFIX = "SDK-ACL-static-docsearch"
@@ -104,3 +109,35 @@ def ensure_static_doc(admin: Albert, cls: AccessClass) -> StaticDoc:
     )
     _ensure_content_doc(admin, doc)
     return doc
+
+
+def ensure_static_formula(admin: Albert, doc: StaticDoc) -> str:
+    """Return the inventory id of the project's long-lived formula, creating it once."""
+    name = f"{doc.canary}-formula"
+    sheets = WorksheetCollection(session=admin.session)
+    try:
+        worksheet = sheets.get_by_project_id(project_id=doc.project_id)
+    except AlbertHTTPError:
+        worksheet = _must(
+            "static worksheet", lambda: sheets.setup_worksheet(project_id=doc.project_id)
+        )
+    for sheet in worksheet.sheets:
+        for column in sheet.columns:
+            if column.name == name and column.inventory_id:
+                return column.inventory_id
+    if not worksheet.sheets:
+        worksheet = _must(
+            "static sheet",
+            lambda: sheets.add_sheet(project_id=doc.project_id, sheet_name="acl"),
+        )
+    hit = next(iter(admin.inventory.search(category=InventoryCategory.RAW_MATERIALS, max_items=1)))
+    raw = admin.inventory.get_by_id(id=hit.id)
+    column = _must(
+        "static formula",
+        lambda: worksheet.sheets[0].add_formulation(
+            formulation_name=name, components=[Component(inventory_item=raw, amount=100)]
+        ),
+    )
+    if not column.inventory_id:
+        raise AclSetupError("add_formulation returned no formula inventory id")
+    return column.inventory_id

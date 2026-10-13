@@ -8,6 +8,8 @@ made on the project (or inventory item) only; children must inherit.
 import pytest
 
 from albert import Albert
+from albert.exceptions import AlbertHTTPError
+from albert.resources.acls import ACL
 from tests.acl.checks import admin_control, check
 from tests.acl.contract.fgc import (
     INVENTORY_LEVELS,
@@ -18,8 +20,9 @@ from tests.acl.contract.fgc import (
     class_expect,
 )
 from tests.acl.contract.model import Expect, Verb
-from tests.acl.http import call
+from tests.acl.http import Response, call
 from tests.acl.world import INVENTORY_CLASSES, PROJECT_CLASSES, World, grant, revoke
+from tests.utils.wait import poll_until
 
 BROAD_POLICIES = [
     "ProjectsFullAccess",
@@ -46,7 +49,7 @@ UPDATE_ATTR = {
     Kind.PROJECT: ("description", lambda old: f"{old} e"),
     Kind.TASK_CHILD: ("note", lambda old: f"{old} e"),
     Kind.INVENTORY: ("description", lambda old: f"{old} e"),
-    Kind.LOT: ("inventoryOnHand", lambda old: (old or 0) + 1),
+    Kind.LOT: ("inventoryOnHand", lambda old: float(old or 0) + 1),
 }
 
 
@@ -148,6 +151,24 @@ def test_class_without_grant(request, admin, user_b, world: World, cls, kind):
     )
 
 
+def _sdk_share(user: Albert, kind: Kind, rid: str, entry: ACL) -> Response:
+    """Share through the SDK: add an ACL entry and update the record as ``user``."""
+    try:
+        if kind is Kind.PROJECT:
+            project = user.projects.get_by_id(id=rid)
+            project.acl = [*(project.acl or []), entry]
+            user.projects.update(project=project)
+        else:
+            item = user.inventory.get_by_id(id=rid)
+            item.acls = [*item.acls, entry]
+            user.inventory.update(inventory_item=item)
+    except AlbertHTTPError as err:
+        if err.response is None:
+            raise
+        return Response(status=err.response.status_code, body=err.response.text)
+    return Response(status=204, body=None)
+
+
 @pytest.mark.parametrize("kind", [Kind.PROJECT, Kind.INVENTORY])
 def test_share_with_edit_policy_and_owner(request, admin, switcher, user_ids, world, kind):
     """Test sharing with an Edit-level policy plus an owner FGC: a ProjectOwner may share a
@@ -162,20 +183,13 @@ def test_share_with_edit_policy_and_owner(request, admin, switcher, user_ids, wo
     user = switcher.use(edit_policy, [edit_policy])
     grant(admin, rid, user_ids["userA"], owner)
     try:
-        resp = call(
-            user,
-            "PATCH",
-            f"/api/v3/acl/{rid}",
-            json={
-                "data": [
-                    {
-                        "operation": "add",
-                        "attribute": "ACL",
-                        "newValue": [{"id": user_ids["userB"], "fgc": owner}],
-                    }
-                ]
-            },
+        poll_until(
+            lambda: [call(user, "GET", READ_PATH[kind].format(rid))],
+            predicate=lambda r: 200 <= r[0].status < 300,
+            timeout=90,
+            interval=3,
         )
+        resp = _sdk_share(user, kind, rid, ACL(id=user_ids["userB"], fgc=owner))
         check(
             request,
             scenario="share",

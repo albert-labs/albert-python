@@ -163,23 +163,3 @@ def test_child_only_grant_does_not_expose_parent(request, admin, chain_user, use
         _probe(request, admin, chain_user, "child_only", "project", path, Expect.DENY)
     finally:
         revoke(admin, tid, user_ids["userA"])
-
-
-def test_wrong_parent_id_does_not_unlock_child(request, admin, chain_user, user_ids, world):
-    """Test that passing a parentId the user can see does not unlock another project's child."""
-    visible = world.projects[AccessClass.SHARED].ids[Kind.PROJECT]
-    hidden = world.projects[AccessClass.CONFIDENTIAL]
-    resp = call(
-        chain_user,
-        "GET",
-        f"/api/v3/notebooks/{hidden.ids[Kind.PROJECT_CHILD]}",
-        params={"parentId": visible},
-    )
-    check(
-        request,
-        scenario="chain:wrong_parent",
-        subject="no-grant",
-        action="project_notebook",
-        expect=Expect.DENY,
-        resp=resp,
-    )

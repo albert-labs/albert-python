@@ -11,10 +11,11 @@ attachment, the attachment inside that note, and a direct attachment.
 import pytest
 
 from albert import Albert
+from albert.exceptions import AlbertHTTPError
 from tests.acl.checks import admin_control, check
 from tests.acl.contract.fgc import AccessClass, Kind
 from tests.acl.contract.model import Expect
-from tests.acl.http import call
+from tests.acl.http import Response, call
 from tests.acl.oracle import DENY_STATUSES
 from tests.acl.report import Row, record
 from tests.acl.world import (
@@ -25,7 +26,11 @@ from tests.acl.world import (
     NOTE,
     NOTE_ATTACHMENT,
     PROJECT_CLASSES,
+    _seed_children,
+    grant,
+    revoke,
 )
+from tests.utils.wait import poll_until
 
 PARENT_PATH = {
     Kind.INVENTORY: "/api/v3/inventories/{}",
@@ -132,3 +137,130 @@ def test_hidden_project_attachment_by_id_denied(request, admin, user_b, world, c
         expect=Expect.DENY,
         resp=call(user_b, "GET", path),
     )
+
+
+# The delete subject holds the policies that grant note and attachment delete, so a refusal on
+# these parents comes from project membership; ``test_member_can_delete_children`` proves it.
+DELETE_POLICIES = ["ProjectsViewAccess", "TasksFullAccess", "InventoryViewAccess"]
+DELETE_SUBJECT = "task-editor"
+DELETE_PARENTS = [
+    (Kind.BATCH_TASK, AccessClass.PRIVATE),
+    (Kind.PROJECT_CHILD, AccessClass.PRIVATE),
+    (Kind.BATCH_TASK, AccessClass.CONFIDENTIAL),
+    (Kind.PROJECT_CHILD, AccessClass.CONFIDENTIAL),
+]
+
+
+@pytest.fixture(scope="module")
+def task_editor(switcher) -> Albert:
+    """userA with project view and full task access, and no grant on any seeded project."""
+    return switcher.use("delete-task-full", DELETE_POLICIES)
+
+
+def _sdk_delete(client: Albert, child: str, rid: str) -> Response:
+    """Delete through the SDK (``notes.delete`` / ``attachments.delete``); a refusal becomes
+    the error's status so the oracle can judge it."""
+    collection = (
+        client.notes if CHILD_PATH[child].startswith("/api/v3/notes") else client.attachments
+    )
+    try:
+        collection.delete(id=rid)
+    except AlbertHTTPError as err:
+        if err.response is None:
+            raise
+        return Response(status=err.response.status_code, body=err.response.text)
+    return Response(status=204, body=None)
+
+
+def _delete_cases():
+    for kind, cls in DELETE_PARENTS:
+        for child in CHILD_TYPES:
+            yield pytest.param(kind, cls, child, id=f"{kind.value}-{cls.value}-{child}")
+
+
+def _wait_readable(client: Albert, path: str, readable: bool) -> Response:
+    return poll_until(
+        lambda: [call(client, "GET", path)],
+        predicate=lambda r: (200 <= r[0].status < 300) == readable,
+        timeout=90,
+        interval=3,
+    )[0]
+
+
+class TestMemberCanDeleteChildren:
+    """One ProjectEditor grant for every case, so a revoke from one case cannot race the
+    next case's grant."""
+
+    @pytest.fixture(scope="class")
+    def member_grant(self, admin, user_ids, world):
+        pid = world.projects[AccessClass.PRIVATE].ids[Kind.PROJECT]
+        grant(admin, pid, user_ids["userA"], "ProjectEditor")
+        yield
+        revoke(admin, pid, user_ids["userA"])
+
+    @pytest.mark.parametrize("child", CHILD_TYPES)
+    @pytest.mark.parametrize("kind", [Kind.BATCH_TASK, Kind.PROJECT_CHILD], ids=lambda k: k.value)
+    def test_member_can_delete_children(
+        self, request, admin, task_editor, world, member_grant, kind, child
+    ):
+        """Test that the delete subject, as a member (ProjectEditor) of the private project,
+        can delete its notes and attachments, so its refusals as a non-member are meaningful."""
+        tree = world.projects[AccessClass.PRIVATE]
+        seeded = _seed_children(admin, tree.ids[kind], tree.canary)
+        child_path = CHILD_PATH[child].format(seeded[child])
+        try:
+            _wait_readable(task_editor, PARENT_PATH[kind].format(tree.ids[kind]), True)
+            _wait_readable(task_editor, child_path, True)
+            check(
+                request,
+                scenario="PLSV-827:child_delete",
+                subject=f"{DELETE_SUBJECT}+ProjectEditor",
+                action=f"{kind.value}[private].{child}.delete",
+                expect=Expect.ALLOW,
+                resp=_sdk_delete(task_editor, child, seeded[child]),
+            )
+        finally:
+            for other, rid in seeded.items():
+                _sdk_delete(admin, other, rid)
+
+
+@pytest.mark.parametrize(("kind", "cls", "child"), list(_delete_cases()))
+def test_child_delete_denied_when_parent_denied(
+    request, admin, task_editor, world, kind, cls, child
+):
+    """Test that a task editor who is not a member of a private/confidential project cannot
+    delete its notes or attachments by their own ids (PLSV-827). Each case seeds fresh
+    children, so a leak deletes nothing shared."""
+    tree = _tree(world, kind, cls)
+    parent_path = PARENT_PATH[kind].format(tree.ids[kind])
+    admin_control(call(admin, "GET", parent_path), f"{kind.value}.read")
+    seeded = _seed_children(admin, tree.ids[kind], tree.canary)
+    child_path = CHILD_PATH[child].format(seeded[child])
+    user = task_editor
+    try:
+        parent = _wait_readable(user, parent_path, False)
+        if parent.status not in DENY_STATUSES:
+            pytest.fail(
+                f"harness error: {DELETE_SUBJECT} can read {kind.value}[{cls.value}] "
+                f"({parent.status}); the delete probe needs a denied parent",
+                pytrace=False,
+            )
+        resp = _sdk_delete(user, child, seeded[child])
+        detail = f"parent {parent.status}"
+        if 200 <= resp.status < 300:
+            gone = call(admin, "GET", child_path).status == 404
+            detail += "; record deleted" if gone else "; record still present"
+        else:
+            admin_control(_sdk_delete(admin, child, seeded[child]), f"{kind.value}.{child}.delete")
+        check(
+            request,
+            scenario="PLSV-827:child_delete",
+            subject=DELETE_SUBJECT,
+            action=f"{kind.value}[{cls.value}].{child}.delete",
+            expect=Expect.DENY,
+            resp=resp,
+            detail=detail,
+        )
+    finally:
+        for other, rid in seeded.items():
+            _sdk_delete(admin, other, rid)

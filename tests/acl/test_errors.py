@@ -2,8 +2,7 @@
 
 - A role with one unrelated policy must still perform every always-on action.
 - Actions that are not always-on must be denied to that role.
-- Denials must be 403/404 (never 5xx), including unregistered operations and unknown
-  categories.
+- Denials must be 403/404 (never 5xx), including unregistered operations.
 """
 
 import pytest
@@ -16,10 +15,7 @@ from tests.acl.http import call
 from tests.acl.report import Row, record
 
 UNREGISTERED = [
-    ("GET", "/api/v3/static/standardorganizations"),
     ("GET", "/api/v3/static/hazardsymbols"),
-    ("GET", "/api/v3/static/systemsettings"),
-    ("GET", "/api/v3/static/languages"),
 ]
 
 
@@ -32,7 +28,7 @@ def empty_user(switcher):
 @pytest.mark.parametrize("probe", ALWAYS_ON, ids=lambda p: p.name)
 def test_always_on(request, admin, empty_user, probe):
     """Test that a one-unrelated-policy role can perform an always-on action."""
-    kwargs = {"params": probe.params} if probe.params else {}
+    kwargs = {k: v for k, v in (("params", probe.params), ("json", probe.json)) if v}
     admin_control(call(admin, probe.method, probe.path, **kwargs), probe.name)
     check(
         request,
@@ -47,7 +43,7 @@ def test_always_on(request, admin, empty_user, probe):
 @pytest.mark.parametrize("probe", NOT_ALWAYS_ON, ids=lambda p: p.name)
 def test_not_always_on(request, admin, empty_user, probe):
     """Test that a one-unrelated-policy role is denied an action that needs a policy."""
-    kwargs = {"params": probe.params} if probe.params else {}
+    kwargs = {k: v for k, v in (("params", probe.params), ("json", probe.json)) if v}
     admin_control(call(admin, probe.method, probe.path, **kwargs), probe.name)
     check(
         request,
@@ -75,12 +71,6 @@ def test_unregistered_operation_never_5xx(request, empty_user, method, path):
         ),
     )
     assert resp.status < 500, f"{method} {path} returned {resp.status}"
-
-
-def test_unknown_category_is_clean(empty_user):
-    """Test that an unknown task category is a clean 4xx, never 5xx."""
-    resp = call(empty_user, "GET", "/api/v3/tasks", params={"category": "NotARealCategory"})
-    assert resp.status < 500, f"unknown category returned {resp.status}"
 
 
 @pytest.mark.parametrize("kind", [Kind.PROJECT, Kind.BATCH_TASK, Kind.INVENTORY])
