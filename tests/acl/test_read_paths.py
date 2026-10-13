@@ -9,7 +9,7 @@ admin sees the canary, so index lag is never reported as a denial.
 import pytest
 
 from tests.acl.actions import DIRECT, READ_PATHS
-from tests.acl.checks import check
+from tests.acl.checks import admin_control, check
 from tests.acl.contract.fgc import AccessClass, Kind, ReadPath, class_expect
 from tests.acl.contract.model import Expect, Verb
 from tests.acl.http import Response, call, call_all_pages
@@ -114,6 +114,81 @@ def test_bulk_ids_mixed_visibility(request, admin, user_b, world, kind):
         expect=Expect.DENY,
         resp=resp,
         canary=secret,
+    )
+
+
+def test_list_parent_id_array(request, admin, user_b, world):
+    """Test that a list query mixing a hidden and a visible parentId array element never
+    exposes the hidden parent's children (PLSV-806)."""
+    hidden = world.projects[AccessClass.CONFIDENTIAL]
+    visible = world.projects[AccessClass.SHARED]
+    admin_control(
+        call(admin, "GET", "/api/v3/notes", params={"parentId": hidden.ids[Kind.BATCH_TASK]}),
+        "note.list_parent_id_array",
+        canary=hidden.canary,
+    )
+    resp = call(
+        user_b,
+        "GET",
+        "/api/v3/notes",
+        params={"parentId": [hidden.ids[Kind.BATCH_TASK], visible.ids[Kind.BATCH_TASK]]},
+    )
+    check(
+        request,
+        scenario="PLSV-806:parent_id_array",
+        subject="no-grant",
+        action="note.list_parent_id_array",
+        expect=Expect.DENY,
+        resp=resp,
+        canary=hidden.canary,
+    )
+
+
+@pytest.mark.parametrize(
+    "cls", [AccessClass.PRIVATE, AccessClass.CONFIDENTIAL], ids=lambda c: c.value
+)
+def test_worksheet_denied_without_grant(request, admin, user_b, world, cls):
+    """Test that a no-grant user cannot read a hidden project's worksheet or expand its
+    formula's ingredients (DE-2314)."""
+    tree = world.projects[cls]
+    pid, fid = tree.ids[Kind.PROJECT], tree.ids[Kind.FORMULA]
+    destination = world.projects[AccessClass.SHARED].ids[Kind.PROJECT]
+    admin_control(
+        call(admin, "GET", "/api/v3/worksheet", params={"type": "project", "id": pid}),
+        f"worksheet[{cls.value}].read",
+    )
+    check(
+        request,
+        scenario="DE-2314:worksheet",
+        subject="no-grant",
+        action=f"worksheet[{cls.value}].read",
+        expect=Expect.DENY,
+        resp=call(user_b, "GET", "/api/v3/worksheet", params={"type": "project", "id": pid}),
+        canary=tree.canary,
+    )
+    admin_control(
+        call(
+            admin,
+            "POST",
+            f"/api/v3/worksheet/project/{pid}/formula/{fid}/expansion",
+            params={"destination": destination},
+            json={},
+        ),
+        f"worksheet[{cls.value}].expand",
+    )
+    check(
+        request,
+        scenario="DE-2314:worksheet",
+        subject="no-grant",
+        action=f"worksheet[{cls.value}].expand",
+        expect=Expect.DENY,
+        resp=call(
+            user_b,
+            "POST",
+            f"/api/v3/worksheet/project/{pid}/formula/{fid}/expansion",
+            params={"destination": destination},
+            json={},
+        ),
     )
 
 
