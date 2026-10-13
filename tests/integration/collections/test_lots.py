@@ -10,6 +10,7 @@ from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.lots import Lot, LotAdjustmentAction, LotVolumeUnit
 from albert.resources.storage_locations import StorageLocation
 from tests.integration.seeding import generate_lot_seeds
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("inventory")
 
@@ -72,6 +73,52 @@ def test_lot_get_all_basic(client: Albert, seeded_lots):
     results = list(client.lots.get_all(parent_id=parent_id, max_items=10))
     assert_valid_lot_items(results)
     assert any(lot.id == seeded_lots[0].id for lot in results)
+
+
+def test_search_from_on_hand(client: Albert, seeded_lots: list[Lot]):
+    """Test that search(from_on_hand=...) returns only lots with inventory on hand above the threshold."""
+    # Scope by the seeded lots' unique external barcode IDs; the lot search index
+    # stores inventoryId without the "INV" prefix, so inventory_id cannot scope this.
+    barcode_ids = [seeded_lots[0].external_barcode_id, seeded_lots[1].external_barcode_id]
+
+    # Wait for the seeded lots to become visible in search before asserting on the filter.
+    poll_until(
+        lambda: list(client.lots.search(external_barcode_id=barcode_ids, max_items=100)),
+        predicate=lambda items: seeded_lots[0].id in {item.id for item in items},
+        timeout=60.0,
+    )
+
+    # seeded_lots[0] has 90 on hand, seeded_lots[1] has 400.
+    results = poll_until(
+        lambda: list(
+            client.lots.search(
+                external_barcode_id=barcode_ids,
+                from_on_hand=95.0,
+                max_items=100,
+            )
+        ),
+        predicate=lambda items: seeded_lots[1].id in {item.id for item in items},
+    )
+    result_ids = {item.id for item in results}
+    assert seeded_lots[1].id in result_ids
+    assert seeded_lots[0].id not in result_ids
+
+
+def test_search_by_inventory_id(client: Albert, seeded_lots: list[Lot]):
+    """Test that search(inventory_id=...) matches lots by their standard parent Inventory ID."""
+    seeded_ids = {lot.id for lot in seeded_lots}
+    # seeded_lots[0] and seeded_lots[1] share the same parent inventory item.
+    expected_ids = {seeded_lots[0].id, seeded_lots[1].id}
+    results = poll_until(
+        lambda: [
+            item
+            for item in client.lots.search(inventory_id=seeded_lots[0].inventory_id, max_items=100)
+            if item.id in seeded_ids
+        ],
+        predicate=lambda items: expected_ids <= {item.id for item in items},
+        timeout=60.0,
+    )
+    assert expected_ids <= {item.id for item in results}
 
 
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):
