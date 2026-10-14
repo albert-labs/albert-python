@@ -364,16 +364,17 @@ def test_transfer_all_quantity(
     assert updated_lot.storage_location.id == destination.id
 
 
-def test_transfer_all_same_location_no_op(client: Albert, seeded_lot: Lot):
-    """Test that transferring ALL to the current location does not raise an error."""
+def test_transfer_all_same_location_warns(client: Albert, seeded_lot: Lot):
+    """Test that transferring ALL to the current location warns and leaves the lot unchanged."""
     current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
     assert current_location_id is not None, "Seeded lot must have a storage location"
 
-    result = client.lots.transfer(
-        lot_id=seeded_lot.id,
-        quantity="ALL",
-        storage_location_id=current_location_id,
-    )
+    with pytest.warns(UserWarning, match="Full Transfer is not allowed"):
+        result = client.lots.transfer(
+            lot_id=seeded_lot.id,
+            quantity="ALL",
+            storage_location_id=current_location_id,
+        )
     assert result.id == seeded_lot.id
     assert result.storage_location is not None
     assert result.storage_location.id == current_location_id
