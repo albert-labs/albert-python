@@ -108,9 +108,10 @@ class DesignRunCollection(BaseCollection):
         Raises
         ------
         AlbertClientError
-            The request was rejected with a 4xx response.
+            The run configuration was rejected, for example the dataset is not
+            ``READY``, an objective is out of scope, or a setting is invalid.
         AlbertHTTPError
-            Other request failures.
+            Other failures.
         """
         body = OptimizationDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -177,9 +178,10 @@ class DesignRunCollection(BaseCollection):
         Raises
         ------
         AlbertClientError
-            The request was rejected with a 4xx response.
+            The run configuration was rejected, for example the dataset is not
+            ``READY`` or a setting is invalid.
         AlbertHTTPError
-            Other request failures.
+            Other failures.
         """
         body = DOEDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -302,11 +304,9 @@ class DesignRunV4Collection(DesignRunCollection):
     """Trigger inverse-design runs through the v4 ``design`` service (🧪Beta).
 
     This collection is accessed as ``client.design_runs_v4``. It has the same methods,
-    request models, and response models as
+    arguments, and return types as
     [`DesignRunCollection`][albert.collections.design_runs.DesignRunCollection]; only the
-    target service differs. A configuration the service rejects (e.g. dataset not
-    ``READY``, objective out of scope, invalid settings) raises `AlbertClientError`
-    (HTTP 422).
+    target service differs.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -320,7 +320,7 @@ class DesignRunV4Collection(DesignRunCollection):
     Attributes
     ----------
     base_path : str
-        The base API route for design-run requests.
+        The base path for v4 design runs.
     """
 
     _api_version = "v4.0"
