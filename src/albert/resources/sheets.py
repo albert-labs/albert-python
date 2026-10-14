@@ -35,35 +35,6 @@ class CellChangePayload(TypedDict):
     data: list[PatchDatum]
 
 
-def _patch_item_cell_key(item: object) -> tuple[str, str] | None:
-    """Return ``(rowId, colId)`` from a values-patch result item.
-
-    The documented shape stores those ids under ``id``. A partial-success body can
-    instead return an inventory record whose ``id`` is a plain string, with
-    ``rowId`` and ``colId`` as sibling fields, or no cell coordinates at all.
-    """
-    if not isinstance(item, dict):
-        return None
-    cell_id = item.get("id")
-    if isinstance(cell_id, dict):
-        row_id = cell_id.get("rowId")
-        col_id = cell_id.get("colId")
-    else:
-        row_id = item.get("rowId")
-        col_id = item.get("colId")
-    if isinstance(row_id, str) and isinstance(col_id, str):
-        return (row_id, col_id)
-    return None
-
-
-def _patch_result_items(value: object) -> list:
-    if isinstance(value, list):
-        return value
-    if isinstance(value, dict):
-        return list(value.values())
-    return []
-
-
 class CellColor(str, Enum):
     """A background color that can be applied to Sheet cells.
 
@@ -1889,26 +1860,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
         )
 
     def _filter_cells(self, *, cells: list[Cell], response_dict: dict):
-        updated_keys = {
-            key
-            for item in _patch_result_items(response_dict.get("UpdatedItems"))
-            if (key := _patch_item_cell_key(item)) is not None
-        }
-        failed_keys = {
-            key
-            for item in _patch_result_items(response_dict.get("FailedItems"))
-            if (key := _patch_item_cell_key(item)) is not None
-        }
-        updated = []
-        failed = []
-        for c in cells:
-            key = (c.row_id, c.column_id)
-            if key in failed_keys:
-                failed.append(c)
-            elif key in updated_keys:
-                updated.append(c)
-            else:
-                failed.append(c)
+        failed_keys = set()
+        for item in response_dict.get("FailedItems") or []:
+            if not isinstance(item, dict):
+                continue
+            item_id = item.get("id")
+            # Transact errors wrap one or more {rowId, colId} ids in a list.
+            id_entries = item_id if isinstance(item_id, list) else [item_id]
+            for entry in id_entries:
+                cell_id = entry.get("id") if isinstance(entry, dict) and "id" in entry else entry
+                if isinstance(cell_id, dict):
+                    key = (cell_id.get("rowId"), cell_id.get("colId"))
+                    if all(isinstance(part, str) for part in key):
+                        failed_keys.add(key)
+        updated = [c for c in cells if (c.row_id, c.column_id) not in failed_keys]
+        failed = [c for c in cells if (c.row_id, c.column_id) in failed_keys]
         return (updated, failed)
 
     def _get_current_cell(self, *, cell: Cell) -> Cell:

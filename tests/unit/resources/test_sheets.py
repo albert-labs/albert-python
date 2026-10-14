@@ -267,8 +267,8 @@ def _empty_sheet() -> Sheet:
     )
 
 
-def test_filter_cells_matches_nested_cell_id():
-    """A 206 body with ``id: {rowId, colId}`` splits updated and failed cells."""
+def test_filter_cells_marks_only_failed_items_as_failed():
+    """Test that a partial success with no UpdatedItems key keeps non-failed cells updated."""
     sheet = _empty_sheet()
     cells = [
         Cell(colId="COL1", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
@@ -276,33 +276,56 @@ def test_filter_cells_matches_nested_cell_id():
     ]
     updated, failed = sheet._filter_cells(
         cells=cells,
-        response_dict={"UpdatedItems": [{"id": {"rowId": "ROW1", "colId": "COL1"}}]},
-    )
-    assert [cell.column_id for cell in updated] == ["COL1"]
-    assert [cell.column_id for cell in failed] == ["COL2"]
-
-
-def test_filter_cells_string_id_does_not_raise():
-    """Partial success may return inventory records whose ``id`` is a string."""
-    sheet = _empty_sheet()
-    cells = [
-        Cell(colId="COL6", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
-        Cell(colId="COL5", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
-    ]
-    updated, failed = sheet._filter_cells(
-        cells=cells,
         response_dict={
-            "UpdatedItems": [{"id": "INVKENV1", "rowId": "ROW1", "colId": "COL5", "name": "Open"}],
+            "error": "Some values are not updated properly. Try again!",
             "FailedItems": [
                 {
-                    "id": {"rowId": "ROW1", "colId": "COL6"},
+                    "id": {"rowId": "ROW1", "colId": "COL2"},
                     "msg": "You cannot edit values in formulas that are locked",
                 }
             ],
         },
     )
+    assert [cell.column_id for cell in updated] == ["COL1"]
+    assert [cell.column_id for cell in failed] == ["COL2"]
+
+
+def test_filter_cells_ignores_updated_items_column_records():
+    """Test that UpdatedItems column records and wrapped failure ids parse correctly."""
+    sheet = _empty_sheet()
+    cells = [
+        Cell(colId="COL5", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL6", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL7", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+    ]
+    updated, failed = sheet._filter_cells(
+        cells=cells,
+        response_dict={
+            "error": "Some values are not updated properly. Try again!",
+            "UpdatedItems": [
+                {
+                    "PK": "TEN1#DES1",
+                    "SK": "COL5",
+                    "id": "INVKENV1",
+                    "colId": "COL5",
+                    "type": "INV",
+                    "state": {},
+                }
+            ],
+            "FailedItems": [
+                {
+                    "id": {"rowId": "ROW1", "colId": "COL6"},
+                    "msg": "You cannot edit values in formulas that are locked",
+                },
+                {
+                    "msg": "Some values are not updated properly. Try again!",
+                    "id": [{"id": {"rowId": "ROW1", "colId": "COL7"}}],
+                },
+            ],
+        },
+    )
     assert [cell.column_id for cell in updated] == ["COL5"]
-    assert [cell.column_id for cell in failed] == ["COL6"]
+    assert [cell.column_id for cell in failed] == ["COL6", "COL7"]
 
 
 def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch):
