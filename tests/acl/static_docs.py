@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from albert import Albert
 from albert.collections.worksheets import WorksheetCollection
+from albert.core.shared.enums import SecurityClass
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import AlbertHTTPError
 from albert.resources.inventory import InventoryCategory
@@ -111,9 +112,27 @@ def ensure_static_doc(admin: Albert, cls: AccessClass) -> StaticDoc:
     return doc
 
 
-def ensure_static_formula(admin: Albert, doc: StaticDoc) -> str:
-    """Return the inventory id of the project's long-lived formula, creating it once."""
-    name = f"{doc.canary}-formula"
+def ensure_static_formula(
+    admin: Albert,
+    doc: StaticDoc,
+    *,
+    suffix: str = "formula",
+    security_class: SecurityClass | None = None,
+) -> str:
+    """Return the inventory id of a long-lived formula on the project, creating it once.
+
+    ``security_class`` pins the formula's own inventory class (set on every call, so a
+    changed class is put back)."""
+    fid = _find_or_create_formula(admin, doc, f"{doc.canary}-{suffix}")
+    if security_class is not None:
+        item = admin.inventory.get_by_id(id=fid)
+        if item.security_class != security_class:
+            item.security_class = security_class
+            admin.inventory.update(inventory_item=item)
+    return fid
+
+
+def _find_or_create_formula(admin: Albert, doc: StaticDoc, name: str) -> str:
     sheets = WorksheetCollection(session=admin.session)
     try:
         worksheet = sheets.get_by_project_id(project_id=doc.project_id)
