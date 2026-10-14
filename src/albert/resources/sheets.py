@@ -978,6 +978,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         If a column named ``formulation_name`` already exists and ``clear`` is True,
         that column is emptied and reused; otherwise a new formulation column is added.
+        When a new ingredient row is added, unlocked formula columns have their Total
+        formula extended to include that row. Locked formula columns are left unchanged.
 
         !!! example
             ```python
@@ -1093,6 +1095,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 ]
                 for other_col in self.columns:
                     if other_col.column_id == column_id or other_col.type != CellType.INVENTORY:
+                        continue
+                    # A locked formula rejects the total-formula edit and the values
+                    # endpoint answers 206. Skipping it keeps the new formulation in place.
+                    if other_col.locked:
                         continue
                     other_total_cell = next(
                         (
@@ -1854,16 +1860,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
         )
 
     def _filter_cells(self, *, cells: list[Cell], response_dict: dict):
-        updated = []
-        failed = []
-        for c in cells:
-            found = False
-            for r in response_dict["UpdatedItems"]:
-                if r["id"]["rowId"] == c.row_id and r["id"]["colId"] == c.column_id:
-                    found = True
-                    updated.append(c)
-            if not found:
-                failed.append(c)
+        failed_keys = set()
+        for item in response_dict.get("FailedItems") or []:
+            if not isinstance(item, dict):
+                continue
+            item_id = item.get("id")
+            # Transact errors wrap one or more {rowId, colId} ids in a list.
+            id_entries = item_id if isinstance(item_id, list) else [item_id]
+            for entry in id_entries:
+                cell_id = entry.get("id") if isinstance(entry, dict) and "id" in entry else entry
+                if isinstance(cell_id, dict):
+                    key = (cell_id.get("rowId"), cell_id.get("colId"))
+                    if all(isinstance(part, str) for part in key):
+                        failed_keys.add(key)
+        updated = [c for c in cells if (c.row_id, c.column_id) not in failed_keys]
+        failed = [c for c in cells if (c.row_id, c.column_id) in failed_keys]
         return (updated, failed)
 
     def _get_current_cell(self, *, cell: Cell) -> Cell:
