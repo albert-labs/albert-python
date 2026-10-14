@@ -46,11 +46,12 @@ class DesignRunCollection(BaseCollection):
         Validates a space-filling run configuration without starting a job.
     """
 
-    _api_version = "v4.0"
+    _api_version = "v3"
+    _validate_suffix = "validate"
 
     def __init__(self, *, session: AlbertSession):
         super().__init__(session=session)
-        self.base_path = f"/api/{DesignRunCollection._api_version}/design/runs"
+        self.base_path = f"/api/{DesignRunCollection._api_version}/designruns"
 
     @validate_call
     def create_optimization(
@@ -107,10 +108,9 @@ class DesignRunCollection(BaseCollection):
         Raises
         ------
         AlbertClientError
-            The run configuration was rejected (e.g. dataset not ``READY``, objective
-            out of scope, invalid settings).
+            The request was rejected with a 4xx response.
         AlbertHTTPError
-            Other failures.
+            Other request failures.
         """
         body = OptimizationDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -177,10 +177,9 @@ class DesignRunCollection(BaseCollection):
         Raises
         ------
         AlbertClientError
-            The run configuration was rejected (e.g. dataset not ``READY``, invalid
-            settings).
+            The request was rejected with a 4xx response.
         AlbertHTTPError
-            Other failures.
+            Other request failures.
         """
         body = DOEDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -242,7 +241,7 @@ class DesignRunCollection(BaseCollection):
             objectives=objectives,
             settings=settings,
         ).model_dump(by_alias=True, mode="json", exclude_none=True)
-        response = self.session.post(f"{self.base_path}/validation", json=body)
+        response = self.session.post(f"{self.base_path}/{self._validate_suffix}", json=body)
         return DesignRunValidationResponse(**response.json())
 
     @validate_call
@@ -295,5 +294,38 @@ class DesignRunCollection(BaseCollection):
             settings=settings,
             anchor_targets=anchor_targets,
         ).model_dump(by_alias=True, mode="json", exclude_none=True)
-        response = self.session.post(f"{self.base_path}/validation", json=body)
+        response = self.session.post(f"{self.base_path}/{self._validate_suffix}", json=body)
         return DesignRunValidationResponse(**response.json())
+
+
+class DesignRunV4Collection(DesignRunCollection):
+    """Trigger inverse-design runs through the v4 ``design`` service (🧪Beta).
+
+    This collection is accessed as ``client.design_runs_v4``. It has the same methods,
+    request models, and response models as
+    [`DesignRunCollection`][albert.collections.design_runs.DesignRunCollection]; only the
+    target service differs. A configuration the service rejects (e.g. dataset not
+    ``READY``, objective out of scope, invalid settings) raises `AlbertClientError`
+    (HTTP 422).
+
+    !!! warning "Beta Feature!"
+        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for design-run requests.
+    """
+
+    _api_version = "v4.0"
+    _validate_suffix = "validation"
+
+    def __init__(self, *, session: AlbertSession):
+        super().__init__(session=session)
+        self.base_path = f"/api/{DesignRunV4Collection._api_version}/design/runs"
