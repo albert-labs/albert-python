@@ -1,25 +1,30 @@
-"""Fast ACL smoke check: can a non-member reach hidden records through the SDK?
-
-Runs in about a minute, without pytest and without changing anyone's role. userB holds
-every policy but has no grant on the long-lived private/confidential projects
-(``static_docs.py``), so every check below should be blocked. Each line is an SDK call made
-as userB; anything that succeeds is a leak. Lot access must also mirror the parent
-inventory item's access for the same user, with and without an inventory grant. Records
-the checks write to or delete are created fresh each run and removed at the end.
-
-The project-class matrix also uses userA (Full Access role, unchanged) as a project member
-via a temporary ProjectEditor grant, to compare members and outsiders per project class.
+"""Fast ACL smoke check through the SDK, in about two minutes.
 
     uv run python -m tests.acl.quick_check
 
-Exits 1 when any leak is found.
+Who acts (nobody's role is changed):
+- admin: seeds records and runs every positive control.
+- userA (standard, Full Access role): a project member via a temporary ProjectEditor grant.
+- userB (standard, every policy): an outsider with no grant, or named on a single
+  inventory item through a temporary InventoryViewer/InventoryOwner grant.
+
+Sections:
+1. Project class rules: a project's formula, the formula's lot, note and the file on that
+   note, read and edited by a member and an outsider, for each project class.
+2. An inventory item's own confidential class: the item, its lot, its note and the file
+   on that note must be hidden from anyone not named on the item, even inside a shared
+   project.
+3. Bypass routes: other SDK calls an outsider might use to reach hidden records.
+
+Records the checks write to or delete are created fresh each run and removed at the end.
+Long-lived projects and formulas come from ``static_docs.py``. Exits 1 on any failure.
 """
 
 import time
 import uuid
 from collections.abc import Callable
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from albert import Albert
 from albert.collections.worksheets import WorksheetCollection
@@ -31,7 +36,6 @@ from albert.resources.inventory import InventoryCategory, InventoryItem, Invento
 from albert.resources.locations import Location
 from albert.resources.lots import Lot
 from albert.resources.notebooks import NotebookCopyInfo, NotebookCopyType
-from albert.resources.notes import Note
 from albert.resources.storage_locations import StorageLocation
 from tests.acl.contract.fgc import AccessClass
 from tests.acl.identities import base_url, load_identity, user_id
@@ -46,32 +50,106 @@ from tests.acl.world import (
     revoke,
 )
 
-CLASSES = (AccessClass.PRIVATE, AccessClass.CONFIDENTIAL)
 PREFIX = "SDK-ACL-quick"
+PROJECT_CLASSES = (
+    AccessClass.CONFIDENTIAL,
+    AccessClass.PRIVATE,
+    AccessClass.RESTRICTED,
+    AccessClass.SHARED,
+)
+# (read, edit) by ID for a standard user outside the project (Explicit Named Access spec):
+# shared is implicit all; restricted is implicit read, explicit edit; private is implicit
+# list only, explicit read and edit; confidential is explicit all.
+OUTSIDER_RULES = {
+    AccessClass.CONFIDENTIAL: (False, False),
+    AccessClass.PRIVATE: (False, False),
+    AccessClass.RESTRICTED: (True, False),
+    AccessClass.SHARED: (True, True),
+}
+
+
+# --- Results ---------------------------------------------------------------------------
 
 
 @dataclass
-class Result:
-    leaked: bool
-    detail: str
+class Cell:
+    expect_allowed: bool
+    allowed: bool
+    status: str
+
+    @property
+    def failed(self) -> bool:
+        return self.expect_allowed != self.allowed
+
+    def render(self) -> str:
+        return f"{'✗ ' if self.failed else '  '}{self.status}"
 
 
-def _attempt(fn: Callable[[], object], leaked: Callable[[object], bool]) -> Result:
-    """Run an SDK call as the non-member; a refusal is BLOCKED, a useful answer is a LEAK."""
+@dataclass
+class Table:
+    title: str
+    rule: str
+    columns: list[str]
+    rows: dict[str, dict[str, Cell]] = field(default_factory=dict)
+
+    def add(self, row: str, column: str, cell: Cell) -> None:
+        self.rows.setdefault(row, {})[column] = cell
+
+    def failures(self) -> list[str]:
+        return [
+            f"{row} [{col}]: {c.status}, should be {'allowed' if c.expect_allowed else 'blocked'}"
+            for row, cells in self.rows.items()
+            for col, c in cells.items()
+            if c.failed
+        ]
+
+    def print(self) -> None:
+        cells = [c for r in self.rows.values() for c in r.values()]
+        failed = sum(c.failed for c in cells)
+        print(f"\n{self.title}  ({len(cells) - failed} passed, {failed} failed)")
+        print(f"  Rule: {self.rule}")
+        name_w = max(map(len, self.rows)) + 2
+        col_w = max(16, *(len(c) + 2 for c in self.columns))
+        print(f"  {'':<{name_w}}" + "".join(f"{c:<{col_w}}" for c in self.columns))
+        for row, by_col in self.rows.items():
+            line = "".join(
+                f"{by_col[c].render() if c in by_col else '  -':<{col_w}}" for c in self.columns
+            )
+            print(f"  {row:<{name_w}}{line}")
+
+
+def _try(
+    fn: Callable[[], object], allowed_if: Callable[[object], bool] = bool
+) -> tuple[bool, str]:
+    """Run an SDK call; a refusal or an empty answer is ``blocked``, anything else ``allowed``."""
     try:
         value = fn()
     except AlbertHTTPError as err:
-        status = err.response.status_code if err.response is not None else "?"
-        return Result(False, f"blocked ({status})")
-    return Result(True, "LEAK") if leaked(value) else Result(False, "blocked (empty)")
+        return False, f"blocked ({err.response.status_code if err.response is not None else '?'})"
+    if value is None or allowed_if(value):
+        return True, "allowed"
+    return False, "blocked (empty)"
 
 
-def _always(_: object) -> bool:
-    return True
+def _cell(expect_allowed: bool, fn: Callable[[], object], **kwargs) -> Cell:
+    return Cell(expect_allowed, *_try(fn, **kwargs))
+
+
+def _readable(fn: Callable[[], object]) -> bool:
+    return _try(fn, allowed_if=lambda _: True)[0]
+
+
+def _wait_readable(fn: Callable[[], object], want: bool, timeout: float = 45.0) -> None:
+    deadline = time.monotonic() + timeout
+    while _readable(fn) != want and time.monotonic() < deadline:
+        time.sleep(3)
+
+
+# --- Throwaway records -------------------------------------------------------------------
 
 
 class Fixtures:
-    """Shared throwaway records and the cleanup that removes them."""
+    """Throwaway records and grants, removed in reverse order at the end."""
 
     def __init__(self, admin: Albert):
         self.admin = admin
@@ -135,227 +213,34 @@ class Fixtures:
             self.later(lambda rid=seeded[key]: self.admin.attachments.delete(id=rid))
         return seeded
 
-
-def _existing_children(admin: Albert, pid: str) -> dict[str, str]:
-    """Ids of a note, a note-wrapped attachment and a direct attachment on the project."""
-    notes = admin.notes.get_by_parent_id(parent_id=pid)
-    plain = next(n for n in notes if not n.attachments)
-    wrapper = next(n for n in notes if n.attachments)
-    direct = admin.attachments.get_by_parent_ids(parent_ids=[pid]).get(pid, [])
-    return {NOTE: plain.id, NOTE_ATTACHMENT: wrapper.attachments[0].id, ATTACHMENT: direct[0].id}
+    def grant(self, resource_id: str, principal: str, level: str) -> None:
+        grant(self.admin, resource_id, principal, level)
+        self.later(lambda: revoke(self.admin, resource_id, principal))
 
 
-def _project_checks(
-    fx: Fixtures, user: Albert, doc: StaticDoc, destination: str
-) -> dict[str, Result]:
-    admin, pid = fx.admin, doc.project_id
-    ids = _existing_children(admin, pid)
-    formula = ensure_static_formula(admin, doc)
-    formula_lot = fx.lot(formula, raw=False)
-    notebook = admin.notebooks.list_by_parent_id(parent_id=pid)[0].id
-    fresh = fx.children(pid)
-
-    def edit_note():
-        note = admin.notes.get_by_id(id=fresh[NOTE])
-        note.note = f"{note.note} (edited by non-member)"
-        return user.notes.update(note=note)
-
-    def copy_notebook():
-        copied = user.notebooks.copy(
-            notebook_copy_info=NotebookCopyInfo(id=notebook, parent_id=destination),
-            type=NotebookCopyType.PROJECT,
-        )
-        fx.later(lambda: admin.notebooks.delete(id=copied.id))
-        return copied
-
-    return {
-        "Open the project (baseline)": _attempt(lambda: user.projects.get_by_id(id=pid), _always),
-        "Read a note by ID": _attempt(lambda: user.notes.get_by_id(id=ids[NOTE]), _always),
-        "List the project's notes": _attempt(
-            lambda: user.notes.get_by_parent_id(parent_id=pid), bool
-        ),
-        "Get a file by ID (download link)": _attempt(
-            lambda: user.attachments.get_by_id(id=ids[ATTACHMENT]),
-            lambda a: bool(a.signed_url),
-        ),
-        "Get a note's file by ID (download link)": _attempt(
-            lambda: user.attachments.get_by_id(id=ids[NOTE_ATTACHMENT]),
-            lambda a: bool(a.signed_url),
-        ),
-        "List the project's files": _attempt(
-            lambda: user.attachments.get_by_parent_ids(parent_ids=[pid]), bool
-        ),
-        "Edit a note by ID": _attempt(edit_note, _always),
-        "Delete a note by ID": _attempt(lambda: user.notes.delete(id=fresh[NOTE]), _always),
-        "Delete a file by ID": _attempt(
-            lambda: user.attachments.delete(id=fresh[ATTACHMENT]), _always
-        ),
-        "Read the project's formula by ID": _attempt(
-            lambda: user.inventory.get_by_id(id=formula), _always
-        ),
-        "Bulk-get the project's formula": _attempt(
-            lambda: user.inventory.get_by_ids(ids=[formula]),
-            lambda items: any(i.id == formula for i in items),
-        ),
-        "Read the formula's ingredients": _attempt(
-            lambda: user.product_design.get_unpacked_products(inventory_ids=[formula]), bool
-        ),
-        "Read the project's worksheet": _attempt(
-            lambda: WorksheetCollection(session=user.session).get_by_project_id(project_id=pid),
-            _always,
-        ),
-        "Read the formula's lot by ID": _attempt(
-            lambda: user.lots.get_by_id(id=formula_lot), _always
-        ),
-        "Copy the project's notebook elsewhere": _attempt(copy_notebook, _always),
-    }
+# --- 1. Project class rules -------------------------------------------------------------
 
 
-def _readable(fn: Callable[[], object]) -> bool:
-    try:
-        fn()
-    except AlbertHTTPError:
-        return False
-    return True
-
-
-def _wait_readable(fn: Callable[[], object], want: bool, timeout: float = 45.0) -> None:
-    deadline = time.monotonic() + timeout
-    while _readable(fn) != want and time.monotonic() < deadline:
-        time.sleep(3)
-
-
-def _inventory_checks(fx: Fixtures, user: Albert, user_id: str) -> dict[str, Result]:
-    shared, hidden = fx.inventory(SecurityClass.SHARED), fx.inventory(SecurityClass.CONFIDENTIAL)
-    shared_lot, hidden_lot = fx.lot(shared.id), fx.lot(hidden.id)
-    checks = {
-        "Open a confidential inventory item (baseline)": _attempt(
-            lambda: user.inventory.get_by_id(id=hidden.id), _always
-        ),
-        "Bulk-get it next to a shared item": _attempt(
-            lambda: user.inventory.get_by_ids(ids=[shared.id, hidden.id]),
-            lambda items: any(i.id == hidden.id for i in items),
-        ),
-        "Read its lot by ID": _attempt(lambda: user.lots.get_by_id(id=hidden_lot), _always),
-        "Bulk-get its lot next to a shared lot": _attempt(
-            lambda: user.lots.get_by_ids(ids=[shared_lot, hidden_lot]),
-            lambda lots: any(lot.id == hidden_lot for lot in lots),
-        ),
-        "Delete its lot": _attempt(lambda: user.lots.delete(id=hidden_lot), _always),
-    }
-
-    def mirror(item: InventoryItem, lot_id: str) -> Result:
-        inv = _readable(lambda: user.inventory.get_by_id(id=item.id))
-        lot = _readable(lambda: user.lots.get_by_id(id=lot_id))
-        if inv == lot:
-            return Result(False, f"match (both {'readable' if inv else 'blocked'})")
-        side = "item readable, lot blocked" if inv else "lot readable, item blocked"
-        return Result(True, f"MISMATCH: {side}")
-
-    checks["Lot access mirrors item (shared, no grant)"] = mirror(shared, shared_lot)
-    checks["Lot access mirrors item (confidential, no grant)"] = mirror(hidden, hidden_lot)
-    for level in ("InventoryViewer", "InventoryOwner"):
-        grant(fx.admin, hidden.id, user_id, level)
-        try:
-            _wait_readable(lambda: user.inventory.get_by_id(id=hidden.id), True)
-            checks[f"Lot access mirrors item (confidential, {level})"] = mirror(hidden, hidden_lot)
-        finally:
-            revoke(fx.admin, hidden.id, user_id)
-            _wait_readable(lambda: user.inventory.get_by_id(id=hidden.id), False)
-    return checks
-
-
-@dataclass
-class ClassCheck:
-    expect_readable: bool
-    readable: bool
-    status: str
-
-    @property
-    def wrong(self) -> bool:
-        return self.expect_readable != self.readable
-
-
-def _status(fn: Callable[[], object]) -> tuple[bool, str]:
-    try:
-        fn()
-    except AlbertHTTPError as err:
-        return False, f"blocked ({err.response.status_code if err.response is not None else '?'})"
-    return True, "readable"
-
-
-def _class_vs_project_checks(
-    fx: Fixtures, user: Albert, shared: StaticDoc
-) -> dict[str, ClassCheck]:
-    """Does an inventory item's own class (FGC) win over the project it sits in?
-
-    userB can open the shared project, so a formula there is readable unless its own
-    inventory class hides it. A confidential raw material outside any project is the
-    plain inventory case."""
+def project_class_rules(fx: Fixtures, user_a: Albert, user_a_id: str, user_b: Albert) -> Table:
     admin = fx.admin
-    normal = ensure_static_formula(admin, shared)
-    secret = ensure_static_formula(
-        admin, shared, suffix="secret-formula", security_class=SecurityClass.CONFIDENTIAL
+    table = Table(
+        "1. Project class rules: a project's formula and the formula's lot, note and file",
+        "member (userA, ProjectEditor) reads and edits everything. Outsider (userB, no "
+        "grant): shared = read + edit, restricted = read only, private and confidential = "
+        "nothing.",
+        [f"{c.value} {who}" for c in PROJECT_CLASSES for who in ("in", "out")],
     )
-    raw = fx.inventory(SecurityClass.CONFIDENTIAL)
-    normal_lot, secret_lot = fx.lot(normal, raw=False), fx.lot(secret, raw=False)
-    raw_lot = fx.lot(raw.id)
-    cases = {
-        "Open the shared project (baseline)": (
-            True,
-            lambda: user.projects.get_by_id(id=shared.project_id),
-        ),
-        "Normal formula in the shared project": (
-            True,
-            lambda: user.inventory.get_by_id(id=normal),
-        ),
-        "Secret (confidential) formula in the shared project": (
-            False,
-            lambda: user.inventory.get_by_id(id=secret),
-        ),
-        "Secret (confidential) raw material": (False, lambda: user.inventory.get_by_id(id=raw.id)),
-        "Lot of the normal formula": (True, lambda: user.lots.get_by_id(id=normal_lot)),
-        "Lot of the secret formula": (False, lambda: user.lots.get_by_id(id=secret_lot)),
-        "Lot of the secret raw material": (False, lambda: user.lots.get_by_id(id=raw_lot)),
-    }
-    return {name: ClassCheck(expect, *_status(fn)) for name, (expect, fn) in cases.items()}
-
-
-MATRIX_CLASSES = (
-    AccessClass.CONFIDENTIAL,
-    AccessClass.PRIVATE,
-    AccessClass.RESTRICTED,
-    AccessClass.SHARED,
-)
-# (read, edit) by ID for a standard user outside the project (Explicit Named Access spec):
-# shared is implicit all; restricted is implicit read, explicit edit; private is implicit
-# list only, explicit read and edit; confidential is explicit all.
-OUTSIDER_RULES = {
-    AccessClass.CONFIDENTIAL: (False, False),
-    AccessClass.PRIVATE: (False, False),
-    AccessClass.RESTRICTED: (True, False),
-    AccessClass.SHARED: (True, True),
-}
-
-
-def _project_class_matrix(
-    fx: Fixtures, user_a: Albert, user_a_id: str, user_b: Albert
-) -> tuple[list[str], dict[str, dict[str, ClassCheck]]]:
-    """A project's formula and the formula's lot and note, read and edited by a member
-    (userA, ProjectEditor grant) and an outsider (userB, no grant) of each project class."""
-    admin = fx.admin
     targets = {}
-    for cls in MATRIX_CLASSES:
+    for cls in PROJECT_CLASSES:
         doc = ensure_static_doc(admin, cls)
         formula = ensure_static_formula(admin, doc)
-        lot = fx.lot(formula, raw=False)
-        note = admin.notes.create(note=Note(parent_id=formula, note=f"{PREFIX} formula note"))
-        fx.later(lambda nid=note.id: admin.notes.delete(id=nid))
-        targets[cls] = (doc, formula, lot, note.id)
-
-    for doc, *_ in targets.values():
-        grant(admin, doc.project_id, user_a_id, "ProjectEditor")
-        fx.later(lambda pid=doc.project_id: revoke(admin, pid, user_a_id))
+        targets[cls] = (
+            doc,
+            formula,
+            fx.lot(formula, raw=False),
+            fx.children(formula, inventory=True),
+        )
+        fx.grant(doc.project_id, user_a_id, "ProjectEditor")
     for _doc, formula, *_ in targets.values():
         _wait_readable(lambda f=formula: user_a.inventory.get_by_id(id=f), True)
 
@@ -371,159 +256,220 @@ def _project_class_matrix(
 
     def edit_note(user: Albert, note_id: str) -> object:
         note = admin.notes.get_by_id(id=note_id)
-        note.note = f"{PREFIX} formula note {uuid.uuid4().hex[:6]}"
+        note.note = f"{PREFIX} note {uuid.uuid4().hex[:6]}"
         return user.notes.update(note=note)
 
-    columns = [f"{c.value} {who}" for c in MATRIX_CLASSES for who in ("in", "out")]
-    rows: dict[str, dict[str, ClassCheck]] = {}
-    for cls, (_doc, formula, lot, note) in targets.items():
+    def checks(user: Albert, pid: str, formula: str, lot: str, kids: dict, read: bool, edit: bool):
+        note, note_file = kids[NOTE], kids[NOTE_ATTACHMENT]
+        return {
+            "Open the project": (read, lambda: user.projects.get_by_id(id=pid)),
+            "Read formula": (read, lambda: user.inventory.get_by_id(id=formula)),
+            "Read formula's lot": (read, lambda: user.lots.get_by_id(id=lot)),
+            "Read formula's note": (read, lambda: user.notes.get_by_id(id=note)),
+            "Read file on that note": (read, lambda: user.attachments.get_by_id(id=note_file)),
+            "Edit formula": (edit, lambda: edit_formula(user, formula)),
+            "Edit formula's lot": (edit, lambda: edit_lot(user, lot)),
+            "Edit formula's note": (edit, lambda: edit_note(user, note)),
+        }
+
+    for cls, (doc, formula, lot, kids) in targets.items():
         out_read, out_edit = OUTSIDER_RULES[cls]
-        for who, user, can_read, can_edit in (
+        for who, user, read, edit in (
             ("in", user_a, True, True),
             ("out", user_b, out_read, out_edit),
         ):
-            col = f"{cls.value} {who}"
-            actions = {
-                "Read formula": (can_read, lambda u=user, f=formula: u.inventory.get_by_id(id=f)),
-                "Read formula's lot": (can_read, lambda u=user, x=lot: u.lots.get_by_id(id=x)),
-                "Read formula's note": (can_read, lambda u=user, x=note: u.notes.get_by_id(id=x)),
-                "Edit formula": (can_edit, lambda u=user, f=formula: edit_formula(u, f)),
-                "Edit formula's lot": (can_edit, lambda u=user, x=lot: edit_lot(u, x)),
-                "Edit formula's note": (can_edit, lambda u=user, x=note: edit_note(u, x)),
-            }
-            for name, (expect, fn) in actions.items():
-                ok, status = _status(fn)
-                rows.setdefault(name, {})[col] = ClassCheck(expect, ok, "ok" if ok else status)
-    return columns, rows
+            for row, (expect, fn) in checks(
+                user, doc.project_id, formula, lot, kids, read, edit
+            ).items():
+                table.add(row, f"{cls.value} {who}", _cell(expect, fn, allowed_if=lambda _: True))
+    return table
 
 
-def _confidential_inheritance(
-    fx: Fixtures, user_a: Albert, user_a_id: str, user_b: Albert
-) -> tuple[list[str], dict[str, dict[str, ClassCheck]]]:
-    """A confidential inventory item, and a formula in a private or confidential project: the
-    record, its lot, its note and the file on that note are readable only by admin and by
-    someone named on it (userA: InventoryViewer on the item, ProjectViewer on the project).
-    A standard user who is not named (userB, every policy) is blocked from all of them."""
+# --- 2. An inventory item's own class ---------------------------------------------------
+
+
+def inventory_class(fx: Fixtures, user_b: Albert, user_b_id: str) -> tuple[Table, dict]:
     admin = fx.admin
+    levels = ("InventoryViewer", "InventoryOwner")
+    table = Table(
+        "2. Confidential inventory: the item, its lot, note and file on that note",
+        "hidden from anyone not named on the item (even when the item is a formula in a "
+        "shared project the user can open); readable once named. The lot follows the item.",
+        ["not named", *(f"named: {lv}" for lv in levels)],
+    )
+    shared = ensure_static_doc(admin, AccessClass.SHARED)
     raw = fx.inventory(SecurityClass.CONFIDENTIAL)
-    subjects = {"Confidential raw material": (raw.id, raw.id, "InventoryViewer")}
-    for cls in (AccessClass.PRIVATE, AccessClass.CONFIDENTIAL):
-        doc = ensure_static_doc(admin, cls)
-        subjects[f"Formula in a {cls.value} project"] = (
-            ensure_static_formula(admin, doc),
-            doc.project_id,
-            "ProjectViewer",
-        )
-    seeded = {
-        label: (rid, fx.lot(rid, raw=rid == raw.id), fx.children(rid, inventory=True))
-        for label, (rid, _, _) in subjects.items()
+    secret_formula = ensure_static_formula(
+        admin, shared, suffix="secret-formula", security_class=SecurityClass.CONFIDENTIAL
+    )
+    subjects = {
+        "Confidential raw material": (raw.id, fx.lot(raw.id), fx.children(raw.id, inventory=True)),
+        "Confidential formula in a shared project": (
+            secret_formula,
+            fx.lot(secret_formula, raw=False),
+            fx.children(secret_formula, inventory=True),
+        ),
     }
-    for _label, (rid, grant_on, level) in subjects.items():
-        grant(admin, grant_on, user_a_id, level)
-        fx.later(lambda g=grant_on: revoke(admin, g, user_a_id))
-        _wait_readable(lambda r=rid: user_a.inventory.get_by_id(id=r), True)
 
-    users = {"admin": (admin, True), "named": (user_a, True), "not named": (user_b, False)}
-    columns = [f"{who}" for who in users]
-    rows: dict[str, dict[str, ClassCheck]] = {}
-    for label, (rid, lot, kids) in seeded.items():
-        reads = {
-            "item": lambda u, r=rid: u.inventory.get_by_id(id=r),
-            "its lot": lambda u, x=lot: u.lots.get_by_id(id=x),
-            "its note": lambda u, x=kids[NOTE]: u.notes.get_by_id(id=x),
-            "file on its note": lambda u, x=kids[NOTE_ATTACHMENT]: u.attachments.get_by_id(id=x),
+    def reads(rid: str, lot: str, kids: dict) -> dict[str, Callable[[], object]]:
+        return {
+            "item": lambda: user_b.inventory.get_by_id(id=rid),
+            "its lot": lambda: user_b.lots.get_by_id(id=lot),
+            "its note": lambda: user_b.notes.get_by_id(id=kids[NOTE]),
+            "file on its note": lambda: user_b.attachments.get_by_id(id=kids[NOTE_ATTACHMENT]),
         }
-        for what, fn in reads.items():
-            name = f"{label}: {what}"
-            for who, (client, expect) in users.items():
-                ok, status = _status(lambda c=client, f=fn: f(c))
-                rows.setdefault(name, {})[who] = ClassCheck(expect, ok, "ok" if ok else status)
-    return columns, rows
+
+    def read_all(column: str, expect: bool) -> None:
+        for label, (rid, lot, kids) in subjects.items():
+            for what, fn in reads(rid, lot, kids).items():
+                table.add(f"{label}: {what}", column, _cell(expect, fn, allowed_if=lambda _: True))
+
+    read_all("not named", False)
+    for level in levels:
+        for rid, *_ in subjects.values():
+            grant(admin, rid, user_b_id, level)
+        try:
+            for rid, *_ in subjects.values():
+                _wait_readable(lambda r=rid: user_b.inventory.get_by_id(id=r), True)
+            read_all(f"named: {level}", True)
+        finally:
+            for rid, *_ in subjects.values():
+                revoke(admin, rid, user_b_id)
+            for rid, *_ in subjects.values():
+                _wait_readable(lambda r=rid: user_b.inventory.get_by_id(id=r), False)
+    return table, {"raw": raw.id, "raw_lot": subjects["Confidential raw material"][1]}
+
+
+# --- 3. Bypass routes --------------------------------------------------------------------
+
+
+def _project_files(admin: Albert, pid: str) -> dict[str, str]:
+    """A note, a file attached through a note and a direct file on the static project."""
+    notes = admin.notes.get_by_parent_id(parent_id=pid)
+    plain = next(n for n in notes if not n.attachments)
+    wrapper = next(n for n in notes if n.attachments)
+    direct = admin.attachments.get_by_parent_ids(parent_ids=[pid]).get(pid, [])
+    return {NOTE: plain.id, NOTE_ATTACHMENT: wrapper.attachments[0].id, ATTACHMENT: direct[0].id}
+
+
+def bypass_routes(fx: Fixtures, user_b: Albert, confidential_raw: dict[str, str]) -> Table:
+    admin = fx.admin
+    table = Table(
+        "3. Bypass routes: other SDK calls an outsider (userB, no grant) might use",
+        "every call is blocked; a refusal or an empty answer counts as blocked.",
+        ["private project", "confidential project", "confidential raw"],
+    )
+    destination = ensure_static_doc(admin, AccessClass.SHARED).project_id
+
+    def project_checks(doc: StaticDoc) -> dict[str, tuple]:
+        pid = doc.project_id
+        files = _project_files(admin, pid)
+        fresh = fx.children(pid)
+        formula = ensure_static_formula(admin, doc)
+        notebook = admin.notebooks.list_by_parent_id(parent_id=pid)[0].id
+
+        def edit_note() -> object:
+            note = admin.notes.get_by_id(id=fresh[NOTE])
+            note.note = f"{note.note} (edited by outsider)"
+            return user_b.notes.update(note=note)
+
+        def copy_notebook() -> object:
+            copied = user_b.notebooks.copy(
+                notebook_copy_info=NotebookCopyInfo(id=notebook, parent_id=destination),
+                type=NotebookCopyType.PROJECT,
+            )
+            fx.later(lambda: admin.notebooks.delete(id=copied.id))
+            return copied
+
+        def worksheet() -> object:
+            return WorksheetCollection(session=user_b.session).get_by_project_id(project_id=pid)
+
+        return {
+            "Read a project note by ID": (lambda: user_b.notes.get_by_id(id=files[NOTE]), None),
+            "List the project's notes": (
+                lambda: user_b.notes.get_by_parent_id(parent_id=pid),
+                bool,
+            ),
+            "Download a project file by ID": (
+                lambda: user_b.attachments.get_by_id(id=files[ATTACHMENT]),
+                lambda a: bool(a.signed_url),
+            ),
+            "Download a note's file by ID": (
+                lambda: user_b.attachments.get_by_id(id=files[NOTE_ATTACHMENT]),
+                lambda a: bool(a.signed_url),
+            ),
+            "List the project's files": (
+                lambda: user_b.attachments.get_by_parent_ids(parent_ids=[pid]),
+                bool,
+            ),
+            "Edit a project note by ID": (edit_note, None),
+            "Delete a project note by ID": (lambda: user_b.notes.delete(id=fresh[NOTE]), None),
+            "Delete a project file by ID": (
+                lambda: user_b.attachments.delete(id=fresh[ATTACHMENT]),
+                None,
+            ),
+            "Bulk-get the project's formula": (
+                lambda: user_b.inventory.get_by_ids(ids=[formula]),
+                lambda items: any(i.id == formula for i in items),
+            ),
+            "Read the formula's ingredients": (
+                lambda: user_b.product_design.get_unpacked_products(inventory_ids=[formula]),
+                bool,
+            ),
+            "Read the project's worksheet": (worksheet, None),
+            "Copy the project's notebook elsewhere": (copy_notebook, None),
+        }
+
+    for cls in (AccessClass.PRIVATE, AccessClass.CONFIDENTIAL):
+        for row, (fn, allowed_if) in project_checks(ensure_static_doc(admin, cls)).items():
+            kwargs = {"allowed_if": allowed_if or (lambda _: True)}
+            table.add(row, f"{cls.value} project", _cell(False, fn, **kwargs))
+
+    shared = fx.inventory(SecurityClass.SHARED)
+    shared_lot = fx.lot(shared.id)
+    raw, raw_lot = confidential_raw["raw"], confidential_raw["raw_lot"]
+    raw_checks = {
+        "Bulk-get it next to a shared item": (
+            lambda: user_b.inventory.get_by_ids(ids=[shared.id, raw]),
+            lambda items: any(i.id == raw for i in items),
+        ),
+        "Bulk-get its lot next to a shared lot": (
+            lambda: user_b.lots.get_by_ids(ids=[shared_lot, raw_lot]),
+            lambda lots: any(lot.id == raw_lot for lot in lots),
+        ),
+        "Delete its lot": (lambda: user_b.lots.delete(id=raw_lot), lambda _: True),
+    }
+    for row, (fn, allowed_if) in raw_checks.items():
+        table.add(row, "confidential raw", _cell(False, fn, allowed_if=allowed_if))
+    return table
+
+
+# --- Main -------------------------------------------------------------------------------
 
 
 def main() -> int:
     url = base_url()
     admin = load_identity("admin", url).client()
-    user_b = load_identity("userB", url)
-    user = user_b.client()
-    user_a = load_identity("userA", url)
+    a_identity, b_identity = load_identity("userA", url), load_identity("userB", url)
+    user_a, user_b = a_identity.client(), b_identity.client()
     fx = Fixtures(admin)
     try:
-        destination = ensure_static_doc(admin, AccessClass.SHARED).project_id
-        rows: dict[str, dict[AccessClass, Result]] = {}
-        for cls in CLASSES:
-            checks = _project_checks(fx, user, ensure_static_doc(admin, cls), destination)
-            for name, result in checks.items():
-                rows.setdefault(name, {})[cls] = result
-        inventory = _inventory_checks(fx, user, user_id(user_b))
-        by_class = _class_vs_project_checks(fx, user, ensure_static_doc(admin, AccessClass.SHARED))
-        columns, matrix = _project_class_matrix(fx, user_a.client(), user_id(user_a), user)
-        inherit_cols, inherit = _confidential_inheritance(
-            fx, user_a.client(), user_id(user_a), user
-        )
+        section1 = project_class_rules(fx, user_a, user_id(a_identity), user_b)
+        section2, confidential_raw = inventory_class(fx, user_b, user_id(b_identity))
+        section3 = bypass_routes(fx, user_b, confidential_raw)
     finally:
         fx.close()
 
-    width = max(map(len, [*rows, *inventory, *by_class])) + 2
-    print(f"\n{'Non-member (userB) tries to':<{width}}{'private':<18}confidential")
-    for name, by_cls in rows.items():
-        print(f"{name:<{width}}" + "".join(f"{by_cls[c].detail:<18}" for c in CLASSES))
-    print()
-    for name, result in inventory.items():
-        print(f"{name:<{width}}{result.detail}")
+    tables = (section1, section2, section3)
+    for table in tables:
+        table.print()
 
-    print(f"\n{'Inventory class vs project access (userB)':<{width}}{'expected':<18}got")
-    for name, chk in by_class.items():
-        expected = "readable" if chk.expect_readable else "blocked"
-        flag = "" if not chk.wrong else "   <-- WRONG"
-        print(f"{name:<{width}}{expected:<18}{chk.status}{flag}")
-
-    print("\nProject class x membership (in = userA, ProjectEditor; out = userB, no grant)")
-    print(f"{'':<22}" + "".join(f"{c:<18}" for c in columns))
-    for name, cells in matrix.items():
-        line = "".join(
-            f"{cells[c].status + (' !' if cells[c].wrong else ''):<18}" for c in columns
-        )
-        print(f"{name:<22}{line}")
-
-    iw = max(map(len, inherit)) + 2
-    print("\nConfidential inheritance (named = userA with a grant; not named = userB)")
-    print(f"{'':<{iw}}" + "".join(f"{c:<18}" for c in inherit_cols))
-    for name, cells in inherit.items():
-        line = "".join(
-            f"{cells[c].status + (' !' if cells[c].wrong else ''):<18}" for c in inherit_cols
-        )
-        print(f"{name:<{iw}}{line}")
-
-    leaks = [f"{n} ({c.value})" for n, by in rows.items() for c, r in by.items() if r.leaked]
-    leaks += [
-        f"{n}: {r.detail}" if r.detail.startswith("MISMATCH") else f"{n} (confidential inventory)"
-        for n, r in inventory.items()
-        if r.leaked
-    ]
-    leaks += [
-        f"{n}: expected {'readable' if c.expect_readable else 'blocked'}, got {c.status}"
-        for n, c in by_class.items()
-        if c.wrong
-    ]
-    leaks += [
-        f"{name} [{col}]: {'allowed' if c.readable else 'blocked'}, should be "
-        f"{'allowed' if c.expect_readable else 'blocked'}"
-        for name, cells in matrix.items()
-        for col, c in cells.items()
-        if c.wrong
-    ]
-    leaks += [
-        f"{name} [{col}]: {'readable' if c.readable else 'blocked'}, should be "
-        f"{'readable' if c.expect_readable else 'blocked'}"
-        for name, cells in inherit.items()
-        for col, c in cells.items()
-        if c.wrong
-    ]
-    print(f"\n{len(leaks)} leak(s)" + (":" if leaks else ""))
-    for leak in leaks:
-        print(f"  - {leak}")
-    return 1 if leaks else 0
+    failures = [(t.title.split(":")[0], f) for t in tables for f in t.failures()]
+    total = sum(len(r) for t in tables for r in t.rows.values())
+    print(f"\nSummary: {total - len(failures)} passed, {len(failures)} failed")
+    for section, failure in failures:
+        print(f"  [{section}] {failure}")
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":
