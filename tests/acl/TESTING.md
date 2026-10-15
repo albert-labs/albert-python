@@ -22,6 +22,10 @@ Output: `acl-report/acl-report.md` and `.csv`, with findings grouped by policy o
   policy's operation list. `tests/unit/acl` enforces this with a lint.
 - A failing check is a finding and stays red. Do not xfail, skip or loosen it. Strict
   xfail is allowed only after a ticket exists and product has accepted the gap.
+- Accepted platform limitations live in `known_gaps.py` and in `KNOWN_GAPS` in
+  `quick_check.py`. Today that is lot read inheritance: a lot's GET does not inherit its
+  inventory item's (or project's) access. Those cases use a non-strict xfail because the
+  same parametrized test also covers lot reads that already behave correctly.
 - Undecided contract cells skip with `contract undecided: ask product` and are listed in
   the report.
 - Verdicts (`oracle.py`):

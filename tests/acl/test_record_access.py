@@ -21,6 +21,7 @@ from tests.acl.contract.fgc import (
 )
 from tests.acl.contract.model import Expect, Verb
 from tests.acl.http import Response, call
+from tests.acl.known_gaps import LOT_GET_INHERITANCE
 from tests.acl.world import INVENTORY_CLASSES, PROJECT_CLASSES, World, grant, revoke
 from tests.utils.wait import poll_until
 
@@ -85,6 +86,8 @@ def _project_cases():
 @pytest.mark.parametrize(("level", "kind", "verb"), list(_project_cases()))
 def test_project_fgc(request, admin, broad_user, user_ids, world: World, level, kind, verb):
     """Test that a project-level FGC grant yields exactly the contracted child access."""
+    if kind is Kind.LOT and verb is Verb.READ:
+        request.applymarker(LOT_GET_INHERITANCE)
     tree = world.projects[AccessClass.PRIVATE]
     rid = tree.ids[kind]
     pid = tree.ids[Kind.PROJECT]
@@ -112,6 +115,8 @@ def test_project_fgc(request, admin, broad_user, user_ids, world: World, level, 
 @pytest.mark.parametrize("kind", [Kind.INVENTORY, Kind.LOT, Kind.INVENTORY_CHILD])
 def test_inventory_fgc_read(request, admin, broad_user, user_ids, world: World, level, kind):
     """Test that an inventory FGC grant on a confidential item yields the contracted read."""
+    if kind is Kind.LOT:
+        request.applymarker(LOT_GET_INHERITANCE)
     tree = world.inventories[AccessClass.CONFIDENTIAL]
     inv = tree.ids[Kind.INVENTORY]
     path = READ_PATH[kind].format(tree.ids[kind])

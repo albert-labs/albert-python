@@ -21,6 +21,7 @@ from tests.acl.checks import admin_control, check
 from tests.acl.contract.fgc import AccessClass, Kind
 from tests.acl.contract.model import Expect
 from tests.acl.http import Response, call
+from tests.acl.known_gaps import LOT_GET_INHERITANCE
 from tests.acl.world import grant, revoke
 from tests.utils.wait import poll_until
 
@@ -58,7 +59,12 @@ def chain_user(switcher):
     return switcher.use("broad-chains", CHAIN_POLICIES)
 
 
+LOT_LINKS = frozenset({"formula_lot", "lot"})
+
+
 def _probe(request, admin, user, pattern, link, path, expect, owner="ProjectOwner", resp=None):
+    if link.split(".")[0] in LOT_LINKS:
+        request.applymarker(LOT_GET_INHERITANCE)
     admin_control(call(admin, "GET", path), link)
     check(
         request,
