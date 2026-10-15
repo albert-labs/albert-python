@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.63.0](https://github.com/albert-labs/albert-python/compare/v1.62.0...v1.63.0) (2026-10-15)
+
+
+### Features
+
+* **design_runs:** add v4 design runs collection alongside v3 (AIM-1370) ([#842](https://github.com/albert-labs/albert-python/issues/842)) ([ad1824a](https://github.com/albert-labs/albert-python/commit/ad1824abbd343fe8406261323209ec209a85aec4))
+* **lots:** add from_on_hand filter to lots search ([#839](https://github.com/albert-labs/albert-python/issues/839)) ([f88fcf1](https://github.com/albert-labs/albert-python/commit/f88fcf17aaee7cee261ac1284bffc4031e5170c3))
+
+
+### Bug Fixes
+
+* **add_formulation:** new inventory row and locked formula columns ([#837](https://github.com/albert-labs/albert-python/issues/837)) ([efcf381](https://github.com/albert-labs/albert-python/commit/efcf3812e2ba4fad8c359d9057e60bc3bac92b76))
+* **collections:** support metadata scalar/list cardinality changes ([#838](https://github.com/albert-labs/albert-python/issues/838)) ([c2cdd8c](https://github.com/albert-labs/albert-python/commit/c2cdd8cd60ecd781dd33c30b301e00d4833552a1))
+* **tags:** resolve and deduplicate tags on create and update ([#835](https://github.com/albert-labs/albert-python/issues/835)) ([d09fac2](https://github.com/albert-labs/albert-python/commit/d09fac2e1cb887f190b8500f30110c1b630497a5))
+
 ## [1.62.0](https://github.com/albert-labs/albert-python/compare/v1.61.0...v1.62.0) (2026-10-09)
 
 
