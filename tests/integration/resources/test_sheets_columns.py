@@ -46,6 +46,9 @@ def test_bulk_column_and_row_operations(seeded_sheet: Sheet, seed_prefix: str):
         seeded_sheet.hide_columns(column_ids=[c.column_id for c in columns])
         seeded_sheet.show_columns(column_ids=[c.column_id for c in columns])
         seeded_sheet.lock_columns(column_ids=[c.column_id for c in columns])
+        unlocked = seeded_sheet.lock_column(column_id=columns[0].column_id, locked=False)
+        assert unlocked.column_id == columns[0].column_id
+        assert unlocked.locked is False
         seeded_sheet.lock_columns(column_ids=[c.column_id for c in columns], locked=False)
 
         rows = seeded_sheet.add_blank_rows(
@@ -68,6 +71,7 @@ def test_recolor_column(seeded_sheet: Sheet):
             assert product_cells
             for c in product_cells:
                 assert c.color == CellColor.RED
+            break
 
 
 def test_property_reads(seeded_sheet: Sheet):
@@ -80,42 +84,28 @@ def test_property_reads(seeded_sheet: Sheet):
     assert isinstance(col.df_name, str)
 
 
-def test_lock_column(seeded_sheet: Sheet):
-    for col in seeded_sheet.columns:
-        if col.type == CellType.INVENTORY:
-            curr_state = bool(col.locked)
-            toggle_col = seeded_sheet.lock_column(locked=not curr_state, column_id=col.column_id)
-
-            assert toggle_col.locked is not curr_state
-            assert toggle_col.column_id == col.column_id
-
-            # Restore to original state
-            seeded_sheet.lock_column(locked=curr_state, column_id=col.column_id)
-            break
-
-
-def test_reorder_columns_basic(seeded_sheet: Sheet):
-    """Test reordering newly added blank columns and restoring the original order."""
-    seeded_sheet.grid = None
-    col_a = seeded_sheet.add_blank_column(name="reorder test A")
-    col_b = seeded_sheet.add_blank_column(name="reorder test B")
-    col_c = seeded_sheet.add_blank_column(name="reorder test C")
-    original_order = _column_ids(seeded_sheet)
+def test_reorder_columns(seeded_sheet: Sheet, seed_prefix: str):
+    """Test reordering columns, then reordering again with a left-pinned column."""
+    cols = seeded_sheet.add_columns(names=[f"{seed_prefix} reorder {x}" for x in "ABC"])
+    col_a, col_b, col_c = (c.column_id for c in cols)
+    pinned = False
     try:
-        assert original_order[-3:] == [col_a.column_id, col_b.column_id, col_c.column_id]
-        desired = original_order[:-3] + [
-            col_c.column_id,
-            col_b.column_id,
-            col_a.column_id,
-        ]
+        original_order = _column_ids(seeded_sheet)
+        assert original_order[-3:] == [col_a, col_b, col_c]
+
+        desired = original_order[:-3] + [col_c, col_b, col_a]
         seeded_sheet.reorder_columns(column_ids=desired)
         assert _column_ids(seeded_sheet) == desired
 
-        seeded_sheet.reorder_columns(column_ids=original_order)
-        assert _column_ids(seeded_sheet) == original_order
+        seeded_sheet.pin_columns(col_ids=[col_a], side="left")
+        pinned = True
+        desired = original_order[:-3] + [col_a, col_c, col_b]
+        seeded_sheet.reorder_columns(column_ids=desired)
+        assert _column_ids(seeded_sheet) == desired
     finally:
-        for col in (col_a, col_b, col_c):
-            seeded_sheet.delete_column(column_id=col.column_id)
+        if pinned:
+            seeded_sheet.unpin_columns(col_ids=[col_a])
+        seeded_sheet.delete_columns(column_ids=[col_a, col_b, col_c])
         seeded_sheet.grid = None
 
 
@@ -143,29 +133,3 @@ def test_reorder_columns_validation(seeded_sheet: Sheet):
 
     with pytest.raises(AlbertException, match="must include at least one"):
         seeded_sheet.reorder_columns(column_ids=[])
-
-
-def test_reorder_columns_with_pinned_column(seeded_sheet: Sheet):
-    """Test reordering column sequence when a left-pinned column is present."""
-    seeded_sheet.grid = None
-    col_a = seeded_sheet.add_blank_column(name="reorder pin A")
-    col_b = seeded_sheet.add_blank_column(name="reorder pin B")
-    col_c = seeded_sheet.add_blank_column(name="reorder pin C")
-    original_order = _column_ids(seeded_sheet)
-    try:
-        seeded_sheet.pin_columns(col_ids=[col_a.column_id], side="left")
-        seeded_sheet.grid = None
-
-        desired = original_order[:-3] + [
-            col_a.column_id,
-            col_c.column_id,
-            col_b.column_id,
-        ]
-        seeded_sheet.reorder_columns(column_ids=desired)
-        assert _column_ids(seeded_sheet) == desired
-    finally:
-        seeded_sheet.reorder_columns(column_ids=original_order)
-        seeded_sheet.unpin_columns(col_ids=[col_a.column_id])
-        for col in (col_a, col_b, col_c):
-            seeded_sheet.delete_column(column_id=col.column_id)
-        seeded_sheet.grid = None
