@@ -23,6 +23,7 @@ from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
 from albert.collections.design_runs import DesignRunCollection
+from albert.collections.design_spaces import DesignSpaceCollection
 from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.hazards import HazardsCollection
@@ -217,6 +218,11 @@ class Albert:
     @property
     def design_runs(self) -> DesignRunCollection:
         return DesignRunCollection(session=self.session)
+
+    @property
+    def design_spaces(self) -> DesignSpaceCollection:
+        """Design spaces on the v4 design service."""
+        return DesignSpaceCollection(session=self.session)
 
     @property
     def tags(self) -> TagCollection:
