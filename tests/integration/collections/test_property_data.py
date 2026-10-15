@@ -901,7 +901,11 @@ def test_image_upload_onto_partially_filled_trial(
                 name=f"{seed_prefix} - image row dt",
                 description="Template for writing an image onto a partially filled trial.",
                 data_column_values=[
-                    DataColumnValue(data_column=dc_text),
+                    # Untyped columns default to number validation; "filled" needs string.
+                    DataColumnValue(
+                        data_column=dc_text,
+                        validation=[ValueValidation(datatype=DataType.STRING)],
+                    ),
                     DataColumnValue(data_column=dc_image),
                 ],
             )
