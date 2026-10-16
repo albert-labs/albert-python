@@ -7,6 +7,7 @@ from albert.resources.interval_combinations import (
     CombinationOverride,
     Condition,
     ExclusionRule,
+    InventoryExclusion,
     OverrideAction,
     RuleCondition,
     RuleOperator,
@@ -72,6 +73,76 @@ def test_combination_override_serialization():
         "key": "PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9",
         "action": "skip",
     }
+
+
+def test_inventory_exclusion_serialization():
+    """Test InventoryExclusion serialization to camelCase wire format."""
+    exclusion = InventoryExclusion(
+        inv_lot_unique_id="INV123#LOT456#1",
+        interval_row_key="ROW3XROW7",
+    )
+    wire = exclusion.model_dump(by_alias=True, mode="json", exclude_none=True)
+    assert wire == {
+        "invLotUniqueId": "INV123#LOT456#1",
+        "intervalRowKey": "ROW3XROW7",
+    }
+
+
+def test_inventory_exclusion_deserialization():
+    """Test InventoryExclusion deserialization from wire camelCase format."""
+    wire = {
+        "id": "exc-uuid-1",
+        "invLotUniqueId": "INV123#LOT456#1",
+        "intervalRowKey": "ROW3XROW7",
+    }
+    exclusion = InventoryExclusion.model_validate(wire)
+    assert exclusion.id == "exc-uuid-1"
+    assert exclusion.inv_lot_unique_id == "INV123#LOT456#1"
+    assert exclusion.interval_row_key == "ROW3XROW7"
+
+
+@pytest.mark.parametrize(
+    "missing_field",
+    ["invLotUniqueId", "intervalRowKey"],
+    ids=["missing-invLotUniqueId", "missing-intervalRowKey"],
+)
+def test_inventory_exclusion_requires_pair_fields(missing_field):
+    """Test InventoryExclusion rejects a wire payload missing either pair field."""
+    wire = {
+        "invLotUniqueId": "INV123#LOT456#1",
+        "intervalRowKey": "ROW3XROW7",
+    }
+    del wire[missing_field]
+    with pytest.raises(ValidationError):
+        InventoryExclusion.model_validate(wire)
+
+
+def test_block_rules_parses_inventory_exclusions():
+    """Test BlockRules parses inventoryExclusions from the wire envelope."""
+    payload = {
+        "taskId": "TASFOR123",
+        "blockId": "BLK1",
+        "rules": {"items": [], "lastKey": None},
+        "overrides": [],
+        "inventoryExclusions": [
+            {
+                "id": "exc-uuid-1",
+                "invLotUniqueId": "INV123#LOT456#1",
+                "intervalRowKey": "ROW3XROW7",
+            }
+        ],
+    }
+    block_rules = BlockRules.model_validate(payload)
+    assert len(block_rules.inventory_exclusions) == 1
+    assert block_rules.inventory_exclusions[0].id == "exc-uuid-1"
+    assert block_rules.inventory_exclusions[0].inv_lot_unique_id == "INV123#LOT456#1"
+    assert block_rules.inventory_exclusions[0].interval_row_key == "ROW3XROW7"
+
+
+def test_block_rules_inventory_exclusions_default_empty():
+    """Test BlockRules defaults inventoryExclusions to empty when the key is absent."""
+    block_rules = BlockRules.model_validate({"taskId": "TASFOR123", "blockId": "BLK1"})
+    assert block_rules.inventory_exclusions == []
 
 
 def test_block_rules_unwrap_response():
