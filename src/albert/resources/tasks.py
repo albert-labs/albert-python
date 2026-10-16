@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
@@ -341,18 +340,11 @@ class Block(BaseAlbertModel):
 
     @property
     @deprecated(
-        "`Block.combinations_count` is deprecated; the platform returns the combination "
-        "count on the block's final Workflow element, not on the Block. Use "
-        "`Workflow.combinations_count` instead."
+        "`Block.combinations_count` is deprecated and will be removed in a future release; "
+        "read `combinations_count` from the block's final Workflow instead."
     )
     def combinations_count(self) -> int | None:
         """Deprecated alias for the ``combinations_count`` of the block's final workflow."""
-        warnings.warn(
-            "`Block.combinations_count` is deprecated and will be removed in a future "
-            "release; read `combinations_count` from the block's final Workflow instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         for workflow in self.workflow or []:
             count = getattr(workflow, "combinations_count", None)
             if count is not None:

@@ -3,9 +3,11 @@ from pydantic import ValidationError
 
 from albert.resources.property_data import (
     PropertyDataSearchItem,
+    TaskData,
     TaskDataColumn,
     TaskDataColumnValue,
     TaskPropertyCreate,
+    TaskPropertyData,
     TaskPropertyValue,
 )
 
@@ -103,3 +105,20 @@ def test_property_data_search_item_parameter_group_id_defaults_to_none():
         }
     )
     assert item.workflow[0].parameter_group_id is None
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        TaskData.model_construct(final_workflow="WFL1"),
+        TaskPropertyData.model_construct(parent_id="TAS1", final_workflow="WFL1"),
+    ],
+    ids=["TaskData", "TaskPropertyData"],
+)
+def test_finial_workflow_warns_once_and_aliases_final_workflow(model):
+    """Test the deprecated finial_workflow alias warns exactly once and returns final_workflow."""
+    with pytest.warns(DeprecationWarning, match="finial_workflow") as record:
+        value = model.finial_workflow
+
+    assert len(record) == 1
+    assert value == model.final_workflow

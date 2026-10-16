@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
@@ -242,15 +241,12 @@ class TaskData(BaseAlbertModel):
     """The workflow at task completion. Serialized as ``FinalWorkflow``. Carries the interval combinations for the block in its ``combinations`` field, but not the parameter setpoints; use [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] for those."""
 
     @property
-    @deprecated("`finial_workflow` is a misspelling; use `final_workflow` instead.")
+    @deprecated(
+        "`finial_workflow` is a misspelling and will be removed in a future release; "
+        "use `final_workflow` instead."
+    )
     def finial_workflow(self) -> SerializeAsEntityLink[Workflow]:
         """Deprecated misspelling of [`final_workflow`][albert.resources.property_data.TaskData.final_workflow]."""
-        warnings.warn(
-            "`finial_workflow` is a misspelling and will be removed in a future release; "
-            "use `final_workflow` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return self.final_workflow
 
     @finial_workflow.setter
@@ -386,15 +382,12 @@ class TaskPropertyData(BaseResource):
     """The workflow at task completion. Serialized as ``FinalWorkflow``. Commonly ``None`` here: the task-scoped read does not return the workflows. Read them from the task's block, or use [`get_task_property_records`][albert.collections.property_data.PropertyDataCollection.get_task_property_records] to get the setpoints already resolved."""
 
     @property
-    @deprecated("`finial_workflow` is a misspelling; use `final_workflow` instead.")
+    @deprecated(
+        "`finial_workflow` is a misspelling and will be removed in a future release; "
+        "use `final_workflow` instead."
+    )
     def finial_workflow(self) -> SerializeAsEntityLink[Workflow] | None:
         """Deprecated misspelling of [`final_workflow`][albert.resources.property_data.TaskPropertyData.final_workflow]."""
-        warnings.warn(
-            "`finial_workflow` is a misspelling and will be removed in a future release; "
-            "use `final_workflow` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return self.final_workflow
 
     @finial_workflow.setter

@@ -323,6 +323,16 @@ def test_block_model_dump_does_not_double_wrap_lists():
     assert dumped["Datatemplate"] == [{"id": "DAT1"}]
 
 
+def test_block_combinations_count_warns_once():
+    """Test Block.combinations_count emits exactly one DeprecationWarning per access."""
+    block = Block(workflow=[{"id": "WFL1"}], data_template=[{"id": "DAT1"}])
+
+    with pytest.warns(DeprecationWarning) as record:
+        _ = block.combinations_count
+
+    assert len(record) == 1
+
+
 def test_block_combinations_count_reads_from_final_workflow():
     """Test the deprecated Block.combinations_count reflects the final workflow's count."""
     block = Block(
