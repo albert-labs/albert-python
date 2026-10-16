@@ -839,7 +839,7 @@ class InventoryCollection(BaseCollection):
             if composite_search is not None:
                 payload["compositeSearch"] = composite_search
             return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
+                mode=PaginationMode.SEARCH_AFTER,
                 path=f"{self.base_path}/search",
                 session=self.session,
                 max_items=max_items,
@@ -851,8 +851,9 @@ class InventoryCollection(BaseCollection):
         path = (
             f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
         )
+        # llmsearch has no search_after support; it stays on offset pagination.
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.OFFSET if match_all_conditions else PaginationMode.SEARCH_AFTER,
             path=path,
             params=query_params,
             session=self.session,
