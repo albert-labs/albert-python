@@ -22,7 +22,7 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
-from albert.collections.design_runs import DesignRunCollection
+from albert.collections.design_runs import DesignRunCollection, DesignRunV4Collection
 from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.hazards import HazardsCollection
@@ -217,6 +217,11 @@ class Albert:
     @property
     def design_runs(self) -> DesignRunCollection:
         return DesignRunCollection(session=self.session)
+
+    @property
+    def design_runs_v4(self) -> DesignRunV4Collection:
+        """Design runs against the v4 design service."""
+        return DesignRunV4Collection(session=self.session)
 
     @property
     def tags(self) -> TagCollection:

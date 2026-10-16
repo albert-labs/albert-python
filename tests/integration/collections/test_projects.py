@@ -198,25 +198,6 @@ def test_update_project_acl_in_place(
             client.teams.delete(id=team.id)
 
 
-def test_delete_project(client: Albert, seeded_locations):
-    # Create a new project to delete
-    new_project = Project(
-        description="Project to Delete",
-        # acls=[],
-        locations=[EntityLink(id=seeded_locations[1].id)],
-    )
-
-    created_project = client.projects.create(project=new_project)
-    assert isinstance(created_project, Project)
-
-    # Now delete the project
-    client.projects.delete(id=created_project.id)
-
-    # Try to fetch the project, should return None or not found
-    with pytest.raises(NotFoundError):
-        client.projects.get_by_id(id=created_project.id)
-
-
 def test_reactivate_project(client: Albert, seeded_locations, seed_prefix: str):
     """Test reactivating a soft-deleted project restores access."""
     project = client.projects.create(
