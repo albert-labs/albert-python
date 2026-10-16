@@ -88,9 +88,8 @@ class InventoryCategory(str, Enum):
     EQUIPMENT : str
         Instruments and apparatus (e.g. a balance or spectrometer).
     FORMULAS : str
-        A mixture designed in Albert through a Worksheet. Formulas are not created
-        through the inventory collection; they are produced by the Worksheet
-        collection ([`WorksheetCollection`][albert.collections.worksheets.WorksheetCollection]).
+        A mixture designed in Albert under a Project. Creating a Formula item
+        requires ``project_id`` set to the parent Project's ID.
     """
 
     RAW_MATERIALS = "RawMaterials"
@@ -307,9 +306,8 @@ class InventoryItem(BaseTaggedResource):
     is used across the platform, and once saved it is referenced everywhere by its
     Inventory ID (format ``INV...``, e.g. ``"INVA9999999"``). Raw materials are typically
     linked to a manufacturing ``company`` and a compositional breakdown of CAS
-    amounts. Formula items are designed in Worksheets rather than created here (the
-    [`create`][albert.collections.inventory.InventoryCollection.create] method rejects
-    Formula items), and a Formula requires a ``project_id``.
+    amounts. A Formula item represents a mixture designed in a Project; creating
+    one requires ``project_id`` set to the parent Project's ID.
 
     Items are managed through
     [`InventoryCollection`][albert.collections.inventory.InventoryCollection] (``client.inventory``).

@@ -29,7 +29,7 @@ _IDS_CHUNK_SIZE = 300
 
 
 class AttributeCollection(BaseCollection):
-    """Manage inventory reference Attributes in the Albert platform (🧪 Beta).
+    """Manage inventory reference Attributes in the Albert platform.
 
     An Attribute is a centralized, reusable *inventory reference property*
     template (e.g. "Viscosity @ 25°C"): it names what to track, which
@@ -55,10 +55,6 @@ class AttributeCollection(BaseCollection):
     (``INV...``), lots (``LOT...``), or other parent types as the platform expands.
 
     This collection is accessed as ``client.attributes``.
-
-    !!! warning "Beta Feature!"
-        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
-        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
     !!! example
         ```python
