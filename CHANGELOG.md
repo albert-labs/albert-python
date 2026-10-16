@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.64.0](https://github.com/albert-labs/albert-python/compare/v1.63.0...v1.64.0) (2026-10-16)
+
+
+### Features
+
+* **inventory:** support creating Formula inventory items ([#829](https://github.com/albert-labs/albert-python/issues/829)) ([a23eb30](https://github.com/albert-labs/albert-python/commit/a23eb3029e2d57d1473b68267c708b756ba36fc7))
+* **lots:** warn when ALL transfer targets the current storage location ([#846](https://github.com/albert-labs/albert-python/issues/846)) ([9534b60](https://github.com/albert-labs/albert-python/commit/9534b60e2e49ffe6fb8c0715951b55ba4f12007a))
+* **tasks:** block inventory exclusions ("masks") — worked example ([#832](https://github.com/albert-labs/albert-python/issues/832)) ([a5125dc](https://github.com/albert-labs/albert-python/commit/a5125dc829eac4518cf1db4a31b4e7d710b73000))
+
+
+### Bug Fixes
+
+* **collections:** chunk /ids lookups for targets, attributes, and pricings ([#844](https://github.com/albert-labs/albert-python/issues/844)) ([efd7d44](https://github.com/albert-labs/albert-python/commit/efd7d4456d0321e1373428b1bd600b7ea8ee6c37))
+* **property_data:** relax parameterGroupId validation on search results ([#843](https://github.com/albert-labs/albert-python/issues/843)) ([2c1206b](https://github.com/albert-labs/albert-python/commit/2c1206ba44ba3eeebc17bdb738c195d534cc6e17))
+* **resources:** emit a single DeprecationWarning for deprecated aliases ([#850](https://github.com/albert-labs/albert-python/issues/850)) ([1c5bd7b](https://github.com/albert-labs/albert-python/commit/1c5bd7bce8a1f7ca8fa9230da810617cb1420007))
+
+
+### Documentation
+
+* **attributes:** promote attributes from beta to GA ([#849](https://github.com/albert-labs/albert-python/issues/849)) ([0b21ae0](https://github.com/albert-labs/albert-python/commit/0b21ae0c0f30660d91c2902793afd7005241a0a3))
+
 ## [1.63.0](https://github.com/albert-labs/albert-python/compare/v1.62.0...v1.63.0) (2026-10-15)
 
 
