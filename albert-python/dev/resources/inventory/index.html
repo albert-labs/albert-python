@@ -714,7 +714,7 @@
   <span class="md-ellipsis">
     
   
-    Specs → Attributes (🧪 Beta)
+    Specs → Attributes
   
 
     
@@ -1338,7 +1338,7 @@
   <span class="md-ellipsis">
     
   
-    Attributes (🧪 Beta)
+    Attributes
   
 
     
@@ -3147,7 +3147,7 @@
   <span class="md-ellipsis">
     
   
-    Attributes (🧪 Beta)
+    Attributes
   
 
     
@@ -9281,9 +9281,8 @@ Typically linked to a manufacturing <code>company</code> and one or more CAS num
             </td>
             <td>
               <div class="doc-md-description">
-                <p>A mixture designed in Albert through a Worksheet. Formulas are not created
-through the inventory collection; they are produced by the Worksheet
-collection (<a class="autorefs autorefs-internal" href="../../collections/worksheets/#albert.collections.worksheets.WorksheetCollection"><code>WorksheetCollection</code></a>).</p>
+                <p>A mixture designed in Albert under a Project. Creating a Formula item
+requires <code>project_id</code> set to the parent Project's ID.</p>
               </div>
             </td>
           </tr>
@@ -11224,21 +11223,21 @@ this amount), or pass just the CAS resource <code>id</code> string. Do not pass 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-244">244</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-243">243</a></span>
+<span class="normal"><a href="#__codelineno-0-244">244</a></span>
 <span class="normal"><a href="#__codelineno-0-245">245</a></span>
 <span class="normal"><a href="#__codelineno-0-246">246</a></span>
 <span class="normal"><a href="#__codelineno-0-247">247</a></span>
 <span class="normal"><a href="#__codelineno-0-248">248</a></span>
 <span class="normal"><a href="#__codelineno-0-249">249</a></span>
-<span class="normal"><a href="#__codelineno-0-250">250</a></span>
-<span class="normal"><a href="#__codelineno-0-251">251</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-244"><a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
-</span><span id="__span-0-245"><a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_cas_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">CasAmount</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CasAmount</span><span class="p">:</span>
-</span><span id="__span-0-246"><a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="w">    </span><span class="sd">"""Set attributes after model initialization from the Cas object, if provided."""</span>
-</span><span id="__span-0-247"><a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-248"><a id="__codelineno-0-248" name="__codelineno-0-248"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cas</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-249"><a id="__codelineno-0-249" name="__codelineno-0-249"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"cas_smiles"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cas</span><span class="o">.</span><span class="n">smiles</span><span class="p">)</span>
-</span><span id="__span-0-250"><a id="__codelineno-0-250" name="__codelineno-0-250"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"number"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cas</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
-</span><span id="__span-0-251"><a id="__codelineno-0-251" name="__codelineno-0-251"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-250">250</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-243"><a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
+</span><span id="__span-0-244"><a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_cas_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">CasAmount</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CasAmount</span><span class="p">:</span>
+</span><span id="__span-0-245"><a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="w">    </span><span class="sd">"""Set attributes after model initialization from the Cas object, if provided."""</span>
+</span><span id="__span-0-246"><a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-247"><a id="__codelineno-0-247" name="__codelineno-0-247"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cas</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-248"><a id="__codelineno-0-248" name="__codelineno-0-248"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"cas_smiles"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cas</span><span class="o">.</span><span class="n">smiles</span><span class="p">)</span>
+</span><span id="__span-0-249"><a id="__codelineno-0-249" name="__codelineno-0-249"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"number"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cas</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
+</span><span id="__span-0-250"><a id="__codelineno-0-250" name="__codelineno-0-250"></a>    <span class="k">return</span> <span class="bp">self</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -11589,7 +11588,8 @@ one or the other, not both.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-280">280</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-279">279</a></span>
+<span class="normal"><a href="#__codelineno-0-280">280</a></span>
 <span class="normal"><a href="#__codelineno-0-281">281</a></span>
 <span class="normal"><a href="#__codelineno-0-282">282</a></span>
 <span class="normal"><a href="#__codelineno-0-283">283</a></span>
@@ -11607,27 +11607,26 @@ one or the other, not both.</p>
 <span class="normal"><a href="#__codelineno-0-295">295</a></span>
 <span class="normal"><a href="#__codelineno-0-296">296</a></span>
 <span class="normal"><a href="#__codelineno-0-297">297</a></span>
-<span class="normal"><a href="#__codelineno-0-298">298</a></span>
-<span class="normal"><a href="#__codelineno-0-299">299</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-280"><a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
-</span><span id="__span-0-281"><a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="k">def</span><span class="w"> </span><span class="nf">check_id_or_location</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">InventoryMinimum</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryMinimum</span><span class="p">:</span>
-</span><span id="__span-0-282"><a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="w">    </span><span class="sd">"""</span>
-</span><span id="__span-0-283"><a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">    Ensure that either an id or a location is provided.</span>
-</span><span id="__span-0-284"><a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">    """</span>
-</span><span id="__span-0-285"><a id="__codelineno-0-285" name="__codelineno-0-285"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-286"><a id="__codelineno-0-286" name="__codelineno-0-286"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287"></a>            <span class="s2">"Either an id or a location must be provided for an InventoryMinimum."</span>
-</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a>        <span class="p">)</span>
-</span><span id="__span-0-289"><a id="__codelineno-0-289" name="__codelineno-0-289"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">id</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
-</span><span id="__span-0-290"><a id="__codelineno-0-290" name="__codelineno-0-290"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="__span-0-291"><a id="__codelineno-0-291" name="__codelineno-0-291"></a>            <span class="s2">"Only an id or a location can be provided for an InventoryMinimum, not both."</span>
-</span><span id="__span-0-292"><a id="__codelineno-0-292" name="__codelineno-0-292"></a>        <span class="p">)</span>
-</span><span id="__span-0-293"><a id="__codelineno-0-293" name="__codelineno-0-293"></a>
-</span><span id="__span-0-294"><a id="__codelineno-0-294" name="__codelineno-0-294"></a>    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">:</span>
-</span><span id="__span-0-295"><a id="__codelineno-0-295" name="__codelineno-0-295"></a>        <span class="c1"># Avoid recursion by setting the attribute directly</span>
-</span><span id="__span-0-296"><a id="__codelineno-0-296" name="__codelineno-0-296"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-297"><a id="__codelineno-0-297" name="__codelineno-0-297"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-</span><span id="__span-0-298"><a id="__codelineno-0-298" name="__codelineno-0-298"></a>
-</span><span id="__span-0-299"><a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-298">298</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-279"><a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
+</span><span id="__span-0-280"><a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="k">def</span><span class="w"> </span><span class="nf">check_id_or_location</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">InventoryMinimum</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryMinimum</span><span class="p">:</span>
+</span><span id="__span-0-281"><a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="w">    </span><span class="sd">"""</span>
+</span><span id="__span-0-282"><a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">    Ensure that either an id or a location is provided.</span>
+</span><span id="__span-0-283"><a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">    """</span>
+</span><span id="__span-0-284"><a id="__codelineno-0-284" name="__codelineno-0-284"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-285"><a id="__codelineno-0-285" name="__codelineno-0-285"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-286"><a id="__codelineno-0-286" name="__codelineno-0-286"></a>            <span class="s2">"Either an id or a location must be provided for an InventoryMinimum."</span>
+</span><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287"></a>        <span class="p">)</span>
+</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">id</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+</span><span id="__span-0-289"><a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-290"><a id="__codelineno-0-290" name="__codelineno-0-290"></a>            <span class="s2">"Only an id or a location can be provided for an InventoryMinimum, not both."</span>
+</span><span id="__span-0-291"><a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="p">)</span>
+</span><span id="__span-0-292"><a id="__codelineno-0-292" name="__codelineno-0-292"></a>
+</span><span id="__span-0-293"><a id="__codelineno-0-293" name="__codelineno-0-293"></a>    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">:</span>
+</span><span id="__span-0-294"><a id="__codelineno-0-294" name="__codelineno-0-294"></a>        <span class="c1"># Avoid recursion by setting the attribute directly</span>
+</span><span id="__span-0-295"><a id="__codelineno-0-295" name="__codelineno-0-295"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-296"><a id="__codelineno-0-296" name="__codelineno-0-296"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="__span-0-297"><a id="__codelineno-0-297" name="__codelineno-0-297"></a>
+</span><span id="__span-0-298"><a id="__codelineno-0-298" name="__codelineno-0-298"></a>    <span class="k">return</span> <span class="bp">self</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -11663,9 +11662,8 @@ piece of equipment, or formula. Its <a class="autorefs autorefs-internal" href="
 is used across the platform, and once saved it is referenced everywhere by its
 Inventory ID (format <code>INV...</code>, e.g. <code>"INVA9999999"</code>). Raw materials are typically
 linked to a manufacturing <code>company</code> and a compositional breakdown of CAS
-amounts. Formula items are designed in Worksheets rather than created here (the
-<a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection.create"><code>create</code></a> method rejects
-Formula items), and a Formula requires a <code>project_id</code>.</p>
+amounts. A Formula item represents a mixture designed in a Project; creating
+one requires <code>project_id</code> set to the parent Project's ID.</p>
 <p>Items are managed through
 <a class="autorefs autorefs-internal" href="../../collections/inventory/#albert.collections.inventory.InventoryCollection"><code>InventoryCollection</code></a> (<code>client.inventory</code>).</p>
 <div class="admonition example">
@@ -12529,7 +12527,7 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 </span><span id="__span-0-832"><a id="__codelineno-0-832" name="__codelineno-0-832" href="#__codelineno-0-832"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-833"><a id="__codelineno-0-833" name="__codelineno-0-833" href="#__codelineno-0-833"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-834"><a id="__codelineno-0-834" name="__codelineno-0-834" href="#__codelineno-0-834"></a><span class="w">    </span><span class="nt">"InventoryCategory"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-835"><a id="__codelineno-0-835" name="__codelineno-0-835" href="#__codelineno-0-835"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The kind of material an [`InventoryItem`][albert.resources.inventory.InventoryItem] represents.\n\nEvery inventory item belongs to exactly one category, which determines how it\nis used across the platform and which fields are relevant to it.\n\nAttributes\n----------\nRAW_MATERIALS : str\n    A purchased substance used as an ingredient (e.g. a solvent or pigment).\n    Typically linked to a manufacturing ``company`` and one or more CAS numbers.\nCONSUMABLES : str\n    Lab supplies consumed during work (e.g. gloves, vials, filters).\nEQUIPMENT : str\n    Instruments and apparatus (e.g. a balance or spectrometer).\nFORMULAS : str\n    A mixture designed in Albert through a Worksheet. Formulas are not created\n    through the inventory collection; they are produced by the Worksheet\n    collection ([`WorksheetCollection`][albert.collections.worksheets.WorksheetCollection])."</span><span class="p">,</span>
+</span><span id="__span-0-835"><a id="__codelineno-0-835" name="__codelineno-0-835" href="#__codelineno-0-835"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The kind of material an [`InventoryItem`][albert.resources.inventory.InventoryItem] represents.\n\nEvery inventory item belongs to exactly one category, which determines how it\nis used across the platform and which fields are relevant to it.\n\nAttributes\n----------\nRAW_MATERIALS : str\n    A purchased substance used as an ingredient (e.g. a solvent or pigment).\n    Typically linked to a manufacturing ``company`` and one or more CAS numbers.\nCONSUMABLES : str\n    Lab supplies consumed during work (e.g. gloves, vials, filters).\nEQUIPMENT : str\n    Instruments and apparatus (e.g. a balance or spectrometer).\nFORMULAS : str\n    A mixture designed in Albert under a Project. Creating a Formula item\n    requires ``project_id`` set to the parent Project's ID."</span><span class="p">,</span>
 </span><span id="__span-0-836"><a id="__codelineno-0-836" name="__codelineno-0-836" href="#__codelineno-0-836"></a><span class="w">      </span><span class="nt">"enum"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-837"><a id="__codelineno-0-837" name="__codelineno-0-837" href="#__codelineno-0-837"></a><span class="w">        </span><span class="s2">"RawMaterials"</span><span class="p">,</span>
 </span><span id="__span-0-838"><a id="__codelineno-0-838" name="__codelineno-0-838" href="#__codelineno-0-838"></a><span class="w">        </span><span class="s2">"Consumables"</span><span class="p">,</span>
@@ -12944,7 +12942,7 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 </span><span id="__span-0-1247"><a id="__codelineno-0-1247" name="__codelineno-0-1247" href="#__codelineno-0-1247"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-1248"><a id="__codelineno-0-1248" name="__codelineno-0-1248" href="#__codelineno-0-1248"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-1249"><a id="__codelineno-0-1249" name="__codelineno-0-1249" href="#__codelineno-0-1249"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-1250"><a id="__codelineno-0-1250" name="__codelineno-0-1250" href="#__codelineno-0-1250"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A catalog entry for a material tracked in Albert.\n\nAn ``InventoryItem`` is the canonical record for a raw material, consumable,\npiece of equipment, or formula. Its [`InventoryCategory`][albert.resources.inventory.InventoryCategory] determines how it\nis used across the platform, and once saved it is referenced everywhere by its\nInventory ID (format ``INV...``, e.g. ``\"INVA9999999\"``). Raw materials are typically\nlinked to a manufacturing ``company`` and a compositional breakdown of CAS\namounts. Formula items are designed in Worksheets rather than created here (the\n[`create`][albert.collections.inventory.InventoryCollection.create] method rejects\nFormula items), and a Formula requires a ``project_id``.\n\nItems are managed through\n[`InventoryCollection`][albert.collections.inventory.InventoryCollection] (``client.inventory``).\n\n!!! example\n    ```python\n    from albert.resources.inventory import (\n        InventoryCategory,\n        InventoryDensity,\n        InventoryItem,\n        InventoryUnitCategory,\n    )\n\n    # Mass-based inventory item\n    item = InventoryItem(\n        name=\"Titanium Dioxide\",\n        category=InventoryCategory.RAW_MATERIALS,\n        company=\"Acme Chemicals\",\n    )\n\n    # Volume-based inventory item\n    volume_item = InventoryItem(\n        name=\"Isopropyl Alcohol\",\n        category=InventoryCategory.RAW_MATERIALS,\n        unit_category=InventoryUnitCategory.VOLUME,\n        density=InventoryDensity(value=0.785),\n    )\n    ```"</span><span class="p">,</span>
+</span><span id="__span-0-1250"><a id="__codelineno-0-1250" name="__codelineno-0-1250" href="#__codelineno-0-1250"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A catalog entry for a material tracked in Albert.\n\nAn ``InventoryItem`` is the canonical record for a raw material, consumable,\npiece of equipment, or formula. Its [`InventoryCategory`][albert.resources.inventory.InventoryCategory] determines how it\nis used across the platform, and once saved it is referenced everywhere by its\nInventory ID (format ``INV...``, e.g. ``\"INVA9999999\"``). Raw materials are typically\nlinked to a manufacturing ``company`` and a compositional breakdown of CAS\namounts. A Formula item represents a mixture designed in a Project; creating\none requires ``project_id`` set to the parent Project's ID.\n\nItems are managed through\n[`InventoryCollection`][albert.collections.inventory.InventoryCollection] (``client.inventory``).\n\n!!! example\n    ```python\n    from albert.resources.inventory import (\n        InventoryCategory,\n        InventoryDensity,\n        InventoryItem,\n        InventoryUnitCategory,\n    )\n\n    # Mass-based inventory item\n    item = InventoryItem(\n        name=\"Titanium Dioxide\",\n        category=InventoryCategory.RAW_MATERIALS,\n        company=\"Acme Chemicals\",\n    )\n\n    # Volume-based inventory item\n    volume_item = InventoryItem(\n        name=\"Isopropyl Alcohol\",\n        category=InventoryCategory.RAW_MATERIALS,\n        unit_category=InventoryUnitCategory.VOLUME,\n        density=InventoryDensity(value=0.785),\n    )\n    ```"</span><span class="p">,</span>
 </span><span id="__span-0-1251"><a id="__codelineno-0-1251" name="__codelineno-0-1251" href="#__codelineno-0-1251"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-1252"><a id="__codelineno-0-1252" name="__codelineno-0-1252" href="#__codelineno-0-1252"></a><span class="w">    </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-1253"><a id="__codelineno-0-1253" name="__codelineno-0-1253" href="#__codelineno-0-1253"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -13929,17 +13927,17 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-415">415</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-413">413</a></span>
+<span class="normal"><a href="#__codelineno-0-414">414</a></span>
+<span class="normal"><a href="#__codelineno-0-415">415</a></span>
 <span class="normal"><a href="#__codelineno-0-416">416</a></span>
 <span class="normal"><a href="#__codelineno-0-417">417</a></span>
-<span class="normal"><a href="#__codelineno-0-418">418</a></span>
-<span class="normal"><a href="#__codelineno-0-419">419</a></span>
-<span class="normal"><a href="#__codelineno-0-420">420</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"company"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
-</span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="nd">@classmethod</span>
-</span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_company_string</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>        <span class="n">value</span> <span class="o">=</span> <span class="n">Company</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
-</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>    <span class="k">return</span> <span class="n">value</span>
+<span class="normal"><a href="#__codelineno-0-418">418</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-413"><a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"company"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
+</span><span id="__span-0-414"><a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_company_string</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a>        <span class="n">value</span> <span class="o">=</span> <span class="n">Company</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="k">return</span> <span class="n">value</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -13962,17 +13960,17 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-422">422</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-420">420</a></span>
+<span class="normal"><a href="#__codelineno-0-421">421</a></span>
+<span class="normal"><a href="#__codelineno-0-422">422</a></span>
 <span class="normal"><a href="#__codelineno-0-423">423</a></span>
 <span class="normal"><a href="#__codelineno-0-424">424</a></span>
-<span class="normal"><a href="#__codelineno-0-425">425</a></span>
-<span class="normal"><a href="#__codelineno-0-426">426</a></span>
-<span class="normal"><a href="#__codelineno-0-427">427</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"un_number"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
-</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="nd">@classmethod</span>
-</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_un_number</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">"N/A"</span><span class="p">:</span>
-</span><span id="__span-0-426"><a id="__codelineno-0-426" name="__codelineno-0-426"></a>        <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="__span-0-427"><a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="k">return</span> <span class="n">value</span>
+<span class="normal"><a href="#__codelineno-0-425">425</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"un_number"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
+</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_un_number</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">"N/A"</span><span class="p">:</span>
+</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a>        <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="k">return</span> <span class="n">value</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -13995,17 +13993,17 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-429">429</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-427">427</a></span>
+<span class="normal"><a href="#__codelineno-0-428">428</a></span>
+<span class="normal"><a href="#__codelineno-0-429">429</a></span>
 <span class="normal"><a href="#__codelineno-0-430">430</a></span>
 <span class="normal"><a href="#__codelineno-0-431">431</a></span>
-<span class="normal"><a href="#__codelineno-0-432">432</a></span>
-<span class="normal"><a href="#__codelineno-0-433">433</a></span>
-<span class="normal"><a href="#__codelineno-0-434">434</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-429"><a id="__codelineno-0-429" name="__codelineno-0-429"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"density"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
-</span><span id="__span-0-430"><a id="__codelineno-0-430" name="__codelineno-0-430"></a><span class="nd">@classmethod</span>
-</span><span id="__span-0-431"><a id="__codelineno-0-431" name="__codelineno-0-431"></a><span class="k">def</span><span class="w"> </span><span class="nf">coerce_density</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="__span-0-432"><a id="__codelineno-0-432" name="__codelineno-0-432"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">))</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
-</span><span id="__span-0-433"><a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="k">return</span> <span class="n">InventoryDensity</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
-</span><span id="__span-0-434"><a id="__codelineno-0-434" name="__codelineno-0-434"></a>    <span class="k">return</span> <span class="n">value</span>
+<span class="normal"><a href="#__codelineno-0-432">432</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-427"><a id="__codelineno-0-427" name="__codelineno-0-427"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"density"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
+</span><span id="__span-0-428"><a id="__codelineno-0-428" name="__codelineno-0-428"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-429"><a id="__codelineno-0-429" name="__codelineno-0-429"></a><span class="k">def</span><span class="w"> </span><span class="nf">coerce_density</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-430"><a id="__codelineno-0-430" name="__codelineno-0-430"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">))</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+</span><span id="__span-0-431"><a id="__codelineno-0-431" name="__codelineno-0-431"></a>        <span class="k">return</span> <span class="n">InventoryDensity</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-0-432"><a id="__codelineno-0-432" name="__codelineno-0-432"></a>    <span class="k">return</span> <span class="n">value</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -14030,11 +14028,11 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-436">436</a></span>
-<span class="normal"><a href="#__codelineno-0-437">437</a></span>
-<span class="normal"><a href="#__codelineno-0-438">438</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-436"><a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">"density"</span><span class="p">)</span>
-</span><span id="__span-0-437"><a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="k">def</span><span class="w"> </span><span class="nf">serialize_density</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">density</span><span class="p">:</span> <span class="n">InventoryDensity</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-438"><a id="__codelineno-0-438" name="__codelineno-0-438"></a>    <span class="k">return</span> <span class="n">density</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="n">density</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-434">434</a></span>
+<span class="normal"><a href="#__codelineno-0-435">435</a></span>
+<span class="normal"><a href="#__codelineno-0-436">436</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-434"><a id="__codelineno-0-434" name="__codelineno-0-434"></a><span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">"density"</span><span class="p">)</span>
+</span><span id="__span-0-435"><a id="__codelineno-0-435" name="__codelineno-0-435"></a><span class="k">def</span><span class="w"> </span><span class="nf">serialize_density</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">density</span><span class="p">:</span> <span class="n">InventoryDensity</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-436"><a id="__codelineno-0-436" name="__codelineno-0-436"></a>    <span class="k">return</span> <span class="n">density</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="n">density</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -14059,23 +14057,23 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-440">440</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-438">438</a></span>
+<span class="normal"><a href="#__codelineno-0-439">439</a></span>
+<span class="normal"><a href="#__codelineno-0-440">440</a></span>
 <span class="normal"><a href="#__codelineno-0-441">441</a></span>
 <span class="normal"><a href="#__codelineno-0-442">442</a></span>
 <span class="normal"><a href="#__codelineno-0-443">443</a></span>
 <span class="normal"><a href="#__codelineno-0-444">444</a></span>
 <span class="normal"><a href="#__codelineno-0-445">445</a></span>
-<span class="normal"><a href="#__codelineno-0-446">446</a></span>
-<span class="normal"><a href="#__codelineno-0-447">447</a></span>
-<span class="normal"><a href="#__codelineno-0-448">448</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-440"><a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
-</span><span id="__span-0-441"><a id="__codelineno-0-441" name="__codelineno-0-441"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_unit_category</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
-</span><span id="__span-0-442"><a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="w">    </span><span class="sd">"""Set unit category from category if not defined."""</span>
-</span><span id="__span-0-443"><a id="__codelineno-0-443" name="__codelineno-0-443"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_category</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-444"><a id="__codelineno-0-444" name="__codelineno-0-444"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="ow">in</span> <span class="p">[</span><span class="n">InventoryCategory</span><span class="o">.</span><span class="n">RAW_MATERIALS</span><span class="p">,</span> <span class="n">InventoryCategory</span><span class="o">.</span><span class="n">FORMULAS</span><span class="p">]:</span>
-</span><span id="__span-0-445"><a id="__codelineno-0-445" name="__codelineno-0-445"></a>            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"unit_category"</span><span class="p">,</span> <span class="n">InventoryUnitCategory</span><span class="o">.</span><span class="n">MASS</span><span class="p">)</span>
-</span><span id="__span-0-446"><a id="__codelineno-0-446" name="__codelineno-0-446"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="ow">in</span> <span class="p">[</span><span class="n">InventoryCategory</span><span class="o">.</span><span class="n">EQUIPMENT</span><span class="p">,</span> <span class="n">InventoryCategory</span><span class="o">.</span><span class="n">CONSUMABLES</span><span class="p">]:</span>
-</span><span id="__span-0-447"><a id="__codelineno-0-447" name="__codelineno-0-447"></a>            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"unit_category"</span><span class="p">,</span> <span class="n">InventoryUnitCategory</span><span class="o">.</span><span class="n">UNITS</span><span class="p">)</span>
-</span><span id="__span-0-448"><a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-446">446</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-438"><a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
+</span><span id="__span-0-439"><a id="__codelineno-0-439" name="__codelineno-0-439"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_unit_category</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
+</span><span id="__span-0-440"><a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="w">    </span><span class="sd">"""Set unit category from category if not defined."""</span>
+</span><span id="__span-0-441"><a id="__codelineno-0-441" name="__codelineno-0-441"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_category</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-442"><a id="__codelineno-0-442" name="__codelineno-0-442"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="ow">in</span> <span class="p">[</span><span class="n">InventoryCategory</span><span class="o">.</span><span class="n">RAW_MATERIALS</span><span class="p">,</span> <span class="n">InventoryCategory</span><span class="o">.</span><span class="n">FORMULAS</span><span class="p">]:</span>
+</span><span id="__span-0-443"><a id="__codelineno-0-443" name="__codelineno-0-443"></a>            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"unit_category"</span><span class="p">,</span> <span class="n">InventoryUnitCategory</span><span class="o">.</span><span class="n">MASS</span><span class="p">)</span>
+</span><span id="__span-0-444"><a id="__codelineno-0-444" name="__codelineno-0-444"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="ow">in</span> <span class="p">[</span><span class="n">InventoryCategory</span><span class="o">.</span><span class="n">EQUIPMENT</span><span class="p">,</span> <span class="n">InventoryCategory</span><span class="o">.</span><span class="n">CONSUMABLES</span><span class="p">]:</span>
+</span><span id="__span-0-445"><a id="__codelineno-0-445" name="__codelineno-0-445"></a>            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"unit_category"</span><span class="p">,</span> <span class="n">InventoryUnitCategory</span><span class="o">.</span><span class="n">UNITS</span><span class="p">)</span>
+</span><span id="__span-0-446"><a id="__codelineno-0-446" name="__codelineno-0-446"></a>    <span class="k">return</span> <span class="bp">self</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -14100,19 +14098,19 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-450">450</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-448">448</a></span>
+<span class="normal"><a href="#__codelineno-0-449">449</a></span>
+<span class="normal"><a href="#__codelineno-0-450">450</a></span>
 <span class="normal"><a href="#__codelineno-0-451">451</a></span>
 <span class="normal"><a href="#__codelineno-0-452">452</a></span>
 <span class="normal"><a href="#__codelineno-0-453">453</a></span>
-<span class="normal"><a href="#__codelineno-0-454">454</a></span>
-<span class="normal"><a href="#__codelineno-0-455">455</a></span>
-<span class="normal"><a href="#__codelineno-0-456">456</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-450"><a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
-</span><span id="__span-0-451"><a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_formula_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
-</span><span id="__span-0-452"><a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="w">    </span><span class="sd">"""Ensure required fields are present for formulas."""</span>
-</span><span id="__span-0-453"><a id="__codelineno-0-453" name="__codelineno-0-453"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="n">InventoryCategory</span><span class="o">.</span><span class="n">FORMULAS</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_id</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
-</span><span id="__span-0-454"><a id="__codelineno-0-454" name="__codelineno-0-454"></a>        <span class="c1"># Some legacy on platform formulas don't have a project_id so check if its already on platform</span>
-</span><span id="__span-0-455"><a id="__codelineno-0-455" name="__codelineno-0-455"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"A project_id must be supplied for all formulas."</span><span class="p">)</span>
-</span><span id="__span-0-456"><a id="__codelineno-0-456" name="__codelineno-0-456"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-454">454</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-448"><a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
+</span><span id="__span-0-449"><a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_formula_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
+</span><span id="__span-0-450"><a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="w">    </span><span class="sd">"""Ensure required fields are present for formulas."""</span>
+</span><span id="__span-0-451"><a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="n">InventoryCategory</span><span class="o">.</span><span class="n">FORMULAS</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_id</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+</span><span id="__span-0-452"><a id="__codelineno-0-452" name="__codelineno-0-452"></a>        <span class="c1"># Some legacy on platform formulas don't have a project_id so check if its already on platform</span>
+</span><span id="__span-0-453"><a id="__codelineno-0-453" name="__codelineno-0-453"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"A project_id must be supplied for all formulas."</span><span class="p">)</span>
+</span><span id="__span-0-454"><a id="__codelineno-0-454" name="__codelineno-0-454"></a>    <span class="k">return</span> <span class="bp">self</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -14137,7 +14135,9 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-458">458</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-456">456</a></span>
+<span class="normal"><a href="#__codelineno-0-457">457</a></span>
+<span class="normal"><a href="#__codelineno-0-458">458</a></span>
 <span class="normal"><a href="#__codelineno-0-459">459</a></span>
 <span class="normal"><a href="#__codelineno-0-460">460</a></span>
 <span class="normal"><a href="#__codelineno-0-461">461</a></span>
@@ -14146,20 +14146,18 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 <span class="normal"><a href="#__codelineno-0-464">464</a></span>
 <span class="normal"><a href="#__codelineno-0-465">465</a></span>
 <span class="normal"><a href="#__codelineno-0-466">466</a></span>
-<span class="normal"><a href="#__codelineno-0-467">467</a></span>
-<span class="normal"><a href="#__codelineno-0-468">468</a></span>
-<span class="normal"><a href="#__codelineno-0-469">469</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-458"><a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
-</span><span id="__span-0-459"><a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_volume_density</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
-</span><span id="__span-0-460"><a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="w">    </span><span class="sd">"""Ensure volume items have a positive density at creation."""</span>
-</span><span id="__span-0-461"><a id="__codelineno-0-461" name="__codelineno-0-461"></a>    <span class="k">if</span> <span class="p">(</span>
-</span><span id="__span-0-462"><a id="__codelineno-0-462" name="__codelineno-0-462"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="kc">None</span>
-</span><span id="__span-0-463"><a id="__codelineno-0-463" name="__codelineno-0-463"></a>        <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_category</span> <span class="o">==</span> <span class="n">InventoryUnitCategory</span><span class="o">.</span><span class="n">VOLUME</span>
-</span><span id="__span-0-464"><a id="__codelineno-0-464" name="__codelineno-0-464"></a>        <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">density</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="__span-0-465"><a id="__codelineno-0-465" name="__codelineno-0-465"></a>    <span class="p">):</span>
-</span><span id="__span-0-466"><a id="__codelineno-0-466" name="__codelineno-0-466"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="__span-0-467"><a id="__codelineno-0-467" name="__codelineno-0-467"></a>            <span class="s2">"Density must be provided and greater than 0 when unit_category is volume."</span>
-</span><span id="__span-0-468"><a id="__codelineno-0-468" name="__codelineno-0-468"></a>        <span class="p">)</span>
-</span><span id="__span-0-469"><a id="__codelineno-0-469" name="__codelineno-0-469"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-467">467</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-456"><a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
+</span><span id="__span-0-457"><a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_volume_density</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
+</span><span id="__span-0-458"><a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="w">    </span><span class="sd">"""Ensure volume items have a positive density at creation."""</span>
+</span><span id="__span-0-459"><a id="__codelineno-0-459" name="__codelineno-0-459"></a>    <span class="k">if</span> <span class="p">(</span>
+</span><span id="__span-0-460"><a id="__codelineno-0-460" name="__codelineno-0-460"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="kc">None</span>
+</span><span id="__span-0-461"><a id="__codelineno-0-461" name="__codelineno-0-461"></a>        <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_category</span> <span class="o">==</span> <span class="n">InventoryUnitCategory</span><span class="o">.</span><span class="n">VOLUME</span>
+</span><span id="__span-0-462"><a id="__codelineno-0-462" name="__codelineno-0-462"></a>        <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">density</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-0-463"><a id="__codelineno-0-463" name="__codelineno-0-463"></a>    <span class="p">):</span>
+</span><span id="__span-0-464"><a id="__codelineno-0-464" name="__codelineno-0-464"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="__span-0-465"><a id="__codelineno-0-465" name="__codelineno-0-465"></a>            <span class="s2">"Density must be provided and greater than 0 when unit_category is volume."</span>
+</span><span id="__span-0-466"><a id="__codelineno-0-466" name="__codelineno-0-466"></a>        <span class="p">)</span>
+</span><span id="__span-0-467"><a id="__codelineno-0-467" name="__codelineno-0-467"></a>    <span class="k">return</span> <span class="bp">self</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -14399,17 +14397,17 @@ Formula items), and a Formula requires a <code>project_id</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-497">497</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-495">495</a></span>
+<span class="normal"><a href="#__codelineno-0-496">496</a></span>
+<span class="normal"><a href="#__codelineno-0-497">497</a></span>
 <span class="normal"><a href="#__codelineno-0-498">498</a></span>
 <span class="normal"><a href="#__codelineno-0-499">499</a></span>
-<span class="normal"><a href="#__codelineno-0-500">500</a></span>
-<span class="normal"><a href="#__codelineno-0-501">501</a></span>
-<span class="normal"><a href="#__codelineno-0-502">502</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-497"><a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"min"</span><span class="p">,</span> <span class="s2">"max"</span><span class="p">,</span> <span class="s2">"reference"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
-</span><span id="__span-0-498"><a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="nd">@classmethod</span>
-</span><span id="__span-0-499"><a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="k">def</span><span class="w"> </span><span class="nf">cast_float_to_str</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="__span-0-500"><a id="__codelineno-0-500" name="__codelineno-0-500"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">):</span>
-</span><span id="__span-0-501"><a id="__codelineno-0-501" name="__codelineno-0-501"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-</span><span id="__span-0-502"><a id="__codelineno-0-502" name="__codelineno-0-502"></a>    <span class="k">return</span> <span class="n">v</span>
+<span class="normal"><a href="#__codelineno-0-500">500</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-495"><a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"min"</span><span class="p">,</span> <span class="s2">"max"</span><span class="p">,</span> <span class="s2">"reference"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
+</span><span id="__span-0-496"><a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-497"><a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="k">def</span><span class="w"> </span><span class="nf">cast_float_to_str</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-498"><a id="__codelineno-0-498" name="__codelineno-0-498"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">):</span>
+</span><span id="__span-0-499"><a id="__codelineno-0-499" name="__codelineno-0-499"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+</span><span id="__span-0-500"><a id="__codelineno-0-500" name="__codelineno-0-500"></a>    <span class="k">return</span> <span class="n">v</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -16021,7 +16019,7 @@ bound instance fetches the corresponding fully populated <a class="autorefs auto
 </span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">    </span><span class="nt">"InventoryCategory"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The kind of material an [`InventoryItem`][albert.resources.inventory.InventoryItem] represents.\n\nEvery inventory item belongs to exactly one category, which determines how it\nis used across the platform and which fields are relevant to it.\n\nAttributes\n----------\nRAW_MATERIALS : str\n    A purchased substance used as an ingredient (e.g. a solvent or pigment).\n    Typically linked to a manufacturing ``company`` and one or more CAS numbers.\nCONSUMABLES : str\n    Lab supplies consumed during work (e.g. gloves, vials, filters).\nEQUIPMENT : str\n    Instruments and apparatus (e.g. a balance or spectrometer).\nFORMULAS : str\n    A mixture designed in Albert through a Worksheet. Formulas are not created\n    through the inventory collection; they are produced by the Worksheet\n    collection ([`WorksheetCollection`][albert.collections.worksheets.WorksheetCollection])."</span><span class="p">,</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The kind of material an [`InventoryItem`][albert.resources.inventory.InventoryItem] represents.\n\nEvery inventory item belongs to exactly one category, which determines how it\nis used across the platform and which fields are relevant to it.\n\nAttributes\n----------\nRAW_MATERIALS : str\n    A purchased substance used as an ingredient (e.g. a solvent or pigment).\n    Typically linked to a manufacturing ``company`` and one or more CAS numbers.\nCONSUMABLES : str\n    Lab supplies consumed during work (e.g. gloves, vials, filters).\nEQUIPMENT : str\n    Instruments and apparatus (e.g. a balance or spectrometer).\nFORMULAS : str\n    A mixture designed in Albert under a Project. Creating a Formula item\n    requires ``project_id`` set to the parent Project's ID."</span><span class="p">,</span>
 </span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">      </span><span class="nt">"enum"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">        </span><span class="s2">"RawMaterials"</span><span class="p">,</span>
 </span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">        </span><span class="s2">"Consumables"</span><span class="p">,</span>
