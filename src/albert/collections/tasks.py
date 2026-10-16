@@ -968,8 +968,8 @@ class TaskCollection(BaseCollection):
         Exclusions are validated on save: both the inventory tuple and the
         combination row key must exist on the task/block, and masking the same pair
         twice is rejected. Additions are idempotent-safe via
-        [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]
-        — check ``inventory_exclusions`` first if re-running a script.
+        [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]:
+        check ``inventory_exclusions`` first if re-running a script.
 
         !!! warning "Beta Feature!"
             Increased intervals combination support is currently in beta and behind a platform
@@ -1023,7 +1023,7 @@ class TaskCollection(BaseCollection):
             The block ID whose exclusions to add (format ``BLK...``), obtained
             from ``task.blocks[i].id`` on a fetched task.
         exclusions : list[InventoryExclusion]
-            Exclusions to add. An empty list is a no-op (no request is fired).
+            Exclusions to add. An empty list is a no-op.
 
         Returns
         -------
@@ -1086,7 +1086,7 @@ class TaskCollection(BaseCollection):
             ```
 
         !!! example "Changing a mask"
-            A mask has no editable fields — it *is* the pair — so changing one
+            A mask has no editable fields (it *is* the pair), so changing one
             means removing it and adding the new pair:
 
             ```python
@@ -1125,7 +1125,7 @@ class TaskCollection(BaseCollection):
         exclusion_ids : list[str]
             Server-assigned exclusion IDs (UUIDs), from
             ``get_block_rules(...).inventory_exclusions[i].id``. An empty list is a
-            no-op (no request is fired).
+            no-op.
 
         Returns
         -------

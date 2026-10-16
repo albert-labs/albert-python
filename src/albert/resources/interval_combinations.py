@@ -221,7 +221,7 @@ class InventoryExclusion(BaseAlbertModel):
 
     - Exclusions match the task-level inventory tuple exactly, occurrence included,
       so duplicated inventory+lot rows are masked independently.
-    - A mask has no editable fields — it *is* the pair. To change one, remove it and
+    - A mask has no editable fields (it *is* the pair). To change one, remove it and
       add the replacement pair.
 
     !!! warning "Beta Feature!"
@@ -251,6 +251,8 @@ class BlockRules(BaseAlbertModel):
       OR logic across rules (excluding matches in Exclude Mode, including in Include Mode).
     - **Overrides** pinpoint specific combinations for forced inclusion (``unskip``)
       or exclusion (``skip``) and take precedence over rules.
+    - **Inventory exclusions** mask specific inventory x combination pairs so they drop
+      out of property-data grids, exports, and data-completeness checks.
 
     Returned by [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]
     and [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules].
