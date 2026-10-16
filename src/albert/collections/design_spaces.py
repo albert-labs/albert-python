@@ -10,6 +10,7 @@ from albert.resources.design_spaces import (
     CreateDesignSpaceRequest,
     DesignSpace,
     DesignSpaceApplyResponse,
+    DesignSpaceCreated,
     DesignSpaceForkRequest,
     DesignSpaceOperation,
     DesignSpaceOperationsRequest,
@@ -97,7 +98,7 @@ class DesignSpaceCollection(BaseCollection):
 
     Methods
     -------
-    create(name, parent_id, description=None, smart_dataset_id=None) -> DesignSpace
+    create(name, parent_id, description=None, smart_dataset_id=None) -> DesignSpaceCreated
         Create a draft design space, empty or seeded from a smart dataset.
     get_by_id(id) -> DesignSpace
         Get a single design space by its ID.
@@ -137,7 +138,7 @@ class DesignSpaceCollection(BaseCollection):
         parent_id: ProjectId,
         description: str | None = None,
         smart_dataset_id: SmartDatasetId | None = None,
-    ) -> DesignSpace:
+    ) -> DesignSpaceCreated:
         """Create a draft design space.
 
         A design space (also called an envelope or search space) bounds what a design
@@ -167,12 +168,14 @@ class DesignSpaceCollection(BaseCollection):
             Free-text description of the space's intent.
         smart_dataset_id : SmartDatasetId, optional
             Smart dataset (format ``SDT...``) whose contents seed the first draft. Omit
-            for an empty draft.
+            for an empty draft. The dataset must be ready: a dataset that is still
+            building or failed raises a 422 error, and one that does not exist a 404.
 
         Returns
         -------
-        DesignSpace
-            The created draft design space.
+        DesignSpaceCreated
+            The created draft design space. Its ``warnings`` list each dataset variable
+            that could not become a dimension (``variable_not_derived``) and why.
         """
         body = CreateDesignSpaceRequest(
             name=name,
@@ -181,7 +184,7 @@ class DesignSpaceCollection(BaseCollection):
             smart_dataset_id=smart_dataset_id,
         ).model_dump(by_alias=True, mode="json", exclude_none=True)
         response = self.session.post(self.base_path, json=body)
-        return DesignSpace(**response.json())
+        return DesignSpaceCreated(**response.json())
 
     @validate_call
     def get_by_id(self, *, id: DesignSpaceId) -> DesignSpace:

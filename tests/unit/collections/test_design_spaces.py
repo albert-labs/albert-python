@@ -7,6 +7,7 @@ import responses
 from albert.collections.design_spaces import DesignSpaceCollection, _iter_last_key_pages
 from albert.resources.design_spaces import (
     DesignSpace,
+    DesignSpaceCreated,
     DesignSpaceState,
     IngredientEntry,
     SetCountBoundsOperation,
@@ -114,6 +115,26 @@ def test_create_posts_minimal_body(offline_session):
     }
     assert isinstance(space, DesignSpace)
     assert space.id == "DSP123"
+    assert space.warnings == []
+
+
+@responses.activate
+def test_create_from_a_smart_dataset_returns_the_derive_warnings(offline_session):
+    """Test that create surfaces the dataset variables that did not become dimensions."""
+    warning = {
+        "code": "variable_not_derived",
+        "message": "DAT1#PRM1 was not added to the design space: the dataset has no values for it.",
+    }
+    responses.post(f"{UNIT_BASE_URL}{BASE}", json={**SPACE, "warnings": [warning]}, status=201)
+
+    space = DesignSpaceCollection(session=offline_session).create(
+        name="Derived", parent_id="PRO456", smart_dataset_id="SDT789"
+    )
+
+    assert isinstance(space, DesignSpaceCreated)
+    [found] = space.warnings
+    assert found.code == "variable_not_derived"
+    assert found.message.startswith("DAT1#PRM1")
 
 
 @responses.activate

@@ -230,6 +230,24 @@ def test_violation_parses_code_and_component_attribution():
     assert violation.components == ["ingredients/INV999"]
 
 
+def test_violation_carries_the_operation_it_came_from():
+    """Test that an apply finding keeps the position of the operation behind it."""
+    violation = DesignSpaceViolation.model_validate(
+        {"code": "unknown_reference", "message": "No such ingredient.", "opIndex": 2}
+    )
+
+    assert violation.op_index == 2
+    assert (
+        DesignSpaceViolation.model_validate({"code": "internal", "message": "m"}).op_index is None
+    )
+
+
+@pytest.mark.parametrize("code", ["variable_not_derived", "duplicate_constraint_subject"])
+def test_violation_accepts_the_newer_warning_codes(code):
+    """Test that codes the service can now return parse instead of failing validation."""
+    assert DesignSpaceViolation.model_validate({"code": code, "message": "m"}).code == code
+
+
 def test_violation_rejects_an_unknown_code():
     """Test that a violation code outside the known vocabulary fails validation."""
     with pytest.raises(ValidationError):

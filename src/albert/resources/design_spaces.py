@@ -61,6 +61,8 @@ class DesignSpaceViolationCode(StrEnum):
     FEASIBILITY_INDETERMINATE = "feasibility_indeterminate"
     DIMENSION_NOT_IN_DATASET = "dimension_not_in_dataset"
     DIMENSION_NOT_MODELLED = "dimension_not_modelled"
+    DUPLICATE_CONSTRAINT_SUBJECT = "duplicate_constraint_subject"
+    VARIABLE_NOT_DERIVED = "variable_not_derived"
     INTERNAL = "internal"
 
 
@@ -233,6 +235,22 @@ class DesignSpaceViolation(BaseAlbertModel):
 
     components: list[str] | None = Field(default=None)
     """Component paths (``<collection>/<key>``) the finding is attributed to."""
+
+    op_index: int | None = Field(default=None, alias="opIndex")
+    """Position in the request's ``operations`` of the operation behind the finding.
+
+    Set on findings from [`apply`][albert.collections.design_spaces.DesignSpaceCollection.apply];
+    ``None`` when the finding is not tied to an operation.
+    """
+
+
+class DesignSpaceCreated(DesignSpace):
+    """A newly created draft design space, with any findings from seeding it."""
+
+    warnings: list[DesignSpaceViolation] = Field(default_factory=list)
+    """Non-blocking findings from seeding the draft from a smart dataset: one
+    ``variable_not_derived`` per dataset variable left out, with the reason in
+    ``message``. Always present; empty for an empty draft."""
 
 
 class DesignSpaceValidationResponse(BaseAlbertModel):
