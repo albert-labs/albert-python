@@ -23,6 +23,10 @@ from albert.resources.attributes import (
 from albert.resources.parameter_groups import DataType
 from albert.utils._patch import generate_enum_patches
 
+# No documented cap on the attributes /ids id[] param; 300 matches the documented
+# cap of the peer lots/inventory/workflow collections.
+_IDS_CHUNK_SIZE = 300
+
 
 class AttributeCollection(BaseCollection):
     """Manage inventory reference Attributes in the Albert platform.
@@ -205,6 +209,8 @@ class AttributeCollection(BaseCollection):
     def get_by_ids(self, *, ids: list[AttributeId]) -> list[Attribute]:
         """Get multiple attributes by their IDs.
 
+        Arbitrarily long ID lists are supported.
+
         Parameters
         ----------
         ids : list[str]
@@ -213,12 +219,20 @@ class AttributeCollection(BaseCollection):
         Returns
         -------
         list[Attribute]
-            The fully populated attributes.
+            The fully populated attributes. Attributes not found are omitted.
+            Order is not guaranteed to match the input list.
         """
-        response = self.session.get(f"{self.base_path}/ids", params={"id": ids})
-        data = response.json()
-        items = data.get("Items") or data.get("items") or []
-        return [Attribute(**item) for item in items]
+        url = f"{self.base_path}/ids"
+        batches = [ids[i : i + _IDS_CHUNK_SIZE] for i in range(0, len(ids), _IDS_CHUNK_SIZE)]
+        attributes: list[Attribute] = []
+        for batch in batches:
+            # The attribute service reports "not found" when no ID in a batch
+            # matches; those batches contribute no attributes.
+            with suppress(NotFoundError):
+                data = self.session.get(url, params={"id": batch}).json()
+                items = data.get("Items") or data.get("items") or []
+                attributes.extend(Attribute(**item) for item in items)
+        return attributes
 
     @validate_call
     def create(self, *, attribute: Attribute) -> Attribute:
