@@ -471,6 +471,52 @@ def test_add_and_remove_block_inventory_exclusions(
 
 
 @pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_block_inventory_exclusions_empty_input_noop(
+    client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
+):
+    """Test that empty exclusion inputs leave the block's masks unchanged."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    inv_lot_unique_id = task.inventory_information[0].inv_lot_unique_id
+    combo = next(client.tasks.get_block_combinations(task_id=task.id, block_id=block.id))
+    try:
+        added = client.tasks.add_block_inventory_exclusions(
+            task_id=task.id,
+            block_id=block.id,
+            exclusions=[
+                InventoryExclusion(
+                    inv_lot_unique_id=inv_lot_unique_id,
+                    interval_row_key=combo.interval_row_key,
+                )
+            ],
+        )
+
+        unchanged = client.tasks.add_block_inventory_exclusions(
+            task_id=task.id, block_id=block.id, exclusions=[]
+        )
+        assert unchanged.inventory_exclusions == added.inventory_exclusions
+        unchanged = client.tasks.remove_block_inventory_exclusions(
+            task_id=task.id, block_id=block.id, exclusion_ids=[]
+        )
+        assert unchanged.inventory_exclusions == added.inventory_exclusions
+
+        client.tasks.remove_block_inventory_exclusions(
+            task_id=task.id,
+            block_id=block.id,
+            exclusion_ids=[added.inventory_exclusions[0].id],
+        )
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
 def test_generate_block_combinations_integration(
     client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
 ):
