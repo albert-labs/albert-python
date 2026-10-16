@@ -184,10 +184,6 @@ class ChatSessionCollection:
         Transparently pages through results, yielding one session at a time.
         Returns the paginator directly so ``has_more`` remains available.
 
-        By default only regular ``chat`` sessions are returned; sessions created by
-        automation runs are hidden unless you pass ``kind=ChatSessionKind.AUTOMATION``
-        or an ``automation_id``.
-
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -213,11 +209,9 @@ class ChatSessionCollection:
             Filter to sessions filed under the given
             [`ChatFolder`][albert.resources.chats.ChatFolder].
         kind : ChatSessionKind | None, optional
-            Filter by session kind. Omitted (or ``CHAT``) hides automation sessions;
-            ``AUTOMATION`` returns only sessions created by automation runs.
+            Return only sessions of the given kind.
         automation_id : str | None, optional
-            Filter to the sessions created by the given automation. Implies
-            ``kind=AUTOMATION``; cannot be combined with ``kind=CHAT``.
+            Return only sessions created by the given automation.
         max_items : int | None, optional
             Maximum number of sessions to yield in total. If ``None``, yields all
             matching sessions.

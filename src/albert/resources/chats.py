@@ -162,8 +162,7 @@ class ChatSessionKind(str, Enum):
     """The kind of a [`ChatSession`][albert.resources.chats.ChatSession].
 
     Regular Ask Albert conversations are ``chat``. Sessions created by an automation run
-    are ``automation``; they are hidden from the default session history and carry
-    ``automation_id`` and ``automation_run_id``.
+    are ``automation`` and carry ``automation_id`` and ``automation_run_id``.
     """
 
     CHAT = "chat"
@@ -206,13 +205,13 @@ class ChatSession(BaseResource):
     """ISO 8601 timestamp of the most recent message in the session. Read from the server. Serialized as ``lastMessageAt``. See Also --------"""
 
     kind: ChatSessionKind | None = Field(default=None)
-    """Whether this is a regular ``chat`` session or one created by an ``automation`` run. Defaults to ``chat`` when omitted on create; sessions stored before this field existed read as ``chat``."""
+    """Whether this is a regular ``chat`` session or one created by an ``automation`` run."""
 
     automation_id: str | None = Field(default=None, alias="automationId")
-    """The automation that owns this session (``None`` for test runs). Rejected when ``kind`` is ``chat``. Serialized as ``automationId``."""
+    """The automation that owns this session, if any. Serialized as ``automationId``."""
 
     automation_run_id: str | None = Field(default=None, alias="automationRunId")
-    """The automation run that created this session. Required when ``kind`` is ``automation`` and rejected otherwise. Serialized as ``automationRunId``."""
+    """The automation run that created this session, if any. Serialized as ``automationRunId``."""
 
 
 class ChatMessageAttachment(BaseAlbertModel):
