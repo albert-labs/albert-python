@@ -6,8 +6,15 @@ from pydantic_core import core_schema
 from albert.core.shared.models.base import BaseResource, EntityLink, EntityLinkWithName
 
 EntityType = TypeVar("EntityType", bound=BaseResource)
+# ``None`` covers custom fields the platform returns as null after a user clears them.
 MetadataItem = (
-    float | int | str | EntityLinkWithName | EntityLink | list[EntityLinkWithName | EntityLink]
+    float
+    | int
+    | str
+    | EntityLinkWithName
+    | EntityLink
+    | list[EntityLinkWithName | EntityLink]
+    | None
 )
 
 

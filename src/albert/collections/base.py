@@ -49,6 +49,9 @@ class BaseCollection:
             existing_metadata = {}
         if updated_metadata is None:
             updated_metadata = {}
+        # A None value is a cleared field: treat it as absent so it never emits an op.
+        existing_metadata = {k: v for k, v in existing_metadata.items() if v is not None}
+        updated_metadata = {k: v for k, v in updated_metadata.items() if v is not None}
         data = []
         for key, value in existing_metadata.items():
             attribute = f"Metadata.{key}"
