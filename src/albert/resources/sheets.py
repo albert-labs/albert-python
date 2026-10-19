@@ -522,13 +522,15 @@ class Design(BaseSessionResource):
     @property
     def columns(self) -> list[Column]:
         if not self._columns:
-            self._get_grid()
+            # _get_grid() returns the grid without caching it; keep it so a
+            # later grid access does not fetch the same state again.
+            self._grid = self._get_grid()
         return self._columns
 
     @property
     def rows(self) -> list[Row]:
         if not self._rows:
-            self._get_grid()
+            self._grid = self._get_grid()
         return self._rows
 
     def group_rows(
