@@ -14,6 +14,7 @@ from albert.resources.sheets import (
     Component,
     Design,
     DesignType,
+    FormulationSpec,
     Row,
     RowConfig,
     Sheet,
@@ -239,7 +240,11 @@ def test_add_formulation_restores_cleared_column_when_write_fails(monkeypatch):
     monkeypatch.setattr(Sheet, "get_column", lambda self, **_: column)
     monkeypatch.setattr(Column, "cells", property(lambda self: [original]))
     monkeypatch.setattr(Sheet, "update_cells", lambda self, *, cells: _update_cells(cells=cells))
-    monkeypatch.setattr(Sheet, "_get_row_id_for_component", lambda self, **_: "ROW1")
+    monkeypatch.setattr(
+        Sheet,
+        "_ensure_rows_for_components",
+        lambda self, **_: {"INV1": ["ROW1"]},
+    )
     monkeypatch.setattr(Design, "rows", property(lambda self: []))
 
     with pytest.raises(AlbertException):
@@ -359,18 +364,18 @@ def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch)
             )
         ]
 
-    def _add_row(self, *, inventory_id, existing_cells, enforce_order, product_rows):
+    def _ensure_rows(self, *, formulations_components, product_rows):
         product_rows.append(
             Row(
                 rowId="ROW9",
                 type=CellType.INVENTORY,
                 design=self.product_design,
                 sheet=self,
-                inventory_id=inventory_id,
+                inventory_id="INVA1",
                 name="New ingredient",
             )
         )
-        return "ROW9"
+        return {"INVA1": ["ROW9"]}
 
     def _update_cells(self, *, cells):
         written.append(list(cells))
@@ -381,7 +386,7 @@ def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch)
     monkeypatch.setattr(Column, "cells", property(_cells))
     monkeypatch.setattr(Sheet, "add_formulation_columns", lambda self, **_: [new_column])
     monkeypatch.setattr(Sheet, "get_column", lambda self, **_: new_column)
-    monkeypatch.setattr(Sheet, "_get_row_id_for_component", _add_row)
+    monkeypatch.setattr(Sheet, "_ensure_rows_for_components", _ensure_rows)
     monkeypatch.setattr(Sheet, "update_cells", _update_cells)
 
     sheet.add_formulation(
@@ -617,3 +622,455 @@ def test_row_config_invalid_value_coerced_to_none():
     design = sheet.designs[0]
     row = Row(rowId="ROW1", type=CellType.APP, design=design, sheet=sheet, config="bogus")
     assert row.config is None
+
+
+def _products_sheet(session=None) -> Sheet:
+    return Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+        session=session,
+    )
+
+
+def _inv_row(sheet: Sheet, row_id: str, inventory_id: str | None) -> Row:
+    return Row(
+        rowId=row_id,
+        type=CellType.INVENTORY,
+        design=sheet.product_design,
+        sheet=sheet,
+        inventory_id=inventory_id,
+    )
+
+
+# --- Sheet._plan_missing_inventory_rows ---
+
+
+def test_plan_missing_inventory_rows_returns_empty_when_all_components_have_rows():
+    """Test that no rows are planned when every component already has a row."""
+    sheet = _empty_sheet()
+    product_rows = [_inv_row(sheet, "ROW2", "INVA1")]
+
+    missing = Sheet._plan_missing_inventory_rows(
+        formulations_components=[[Component(inventory_id="INVA1", amount=1.0)]],
+        product_rows=product_rows,
+    )
+
+    assert missing == []
+
+
+def test_plan_missing_inventory_rows_lists_only_ids_without_rows():
+    """Test that only inventory IDs lacking a row are planned."""
+    sheet = _empty_sheet()
+    product_rows = [_inv_row(sheet, "ROW2", "INVA1")]
+
+    missing = Sheet._plan_missing_inventory_rows(
+        formulations_components=[
+            [
+                Component(inventory_id="INVA1", amount=1.0),
+                Component(inventory_id="INVA2", amount=2.0),
+            ]
+        ],
+        product_rows=product_rows,
+    )
+
+    assert missing == ["INVA2"]
+
+
+def test_plan_missing_inventory_rows_repeats_id_per_duplicate_component():
+    """Test that a duplicated ingredient in one formulation gets one new row per extra use."""
+    sheet = _empty_sheet()
+    product_rows = [_inv_row(sheet, "ROW2", "INVA1")]
+    components = [
+        Component(inventory_id="INVA1", amount=1.0),
+        Component(inventory_id="INVA1", amount=2.0),
+        Component(inventory_id="INVA1", amount=3.0),
+    ]
+
+    missing = Sheet._plan_missing_inventory_rows(
+        formulations_components=[components], product_rows=product_rows
+    )
+
+    assert missing == ["INVA1", "INVA1"]
+
+
+def test_plan_missing_inventory_rows_shares_rows_across_formulations():
+    """Test that row counts take the maximum per formulation, not the sum."""
+    formulations_components = [
+        [Component(inventory_id="INVA1", amount=1.0), Component(inventory_id="INVA1", amount=2.0)],
+        [Component(inventory_id="INVA1", amount=3.0)],
+    ]
+
+    missing = Sheet._plan_missing_inventory_rows(
+        formulations_components=formulations_components, product_rows=[]
+    )
+
+    assert missing == ["INVA1", "INVA1"]
+
+
+def test_plan_missing_inventory_rows_ignores_rows_without_inventory_id():
+    """Test that total and other non-inventory rows do not count as ingredient rows."""
+    sheet = _empty_sheet()
+    product_rows = [
+        Row(rowId="ROW1", type=CellType.TOTAL, design=sheet.product_design, sheet=sheet)
+    ]
+
+    missing = Sheet._plan_missing_inventory_rows(
+        formulations_components=[[Component(inventory_id="INVA1", amount=1.0)]],
+        product_rows=product_rows,
+    )
+
+    assert missing == ["INVA1"]
+
+
+# --- Sheet._build_formulation_total_cells ---
+
+
+def test_build_formulation_total_cells_builds_one_total_per_column(monkeypatch):
+    """Test each new column gets a Total cell summing its components over all rows."""
+    sheet = _empty_sheet()
+    product_rows = [
+        Row(rowId="ROW1", type=CellType.TOTAL, design=sheet.product_design, sheet=sheet),
+        _inv_row(sheet, "ROW2", "INVA1"),
+        _inv_row(sheet, "ROW3", "INVA2"),
+    ]
+    col_a = Column(
+        colId="COL5", name="FA", type=CellType.INVENTORY, sheet=sheet, inventory_id="INVFA"
+    )
+    col_b = Column(
+        colId="COL6", name="FB", type=CellType.INVENTORY, sheet=sheet, inventory_id="INVFB"
+    )
+    other = Column(colId="COL2", name="Other", type=CellType.INVENTORY, sheet=sheet)
+    monkeypatch.setattr(Sheet, "columns", property(lambda self: [col_a, col_b, other]))
+
+    cells = sheet._build_formulation_total_cells(
+        columns_components=[
+            (
+                col_a,
+                [
+                    Component(inventory_id="INVA1", amount=70.0),
+                    Component(inventory_id="INVA2", amount=30.0),
+                ],
+            ),
+            (col_b, [Component(inventory_id="INVA1", amount=55.0)]),
+        ],
+        product_rows=product_rows,
+        rewrite_other_columns=False,
+    )
+
+    assert [(c.column_id, c.row_id, c.value, c.calculation) for c in cells] == [
+        ("COL5", "ROW1", "100.0", "=COL5ROW2+COL5ROW3"),
+        ("COL6", "ROW1", "55.0", "=COL6ROW2+COL6ROW3"),
+    ]
+
+
+def test_build_formulation_total_cells_rewrites_other_unlocked_columns(monkeypatch):
+    """Test other unlocked formula columns get their Totals extended to all rows."""
+    sheet = _empty_sheet()
+    product_rows = [
+        Row(rowId="ROW1", type=CellType.TOTAL, design=sheet.product_design, sheet=sheet),
+        _inv_row(sheet, "ROW2", "INVA1"),
+        _inv_row(sheet, "ROW3", "INVA2"),
+    ]
+    new_col = Column(colId="COL5", name="FA", type=CellType.INVENTORY, sheet=sheet)
+    unlocked = Column(
+        colId="COL2", name="Open", type=CellType.INVENTORY, sheet=sheet, locked=False
+    )
+    locked = Column(colId="COL7", name="Locked", type=CellType.INVENTORY, sheet=sheet, locked=True)
+    lookup = Column(colId="COL3", name="Lookup", type=CellType.LKP, sheet=sheet)
+    monkeypatch.setattr(
+        Sheet, "columns", property(lambda self: [new_col, unlocked, locked, lookup])
+    )
+
+    def _cells(self):
+        return [
+            Cell(
+                colId=self.column_id,
+                rowId="ROW1",
+                value="1",
+                calculation=f"={self.column_id}ROW2",
+                type=CellType.TOTAL,
+                row_type=CellType.TOTAL,
+                design_id="DES1",
+            )
+        ]
+
+    monkeypatch.setattr(Column, "cells", property(_cells))
+
+    cells = sheet._build_formulation_total_cells(
+        columns_components=[(new_col, [Component(inventory_id="INVA1", amount=1.0)])],
+        product_rows=product_rows,
+        rewrite_other_columns=True,
+    )
+
+    by_id = {c.column_id: c for c in cells}
+    assert set(by_id) == {"COL5", "COL2"}
+    assert by_id["COL2"].calculation == "=COL2ROW2+COL2ROW3"
+
+
+def test_build_formulation_total_cells_returns_empty_without_total_row():
+    """Test that a sheet without a Total row produces no Total cells."""
+    sheet = _empty_sheet()
+    product_rows = [_inv_row(sheet, "ROW2", "INVA1")]
+
+    cells = sheet._build_formulation_total_cells(
+        columns_components=[
+            (
+                Column(colId="COL5", name="F", type=CellType.INVENTORY, sheet=sheet),
+                [Component(inventory_id="INVA1", amount=1.0)],
+            )
+        ],
+        product_rows=product_rows,
+        rewrite_other_columns=True,
+    )
+
+    assert cells == []
+
+
+# --- Sheet.add_inventory_rows ---
+
+
+@responses.activate
+def test_add_inventory_rows_posts_all_ids_in_one_call(offline_session):
+    """Test that ingredient rows are created with a single array body."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {
+                "rowId": "ROW3",
+                "id": "INVA2",
+                "type": "INV",
+                "name": "Ethanol",
+                "manufacturer": None,
+            },
+            {"rowId": "ROW4", "id": "INVA3", "type": "INV", "name": "Water", "manufacturer": None},
+        ],
+    )
+
+    rows = sheet.add_inventory_rows(inventory_ids=["A2", "INVA3"])
+
+    assert [row.row_id for row in rows] == ["ROW3", "ROW4"]
+    assert [row.inventory_id for row in rows] == ["INVA2", "INVA3"]
+    assert len(responses.calls) == 1
+    assert json.loads(responses.calls[0].request.body) == [
+        {"type": "INV", "id": "INVA2", "referenceId": "ROW1", "position": "above"},
+        {"type": "INV", "id": "INVA3", "referenceId": "ROW1", "position": "above"},
+    ]
+
+
+@responses.activate
+def test_add_inventory_rows_chunks_at_platform_limit(offline_session):
+    """Test that more rows than the per-call cap are split across multiple calls."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {
+                "rowId": f"ROW{i + 10}",
+                "id": f"INVA{i}",
+                "type": "INV",
+                "name": f"n{i}",
+                "manufacturer": None,
+            }
+            for i in range(24)
+        ],
+    )
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {"rowId": "ROW99", "id": "INVA24", "type": "INV", "name": "n24", "manufacturer": None}
+        ],
+    )
+
+    rows = sheet.add_inventory_rows(inventory_ids=[f"INVA{i}" for i in range(25)])
+
+    assert len(rows) == 25
+    assert len(responses.calls) == 2
+    assert len(json.loads(responses.calls[0].request.body)) == 24
+    assert json.loads(responses.calls[1].request.body) == [
+        {"type": "INV", "id": "INVA24", "referenceId": "ROW1", "position": "above"}
+    ]
+
+
+@responses.activate
+def test_add_inventory_rows_short_circuits_on_empty_input(offline_session):
+    """Test that an empty list makes no call and returns no rows."""
+    sheet = _products_sheet(session=offline_session)
+
+    assert sheet.add_inventory_rows(inventory_ids=[]) == []
+    assert len(responses.calls) == 0
+
+
+# --- Sheet.add_formulations ---
+
+
+@responses.activate
+def test_add_formulations_short_circuits_on_empty_input(offline_session):
+    """Test that an empty list makes no calls and returns no columns."""
+    sheet = _products_sheet(session=offline_session)
+
+    assert sheet.add_formulations(formulations=[]) == []
+    assert len(responses.calls) == 0
+
+
+def _register_products_grid(*, with_new_columns: bool, with_new_rows: bool):
+    values_first_row = [
+        {"colId": "COL1", "value": "10", "calculation": "=COL1ROW2", "id": "INVF0", "type": "INV"}
+    ]
+    formulas = [{"colId": "COL1", "name": "Existing", "state": {}}]
+    if with_new_columns:
+        values_first_row.extend(
+            [
+                {"colId": "COL5", "value": "", "id": "INVFA", "type": "INV"},
+                {"colId": "COL6", "value": "", "id": "INVFB", "type": "INV"},
+            ]
+        )
+        formulas.extend(
+            [
+                {"colId": "COL5", "name": "FA", "state": {}},
+                {"colId": "COL6", "name": "FB", "state": {}},
+            ]
+        )
+    items = [
+        {
+            "rowId": "ROW1",
+            "rowUniqueId": "DES1#ROW1",
+            "name": "Total",
+            "type": "TOT",
+            "Values": values_first_row,
+        },
+        {
+            "rowId": "ROW2",
+            "rowUniqueId": "DES1#ROW2",
+            "name": "Salt",
+            "type": "INV",
+            "id": "INVA1",
+            "Values": [{"colId": "COL1", "value": "10", "id": "INVF0", "type": "INV"}],
+        },
+    ]
+    if with_new_rows:
+        items.extend(
+            [
+                {
+                    "rowId": "ROW3",
+                    "rowUniqueId": "DES1#ROW3",
+                    "name": "Ethanol",
+                    "type": "INV",
+                    "id": "INVA2",
+                    "Values": [],
+                },
+                {
+                    "rowId": "ROW4",
+                    "rowUniqueId": "DES1#ROW4",
+                    "name": "Water",
+                    "type": "INV",
+                    "id": "INVA3",
+                    "Values": [],
+                },
+            ]
+        )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={"Items": items, "Formulas": formulas},
+    )
+
+
+@responses.activate
+def test_add_formulations_batches_row_creation_and_defers_totals(offline_session):
+    """Test one row-creation call per bulk build and a single Totals pass at the end."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+        json=[
+            {
+                "name": "FA",
+                "type": "INV",
+                "id": "INVFA",
+                "Formulas": [{"colId": "COL5", "formulaId": "INVFA"}],
+            },
+            {
+                "name": "FB",
+                "type": "INV",
+                "id": "INVFB",
+                "Formulas": [{"colId": "COL6", "formulaId": "INVFB"}],
+            },
+        ],
+    )
+    _register_products_grid(with_new_columns=False, with_new_rows=False)
+    _register_products_grid(with_new_columns=True, with_new_rows=False)
+    _register_products_grid(with_new_columns=True, with_new_rows=True)
+    _register_products_grid(with_new_columns=True, with_new_rows=True)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {
+                "rowId": "ROW3",
+                "id": "INVA2",
+                "type": "INV",
+                "name": "Ethanol",
+                "manufacturer": None,
+            },
+            {"rowId": "ROW4", "id": "INVA3", "type": "INV", "name": "Water", "manufacturer": None},
+        ],
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                name="FA",
+                components=[
+                    Component(inventory_id="INVA1", amount=70.0),
+                    Component(inventory_id="INVA2", amount=30.0),
+                ],
+            ),
+            FormulationSpec(
+                name="FB",
+                components=[
+                    Component(inventory_id="INVA1", amount=55.0),
+                    Component(inventory_id="INVA3", amount=45.0),
+                ],
+            ),
+        ]
+    )
+
+    assert [col.column_id for col in columns] == ["COL5", "COL6"]
+
+    posts = [c for c in responses.calls if c.request.method == "POST"]
+    rows_posts = [c for c in posts if c.request.url.endswith("/rows")]
+    assert len(rows_posts) == 1
+    assert [entry["id"] for entry in json.loads(rows_posts[0].request.body)] == ["INVA2", "INVA3"]
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert len(patches) == 2
+    ingredient_payload = json.loads(patches[0].request.body)
+    assert [
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["newValue"])
+        for entry in ingredient_payload
+    ] == [
+        ("ROW2", "COL5", "70.0"),
+        ("ROW3", "COL5", "30.0"),
+        ("ROW2", "COL6", "55.0"),
+        ("ROW4", "COL6", "45.0"),
+    ]
+    total_payload = json.loads(patches[1].request.body)
+    totals_by_col = {entry["Id"]["colId"]: entry["data"] for entry in total_payload}
+    assert set(totals_by_col) == {"COL5", "COL6", "COL1"}
+    assert totals_by_col["COL5"] == [
+        {"operation": "add", "attribute": "calculation", "newValue": "=COL5ROW2+COL5ROW3+COL5ROW4"}
+    ]
+    assert totals_by_col["COL1"] == [
+        {
+            "operation": "update",
+            "attribute": "calculation",
+            "newValue": "=COL1ROW2+COL1ROW3+COL1ROW4",
+            "oldValue": "=COL1ROW2",
+        }
+    ]
+
+    gets = [c for c in responses.calls if c.request.method == "GET"]
+    assert len(gets) == 4

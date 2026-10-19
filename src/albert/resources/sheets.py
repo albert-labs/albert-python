@@ -20,6 +20,9 @@ Sheet = ForwardRef("Sheet")
 
 CellAttributeValue = str | float | int | dict[str, Any] | list[Any] | None
 
+# The worksheet row-creation schema caps one call at 24 rows (PostWSRows maxItems).
+_MAX_ROWS_PER_CREATE_CALL = 24
+
 
 class CellChangeId(TypedDict):
     """Internal identifier (row ID and column ID) locating a cell in a change payload."""
@@ -264,6 +267,30 @@ class Component(BaseResource):
         if self.inventory_item and getattr(self.inventory_item, "id", None):
             return self.inventory_item.id
         raise ValueError("Component is missing an inventory identifier.")
+
+
+class FormulationSpec(BaseAlbertModel):
+    """The specification for one formulation in a bulk build.
+
+    Pairs a formulation name with the components to place in its column. Used as
+    the input to [`add_formulations`][albert.resources.sheets.Sheet.add_formulations],
+    which builds many formulations at once.
+
+    !!! example
+        ```python
+        from albert.resources.sheets import Component, FormulationSpec
+        spec = FormulationSpec(
+            name="Formulation A",
+            components=[Component(inventory_id="INVA9999999", amount=42.0)],
+        )
+        ```
+    """
+
+    name: str
+    """The name of the formulation, used as the column header."""
+
+    components: list[Component]
+    """The ingredients and their amounts to place in the formulation."""
 
 
 class DesignState(BaseResource):
@@ -694,12 +721,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Rename the sheet.
     add_formulation(formulation_name, components, ...) -> Column
         Build a formulation column from a list of components (registers a Formula).
+    add_formulations(formulations) -> list[Column]
+        Build multiple formulations in one call, sharing ingredient rows.
     add_components_to_formulation(components, ...) -> Column
         Add components to an existing formulation column.
     add_formulation_columns(formulation_names, ...) -> list[Column]
         Add one or more empty formulation columns.
     add_inventory_row(inventory_id, ...) -> Row
         Add an ingredient (inventory) row.
+    add_inventory_rows(inventory_ids, ...) -> list[Row]
+        Add multiple ingredient (inventory) rows in one call.
     add_blank_row(row_name, ...) -> Row
         Add a blank row.
     add_blank_rows(row_names, ...) -> list[Row]
@@ -983,6 +1014,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
         When a new ingredient row is added, unlocked formula columns have their Total
         formula extended to include that row. Locked formula columns are left unchanged.
 
+        To build many formulations at once, use
+        [`add_formulations`][albert.resources.sheets.Sheet.add_formulations], which is
+        substantially faster for bulk loads.
+
         !!! example
             ```python
             from albert import Albert
@@ -1021,7 +1056,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             The formulation column that was created or updated.
         """
 
-        all_cells: list[Cell] = []
+        ingredient_cells: list[Cell] = []
         cleared_cells: list[Cell] = []
         existing_formulation_names = [x.name for x in self.columns]
         if clear and formulation_name in existing_formulation_names:
@@ -1036,96 +1071,51 @@ class Sheet(BaseSessionResource):  # noqa:F811
         product_rows = list(self.product_design.rows)
         initial_row_ids = {row.row_id for row in product_rows}
 
-        for component in components:
-            component_inventory_id = component.inventory_item_id
-            row_id = self._get_row_id_for_component(
-                inventory_id=component_inventory_id,
-                existing_cells=all_cells,
-                enforce_order=enforce_order,
-                product_rows=product_rows,
+        # Without order enforcement, all missing ingredient rows are created up
+        # front in as few calls as possible instead of one call per row.
+        rows_by_inventory_id = (
+            None
+            if enforce_order
+            else self._ensure_rows_for_components(
+                formulations_components=[components], product_rows=product_rows
             )
-            if row_id is None:
-                raise AlbertException(f"No Component with id {component_inventory_id}")
+        )
+        if rows_by_inventory_id is not None:
+            component_row_ids = self._assign_component_rows(
+                components=components, rows_by_inventory_id=rows_by_inventory_id
+            )
+        else:
+            component_row_ids = []
+            for component in components:
+                row_id = self._get_row_id_for_component(
+                    inventory_id=component.inventory_item_id,
+                    existing_cells=ingredient_cells,
+                    enforce_order=enforce_order,
+                    product_rows=product_rows,
+                )
+                if row_id is None:
+                    raise AlbertException(f"No Component with id {component.inventory_item_id}")
+                component_row_ids.append(row_id)
 
-            value = str(component.amount)
-            min_value = str(component.min_value) if component.min_value is not None else None
-            max_value = str(component.max_value) if component.max_value is not None else None
-            this_cell = Cell(
-                column_id=column_id,
-                row_id=row_id,
-                value=value,
-                calculation="",
-                type=CellType.INVENTORY,
-                design_id=self.product_design.id,
-                name=formulation_name,
-                inventory_id=col.inventory_id,
-                min_value=min_value,
-                max_value=max_value,
+        for component, row_id in zip(components, component_row_ids, strict=True):
+            ingredient_cells.append(
+                self._build_component_cell(
+                    column=col,
+                    component=component,
+                    row_id=row_id,
+                    name=formulation_name,
+                )
             )
-            all_cells.append(this_cell)
 
         new_row_ids = [row.row_id for row in product_rows if row.row_id not in initial_row_ids]
-
-        total_row = next((r for r in product_rows if r.type == CellType.TOTAL), None)
-        if total_row is not None:
-            ingredient_row_ids = [
-                row.row_id
-                for row in product_rows
-                if row.inventory_id is not None and row.row_id != total_row.row_id
-            ]
-            calculation = "=" + "+".join(f"{column_id}{row_id}" for row_id in ingredient_row_ids)
-            total_cell = Cell(
-                column_id=column_id,
-                row_id=total_row.row_id,
-                value=str(sum(component.amount for component in components)),
-                calculation=calculation,
-                type=CellType.TOTAL,
-                design_id=self.product_design.id,
-                name=formulation_name,
-                inventory_id=col.inventory_id,
-            )
-            all_cells.append(total_cell)
-
-            # When new ingredient rows were added to the sheet, every other existing
-            # inventory column's Total cell must also include those rows in its
-            # calculation formula.
-            if new_row_ids:
-                all_ingredient_row_ids = [
-                    row.row_id
-                    for row in product_rows
-                    if row.inventory_id is not None and row.row_id != total_row.row_id
-                ]
-                for other_col in self.columns:
-                    if other_col.column_id == column_id or other_col.type != CellType.INVENTORY:
-                        continue
-                    # A locked formula rejects the total-formula edit and the values
-                    # endpoint answers 206. Skipping it keeps the new formulation in place.
-                    if other_col.locked:
-                        continue
-                    other_total_cell = next(
-                        (
-                            c
-                            for c in other_col.cells
-                            if isinstance(c, Cell) and c.row_id == total_row.row_id
-                        ),
-                        None,
-                    )
-                    if other_total_cell is None:
-                        continue
-                    new_calculation = "=" + "+".join(
-                        f"{other_col.column_id}{rid}" for rid in all_ingredient_row_ids
-                    )
-                    all_cells.append(
-                        other_total_cell.model_copy(update={"calculation": new_calculation})
-                    )
+        total_cells = self._build_formulation_total_cells(
+            columns_components=[(col, components)],
+            product_rows=product_rows,
+            rewrite_other_columns=bool(new_row_ids),
+        )
+        column = self.get_column(column_id=column_id)
 
         # Send ingredient cells first, then Total cells in a separate call.
-        def _is_total_cell(c: Cell) -> bool:
-            return c.row_type == CellType.TOTAL or c.type == CellType.TOTAL
-
-        ingredient_cells = [c for c in all_cells if not _is_total_cell(c)]
-        total_cells = [c for c in all_cells if _is_total_cell(c)]
-
         if ingredient_cells:
             try:
                 self.update_cells(cells=ingredient_cells)
@@ -1137,11 +1127,117 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 raise
 
         if total_cells:
-            # grid reset for safety
-            self.grid = None
             self.update_cells(cells=total_cells)
 
-        return self.get_column(column_id=column_id)
+        self.grid = None
+        return column
+
+    @validate_call
+    def add_formulations(
+        self,
+        *,
+        formulations: list[FormulationSpec],
+    ) -> list[Column]:
+        """Build multiple formulations on this sheet in one operation.
+
+        Each entry builds a formulation column from its components, exactly like
+        [`add_formulation`][albert.resources.sheets.Sheet.add_formulation], but
+        substantially faster when adding many formulations: ingredient rows are
+        shared across all formulations in the list and created only for inventory
+        items not already on the sheet, and unlocked formula columns have their
+        Total formulas extended to cover new rows once at the end rather than
+        after every formulation.
+
+        A new column is always created for each entry; existing columns with the
+        same name are left untouched (unlike ``add_formulation`` with
+        ``clear=True``). Building a formulation this way is what registers a
+        Formula inventory item
+        ([`InventoryItem`][albert.resources.inventory.InventoryItem]).
+
+        !!! example
+            ```python
+            from albert.resources.sheets import Component, FormulationSpec
+            columns = sheet.add_formulations(
+                formulations=[
+                    FormulationSpec(
+                        name="Formulation A",
+                        components=[
+                            Component(inventory_id="INVA9999999", amount=80.0),
+                            Component(inventory_id="INVA9999998", amount=20.0),
+                        ],
+                    ),
+                    FormulationSpec(
+                        name="Formulation B",
+                        components=[
+                            Component(inventory_id="INVA9999999", amount=60.0),
+                            Component(inventory_id="INVA9999997", amount=40.0),
+                        ],
+                    ),
+                ]
+            )
+            ```
+
+        Parameters
+        ----------
+        formulations : list[FormulationSpec]
+            The formulations to build, each pairing a column name with its
+            components.
+
+        Returns
+        -------
+        list[Column]
+            The formulation columns created, in the order requested.
+        """
+        if not formulations:
+            return []
+
+        created = self.add_formulation_columns(
+            formulation_names=[spec.name for spec in formulations]
+        )
+
+        self.grid = None
+        product_rows = list(self.product_design.rows)
+        initial_row_ids = {row.row_id for row in product_rows}
+
+        rows_by_inventory_id = self._ensure_rows_for_components(
+            formulations_components=[spec.components for spec in formulations],
+            product_rows=product_rows,
+        )
+        new_row_ids = [row.row_id for row in product_rows if row.row_id not in initial_row_ids]
+
+        ingredient_cells: list[Cell] = []
+        for col, spec in zip(created, formulations, strict=True):
+            component_row_ids = self._assign_component_rows(
+                components=spec.components, rows_by_inventory_id=rows_by_inventory_id
+            )
+            for component, row_id in zip(spec.components, component_row_ids, strict=True):
+                ingredient_cells.append(
+                    self._build_component_cell(
+                        column=col,
+                        component=component,
+                        row_id=row_id,
+                        name=spec.name,
+                    )
+                )
+
+        total_cells = self._build_formulation_total_cells(
+            columns_components=[
+                (col, spec.components) for col, spec in zip(created, formulations, strict=True)
+            ],
+            product_rows=product_rows,
+            rewrite_other_columns=bool(new_row_ids),
+        )
+        columns = [self.get_column(column_id=col.column_id) for col in created]
+
+        # Send ingredient cells first, then Total cells in a separate call.
+        if ingredient_cells:
+            self.update_cells(cells=ingredient_cells)
+
+        if total_cells:
+            self.update_cells(cells=total_cells)
+
+        self.grid = None
+        return columns
 
     @validate_call
     def add_components_to_formulation(
@@ -1192,18 +1288,37 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         product_rows = list(self.product_design.rows)
         all_cells: list[Cell] = []
-        for component in components:
-            inv_item = component.inventory_item
-            item_id: InventoryId = inv_item.id if inv_item is not None else component.inventory_id
-            row_id = self._get_row_id_for_component(
-                inventory_id=item_id,
-                existing_cells=all_cells,
-                enforce_order=enforce_order,
-                product_rows=product_rows,
+        # Without order enforcement, all missing ingredient rows are created up
+        # front in as few calls as possible instead of one call per row.
+        rows_by_inventory_id = (
+            None
+            if enforce_order
+            else self._ensure_rows_for_components(
+                formulations_components=[components], product_rows=product_rows
             )
-            if row_id is None:
-                raise AlbertException(f"No row found for inventory ID {item_id}")
+        )
+        if rows_by_inventory_id is not None:
+            component_row_ids = self._assign_component_rows(
+                components=components, rows_by_inventory_id=rows_by_inventory_id
+            )
+        else:
+            component_row_ids = []
+            for component in components:
+                inv_item = component.inventory_item
+                item_id: InventoryId = (
+                    inv_item.id if inv_item is not None else component.inventory_id
+                )
+                row_id = self._get_row_id_for_component(
+                    inventory_id=item_id,
+                    existing_cells=all_cells,
+                    enforce_order=enforce_order,
+                    product_rows=product_rows,
+                )
+                if row_id is None:
+                    raise AlbertException(f"No row found for inventory ID {item_id}")
+                component_row_ids.append(row_id)
 
+        for component, row_id in zip(components, component_row_ids, strict=True):
             all_cells.append(
                 Cell(
                     column_id=col_id,
@@ -1223,8 +1338,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 )
             )
 
+        column = self.get_column(column_id=col_id)
         self.update_cells(cells=all_cells)
-        return self.get_column(column_id=col_id)
+        self.grid = None
+        return column
 
     def _get_row_id_for_component(
         self,
@@ -1288,6 +1405,155 @@ class Sheet(BaseSessionResource):  # noqa:F811
         new_row = self.add_inventory_row(inventory_id=inventory_id)
         product_rows.append(new_row)
         return new_row.row_id
+
+    @staticmethod
+    def _plan_missing_inventory_rows(
+        *, formulations_components: list[list[Component]], product_rows: list[Row]
+    ) -> list[str]:
+        """Inventory IDs that need new rows, with one entry per extra row required.
+
+        Rows are shared across formulations, so the number of rows an ID needs is
+        the most rows any single formulation uses it for (duplicates within one
+        formulation each need their own row) minus the rows already on the sheet.
+        """
+        available: dict[str, int] = {}
+        for row in product_rows:
+            if row.inventory_id is not None:
+                available[row.inventory_id] = available.get(row.inventory_id, 0) + 1
+        needed: dict[str, int] = {}
+        for components in formulations_components:
+            counts: dict[str, int] = {}
+            for component in components:
+                inv_id = component.inventory_item_id
+                counts[inv_id] = counts.get(inv_id, 0) + 1
+            for inv_id, count in counts.items():
+                needed[inv_id] = max(needed.get(inv_id, 0), count)
+        missing: list[str] = []
+        for inv_id, count in needed.items():
+            shortfall = count - available.get(inv_id, 0)
+            if shortfall > 0:
+                missing.extend([inv_id] * shortfall)
+        return missing
+
+    def _ensure_rows_for_components(
+        self, *, formulations_components: list[list[Component]], product_rows: list[Row]
+    ) -> dict[str, list[str]]:
+        """Create any missing ingredient rows and map inventory IDs to their row IDs.
+
+        ``product_rows`` is extended in place with the newly created rows. The
+        returned lists preserve sheet row order, with new rows last.
+        """
+        missing = self._plan_missing_inventory_rows(
+            formulations_components=formulations_components, product_rows=product_rows
+        )
+        if missing:
+            product_rows.extend(self.add_inventory_rows(inventory_ids=missing))
+        rows_by_inventory_id: dict[str, list[str]] = {}
+        for row in product_rows:
+            if row.inventory_id is not None:
+                rows_by_inventory_id.setdefault(row.inventory_id, []).append(row.row_id)
+        return rows_by_inventory_id
+
+    @staticmethod
+    def _assign_component_rows(
+        *, components: list[Component], rows_by_inventory_id: dict[str, list[str]]
+    ) -> list[str]:
+        """The row ID for each component, in the order given.
+
+        Each component takes the earliest row for its inventory ID not already
+        taken by an earlier component in the list, so a duplicated ingredient
+        spreads across that inventory item's rows.
+        """
+        used: dict[str, int] = {}
+        row_ids: list[str] = []
+        for component in components:
+            inv_id = component.inventory_item_id
+            pool = rows_by_inventory_id.get(inv_id, [])
+            index = used.get(inv_id, 0)
+            if index >= len(pool):
+                raise AlbertException(f"No Component with id {inv_id}")
+            row_ids.append(pool[index])
+            used[inv_id] = index + 1
+        return row_ids
+
+    def _build_component_cell(
+        self, *, column: Column, component: Component, row_id: str, name: str | None
+    ) -> Cell:
+        return Cell(
+            column_id=column.column_id,
+            row_id=row_id,
+            value=str(component.amount),
+            calculation="",
+            type=CellType.INVENTORY,
+            design_id=self.product_design.id,
+            name=name,
+            inventory_id=column.inventory_id,
+            min_value=str(component.min_value) if component.min_value is not None else None,
+            max_value=str(component.max_value) if component.max_value is not None else None,
+        )
+
+    def _build_formulation_total_cells(
+        self,
+        *,
+        columns_components: list[tuple[Column, list[Component]]],
+        product_rows: list[Row],
+        rewrite_other_columns: bool,
+    ) -> list[Cell]:
+        """Total cells for new formulation columns.
+
+        When ``rewrite_other_columns`` is True (new ingredient rows were added),
+        every other unlocked formula column's Total cell is also rewritten to
+        include those rows in its calculation.
+        """
+        total_row = next((r for r in product_rows if r.type == CellType.TOTAL), None)
+        if total_row is None:
+            return []
+        ingredient_row_ids = [
+            row.row_id
+            for row in product_rows
+            if row.inventory_id is not None and row.row_id != total_row.row_id
+        ]
+        new_column_ids = {col.column_id for col, _ in columns_components}
+        total_cells = [
+            Cell(
+                column_id=col.column_id,
+                row_id=total_row.row_id,
+                value=str(sum(component.amount for component in components)),
+                calculation="="
+                + "+".join(f"{col.column_id}{row_id}" for row_id in ingredient_row_ids),
+                type=CellType.TOTAL,
+                design_id=self.product_design.id,
+                name=col.name,
+                inventory_id=col.inventory_id,
+            )
+            for col, components in columns_components
+        ]
+        if not rewrite_other_columns:
+            return total_cells
+        for other_col in self.columns:
+            if other_col.column_id in new_column_ids or other_col.type != CellType.INVENTORY:
+                continue
+            # A locked formula rejects the total-formula edit and the values
+            # endpoint answers 206. Skipping it keeps the new formulation in place.
+            if other_col.locked:
+                continue
+            other_total_cell = next(
+                (
+                    c
+                    for c in other_col.cells
+                    if isinstance(c, Cell) and c.row_id == total_row.row_id
+                ),
+                None,
+            )
+            if other_total_cell is None:
+                continue
+            new_calculation = "=" + "+".join(
+                f"{other_col.column_id}{rid}" for rid in ingredient_row_ids
+            )
+            total_cells.append(
+                other_total_cell.model_copy(update={"calculation": new_calculation})
+            )
+        return total_cells
 
     def add_formulation_columns(
         self,
@@ -1476,9 +1742,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         endpoint = f"/api/v3/worksheet/design/{self._get_design_id(design=design)}/rows"
 
         rows = []
-        # The platform accepts at most 24 rows per call.
-        for i in range(0, len(row_names), 24):
-            batch = row_names[i : i + 24]
+        for i in range(0, len(row_names), _MAX_ROWS_PER_CREATE_CALL):
+            batch = row_names[i : i + _MAX_ROWS_PER_CREATE_CALL]
             payload = [
                 {
                     "type": "BLK",
@@ -1557,9 +1822,87 @@ class Sheet(BaseSessionResource):  # noqa:F811
             design=self.product_design,
             sheet=self,
             name=row_dict["name"],
-            id=row_dict["id"],
             manufacturer=row_dict["manufacturer"],
         )
+
+    @validate_call
+    def add_inventory_rows(
+        self,
+        *,
+        inventory_ids: list[str],
+        position: dict | None = None,
+    ) -> list[Row]:
+        """Add multiple ingredient (inventory) rows to the Product Design.
+
+        The rows represent inventory items that can then carry amounts in each
+        formulation column. The ``INV`` prefix is added to each ``inventory_id``
+        if absent. All rows in the list are placed relative to the same
+        reference row.
+
+        !!! example
+            ```python
+            rows = sheet.add_inventory_rows(inventory_ids=["INVA9999999", "INVA9999998"])
+            ```
+
+        Parameters
+        ----------
+        inventory_ids : list[str]
+            The inventory IDs of the items to add as rows (format ``INV...``).
+        position : dict, optional
+            Where to insert the rows, as a dict with ``reference_id`` (a row ID)
+            and ``position`` (``"above"`` or ``"below"``). Defaults to above
+            ``"ROW1"``.
+
+        Returns
+        -------
+        list[Row]
+            The created inventory rows, in the order requested.
+        """
+        if not inventory_ids:
+            return []
+        if position is None:
+            position = {"reference_id": "ROW1", "position": "above"}
+        design = self.product_design
+        endpoint = f"/api/v3/worksheet/design/{design.id}/rows"
+
+        rows: list[Row] = []
+        for i in range(0, len(inventory_ids), _MAX_ROWS_PER_CREATE_CALL):
+            batch = inventory_ids[i : i + _MAX_ROWS_PER_CREATE_CALL]
+            payload = [
+                {
+                    "type": "INV",
+                    "id": inv_id if inv_id.startswith("INV") else f"INV{inv_id}",
+                    "referenceId": position["reference_id"],
+                    "position": position["position"],
+                }
+                for inv_id in batch
+            ]
+            response = self.session.post(endpoint, json=payload)
+            data = response.json()
+            items = data if isinstance(data, list) else [data]
+            for item, sent in zip(items, payload, strict=True):
+                raw_id = item.get("id")
+                rows.append(
+                    Row(
+                        rowId=item["rowId"],
+                        inventory_id=(raw_id if str(raw_id).startswith("INV") else f"INV{raw_id}")
+                        if raw_id
+                        else sent["id"],
+                        type=item["type"],
+                        session=self.session,
+                        design=design,
+                        sheet=self,
+                        name=item.get("name"),
+                        manufacturer=item.get("manufacturer"),
+                    )
+                )
+
+        # Rows arrived in an order the cached row list does not reflect; columns
+        # are unaffected by new rows, so only the row/grid caches are stale.
+        design._rows = None
+        design._grid = None
+        self._grid = None
+        return rows
 
     @validate_call
     def add_lookup_row(

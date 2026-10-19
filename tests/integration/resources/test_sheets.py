@@ -9,6 +9,7 @@ from albert.resources.sheets import (
     Column,
     Component,
     DesignType,
+    FormulationSpec,
     Row,
     Sheet,
 )
@@ -135,6 +136,62 @@ def test_add_formulation_lifecycle(
         assert float(refreshed[row_id].value) == pytest.approx(value)
         assert float(refreshed[row_id].min_value) == pytest.approx(min_value)
         assert float(refreshed[row_id].max_value) == pytest.approx(max_value)
+
+
+def test_add_formulations_builds_columns_with_shared_rows(
+    seed_prefix: str,
+    seeded_sheet: Sheet,
+    seeded_inventory: list[InventoryItem],
+):
+    """Test building several formulations at once, sharing ingredient rows."""
+    name_a = f"{seed_prefix} - bulk formulation A"
+    name_b = f"{seed_prefix} - bulk formulation B"
+    shared = seeded_inventory[0]
+    only_a = seeded_inventory[1]
+    only_b = seeded_inventory[2]
+
+    columns = seeded_sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                name=name_a,
+                components=[
+                    Component(inventory_item=shared, amount=70.0),
+                    Component(inventory_item=only_a, amount=30.0),
+                ],
+            ),
+            FormulationSpec(
+                name=name_b,
+                components=[
+                    Component(inventory_item=shared, amount=55.0),
+                    Component(inventory_item=only_b, amount=45.0),
+                ],
+            ),
+        ]
+    )
+
+    assert [column.name for column in columns] == [name_a, name_b]
+    assert all(isinstance(column, Column) for column in columns)
+
+    row_id_to_inv_id = {row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows}
+    amounts_by_column = []
+    for column in columns:
+        amounts = {}
+        for cell in column.cells:
+            if not isinstance(cell, Cell):
+                continue
+            if cell.type == CellType.INVENTORY and cell.row_type == CellType.INVENTORY:
+                amounts[row_id_to_inv_id[cell.row_id]] = float(cell.value)
+            elif cell.row_type == CellType.TOTAL:
+                assert float(cell.value) == pytest.approx(100.0)
+        amounts_by_column.append(amounts)
+
+    assert amounts_by_column[0] == {shared.id: 70.0, only_a.id: 30.0}
+    assert amounts_by_column[1] == {shared.id: 55.0, only_b.id: 45.0}
+
+    # The shared ingredient occupies the same single row in both formulations.
+    rows_a = {cell.row_id for cell in _inventory_cells(columns[0])}
+    rows_b = {cell.row_id for cell in _inventory_cells(columns[1])}
+    assert len(rows_a & rows_b) == 1
 
 
 # Because you cannot delete Formulation Columns, We will need to mock this test.
