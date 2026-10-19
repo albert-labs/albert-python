@@ -228,7 +228,12 @@ class UserCollection(BaseCollection):
         custom_fields : dict[str, Any], optional
             Filter by custom field values.
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         source_field : list[str], optional
             Restrict which fields are returned in the response.
         witnesser : list[str], optional
