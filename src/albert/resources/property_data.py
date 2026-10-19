@@ -1027,5 +1027,8 @@ class PropertyDataSearchItem(BaseAlbertModel):
     task_id: TaskId | None = Field(default=None, alias="taskId")
     """The task the result was measured on, if any (format ``TAS...``). Serialized as ``taskId``. See Also --------"""
 
+    void: bool | None = Field(default=None)
+    """Whether the record is voided. ``None`` when the record is not voided or the search index does not carry the flag."""
+
 
 ReturnScope = Literal["task", "block", "none"]
