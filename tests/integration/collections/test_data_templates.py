@@ -373,7 +373,7 @@ def calculation_dt(client: Albert, seeded_data_columns: list[DataColumn], seed_p
 def test_update_delete_data_column(
     client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
 ):
-    """Test removing a data column from a data template via update."""
+    """Test removing a data column from a data template via update with remove_omitted_rows."""
     dt = client.data_templates.create(
         data_template=DataTemplate(
             name=f"{seed_prefix} - Delete Column Test",
@@ -392,7 +392,7 @@ def test_update_delete_data_column(
         dt.data_column_values = [
             x for x in dt.data_column_values if x.data_column_id != column_to_delete.data_column_id
         ]
-        updated_dt = client.data_templates.update(data_template=dt)
+        updated_dt = client.data_templates.update(data_template=dt, remove_omitted_rows=True)
 
         assert len(updated_dt.data_column_values) == original_count - 1
         assert column_to_delete.data_column_id not in [
@@ -401,6 +401,35 @@ def test_update_delete_data_column(
         assert seeded_data_columns[0].id in [
             x.data_column_id for x in updated_dt.data_column_values
         ]
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+
+
+def test_update_partial_data_column_list_keeps_omitted_columns(
+    client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
+):
+    """Test that a partial data column list updates listed columns and keeps the rest."""
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Partial Column Update Test",
+            data_column_values=[
+                DataColumnValue(data_column=seeded_data_columns[0]),
+                DataColumnValue(data_column=seeded_data_columns[1]),
+            ],
+        )
+    )
+    try:
+        original_ids = sorted(x.data_column_id for x in dt.data_column_values)
+        kept = next(
+            x for x in dt.data_column_values if x.data_column_id == seeded_data_columns[0].id
+        )
+
+        updated_dt = client.data_templates.update(
+            data_template=DataTemplate(id=dt.id, name=dt.name, data_column_values=[kept])
+        )
+
+        assert sorted(x.data_column_id for x in updated_dt.data_column_values) == original_ids
     finally:
         with suppress(NotFoundError):
             client.data_templates.delete(id=dt.id)
