@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import warnings
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, TypeAdapter
+from pydantic import AliasChoices, Field, TypeAdapter
 from typing_extensions import deprecated
 
 from albert.core.base import BaseAlbertModel
@@ -61,10 +60,12 @@ class BatchSizeUnit(str, Enum):
 
     The enum values are the exact wire strings the platform expects;
     note the non-SI capitalization ``"Kg"`` (lowercase ``"kg"`` is rejected).
-    The SDK performs **no unit conversion**: ``batch_size`` and batch-data
-    amounts are stored as sent. For mass-tracked inventory, the batch-data
-    grid is denominated in kilograms regardless of this unit, so scale
-    amounts accordingly when writing used amounts.
+    The SDK performs **no unit conversion**. For mass-tracked inventory the
+    platform stores ``batch_size`` and batch-data amounts in **kilograms**
+    regardless of this unit; ``batch_size_unit`` only selects the unit used to
+    display them. Convert before sending: a 500 g batch is
+    ``batch_size=0.5`` with ``batch_size_unit=BatchSizeUnit.GRAMS``, and
+    sending ``batch_size=500`` with ``"g"`` displays as 500000 g.
 
     Attributes
     ----------
@@ -258,7 +259,11 @@ class TaskInventoryInformation(BaseAlbertModel):
     """A combined inventory-and-lot identifier used internally."""
 
     batch_size: float | None = Field(alias="batchSize", default=None)
-    """The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."""
+    """The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask].
+
+    For mass-tracked inventory this value is in kilograms, whatever the task's
+    [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit] (which only sets
+    the display unit): 500 g is ``0.5``."""
 
     selected_lot: bool | None = Field(alias="selectedLot", exclude=True, frozen=True, default=None)
     """Read-only. Whether this lot is the one selected for the task."""
@@ -341,18 +346,11 @@ class Block(BaseAlbertModel):
 
     @property
     @deprecated(
-        "`Block.combinations_count` is deprecated; the platform returns the combination "
-        "count on the block's final Workflow element, not on the Block. Use "
-        "`Workflow.combinations_count` instead."
+        "`Block.combinations_count` is deprecated and will be removed in a future release; "
+        "read `combinations_count` from the block's final Workflow instead."
     )
     def combinations_count(self) -> int | None:
         """Deprecated alias for the ``combinations_count`` of the block's final workflow."""
-        warnings.warn(
-            "`Block.combinations_count` is deprecated and will be removed in a future "
-            "release; read `combinations_count` from the block's final Workflow instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         for workflow in self.workflow or []:
             count = getattr(workflow, "combinations_count", None)
             if count is not None:
@@ -554,7 +552,10 @@ class BatchTask(BaseTask):
 
     category: Literal[TaskCategory.BATCH, TaskCategory.BATCH_WITH_QC] = TaskCategory.BATCH
     batch_size_unit: BatchSizeUnit | None = Field(alias="batchSizeUnit", default=None)
-    """The unit of measure for the batch size (grams, kilograms, or pounds)."""
+    """The unit used to display the batch size (grams, kilograms, or pounds).
+
+    Does not change how ``batch_size`` is stored; mass batch sizes are always sent
+    in kilograms."""
 
     qc_task: bool | None = Field(alias="qcTask", default=None)
     """Whether this is a quality-control batch task."""
@@ -806,28 +807,147 @@ class TaskMetadataBlockdata(BaseAlbertModel):
     )
 
 
+class TaskMetadataInventory(BaseAlbertModel):
+    """Inventory item summary on TaskMetadata."""
+
+    id: str
+    name: str | None = None
+    category: str | None = None
+    lot_id: str | None = Field(default=None, alias="lotId")
+    lot_name: str | None = Field(default=None, alias="lotName")
+    lot_number: str | None = Field(default=None, alias="lotNumber")
+    barcode_id: str | None = Field(default=None, alias="barcodeId")
+
+    @property
+    def inventory_id(self) -> str:
+        """Alias for id, matching TaskInventoryInformation."""
+        return self.id
+
+
+class TaskMetadataIntervalCombo(BaseAlbertModel):
+    """Child-workflow interval combination entry (schema v2)."""
+
+    id: str
+    values: list[str | None]
+
+
+class TaskMetadataIntervals(BaseAlbertModel):
+    """Interval columns and combinations (schema v2)."""
+
+    columns: list[str] = Field(default_factory=list)
+    combos: list[TaskMetadataIntervalCombo] = Field(default_factory=list)
+
+
+class TaskMetadataInventoryReference(BaseAlbertModel):
+    """Per-file column name hints for inventory/lot grouping (schema v2)."""
+
+    inventory_id: str | None = Field(default=None, alias="inventoryId")
+    inventory_name: str | None = Field(default=None, alias="inventoryName")
+    lot_id: str | None = Field(default=None, alias="lotId")
+    lot_name: str | None = Field(default=None, alias="lotName")
+
+
 class TaskMetadata(BaseAlbertModel):
     """Top-level metadata describing the task context for scripts."""
 
     filename: str | None = None
     task_id: str | None = Field(default=None, alias="taskId")
     block_id: str | None = Field(default=None, alias="blockId")
-    inventories: list[TaskInventoryInformation] = Field(default_factory=list, alias="Inventories")
+    inventories: list[TaskMetadataInventory] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("Inventories", "inventories"),
+        serialization_alias="inventories",
+    )
     blockdata: TaskMetadataBlockdata | None = Field(default=None, alias="Blockdata")
+
+    # Schema v2 (INCREASED_INTERVALS) fields
+    schema_version: int | None = Field(default=None, alias="schemaVersion")
+    data_template_id: str | None = Field(default=None, alias="dataTemplateId")
+    intervals: TaskMetadataIntervals | None = None
+    inventory_reference: TaskMetadataInventoryReference | None = Field(
+        default=None, alias="inventoryReference", exclude=True
+    )
+
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize TaskMetadata according to schemaVersion (v1 or v2).
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized task metadata dictionary formatted for v1 or v2.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        if self.schema_version == 2:
+            data.pop("Blockdata", None)
+            data["schemaVersion"] = 2
+            if "Inventories" in data:
+                data["inventories"] = data.pop("Inventories")
+        else:
+            data.pop("schemaVersion", None)
+            data.pop("dataTemplateId", None)
+            data.pop("intervals", None)
+            if "inventories" in data:
+                data["Inventories"] = data.pop("inventories")
+        return data
 
 
 # Models for CSV tables endpoints
 class CsvTableInput(BaseAlbertModel):
-    """Payload for invoking the CSV table proxy endpoint."""
+    """Payload for invoking the CSV table proxy endpoint (schema v1)."""
 
     script_s3_url: str = Field(alias="scriptS3URL")
     data_s3_url: str = Field(alias="dataS3URL")
     task_metadata: TaskMetadata = Field(alias="TaskMetadata")
 
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize payload for the v1 CSV table proxy endpoint.
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized request dictionary formatted for v1.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        data["TaskMetadata"] = self.task_metadata.to_payload_dict()
+        return data
+
+
+class CsvTableFile(BaseAlbertModel):
+    """File entry in CsvTableInputV2."""
+
+    data_s3_url: str = Field(alias="dataS3URL")
+    filename: str
+    inventory_reference: TaskMetadataInventoryReference | None = Field(
+        default=None, alias="inventoryReference"
+    )
+
+
+class CsvTableInputV2(BaseAlbertModel):
+    """Payload for invoking the CSV table proxy endpoint (schema v2)."""
+
+    script_s3_url: str = Field(alias="scriptS3URL")
+    files: list[CsvTableFile] = Field(..., min_length=1, max_length=1)
+    task_metadata: TaskMetadata = Field(alias="TaskMetadata")
+
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize payload for the v2 CSV table proxy endpoint.
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized request dictionary formatted for v2.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        data["TaskMetadata"] = self.task_metadata.to_payload_dict()
+        return data
+
 
 class CsvTableResponseItem(BaseAlbertModel):
     """Single table response emitted by the CSV table proxy."""
 
+    interval: str | None = Field(default=None, alias="Interval")
+    inv_id: str | None = Field(default=None, alias="InvId")
+    lot_id: str | None = Field(default=None, alias="LotId")
     data: list[dict[str, Any]] = Field(alias="Data")
 
 

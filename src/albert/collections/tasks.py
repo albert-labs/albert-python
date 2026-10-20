@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import requests
 from pydantic import validate_call
@@ -45,12 +45,15 @@ from albert.resources.interval_combinations import (
     CombinationOverride,
     ExclusionRule,
     IntervalCombinationItem,
+    InventoryExclusion,
 )
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
     Block,
+    CsvTableFile,
     CsvTableInput,
+    CsvTableInputV2,
     CsvTableResponseItem,
     GeneralTask,
     HistoryEntity,
@@ -69,6 +72,7 @@ from albert.resources.worker_jobs import (
 )
 from albert.resources.workflows import Workflow
 from albert.utils.interval_combinations import generate_interval_combinations
+from albert.utils.tags import resolve_tags
 from albert.utils.tasks import (
     CSV_EXTENSIONS,
     build_property_payload,
@@ -158,7 +162,7 @@ class TaskCollection(BaseCollection):
     create_many(tasks) -> list[BaseTask]
         Create multiple tasks in a single call.
     create_with_combinations(task, wait=True) -> PropertyTask (🧪 Beta)
-        Create a Property task and orchestrate combination generation across all its blocks.
+        Create a Property task and generate its block combinations (increased intervals).
     get_by_id(id) -> BaseTask
         Get a single fully populated task by its ID.
     search(...) -> Iterator[TaskSearchItem]
@@ -183,6 +187,10 @@ class TaskCollection(BaseCollection):
         Get combination rules and overrides for a block.
     set_block_rules(task_id, block_id, rules=None, overrides=None, generate_combinations=True, old_workflow_id=None, wait=True) -> BlockRules (🧪 Beta)
         Set combination rules and overrides for a block, automatically regenerating combinations.
+    add_block_inventory_exclusions(task_id, block_id, exclusions) -> BlockRules (🧪 Beta)
+        Mask inventory x combination pairs on a block.
+    remove_block_inventory_exclusions(task_id, block_id, exclusion_ids) -> BlockRules (🧪 Beta)
+        Unmask inventory x combination pairs on a block.
     generate_block_combinations(task_id, block_id, old_workflow_id=None, wait=True) -> WorkerJob (🧪 Beta)
         Generate child-workflow interval combinations for a task block.
     import_results(...) -> BaseTask
@@ -221,8 +229,20 @@ class TaskCollection(BaseCollection):
         - [`BatchTask`][albert.resources.tasks.BatchTask]: manufacture a batch.
         - [`GeneralTask`][albert.resources.tasks.GeneralTask]: any other lab work.
 
-        For a PropertyTask, set ``parent_id`` to the parent Project ID. Blocks are
-        added separately with [`add_block`][albert.collections.tasks.TaskCollection.add_block] after creation.
+        For a PropertyTask, set ``parent_id`` to the parent Project ID. Blocks can be
+        set on the task's ``blocks`` or added after creation with
+        [`add_block`][albert.collections.tasks.TaskCollection.add_block].
+
+        !!! warning "Property tasks with increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, ``create`` does not
+            generate combinations for a Property task's blocks, so those blocks show no
+            rows. This applies even when a block's workflow has no intervals, because
+            every block needs at least its baseline combination. Create Property tasks
+            with blocks using
+            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+            instead, or call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            for each block after ``create``. General tasks are not affected.
 
         Lifecycle state on create is coupled to the assignee:
 
@@ -244,7 +264,8 @@ class TaskCollection(BaseCollection):
         Parameters
         ----------
         task : PropertyTask or GeneralTask or BatchTask
-            The task to create. ``name`` is required.
+            The task to create. ``name`` is required. Any tags that do not yet
+            exist in Albert are created automatically.
 
         Returns
         -------
@@ -258,6 +279,8 @@ class TaskCollection(BaseCollection):
             If ``task`` has no ``assigned_to`` but ``state`` is ``Not Started`` or
             ``In Progress``.
         """
+        if task.tags:
+            task.tags = resolve_tags(session=self.session, tags=task.tags)
         payload = mirror_project_from_parent_id(
             payload=task.model_dump(mode="json", by_alias=True, exclude_none=True),
             parent_id=task.parent_id,
@@ -286,6 +309,14 @@ class TaskCollection(BaseCollection):
         ``Not Started`` / ``In Progress`` are rejected), while a task with an
         assignee starts ``Not Started``.
 
+        !!! warning "Property tasks with increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, ``create_many`` does not
+            generate combinations for Property task blocks, so those blocks show no rows,
+            even when a block's workflow has no intervals. Call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            for each block of each created task, or create tasks one at a time with
+            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations].
+
         !!! example
             ```python
             from albert.resources.tasks import GeneralTask
@@ -306,6 +337,7 @@ class TaskCollection(BaseCollection):
         tasks : list[PropertyTask or GeneralTask or BatchTask]
             The tasks to create. Must be non-empty and share one category and
             one ``parent_id``. For General tasks, ``location`` is required.
+            Any tags that do not yet exist in Albert are created automatically.
 
         Returns
         -------
@@ -328,6 +360,9 @@ class TaskCollection(BaseCollection):
         parent_ids = {task.parent_id for task in tasks}
         if len(parent_ids) != 1:
             raise AlbertException("All tasks in create_many must share the same parent_id.")
+        for t in tasks:
+            if t.tags:
+                t.tags = resolve_tags(session=self.session, tags=t.tags)
         task = tasks[0]
         payload = [
             mirror_project_from_parent_id(
@@ -353,6 +388,17 @@ class TaskCollection(BaseCollection):
         wait: bool = True,
     ) -> PropertyTask:
         """Create a Property task and generate interval combinations across all its blocks (🧪 Beta).
+
+        Use this method instead of
+        [`create`][albert.collections.tasks.TaskCollection.create] to create Property
+        tasks with blocks when increased intervals is enabled for your tenant. Every
+        block then needs its combinations generated, including blocks whose workflow
+        has no intervals (a single baseline combination). Only
+        [`PropertyTask`][albert.resources.tasks.PropertyTask] is supported, and only
+        when increased intervals is enabled; otherwise the task is rejected and not
+        created, so use [`create`][albert.collections.tasks.TaskCollection.create]
+        instead. Albert enables increased intervals per tenant; if you're unsure
+        whether it's enabled for yours, contact your Albert representative.
 
         Provides an all-in-one method to create a Property task and materialize
         child-workflow combination variants across every task block.
@@ -581,6 +627,13 @@ class TaskCollection(BaseCollection):
         blocks, e.g. one per test. Once a block exists, results are written against
         it through the Property Data collection.
 
+        !!! warning "Increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, adding a block does not
+            generate its combinations, so the block shows no rows, even when its workflow
+            has no intervals. Call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            for the added block, leaving ``old_workflow_id`` unset.
+
         !!! example
             ```python
             client.tasks.add_block(
@@ -632,6 +685,13 @@ class TaskCollection(BaseCollection):
         with a Workflow (the parameter conditions to run under), exactly as with
         [`add_block`][albert.collections.tasks.TaskCollection.add_block]; only
         the block's workflow and data template IDs are used.
+
+        !!! warning "Increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, adding blocks does not
+            generate their combinations, so the blocks show no rows, even when their
+            workflows have no intervals. Call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            for each added block, leaving ``old_workflow_id`` unset.
 
         !!! example
             ```python
@@ -697,6 +757,14 @@ class TaskCollection(BaseCollection):
 
         Use this to change the conditions a block runs under without removing and
         re-adding the block. The task must be a Property or Batch task.
+
+        !!! warning "Increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, changing a block's
+            workflow does not regenerate its combinations: the block keeps the
+            combinations of the previous workflow until you call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            with ``old_workflow_id`` set to the workflow you replaced. Doing so keeps
+            interval barcodes for unchanged combinations and removes obsolete ones.
 
         !!! example
             ```python
@@ -915,7 +983,203 @@ class TaskCollection(BaseCollection):
             block_id=data["blockId"],
             rules=all_rules,
             overrides=data.get("overrides", []),
+            inventory_exclusions=data.get("inventoryExclusions", []),
         )
+
+    @validate_call
+    def add_block_inventory_exclusions(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        exclusions: list[InventoryExclusion],
+    ) -> BlockRules:
+        """Add inventory x combination exclusions ("masks") to a task block (🧪 Beta).
+
+        Each exclusion marks one task-level inventory tuple
+        (``inv_lot_unique_id``, occurrence included) as excluded from one interval
+        combination (``interval_row_key``). Excluded pairs are omitted from
+        property-data grids, exports, and data-completeness checks for the block.
+
+        Exclusions are validated on save: both the inventory tuple and the
+        combination row key must exist on the task/block, and masking the same pair
+        twice is rejected. Additions are idempotent-safe via
+        [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]:
+        check ``inventory_exclusions`` first if re-running a script.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example "Masking an inventory x combination pair"
+            ```python
+            from albert import Albert
+            from albert.resources.interval_combinations import InventoryExclusion
+
+            client = Albert()
+
+            # 1. Create the task (a Property task with intervalized workflow blocks)
+            task = client.tasks.create_with_combinations(task=my_property_task)
+
+            # 2. Pick the inventory row to mask. Each task inventory row carries
+            #    its identity as inv_lot_unique_id (e.g. "INV123#LOT456#1").
+            for inv in task.inventory_information:
+                print(inv.inventory_id, inv.lot_id, inv.inv_lot_unique_id)
+            inv_lot_unique_id = task.inventory_information[0].inv_lot_unique_id
+
+            # 3. Pick the combination to mask it from. Each combination carries
+            #    its stable identity as interval_row_key (e.g. "ROW3XROW7").
+            for combo in client.tasks.get_block_combinations(
+                task_id=task.id, block_id="BLK1"
+            ):
+                print(combo.name, combo.interval_row_key)
+            interval_row_key = "ROW3XROW7"
+
+            # 4. Mask the pair. That inventory row no longer appears against
+            #    this combination on the block's grid.
+            client.tasks.add_block_inventory_exclusions(
+                task_id=task.id,
+                block_id="BLK1",
+                exclusions=[
+                    InventoryExclusion(
+                        inv_lot_unique_id=inv_lot_unique_id,
+                        interval_row_key=interval_row_key,
+                    )
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block ID whose exclusions to add (format ``BLK...``), obtained
+            from ``task.blocks[i].id`` on a fetched task.
+        exclusions : list[InventoryExclusion]
+            Exclusions to add. An empty list is a no-op.
+
+        Returns
+        -------
+        BlockRules
+            The block's rules, overrides, and inventory exclusions after the change.
+        """
+        if not exclusions:
+            return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+        url = f"{self.base_path}/{task_id}/blocks/{block_id}/rules"
+        payload = {
+            "data": [
+                {
+                    "operation": "add",
+                    "attribute": "inventoryExclusion",
+                    "newValue": [
+                        e.model_dump(by_alias=True, mode="json", exclude={"id"})
+                        for e in exclusions
+                    ],
+                }
+            ]
+        }
+        self.session.patch(url, json=payload)
+        return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+    @validate_call
+    def remove_block_inventory_exclusions(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        exclusion_ids: list[str],
+    ) -> BlockRules:
+        """Remove inventory x combination exclusions ("masks") from a task block (🧪 Beta).
+
+        Unmasks previously excluded inventory x combination pairs; the pairs render
+        again on property-data grids.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example "Unmasking pairs"
+            ```python
+            from albert import Albert
+
+            client = Albert()
+
+            # Read the block's current masks; each has a server-assigned id.
+            rules = client.tasks.get_block_rules(task_id="TASFOR1", block_id="BLK1")
+
+            # Unmask everything on the block (or pick specific ones by id).
+            client.tasks.remove_block_inventory_exclusions(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                exclusion_ids=[e.id for e in rules.inventory_exclusions],
+            )
+            ```
+
+        !!! example "Changing a mask"
+            A mask has no editable fields (it *is* the pair), so changing one
+            means removing it and adding the new pair:
+
+            ```python
+            from albert import Albert
+            from albert.resources.interval_combinations import InventoryExclusion
+
+            client = Albert()
+            rules = client.tasks.get_block_rules(task_id="TASFOR1", block_id="BLK1")
+
+            # The mask pointing at the wrong combination:
+            old = next(
+                e for e in rules.inventory_exclusions
+                if e.inv_lot_unique_id == "INV123#LOT456#1"
+            )
+            client.tasks.remove_block_inventory_exclusions(
+                task_id="TASFOR1", block_id="BLK1", exclusion_ids=[old.id]
+            )
+            client.tasks.add_block_inventory_exclusions(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                exclusions=[
+                    InventoryExclusion(
+                        inv_lot_unique_id=old.inv_lot_unique_id,
+                        interval_row_key="ROW3XROW8",  # the right combination
+                    )
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block ID whose exclusions to remove (format ``BLK...``).
+        exclusion_ids : list[str]
+            Server-assigned exclusion IDs (UUIDs), from
+            ``get_block_rules(...).inventory_exclusions[i].id``. An empty list is a
+            no-op.
+
+        Returns
+        -------
+        BlockRules
+            The block's rules, overrides, and inventory exclusions after the change.
+        """
+        if not exclusion_ids:
+            return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+        url = f"{self.base_path}/{task_id}/blocks/{block_id}/rules"
+        payload = {
+            "data": [
+                {"operation": "delete", "attribute": "inventoryExclusion", "id": exclusion_id}
+                for exclusion_id in exclusion_ids
+            ]
+        }
+        self.session.patch(url, json=payload)
+        return self.get_block_rules(task_id=task_id, block_id=block_id)
 
     @staticmethod
     def _get_block_current_workflow_id(block: Block) -> str | None:
@@ -1382,8 +1646,8 @@ class TaskCollection(BaseCollection):
         self,
         *,
         task_id: TaskId,
-        inventory_id: InventoryId,
         data_template_id: DataTemplateId,
+        inventory_id: InventoryId | None = None,
         block_id: BlockId | None = None,
         attachment_id: AttachmentId | None = None,
         file_path: str | Path | None = None,
@@ -1392,6 +1656,7 @@ class TaskCollection(BaseCollection):
         interval: str = "default",
         field_mapping: dict[str, str] | None = None,
         mode: ImportMode = ImportMode.CSV,
+        schema_version: Literal[1, 2] | None = None,
     ) -> BaseTask:
         """
         Import results from an attachment into property data. Reuse an existing attachment or upload a
@@ -1415,13 +1680,15 @@ class TaskCollection(BaseCollection):
         ----------
         task_id : TaskId
             The property task receiving the results.
-        block_id : BlockId | None
-            Target block on the task where the data will be written. Optional, when a
-            single block present on the task. If multiple blocks exist, this parameter must be provided.
-        inventory_id : InventoryId
-            Inventory item id.
         data_template_id : DataTemplateId
             Data template Id.
+        inventory_id : InventoryId | None, optional
+            Inventory item id. Required when ``mode`` is ``ImportMode.CSV``. Optional when
+            ``mode`` is ``ImportMode.SCRIPT`` if the script dynamically resolves or emits
+            inventory IDs.
+        block_id : BlockId | None, optional
+            Target block on the task where the data will be written. Optional when a
+            single block is present on the task. If multiple blocks exist, this parameter must be provided.
         attachment_id : AttachmentId | None, optional
             Existing attachment to use. Exactly one of ``attachment_id`` or
             ``file_path`` must be provided.
@@ -1446,6 +1713,12 @@ class TaskCollection(BaseCollection):
         mode : ImportMode, optional
             Import mode to use, by default ImportMode.CSV. Use ImportMode.SCRIPT to run a custom
             script to process the CSV before import. This requires a script attachment on the data template.
+        schema_version : {1, 2} | None, optional
+            The TaskMetadata schema version to send to the script execution runner. When
+            None (the default), automatically detected from the block's Increased Intervals
+            configuration (version 2 if increased intervals are configured on the block, otherwise
+            version 1). Explicitly pass 1 for legacy ROW payloads or 2 for Increased Intervals
+            compact payloads.
 
         Returns
         -------
@@ -1453,6 +1726,9 @@ class TaskCollection(BaseCollection):
             The task with the newly imported results.
         """
         logger.info("Importing results for task %s using %s mode", task_id, mode)
+
+        if mode is ImportMode.CSV and inventory_id is None:
+            raise ValueError("'inventory_id' is required when mode is ImportMode.CSV.")
 
         if (attachment_id is None) == (file_path is None):
             raise ValueError("Provide exactly one of 'attachment_id' or 'file_path'.")
@@ -1528,93 +1804,160 @@ class TaskCollection(BaseCollection):
                 task=task_details,
                 block_id=block_id,
                 filename=attachment_details.name,
+                session=self.session,
+                schema_version=schema_version,
             )
-            csv_payload = CsvTableInput(
-                script_s3_url=script_signed_url,
-                data_s3_url=attachment_details.signed_url,
-                task_metadata=metadata,
-            )
-            response = self.session.post(
-                f"/api/{self._api_version}/proxy/csvtable",
-                json=csv_payload.model_dump(by_alias=True, mode="json"),
-            )
+            if metadata.schema_version == 2:
+                csv_payload = CsvTableInputV2(
+                    script_s3_url=script_signed_url,
+                    files=[
+                        CsvTableFile(
+                            data_s3_url=attachment_details.signed_url,
+                            filename=attachment_details.name,
+                        )
+                    ],
+                    task_metadata=metadata,
+                )
+                response = self.session.post(
+                    f"/api/{self._api_version}/proxy/csvtable",
+                    params={"schemaVersion": 2},
+                    json=csv_payload.to_payload_dict(),
+                )
+            else:
+                csv_payload = CsvTableInput(
+                    script_s3_url=script_signed_url,
+                    data_s3_url=attachment_details.signed_url,
+                    task_metadata=metadata,
+                )
+                response = self.session.post(
+                    f"/api/{self._api_version}/proxy/csvtable",
+                    json=csv_payload.to_payload_dict(),
+                )
             response_body = response.json()
             table_results = [CsvTableResponseItem.model_validate(item) for item in response_body]
-            table_rows = table_results[0].data if table_results else None
-            if not isinstance(table_rows, list) or len(table_rows) < 2:
-                raise ValueError(
-                    "Script CSV preview must contain a header row followed by at least one data row."
-                )
+            if not table_results:
+                raise ValueError("Script execution returned no results.")
+            blocks_to_process = table_results
         else:
             table_rows = fetch_csv_table_rows(
                 session=self.session,
                 attachment_id=str(attachment_id),
             )
+            blocks_to_process = [
+                CsvTableResponseItem(
+                    interval=interval,
+                    inv_id=inventory_id,
+                    lot_id=lot_id,
+                    data=table_rows,
+                )
+            ]
 
-        header_row = table_rows[0]
-        data_rows = [row for row in table_rows[1:] if isinstance(row, dict)]
-        if not data_rows:
-            raise ValueError("No data rows detected in CSV preview.")
-
-        header_sequence: list[tuple[str, str]] = []
-        if isinstance(header_row, dict):
-            # API is expected to return lowercase `col#` keys (e.g. `col1`).
-            for key, value in header_row.items():
-                if not isinstance(key, str) or not isinstance(value, str):
-                    continue
-                normalized_key = key.strip().lower()
-                header_name = value
-                if not header_name:
-                    continue
-                header_sequence.append((normalized_key, header_name))
-        logger.debug("CSV header sequence: %s", header_sequence)
         data_columns = data_template.data_column_values or []
-        column_to_csv_key = map_csv_headers_to_columns(
-            header_sequence=header_sequence,
-            data_columns=data_columns,
-            field_mapping=field_mapping,
-        )
+        imported_any = False
+        mapped_any_columns = False
 
-        if not column_to_csv_key:
+        single_block = len(blocks_to_process) == 1
+        for block_result in blocks_to_process:
+            table_rows = block_result.data
+            if not isinstance(table_rows, list) or len(table_rows) < 2:
+                if single_block:
+                    raise ValueError("No data rows detected in CSV preview.")
+                continue
+
+            header_row = table_rows[0]
+            data_rows = [row for row in table_rows[1:] if isinstance(row, dict)]
+            if not data_rows:
+                if single_block:
+                    raise ValueError("No data rows detected in CSV preview.")
+                continue
+
+            header_sequence: list[tuple[str, str]] = []
+            if isinstance(header_row, dict):
+                # API is expected to return lowercase `col#` keys (e.g. `col1`).
+                for key, value in header_row.items():
+                    if not isinstance(key, str) or not isinstance(value, str):
+                        continue
+                    normalized_key = key.strip().lower()
+                    header_name = value
+                    if not header_name:
+                        continue
+                    header_sequence.append((normalized_key, header_name))
+            logger.debug("CSV header sequence: %s", header_sequence)
+
+            column_to_csv_key = map_csv_headers_to_columns(
+                header_sequence=header_sequence,
+                data_columns=data_columns,
+                field_mapping=field_mapping,
+            )
+
+            if not column_to_csv_key:
+                if mode is ImportMode.CSV or len(blocks_to_process) == 1:
+                    raise ValueError(
+                        "Unable to map any data template columns to CSV fields. Ensure CSV headers match data template column names."
+                    )
+                logger.warning(
+                    "Unable to map any data template columns to CSV fields for block %s.",
+                    block_id,
+                )
+                continue
+
+            mapped_any_columns = True
+
+            target_interval = block_result.interval or interval
+            target_inventory_id = block_result.inv_id or inventory_id
+            target_lot_id = block_result.lot_id or lot_id
+
+            if not target_inventory_id:
+                raise ValueError(
+                    "No inventory ID was specified and none was produced by the script."
+                )
+
+            # Build task property payload
+            properties_to_add = build_property_payload(
+                data_rows=data_rows,
+                column_to_csv_key=column_to_csv_key,
+                data_columns=data_columns,
+                interval=target_interval,
+                data_template_id=data_template_id,
+            )
+
+            if not properties_to_add:
+                continue
+
+            imported_any = True
+
+            # Delete existing property data before writing new values
+            logger.warning(
+                "Existing property data for block %s, inventory %s, lot %s, interval %s will be overwritten.",
+                block_id,
+                target_inventory_id,
+                target_lot_id or "None",
+                target_interval,
+            )
+            with suppress(NotFoundError):
+                property_data_collection.bulk_delete_task_data(
+                    task_id=task_id,
+                    block_id=block_id,
+                    inventory_id=target_inventory_id,
+                    lot_id=target_lot_id,
+                    interval_id=target_interval,
+                )
+
+            property_data_collection.add_properties_to_task(
+                inventory_id=target_inventory_id,
+                task_id=task_id,
+                block_id=block_id,
+                lot_id=target_lot_id,
+                properties=properties_to_add,
+            )
+
+        if not mapped_any_columns:
             raise ValueError(
                 "Unable to map any data template columns to CSV fields. Ensure CSV headers match data template column names."
             )
 
-        # Build task property payload
-        properties_to_add = build_property_payload(
-            data_rows=data_rows,
-            column_to_csv_key=column_to_csv_key,
-            data_columns=data_columns,
-            interval=interval,
-            data_template_id=data_template_id,
-        )
-
-        if not properties_to_add:
+        if not imported_any:
             raise ValueError("CSV data produced no values to import after filtering empty cells.")
-
-        # Delete existing property data before writing new values
-        logger.warning(
-            "Existing property data for block %s, inventory %s, lot %s will be overwritten during CSV import.",
-            block_id,
-            inventory_id,
-            lot_id or "None",
-        )
-        with suppress(NotFoundError):
-            property_data_collection.bulk_delete_task_data(
-                task_id=task_id,
-                block_id=block_id,
-                inventory_id=inventory_id,
-                lot_id=lot_id,
-                interval_id=interval,
-            )
-
-        property_data_collection.add_properties_to_task(
-            inventory_id=inventory_id,
-            task_id=task_id,
-            block_id=block_id,
-            lot_id=lot_id,
-            properties=properties_to_add,
-        )
 
         return self.get_by_id(id=task_id)
 
@@ -2121,7 +2464,10 @@ class TaskCollection(BaseCollection):
         ``state`` and ``assigned_to`` are coupled: a task cannot be ``In Progress``
         (or any state beyond ``Not Started``) while unassigned, so moving an
         unclaimed task forward also assigns it to the calling user.
+        Any tags that do not yet exist in Albert are created automatically.
         """
+        if "tags" in task.model_fields_set and task.tags:
+            task.tags = resolve_tags(session=self.session, tags=task.tags)
         existing = self.get_by_id(id=task.id)
         patch_payload = generate_adv_patch_payload(
             collection=self,

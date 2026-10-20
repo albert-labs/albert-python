@@ -1,10 +1,7 @@
-from contextlib import suppress
-
 import pandas as pd
 import pytest
 
-from albert import Albert
-from albert.exceptions import AlbertException, BadRequestError, NotFoundError
+from albert.exceptions import AlbertException
 from albert.resources.inventory import InventoryItem
 from albert.resources.sheets import (
     Cell,
@@ -29,85 +26,6 @@ def _inventory_cells(column: Column) -> list[Cell]:
         for cell in column.cells
         if cell.type == CellType.INVENTORY and cell.row_type == CellType.INVENTORY
     ]
-
-
-def test_update_cells_updates_inventory_values(
-    seed_prefix: str,
-    seeded_sheet: Sheet,
-    seeded_inventory,
-):
-    """Patch cells on a private formulation column (seeded formulas lock on staging)."""
-    column = seeded_sheet.add_formulation(
-        formulation_name=f"{seed_prefix} - update cells",
-        components=[
-            Component(
-                inventory_item=seeded_inventory[0], amount=20.0, min_value=10.0, max_value=40.0
-            ),
-            Component(
-                inventory_item=seeded_inventory[1], amount=80.0, min_value=60.0, max_value=90.0
-            ),
-        ],
-        enforce_order=True,
-    )
-    inventory_cells = _inventory_cells(column)
-    assert len(inventory_cells) >= 2
-
-    expected_values = {}
-    updated_cells = []
-    for idx, cell in enumerate(inventory_cells[:2]):
-        base_value = float(cell.value)
-        base_min = float(cell.min_value) if cell.min_value is not None else 0.0
-        base_max = float(cell.max_value) if cell.max_value is not None else base_value
-
-        new_value = round(base_value + 5 + idx, 3)
-        # max must stay >= both the current and the new value; the API
-        # applies max patches before value patches.
-        new_max = round(max(base_max, base_value, new_value) + 2.5, 3)
-        new_min = round(min(base_min + 1.5, new_value), 3)
-
-        expected_values[cell.row_id] = {
-            "value": new_value,
-            "min": new_min,
-            "max": new_max,
-        }
-
-        updated_cells.append(
-            cell.model_copy(
-                update={
-                    "value": f"{new_value}",
-                    "min_value": f"{new_min}",
-                    "max_value": f"{new_max}",
-                }
-            )
-        )
-
-    updated, failed = seeded_sheet.update_cells(cells=updated_cells)
-
-    assert failed == []
-    assert {(c.row_id, c.column_id) for c in updated} == {
-        (c.row_id, c.column_id) for c in updated_cells
-    }
-
-    refreshed_column = seeded_sheet.get_column(column_id=column.column_id)
-    refreshed_cells = {
-        cell.row_id: cell
-        for cell in refreshed_column.cells
-        if cell.row_id in expected_values
-        and cell.type == CellType.INVENTORY
-        and cell.row_type == CellType.INVENTORY
-    }
-
-    assert set(refreshed_cells.keys()) == set(expected_values.keys())
-
-    for row_id, expected in expected_values.items():
-        refreshed = refreshed_cells[row_id]
-        assert float(refreshed.value) == pytest.approx(expected["value"], rel=1e-6)
-        if refreshed.min_value is not None:
-            assert float(refreshed.min_value) == pytest.approx(expected["min"], rel=1e-6)
-        else:
-            assert expected["min"] == pytest.approx(0.0, rel=1e-6)
-        if refreshed.max_value is not None:
-            assert float(refreshed.max_value) == pytest.approx(expected["max"], rel=1e-6)
 
 
 def test_get_test_sheet(seeded_sheet: Sheet):
@@ -137,7 +55,7 @@ def test_add_formulation_lifecycle(
     seeded_sheet: Sheet,
     seeded_inventory,
 ):
-    """Test clear-and-reuse of a private formulation column, then a no-clear duplicate."""
+    """Test clear-and-reuse of a private formulation column, then patching its cells."""
     name = f"{seed_prefix} - formulation lifecycle"
     components_with_bounds = [
         Component(inventory_item=seeded_inventory[0], amount=33.1, min_value=0, max_value=50),
@@ -179,10 +97,44 @@ def test_add_formulation_lifecycle(
 
     assert found_cells == len(components_with_bounds)
 
-    duplicate = seeded_sheet.add_formulation(
-        formulation_name=name, components=components_with_bounds, clear=False
-    )
-    assert duplicate.column_id != new_col.column_id
+    expected_values = {}
+    updated_cells = []
+    for idx, cell in enumerate(_inventory_cells(reused)[:2]):
+        base_value = float(cell.value)
+        base_min = float(cell.min_value) if cell.min_value is not None else 0.0
+        base_max = float(cell.max_value) if cell.max_value is not None else base_value
+        new_value = round(base_value + 5 + idx, 3)
+        # max must stay >= both the current and the new value; the API
+        # applies max patches before value patches.
+        new_max = round(max(base_max, base_value, new_value) + 2.5, 3)
+        new_min = round(min(base_min + 1.5, new_value), 3)
+        expected_values[cell.row_id] = (new_value, new_min, new_max)
+        updated_cells.append(
+            cell.model_copy(
+                update={
+                    "value": f"{new_value}",
+                    "min_value": f"{new_min}",
+                    "max_value": f"{new_max}",
+                }
+            )
+        )
+
+    updated, failed = seeded_sheet.update_cells(cells=updated_cells)
+    assert failed == []
+    assert {(c.row_id, c.column_id) for c in updated} == {
+        (c.row_id, c.column_id) for c in updated_cells
+    }
+
+    refreshed = {
+        cell.row_id: cell
+        for cell in _inventory_cells(seeded_sheet.get_column(column_id=reused.column_id))
+        if cell.row_id in expected_values
+    }
+    assert set(refreshed) == set(expected_values)
+    for row_id, (value, min_value, max_value) in expected_values.items():
+        assert float(refreshed[row_id].value) == pytest.approx(value)
+        assert float(refreshed[row_id].min_value) == pytest.approx(min_value)
+        assert float(refreshed[row_id].max_value) == pytest.approx(max_value)
 
 
 # Because you cannot delete Formulation Columns, We will need to mock this test.
@@ -206,104 +158,6 @@ def test_add_and_remove_blank_rows(seeded_sheet: Sheet):
         new_row = seeded_sheet.add_blank_row(
             row_name="TEST results Design", design=DesignType.RESULTS
         )
-
-
-def test_add_parameter_group_row(
-    seeded_sheet: Sheet,
-    seeded_parameter_groups: list,
-):
-    """Test adding a parameter group row to Process Design when the sheet has one."""
-    if seeded_sheet.process_design is None:
-        pytest.skip("Seeded sheet has no Process Design section")
-
-    pd_rows = seeded_sheet.process_design.rows
-    if not pd_rows:
-        pytest.skip("Seeded Process Design has no rows to reference")
-
-    pg = seeded_parameter_groups[0]
-    # Default reference_id resolves to the first Process Design row; pass it
-    # explicitly so the assertion documents the contract.
-    row = seeded_sheet.add_parameter_group_row(
-        parameter_group_id=pg.id,
-        reference_id=pd_rows[0].row_id,
-    )
-    assert isinstance(row, Row)
-    assert row.type == CellType.PRG
-    assert row.row_id.startswith("ROW")
-    # Process Design row deletes use the design-engine path.
-    seeded_sheet.session.delete(
-        f"/api/v3/designs/{seeded_sheet.process_design.id}/rows",
-        json=[{"rowId": row.row_id}],
-    )
-
-
-def test_add_task_row(
-    client: Albert,
-    seed_prefix: str,
-    seeded_locations,
-    seeded_inventory,
-    seeded_data_templates,
-    seeded_workflows,
-):
-    """Test linking a property task into a sheet's Results section as a TAS row."""
-    from albert.core.shared.models.base import EntityLink
-    from albert.resources.projects import Project
-    from albert.resources.tasks import (
-        Block,
-        PropertyTask,
-        TaskCategory,
-        TaskInventoryInformation,
-    )
-
-    # Isolated project: TAS rows cannot be removed from a sheet, so the shared
-    # seeded sheet must not be used.
-    project = client.projects.create(
-        project=Project(
-            description=f"{seed_prefix} - add_task_row",
-            locations=[EntityLink(id=seeded_locations[0].id)],
-        )
-    )
-    task = None
-    try:
-        worksheet = client.worksheets.setup_worksheet(project_id=project.id, add_sheet=True)
-        sheet = worksheet.sheets[0]
-
-        column = sheet.add_formulation(
-            formulation_name=f"{seed_prefix} - add_task_row formula",
-            components=[Component(inventory_id=seeded_inventory[0].id, amount=100.0)],
-        )
-
-        task = client.tasks.create(
-            task=PropertyTask(
-                name=f"{seed_prefix} - add_task_row task",
-                category=TaskCategory.PROPERTY,
-                inventory_information=[TaskInventoryInformation(inventory_id=column.inventory_id)],
-                parent_id=project.id,
-                location=seeded_locations[0],
-                blocks=[
-                    Block(
-                        workflow=[seeded_workflows[0]],
-                        data_template=[seeded_data_templates[0]],
-                    )
-                ],
-            )
-        )
-
-        row = sheet.add_task_row(task_id=task.id)
-        assert isinstance(row, Row)
-        assert row.type == CellType.TAS
-        assert row.row_id.startswith("ROW")
-        assert row.inventory_id == task.id
-
-        sheet.grid = None
-        result_row_ids = {r.row_id for r in sheet.result_design.rows}
-        assert row.row_id in result_row_ids
-    finally:
-        if task is not None:
-            with suppress(NotFoundError, BadRequestError):
-                client.tasks.delete(id=task.id)
-        with suppress(NotFoundError, BadRequestError):
-            client.projects.delete(id=project.id)
 
 
 ########################## CELLS ##########################

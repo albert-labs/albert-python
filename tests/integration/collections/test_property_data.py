@@ -19,6 +19,7 @@ from albert.resources.property_data import (
     BulkPropertyDataColumn,
     CheckPropertyData,
     CurvePropertyValue,
+    ImagePropertyValue,
     InventoryDataColumn,
     InventoryPropertyData,
     InventoryPropertyDataCreate,
@@ -91,22 +92,6 @@ def test_check_for_interval_data(client: Albert, seeded_tasks, seeded_workflows)
                 )
 
                 assert isinstance(check, CheckPropertyData)
-
-
-def test_add_to_inv(client: Albert, seeded_inventory, seeded_data_columns):
-    data_columns = [
-        InventoryDataColumn(
-            data_column_id=seeded_data_columns[0].id,
-            value="55.5",
-        )
-    ]
-    r = client.property_data.add_properties_to_inventory(
-        inventory_id=seeded_inventory[2].id, properties=data_columns
-    )
-    assert isinstance(r[0], InventoryPropertyDataCreate)
-    assert r[0].inventory_id == seeded_inventory[2].id
-    assert r[0].data_columns[0].data_column_id == seeded_data_columns[0].id
-    assert r[0].data_columns[0].value == "55.5"
 
 
 def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: list[BaseTask]):
@@ -257,6 +242,8 @@ def test_add_and_update_property_data_on_inventory(
     assert r[0].inventory_id == inv.id
     assert r[0].data_columns[0].data_column_id == seeded_data_columns[0].id
     assert r[0].data_columns[0].value == "55.5"
+    assert r[1].data_columns[0].data_column_id == seeded_data_columns[1].id
+    assert r[1].data_columns[0].value == "66.6"
 
 
 def test_update_property_on_inventory_adds_then_updates(
@@ -863,3 +850,196 @@ def test_get_task_property_records_filters_by_inventory(
         )
         == []
     )
+
+
+def test_image_upload_onto_partially_filled_trial(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_lots,
+    seeded_locations,
+    seeded_projects,
+    seeded_workflows,
+    tmp_path,
+):
+    """Test an image can be written onto a trial that already has other values."""
+    task_id = None
+    dt_id = None
+    dc_ids: list[str] = []
+    image_path = tmp_path / "sample.png"
+    image_path.write_bytes(
+        bytes.fromhex(
+            "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
+            "890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082"
+        )
+    )
+
+    try:
+        dc_text = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - image row text")
+        )
+        dc_image = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - image row image")
+        )
+        dc_ids = [dc_text.id, dc_image.id]
+        dt = client.data_templates.create(
+            data_template=DataTemplate(
+                name=f"{seed_prefix} - image row dt",
+                description="Template for writing an image onto a partially filled trial.",
+                data_column_values=[
+                    # Untyped columns default to number validation; "filled" needs string.
+                    DataColumnValue(
+                        data_column=dc_text,
+                        validation=[ValueValidation(datatype=DataType.STRING)],
+                    ),
+                    DataColumnValue(data_column=dc_image),
+                ],
+            )
+        )
+        dt_id = dt.id
+        image_col = next(c for c in dt.data_column_values if c.data_column_id == dc_image.id)
+        image_col.validation = [ValueValidation(datatype=DataType.IMAGE)]
+        dt = client.data_templates.update(data_template=dt)
+        sequence_by_id = {col.data_column_id: col.sequence for col in dt.data_column_values}
+
+        lot = next((l for l in seeded_lots if l.inventory_id == seeded_inventory[0].id), None)
+        task = client.tasks.create(
+            task=PropertyTask(
+                name=f"{seed_prefix} - image row task",
+                category=TaskCategory.PROPERTY,
+                inventory_information=[
+                    TaskInventoryInformation(
+                        inventory_id=seeded_inventory[0].id,
+                        lot_id=lot.id if lot else None,
+                    )
+                ],
+                parent_id=seeded_inventory[0].id,
+                location=seeded_locations[0],
+                project=seeded_projects[0],
+                blocks=[
+                    Block(
+                        workflow=[seeded_workflows[0]],
+                        data_template=[dt],
+                    )
+                ],
+            )
+        )
+        task_id = task.id
+        task = client.tasks.get_by_id(id=task_id)
+        block_id = task.blocks[0].id
+        block = client.property_data.get_task_block_properties(
+            inventory_id=seeded_inventory[0].id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+        )
+        interval_id = block.data[0].interval_combination
+        trial_number = block.data[0].trials[0].trial_number
+
+        client.property_data.update_or_create_task_properties(
+            task_id=task_id,
+            inventory_id=seeded_inventory[0].id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+            properties=[
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_text.id,
+                        column_sequence=sequence_by_id[dc_text.id],
+                    ),
+                    value="filled",
+                    trial_number=trial_number,
+                )
+            ],
+            return_scope="none",
+        )
+        filled = client.property_data.get_task_block_properties(
+            inventory_id=seeded_inventory[0].id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+        )
+        filled_trial = next(
+            trial
+            for interval in filled.data
+            for trial in interval.trials
+            if any(
+                col.property_data is not None and col.property_data.value == "filled"
+                for col in trial.data_columns
+            )
+        )
+
+        result = client.property_data.update_or_create_task_properties(
+            task_id=task_id,
+            inventory_id=seeded_inventory[0].id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+            properties=[
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_image.id,
+                        column_sequence=sequence_by_id[dc_image.id],
+                    ),
+                    value=ImagePropertyValue(file_path=str(image_path)),
+                    trial_number=filled_trial.trial_number,
+                )
+            ],
+            return_scope="block",
+        )
+        image_trial = next(
+            trial
+            for interval in result[0].data
+            for trial in interval.trials
+            if any(
+                col.id == dc_image.id and col.property_data is not None
+                for col in trial.data_columns
+            )
+        )
+        text_cell = next(col for col in image_trial.data_columns if col.id == dc_text.id)
+        image_cell = next(col for col in image_trial.data_columns if col.id == dc_image.id)
+        assert text_cell.property_data is not None
+        assert text_cell.property_data.value == "filled"
+        assert image_cell.property_data is not None
+        assert image_cell.property_data.value == "sample.png"
+
+        replaced = client.property_data.update_or_create_task_properties(
+            task_id=task_id,
+            inventory_id=seeded_inventory[0].id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+            properties=[
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_image.id,
+                        column_sequence=sequence_by_id[dc_image.id],
+                    ),
+                    value=ImagePropertyValue(file_path=str(image_path)),
+                    trial_number=image_trial.trial_number,
+                )
+            ],
+            return_scope="block",
+        )
+        replaced_cell = next(
+            col
+            for interval in replaced[0].data
+            for trial in interval.trials
+            for col in trial.data_columns
+            if col.id == dc_image.id and col.property_data is not None
+        )
+        assert replaced_cell.property_data.value == "sample.png"
+    finally:
+        if task_id:
+            with suppress(NotFoundError):
+                client.tasks.delete(id=task_id)
+        if dt_id:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=dt_id)
+        for dc_id in dc_ids:
+            with suppress(NotFoundError):
+                client.data_columns.delete(id=dc_id)

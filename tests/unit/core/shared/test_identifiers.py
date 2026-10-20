@@ -25,6 +25,7 @@ from albert.core.shared.identifiers import (
     ensure_tag_id,
     ensure_task_id,
     ensure_unit_id,
+    ensure_view_id,
     ensure_workflow_id,
     ensure_worksheet_id,
 )
@@ -51,6 +52,7 @@ from albert.resources.workflows import Interval, IntervalCombination
         (ensure_unit_id, "UNI", "", "UnitId cannot be empty"),
         (ensure_workflow_id, "WFL", "", "WorkflowId cannot be empty"),
         (ensure_worksheet_id, "WKS", "", "WorksheetId cannot be empty"),
+        (ensure_view_id, "VEW", "", "ViewId cannot be empty"),
     ],
 )
 def test_ensure_id_functions(

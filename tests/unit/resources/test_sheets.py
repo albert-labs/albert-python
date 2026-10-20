@@ -55,7 +55,7 @@ def test_get_current_cell_exact_row_match():
         name="ROW22",
     )
 
-    sheet._grid = pd.DataFrame(
+    sheet.product_design._grid = pd.DataFrame(
         [[row_220_cell], [row_22_cell]],
         index=["DES1#ROW220", "DES1#ROW22"],
         columns=[column_label],
@@ -74,6 +74,69 @@ def test_get_current_cell_exact_row_match():
 
     assert result is row_22_cell
     assert result.row_id == "ROW22"
+
+
+@responses.activate
+def test_get_current_cell_loads_only_the_matching_design_grid(offline_session):
+    """Test that the update baseline reads only the grid of the design being patched."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+            {"albertId": "DES4", "designType": "process", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=offline_session,
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Row 1",
+                    "type": "INV",
+                    "Values": [{"colId": "COL1", "value": "7", "id": "INV1", "type": "INV"}],
+                }
+            ],
+            "Formulas": [],
+        },
+    )
+
+    result = sheet._get_current_cell(
+        cell=Cell(colId="COL1", rowId="ROW1", type=CellType.INVENTORY, design_id="DES1")
+    )
+
+    assert result is not None
+    assert result.value == "7"
+    assert len(responses.calls) == 1
+    assert sheet.result_design._grid is None
+    assert sheet.app_design._grid is None
+    assert sheet.process_design._grid is None
+
+
+def test_get_current_cell_unknown_design_returns_none_without_grid_read():
+    """Test that a cell for an unknown design resolves to no baseline without a grid read."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+    )
+
+    result = sheet._get_current_cell(
+        cell=Cell(colId="COL1", rowId="ROW1", type=CellType.INVENTORY, design_id="DES9")
+    )
+
+    assert result is None
 
 
 def _sheet_with_formatted_cell() -> Sheet:
@@ -97,7 +160,9 @@ def _sheet_with_formatted_cell() -> Sheet:
         design_id="DES1",
         cellFormat={"precision": 2},
     )
-    sheet._grid = pd.DataFrame([[existing]], index=["DES1#ROW1"], columns=["COL1#INV1"])
+    sheet.product_design._grid = pd.DataFrame(
+        [[existing]], index=["DES1#ROW1"], columns=["COL1#INV1"]
+    )
     return sheet
 
 
@@ -185,6 +250,265 @@ def test_add_formulation_restores_cleared_column_when_write_fails(monkeypatch):
 
     assert writes[0][0].value == ""
     assert writes[-1] == [original]
+
+
+def _empty_sheet() -> Sheet:
+    return Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+
+
+def test_filter_cells_marks_only_failed_items_as_failed():
+    """Test that a partial success with no UpdatedItems key keeps non-failed cells updated."""
+    sheet = _empty_sheet()
+    cells = [
+        Cell(colId="COL1", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL2", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+    ]
+    updated, failed = sheet._filter_cells(
+        cells=cells,
+        response_dict={
+            "error": "Some values are not updated properly. Try again!",
+            "FailedItems": [
+                {
+                    "id": {"rowId": "ROW1", "colId": "COL2"},
+                    "msg": "You cannot edit values in formulas that are locked",
+                }
+            ],
+        },
+    )
+    assert [cell.column_id for cell in updated] == ["COL1"]
+    assert [cell.column_id for cell in failed] == ["COL2"]
+
+
+def test_filter_cells_ignores_updated_items_column_records():
+    """Test that UpdatedItems column records and wrapped failure ids parse correctly."""
+    sheet = _empty_sheet()
+    cells = [
+        Cell(colId="COL5", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL6", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL7", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+    ]
+    updated, failed = sheet._filter_cells(
+        cells=cells,
+        response_dict={
+            "error": "Some values are not updated properly. Try again!",
+            "UpdatedItems": [
+                {
+                    "PK": "TEN1#DES1",
+                    "SK": "COL5",
+                    "id": "INVKENV1",
+                    "colId": "COL5",
+                    "type": "INV",
+                    "state": {},
+                }
+            ],
+            "FailedItems": [
+                {
+                    "id": {"rowId": "ROW1", "colId": "COL6"},
+                    "msg": "You cannot edit values in formulas that are locked",
+                },
+                {
+                    "msg": "Some values are not updated properly. Try again!",
+                    "id": [{"id": {"rowId": "ROW1", "colId": "COL7"}}],
+                },
+            ],
+        },
+    )
+    assert [cell.column_id for cell in updated] == ["COL5"]
+    assert [cell.column_id for cell in failed] == ["COL6", "COL7"]
+
+
+def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch):
+    """A new ingredient row must not rewrite Total formulas on locked columns."""
+    sheet = _empty_sheet()
+    total_row = Row(
+        rowId="ROW1",
+        type=CellType.TOTAL,
+        design=sheet.product_design,
+        sheet=sheet,
+    )
+    new_column = Column(
+        colId="COL5", name="New", type=CellType.INVENTORY, sheet=sheet, locked=False
+    )
+    unlocked = Column(
+        colId="COL2", name="Open", type=CellType.INVENTORY, sheet=sheet, locked=False
+    )
+    locked = Column(colId="COL6", name="Locked", type=CellType.INVENTORY, sheet=sheet, locked=True)
+    written: list[list[Cell]] = []
+
+    def _cells(self):
+        return [
+            Cell(
+                colId=self.column_id,
+                rowId="ROW1",
+                value="10",
+                calculation="=old",
+                type=CellType.TOTAL,
+                row_type=CellType.TOTAL,
+                design_id="DES1",
+            )
+        ]
+
+    def _add_row(self, *, inventory_id, existing_cells, enforce_order, product_rows):
+        product_rows.append(
+            Row(
+                rowId="ROW9",
+                type=CellType.INVENTORY,
+                design=self.product_design,
+                sheet=self,
+                inventory_id=inventory_id,
+                name="New ingredient",
+            )
+        )
+        return "ROW9"
+
+    def _update_cells(self, *, cells):
+        written.append(list(cells))
+        return ([], [])
+
+    monkeypatch.setattr(Design, "rows", property(lambda self: [total_row]))
+    monkeypatch.setattr(Sheet, "columns", property(lambda self: [unlocked, locked]))
+    monkeypatch.setattr(Column, "cells", property(_cells))
+    monkeypatch.setattr(Sheet, "add_formulation_columns", lambda self, **_: [new_column])
+    monkeypatch.setattr(Sheet, "get_column", lambda self, **_: new_column)
+    monkeypatch.setattr(Sheet, "_get_row_id_for_component", _add_row)
+    monkeypatch.setattr(Sheet, "update_cells", _update_cells)
+
+    sheet.add_formulation(
+        formulation_name="New",
+        components=[Component(inventory_id="INVA1", amount=5.0)],
+        clear=False,
+    )
+
+    total_column_ids = [
+        cell.column_id
+        for batch in written
+        for cell in batch
+        if cell.type == CellType.TOTAL or cell.row_type == CellType.TOTAL
+    ]
+    assert "COL5" in total_column_ids
+    assert "COL2" in total_column_ids
+    assert "COL6" not in total_column_ids
+
+
+def test_reformat_formulation_addition_payload_reads_inventory_id_from_formula_id():
+    """Test that the created column's inventory ID comes from its formula entry."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+    )
+    response_json = [
+        {
+            "type": "INV",
+            "name": "Formulation A",
+            "referenceId": "COL5",
+            "Formulas": [{"formulaId": "INVP623-002", "colId": "COL6"}],
+            "childCols": [],
+        }
+    ]
+
+    result = sheet._reformat_formulation_addition_payload(response_json=response_json)
+
+    assert result == [
+        {
+            "colId": "COL6",
+            "Formulas": [{"formulaId": "INVP623-002", "name": "Formulation A"}],
+            "name": "Formulation A",
+            "type": "INV",
+            "session": None,
+            "sheet": sheet,
+            "inventory_id": "INVP623-002",
+        }
+    ]
+
+
+def test_reformat_formulation_addition_payload_prefers_top_level_id():
+    """Test that a top-level id on the item wins over the formula entry."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+    )
+    response_json = [
+        {
+            "id": "INVP623-002",
+            "type": "INV",
+            "name": "Formulation A",
+            "Formulas": [{"formulaId": "INVP623-999", "colId": "COL6"}],
+        }
+    ]
+
+    result = sheet._reformat_formulation_addition_payload(response_json=response_json)
+
+    assert result[0]["inventory_id"] == "INVP623-002"
+
+
+def test_reformat_formulation_addition_payload_maps_each_response_item():
+    """Test that each created column keeps its own formula's inventory ID, in order."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+    )
+    response_json = [
+        {
+            "type": "INV",
+            "name": "Formulation A",
+            "referenceId": "COL5",
+            "Formulas": [{"formulaId": "INVP623-001", "colId": "COL6"}],
+            "childCols": [],
+        },
+        {
+            "type": "INV",
+            "name": "Formulation B",
+            "referenceId": "COL6",
+            "Formulas": [{"formulaId": "INVP623-002", "colId": "COL7"}],
+            "childCols": [],
+        },
+    ]
+
+    result = sheet._reformat_formulation_addition_payload(response_json=response_json)
+
+    assert result == [
+        {
+            "colId": "COL6",
+            "Formulas": [{"formulaId": "INVP623-001", "name": "Formulation A"}],
+            "name": "Formulation A",
+            "type": "INV",
+            "session": None,
+            "sheet": sheet,
+            "inventory_id": "INVP623-001",
+        },
+        {
+            "colId": "COL7",
+            "Formulas": [{"formulaId": "INVP623-002", "name": "Formulation B"}],
+            "name": "Formulation B",
+            "type": "INV",
+            "session": None,
+            "sheet": sheet,
+            "inventory_id": "INVP623-002",
+        },
+    ]
 
 
 def test_add_parameter_group_row_requires_process_design():

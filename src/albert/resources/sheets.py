@@ -940,7 +940,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "type": item["type"],
                 "session": self.session,
                 "sheet": self,
-                "inventory_id": item.get("id", None),
+                "inventory_id": item.get("id") or item["Formulas"][0]["formulaId"],
             }
             new_dicts.append(this_dict)
         return new_dicts
@@ -978,6 +978,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         If a column named ``formulation_name`` already exists and ``clear`` is True,
         that column is emptied and reused; otherwise a new formulation column is added.
+        When a new ingredient row is added, unlocked formula columns have their Total
+        formula extended to include that row. Locked formula columns are left unchanged.
 
         !!! example
             ```python
@@ -1093,6 +1095,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 ]
                 for other_col in self.columns:
                     if other_col.column_id == column_id or other_col.type != CellType.INVENTORY:
+                        continue
+                    # A locked formula rejects the total-formula edit and the values
+                    # endpoint answers 206. Skipping it keeps the new formulation in place.
+                    if other_col.locked:
                         continue
                     other_total_cell = next(
                         (
@@ -1816,7 +1822,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if design_obj is None:
             raise AlbertException("Sheet has no Results section; cannot add a task row")
         if name is None:
-            task = self.session.get(f"/api/v3/tasks/{task_id}").json()
+            task = self.session.get(f"/api/v3/tasks/multi/{task_id}").json()
             name = task.get("name") or task_id
         payload_item: dict[str, str] = {
             "type": CellType.TAS.value,
@@ -1854,16 +1860,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
         )
 
     def _filter_cells(self, *, cells: list[Cell], response_dict: dict):
-        updated = []
-        failed = []
-        for c in cells:
-            found = False
-            for r in response_dict["UpdatedItems"]:
-                if r["id"]["rowId"] == c.row_id and r["id"]["colId"] == c.column_id:
-                    found = True
-                    updated.append(c)
-            if not found:
-                failed.append(c)
+        failed_keys = set()
+        for item in response_dict.get("FailedItems") or []:
+            if not isinstance(item, dict):
+                continue
+            item_id = item.get("id")
+            # Transact errors wrap one or more {rowId, colId} ids in a list.
+            id_entries = item_id if isinstance(item_id, list) else [item_id]
+            for entry in id_entries:
+                cell_id = entry.get("id") if isinstance(entry, dict) and "id" in entry else entry
+                if isinstance(cell_id, dict):
+                    key = (cell_id.get("rowId"), cell_id.get("colId"))
+                    if all(isinstance(part, str) for part in key):
+                        failed_keys.add(key)
+        updated = [c for c in cells if (c.row_id, c.column_id) not in failed_keys]
+        failed = [c for c in cells if (c.row_id, c.column_id) in failed_keys]
         return (updated, failed)
 
     def _get_current_cell(self, *, cell: Cell) -> Cell:
@@ -1877,13 +1888,19 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 return False
             return row_parts[0] == cell.design_id and row_parts[1] == cell.row_id
 
-        filtered_columns = [col for col in self.grid.columns if _matches_column(col)]
-        filtered_rows = [idx for idx in self.grid.index if _matches_row(idx)]
+        # Load only the grid of the design being patched, not all sheet designs.
+        design = next((d for d in self.designs if d.id == cell.design_id), None)
+        if design is None:
+            return None
+        grid = design.grid
+
+        filtered_columns = [col for col in grid.columns if _matches_column(col)]
+        filtered_rows = [idx for idx in grid.index if _matches_row(idx)]
 
         for row in filtered_rows:
             for col in filtered_columns:
                 # grid.loc may return numpy.NaN for missing cells
-                value = self.grid.loc[row, col]
+                value = grid.loc[row, col]
                 if isinstance(value, Cell):
                     return value
         return None

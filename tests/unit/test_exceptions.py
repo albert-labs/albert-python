@@ -251,13 +251,52 @@ def test_format_message_extracts_nested_errors_field():
     assert "'issue': 'required'" in message
 
 
-def test_format_message_falls_back_to_whole_payload_without_errors_key():
-    """Test that a JSON body with no 'errors' key uses the whole payload as the error."""
+def test_format_message_extracts_string_message_field():
+    """Test that a JSON body with a string 'message' field is used verbatim."""
     resp = _make_response(status_code=400, body=json.dumps({"message": "bad input"}).encode())
 
     message = AlbertHTTPError._format_message(resp)
 
-    assert "'message': 'bad input'" in message
+    assert "Errors: bad input" in message
+
+
+def test_format_message_prefers_errors_over_message():
+    """Test that 'errors' wins when a body carries both 'errors' and 'message' keys."""
+    resp = _make_response(
+        status_code=400,
+        body=json.dumps({"errors": "from errors", "message": "from message"}).encode(),
+    )
+
+    message = AlbertHTTPError._format_message(resp)
+
+    assert "Errors: from errors" in message
+
+
+def test_format_message_extracts_message_list_field():
+    """Test that an error body with a list-of-strings 'message' field surfaces its entries."""
+    resp = _make_response(
+        status_code=422,
+        body=json.dumps(
+            {
+                "statusCode": 422,
+                "message": ["No experiment records in dataset (0 training samples)."],
+                "time": "2026-10-13T12:00:00.000Z",
+            }
+        ).encode(),
+    )
+
+    exc = AlbertClientError(resp)
+
+    assert "No experiment records in dataset (0 training samples)." in exc.message
+
+
+def test_format_message_falls_back_to_whole_payload_without_errors_or_message_key():
+    """Test that a JSON body with no 'errors' or 'message' key uses the whole payload."""
+    resp = _make_response(status_code=400, body=json.dumps({"detail": "bad input"}).encode())
+
+    message = AlbertHTTPError._format_message(resp)
+
+    assert "'detail': 'bad input'" in message
 
 
 def test_format_message_omits_errors_suffix_for_empty_payload():

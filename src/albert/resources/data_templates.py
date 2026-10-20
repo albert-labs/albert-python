@@ -241,6 +241,12 @@ class DataTemplate(BaseTaggedResource):
     documents: list[EntityLink] = Field(
         default_factory=list, alias="Documents", exclude=True, frozen=True
     )
+    """Documents registered on the template. Read-only. Only populated by
+    [`get_by_id`][albert.collections.data_templates.DataTemplateCollection.get_by_id]; empty
+    on templates from `get_by_ids`, `get_all`, and `search`. Scripts are not documents: they
+    are attachments with category `Script`, found with
+    [`get_by_parent_ids`][albert.collections.attachments.AttachmentCollection.get_by_parent_ids]
+    using the template ID as the parent."""
 
     # Read-only convenience fields from API
     original_name: str | None = Field(

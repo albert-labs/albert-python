@@ -22,7 +22,7 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
-from albert.collections.design_runs import DesignRunCollection
+from albert.collections.design_runs import DesignRunCollection, DesignRunV4Collection
 from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.hazards import HazardsCollection
@@ -37,6 +37,7 @@ from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
 from albert.collections.pdf_generator import PDFGeneratorCollection
+from albert.collections.personalization import PersonalizationCollection
 from albert.collections.pricings import PricingCollection
 from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
@@ -58,6 +59,7 @@ from albert.collections.teams import TeamCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
+from albert.collections.views import ViewCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
 from albert.core.async_session import AsyncAlbertSession
@@ -217,6 +219,11 @@ class Albert:
         return DesignRunCollection(session=self.session)
 
     @property
+    def design_runs_v4(self) -> DesignRunV4Collection:
+        """Design runs against the v4 design service."""
+        return DesignRunV4Collection(session=self.session)
+
+    @property
     def tags(self) -> TagCollection:
         return TagCollection(session=self.session)
 
@@ -267,6 +274,10 @@ class Albert:
     @property
     def users(self) -> UserCollection:
         return UserCollection(session=self.session)
+
+    @property
+    def views(self) -> ViewCollection:
+        return ViewCollection(session=self.session)
 
     @property
     def entity_types(self) -> EntityTypeCollection:
@@ -331,6 +342,10 @@ class Albert:
     @property
     def parameters(self) -> ParameterCollection:
         return ParameterCollection(session=self.session)
+
+    @property
+    def personalization(self) -> PersonalizationCollection:
+        return PersonalizationCollection(session=self.session)
 
     @property
     def property_data(self) -> PropertyDataCollection:

@@ -5,6 +5,113 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.64.1](https://github.com/albert-labs/albert-python/compare/v1.64.0...v1.64.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **ci:** unbreak docs deploy and publish lambda layers on release ([#852](https://github.com/albert-labs/albert-python/issues/852)) ([098927e](https://github.com/albert-labs/albert-python/commit/098927e8058280ed485a8bec62e6c17a1f3e6b3a))
+* **sheets:** populate inventory_id on added formulation columns ([#860](https://github.com/albert-labs/albert-python/issues/860)) ([8df45e8](https://github.com/albert-labs/albert-python/commit/8df45e8a2c38bc54c439315c5aebe6980aa5983e))
+
+## [1.64.0](https://github.com/albert-labs/albert-python/compare/v1.63.0...v1.64.0) (2026-10-16)
+
+
+### Features
+
+* **inventory:** support creating Formula inventory items ([#829](https://github.com/albert-labs/albert-python/issues/829)) ([a23eb30](https://github.com/albert-labs/albert-python/commit/a23eb3029e2d57d1473b68267c708b756ba36fc7))
+* **lots:** warn when ALL transfer targets the current storage location ([#846](https://github.com/albert-labs/albert-python/issues/846)) ([9534b60](https://github.com/albert-labs/albert-python/commit/9534b60e2e49ffe6fb8c0715951b55ba4f12007a))
+* **tasks:** block inventory exclusions ("masks") — worked example ([#832](https://github.com/albert-labs/albert-python/issues/832)) ([a5125dc](https://github.com/albert-labs/albert-python/commit/a5125dc829eac4518cf1db4a31b4e7d710b73000))
+
+
+### Bug Fixes
+
+* **collections:** chunk /ids lookups for targets, attributes, and pricings ([#844](https://github.com/albert-labs/albert-python/issues/844)) ([efd7d44](https://github.com/albert-labs/albert-python/commit/efd7d4456d0321e1373428b1bd600b7ea8ee6c37))
+* **property_data:** relax parameterGroupId validation on search results ([#843](https://github.com/albert-labs/albert-python/issues/843)) ([2c1206b](https://github.com/albert-labs/albert-python/commit/2c1206ba44ba3eeebc17bdb738c195d534cc6e17))
+* **resources:** emit a single DeprecationWarning for deprecated aliases ([#850](https://github.com/albert-labs/albert-python/issues/850)) ([1c5bd7b](https://github.com/albert-labs/albert-python/commit/1c5bd7bce8a1f7ca8fa9230da810617cb1420007))
+
+
+### Documentation
+
+* **attributes:** promote attributes from beta to GA ([#849](https://github.com/albert-labs/albert-python/issues/849)) ([0b21ae0](https://github.com/albert-labs/albert-python/commit/0b21ae0c0f30660d91c2902793afd7005241a0a3))
+
+## [1.63.0](https://github.com/albert-labs/albert-python/compare/v1.62.0...v1.63.0) (2026-10-15)
+
+
+### Features
+
+* **design_runs:** add v4 design runs collection alongside v3 (AIM-1370) ([#842](https://github.com/albert-labs/albert-python/issues/842)) ([ad1824a](https://github.com/albert-labs/albert-python/commit/ad1824abbd343fe8406261323209ec209a85aec4))
+* **lots:** add from_on_hand filter to lots search ([#839](https://github.com/albert-labs/albert-python/issues/839)) ([f88fcf1](https://github.com/albert-labs/albert-python/commit/f88fcf17aaee7cee261ac1284bffc4031e5170c3))
+
+
+### Bug Fixes
+
+* **add_formulation:** new inventory row and locked formula columns ([#837](https://github.com/albert-labs/albert-python/issues/837)) ([efcf381](https://github.com/albert-labs/albert-python/commit/efcf3812e2ba4fad8c359d9057e60bc3bac92b76))
+* **collections:** support metadata scalar/list cardinality changes ([#838](https://github.com/albert-labs/albert-python/issues/838)) ([c2cdd8c](https://github.com/albert-labs/albert-python/commit/c2cdd8cd60ecd781dd33c30b301e00d4833552a1))
+* **tags:** resolve and deduplicate tags on create and update ([#835](https://github.com/albert-labs/albert-python/issues/835)) ([d09fac2](https://github.com/albert-labs/albert-python/commit/d09fac2e1cb887f190b8500f30110c1b630497a5))
+
+## [1.62.0](https://github.com/albert-labs/albert-python/compare/v1.61.0...v1.62.0) (2026-10-09)
+
+
+### Features
+
+* **batch_data:** add missing batch data collection methods ([#827](https://github.com/albert-labs/albert-python/issues/827)) ([d3ad1b5](https://github.com/albert-labs/albert-python/commit/d3ad1b5c334e78f5b2022eaa13ff0a3fc1841b2d))
+* **instructions:** add support for advanced batch instructions. ([#822](https://github.com/albert-labs/albert-python/issues/822)) ([2298570](https://github.com/albert-labs/albert-python/commit/22985709e9d8ca670f3c9a3bf85ffab01cca350e))
+* **inventory:** add reactivate for deleted inventory items ([#817](https://github.com/albert-labs/albert-python/issues/817)) ([f4cfbc0](https://github.com/albert-labs/albert-python/commit/f4cfbc0becad39c0b89e02e272037e2047c1c824))
+* **inventory:** batch tag and company updates in update/update_many ([#831](https://github.com/albert-labs/albert-python/issues/831)) ([586220e](https://github.com/albert-labs/albert-python/commit/586220e35ee3b9fe07080ed5929945e8b0b1b177))
+* **projects:** add reference formula designations ([#810](https://github.com/albert-labs/albert-python/issues/810)) ([b053f4a](https://github.com/albert-labs/albert-python/commit/b053f4a90a6e453b67138e6812d5d038d3679942))
+* **tasks:** support dual-flow v1/v2 payloads in import_results and TaskMetadata ([#811](https://github.com/albert-labs/albert-python/issues/811)) ([#819](https://github.com/albert-labs/albert-python/issues/819)) ([e0c6dd2](https://github.com/albert-labs/albert-python/commit/e0c6dd2d057c19534669dfbcba1114b8c9dfe1e1))
+* **views:** add ViewCollection for saved grid views ([#821](https://github.com/albert-labs/albert-python/issues/821)) ([9cdee52](https://github.com/albert-labs/albert-python/commit/9cdee52c7cbd5256a0f67eaac9e98a7ec2b1399d))
+
+
+### Bug Fixes
+
+* **property_data:** patch image cells on filled trials ([#818](https://github.com/albert-labs/albert-python/issues/818)) ([591e44d](https://github.com/albert-labs/albert-python/commit/591e44de696632611f09f41da3675d118b9f5a42))
+* **sheets:** scope update_cells baseline reads to the patched design ([#830](https://github.com/albert-labs/albert-python/issues/830)) ([ca2ee3f](https://github.com/albert-labs/albert-python/commit/ca2ee3fe77e12c508f8fc907e8ec4584ff57d5f9))
+
+
+### Documentation
+
+* clarify unpacked totals, mass storage units and label template updates ([#828](https://github.com/albert-labs/albert-python/issues/828)) ([8f06c45](https://github.com/albert-labs/albert-python/commit/8f06c450c6c48e29b068bd1fcbbc83cb80d59d6e))
+* codify recurring PR-review patterns in agent guidance ([#824](https://github.com/albert-labs/albert-python/issues/824)) ([2bd1082](https://github.com/albert-labs/albert-python/commit/2bd1082d6407da9ba86272f0a5df4666442cfb93))
+
+## [1.61.0](https://github.com/albert-labs/albert-python/compare/v1.60.0...v1.61.0) (2026-10-05)
+
+
+### Features
+
+* **projects:** add star, unstar and get_starred for starred projects ([#801](https://github.com/albert-labs/albert-python/issues/801)) ([843c921](https://github.com/albert-labs/albert-python/commit/843c921441baca474ffa7da6354f13602d1de4db))
+
+
+### Bug Fixes
+
+* **sheets:** use multi-task endpoint in add_task_row ([#813](https://github.com/albert-labs/albert-python/issues/813)) ([58f0ce5](https://github.com/albert-labs/albert-python/commit/58f0ce5851c620a43a7aaa99448dbbfd7f0070ed))
+
+
+### Documentation
+
+* **tasks:** clarify create vs create_with_combinations for increased intervals ([#815](https://github.com/albert-labs/albert-python/issues/815)) ([69f41ca](https://github.com/albert-labs/albert-python/commit/69f41ca5ac53b40e4531cb8eb13e780bfe1530db))
+
+## [1.60.0](https://github.com/albert-labs/albert-python/compare/v1.59.1...v1.60.0) (2026-10-01)
+
+
+### Features
+
+* **property_data:** add curve data read-back for tasks and template examples ([#800](https://github.com/albert-labs/albert-python/issues/800)) ([d3518e1](https://github.com/albert-labs/albert-python/commit/d3518e1783838b0788eafc671023f1e3aadb5cc7))
+
+
+### Bug Fixes
+
+* **ci:** run lambda layer publish jobs on release tag pipelines ([#804](https://github.com/albert-labs/albert-python/issues/804)) ([4312776](https://github.com/albert-labs/albert-python/commit/4312776ed54a40e739f3f74e0ff8a126ff1f359f))
+* **parametergroups:** row-delete attribute, null guard, public class ([#776](https://github.com/albert-labs/albert-python/issues/776)) ([0f496dd](https://github.com/albert-labs/albert-python/commit/0f496ddd96432af922c43cd06470ba07ee051835))
+* send enum values when switching a data column to enum ([#812](https://github.com/albert-labs/albert-python/issues/812)) ([63b3be0](https://github.com/albert-labs/albert-python/commit/63b3be07b2fced021c42b742aabd5c2d6acc9091))
+* **tasks:** mirror parent_id to Project body on create when absent ([#574](https://github.com/albert-labs/albert-python/issues/574)) ([262e468](https://github.com/albert-labs/albert-python/commit/262e468326597e9e47093b3c8c5d6f6db5383955))
+* **teams:** split multi-member update ops into per-member requests ([#778](https://github.com/albert-labs/albert-python/issues/778)) ([17f37c5](https://github.com/albert-labs/albert-python/commit/17f37c571d452e730d802f180f73ac55ace96b3a))
+
+
+### Reverts
+
+* **ci:** keep lambda layer publishing manual-only ([#804](https://github.com/albert-labs/albert-python/issues/804)) ([#807](https://github.com/albert-labs/albert-python/issues/807)) ([2fe3c6d](https://github.com/albert-labs/albert-python/commit/2fe3c6d0c187695b9dd045ec36e69b2eea8c545a))
+
 ## [1.59.1](https://github.com/albert-labs/albert-python/compare/v1.59.0...v1.59.1) (2026-09-30)
 
 

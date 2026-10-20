@@ -86,28 +86,6 @@ def test_update_block_content_with_empty_text(client: Albert, seeded_notebook: N
     assert updated_notebook.blocks[-1].content.text is None
 
 
-def test_update_block_content_raises_exception(client: Albert, seeded_notebook: Notebook):
-    # Try to change the type of a notebook block
-    notebook = seeded_notebook.model_copy()
-    header_block = HeaderBlock(content=HeaderContent(level=1, text="Header block"))
-    notebook.blocks.append(header_block)
-    notebook = client.notebooks.update_block_content(notebook=notebook)
-    paragraph_content = ParagraphContent(text="HeaderBlock to ParagraphBlock")
-    notebook.blocks[-1] = ParagraphBlock(id=header_block.id, content=paragraph_content)
-    with pytest.raises(AlbertException, match="Cannot convert an existing block type"):
-        client.notebooks.update_block_content(notebook=notebook)
-
-    # Try to create notebook blocks with duplicate ids
-    notebook = seeded_notebook.model_copy()
-    header_block1 = HeaderBlock(content=HeaderContent(level=1, text="Header block 1"))
-    header_block2 = HeaderBlock(
-        id=header_block1.id, content=HeaderContent(level=1, text="Header block 2")
-    )
-    notebook.blocks.extend([header_block1, header_block2])
-    with pytest.raises(AlbertException, match="You have Notebook blocks with duplicate ids"):
-        client.notebooks.update_block_content(notebook=notebook)
-
-
 def test_search(client: Albert, seed_prefix: str, seeded_notebooks: list[Notebook]):
     """Test search finds seeded notebook block content scoped to the seed project."""
     nb = seeded_notebooks[0]

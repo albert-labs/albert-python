@@ -2,9 +2,12 @@ import pytest
 from pydantic import ValidationError
 
 from albert.resources.property_data import (
+    PropertyDataSearchItem,
+    TaskData,
     TaskDataColumn,
     TaskDataColumnValue,
     TaskPropertyCreate,
+    TaskPropertyData,
     TaskPropertyValue,
 )
 
@@ -58,3 +61,64 @@ def test_task_property_create_visible_trial_number_explicit_value_kept():
     """Test that an explicitly provided visible_trial_number is not overwritten."""
     prop = TaskPropertyCreate(data_column=TaskDataColumn(id="DAC1"), trialNo=3, visibleTrialNo=9)
     assert prop.visible_trial_number == 9
+
+
+# --- PropertyDataSearchItem ---
+
+
+@pytest.mark.parametrize("parameter_group_id", ["PRG123", "DAT123", "123456"])
+def test_property_data_search_item_accepts_parameter_group_id_forms(parameter_group_id):
+    """Test that workflow parameterGroupId accepts PRG, DAT, and bare-numeric forms."""
+    item = PropertyDataSearchItem.model_validate(
+        {
+            "id": "PTD1",
+            "category": "task",
+            "workflow": [
+                {"name": "Temperature", "id": "PRM1", "parameterGroupId": parameter_group_id}
+            ],
+            "result": {"name": "Result", "id": "DAC1"},
+            "dataTemplateId": "DAT1",
+            "workflowId": "WFL1",
+            "parentId": "TAS1",
+            "dataTemplateName": "Template",
+            "createdBy": "someone",
+            "inventoryId": "INV1",
+        }
+    )
+    assert item.workflow[0].parameter_group_id == parameter_group_id
+
+
+def test_property_data_search_item_parameter_group_id_defaults_to_none():
+    """Test that workflow parameterGroupId is None when absent from the result."""
+    item = PropertyDataSearchItem.model_validate(
+        {
+            "id": "PTD1",
+            "category": "task",
+            "workflow": [{"name": "Temperature", "id": "PRM1"}],
+            "result": {"name": "Result", "id": "DAC1"},
+            "dataTemplateId": "DAT1",
+            "workflowId": "WFL1",
+            "parentId": "TAS1",
+            "dataTemplateName": "Template",
+            "createdBy": "someone",
+            "inventoryId": "INV1",
+        }
+    )
+    assert item.workflow[0].parameter_group_id is None
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        TaskData.model_construct(final_workflow="WFL1"),
+        TaskPropertyData.model_construct(parent_id="TAS1", final_workflow="WFL1"),
+    ],
+    ids=["TaskData", "TaskPropertyData"],
+)
+def test_finial_workflow_warns_once_and_aliases_final_workflow(model):
+    """Test the deprecated finial_workflow alias warns exactly once and returns final_workflow."""
+    with pytest.warns(DeprecationWarning, match="finial_workflow") as record:
+        value = model.finial_workflow
+
+    assert len(record) == 1
+    assert value == model.final_workflow

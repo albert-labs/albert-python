@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Iterator
 from decimal import Decimal
 from typing import Any, Literal
@@ -115,6 +116,27 @@ class LotCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{LotCollection._api_version}/lots"
+
+    @staticmethod
+    def _inventory_id_search_variants(
+        inventory_id: InventoryId | list[InventoryId] | None,
+    ) -> list[str] | None:
+        """Return each Inventory ID with and without the ``INV`` prefix.
+
+        Lot search indexes the parent inventory ID without the ``INV`` prefix,
+        so a standard ID alone would match nothing; supplying both forms keeps
+        the filter correct regardless of the stored format.
+        """
+        ids = ensure_list(inventory_id)
+        if ids is None:
+            return None
+        variants: list[str] = []
+        for value in ids:
+            variants.append(value)
+            stripped = value.removeprefix("INV")
+            if stripped != value:
+                variants.append(stripped)
+        return variants
 
     def create(self, *, lots: list[Lot]) -> list[Lot]:
         """Create one or more new lots.
@@ -322,6 +344,7 @@ class LotCollection(BaseCollection):
         owner: list[str] | None = None,
         status: list[str] | None = None,
         to_expiration_date: str | None = None,
+        from_on_hand: float | None = None,
         is_drop_down: bool | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -395,6 +418,9 @@ class LotCollection(BaseCollection):
             Filter by lot status values.
         to_expiration_date : str, optional
             Only include lots expiring on or before this date (ISO 8601).
+        from_on_hand : float, optional
+            Only include lots with inventory on hand strictly greater than this
+            value. Pass ``0`` to exclude zeroed-out lots.
         is_drop_down : bool, optional
             Apply dropdown sanitization to the search text when True.
         order_by : OrderBy, optional
@@ -419,7 +445,7 @@ class LotCollection(BaseCollection):
             "text": search_text,
             "sortBy": sort_by,
             "isDropDown": is_drop_down,
-            "inventoryId": ensure_list(inventory_id),
+            "inventoryId": self._inventory_id_search_variants(inventory_id),
             "locationId": ensure_list(location_id),
             "storageLocationId": ensure_list(storage_location_id),
             "taskId": ensure_list(task_id),
@@ -428,6 +454,7 @@ class LotCollection(BaseCollection):
             "searchField": ensure_list(search_field),
             "sourceField": ensure_list(source_field),
             "additionalField": ensure_list(additional_field),
+            "fromOnHand": from_on_hand,
         }
 
         post_only_params: dict[str, Any] = {
@@ -784,7 +811,9 @@ class LotCollection(BaseCollection):
             The amount to transfer, or ``"ALL"`` to move the full current
             inventory on hand. A numeric quantity must be greater than zero.
         storage_location_id : StorageLocationId
-            Destination storage location ID (format ``STL...``).
+            Destination storage location ID (format ``STL...``). Must differ
+            from the lot's current storage location when ``quantity`` is
+            ``"ALL"``.
         owner : UserId, optional
             User ID (format ``USR...``) to own the destination lot. Defaults to
             the current user.
@@ -800,13 +829,28 @@ class LotCollection(BaseCollection):
         ValueError
             If a numeric ``quantity`` is not greater than zero, or the current
             user cannot be resolved when ``owner`` is omitted.
+
+        Warns
+        -----
+        UserWarning
+            If ``quantity`` is ``"ALL"`` and ``storage_location_id`` matches the
+            lot's current storage location. Full Transfer is not allowed for the
+            same storage location (matching the Albert UI), so the transfer is
+            skipped and the lot is returned unchanged.
         """
         if quantity == "ALL":
             source_lot = self.get_by_id(id=lot_id)
             current_location_id = (
                 source_lot.storage_location.id if source_lot.storage_location else None
             )
-            if current_location_id != storage_location_id:
+            if current_location_id == storage_location_id:
+                warnings.warn(
+                    "Full Transfer is not allowed for the same storage location; "
+                    "the lot was not changed.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            else:
                 patch_payload = PatchPayload(
                     data=[
                         PatchDatum(

@@ -92,12 +92,18 @@ class BaseCollection:
                         )
                     )
                 elif isinstance(updated_metadata[key], list):
-                    existing_links = value if isinstance(value, list) else [value]
                     updated_links = updated_metadata[key]
-                    existing_ids = [v.id for v in existing_links]
                     updated_ids = [v.id for v in updated_links]
-                    if set(existing_ids) == set(updated_ids):  # no membership change, skip
-                        continue
+                    if isinstance(value, list):
+                        if {v.id for v in value} == set(updated_ids):
+                            # no membership change, skip
+                            continue
+                        old_value = self._metadata_list_patch_value(value, as_list=True)
+                    else:
+                        # An existing scalar wrapped in a list for comparison would
+                        # mask a scalar-to-list cardinality change, so keep its bare
+                        # id as the old value and always emit an op.
+                        old_value = value.id
 
                     if len(updated_ids) == 0:
                         # Clearing the value entirely.
@@ -105,9 +111,7 @@ class BaseCollection:
                             PatchDatum(
                                 attribute=attribute,
                                 operation=PatchOperation.DELETE,
-                                old_value=self._metadata_list_patch_value(
-                                    existing_links, as_list=True
-                                ),
+                                old_value=old_value,
                             )
                         )
                     else:
@@ -118,9 +122,7 @@ class BaseCollection:
                             PatchDatum(
                                 attribute=attribute,
                                 operation=PatchOperation.UPDATE,
-                                old_value=self._metadata_list_patch_value(
-                                    existing_links, as_list=True
-                                ),
+                                old_value=old_value,
                                 new_value=self._metadata_list_patch_value(
                                     updated_links, as_list=True
                                 ),
@@ -131,7 +133,11 @@ class BaseCollection:
                         PatchDatum(
                             attribute=attribute,
                             operation=PatchOperation.UPDATE,
-                            old_value=value.id,
+                            old_value=(
+                                self._metadata_list_patch_value(value, as_list=True)
+                                if isinstance(value, list)
+                                else value.id
+                            ),
                             new_value=updated_metadata[key].id,
                         )
                     )

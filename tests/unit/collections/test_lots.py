@@ -356,3 +356,31 @@ def test_ordinary_scalar_attribute_changed_emits_plain_update(offline_session) -
     assert ops[0].operation == PatchOperation.UPDATE
     assert ops[0].old_value == "MLN-1"
     assert ops[0].new_value == "MLN-2"
+
+
+# --- inventory_id search filter id variants ---
+
+
+def test_inventory_id_search_variants_none_passthrough() -> None:
+    """Test that None inventory_id yields None (no filter)."""
+    assert LotCollection._inventory_id_search_variants(None) is None
+
+
+def test_inventory_id_search_variants_single_id() -> None:
+    """Test that one prefixed Inventory ID yields both prefixed and stripped forms."""
+    assert LotCollection._inventory_id_search_variants("INVA1") == ["INVA1", "A1"]
+
+
+def test_inventory_id_search_variants_list_flattens() -> None:
+    """Test that a list of Inventory IDs yields both forms for each entry."""
+    assert LotCollection._inventory_id_search_variants(["INVA1", "INVB2"]) == [
+        "INVA1",
+        "A1",
+        "INVB2",
+        "B2",
+    ]
+
+
+def test_inventory_id_search_variants_unprefixed_not_duplicated() -> None:
+    """Test that an ID already lacking the prefix is returned once."""
+    assert LotCollection._inventory_id_search_variants("A1") == ["A1"]

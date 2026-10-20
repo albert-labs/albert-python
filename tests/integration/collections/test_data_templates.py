@@ -54,12 +54,6 @@ def test_data_template_get_all_basic(client: Albert, seeded_data_templates: list
     assert_valid_data_template_items(results, DataTemplate)
 
 
-def test_data_template_search_basic(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test search returns partial DataTemplateSearchItem results."""
-    results = list(client.data_templates.search(max_items=10))
-    assert_valid_data_template_items(results, DataTemplateSearchItem)
-
-
 def test_data_template_search(
     client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
 ):
@@ -407,6 +401,52 @@ def test_update_delete_data_column(
         assert seeded_data_columns[0].id in [
             x.data_column_id for x in updated_dt.data_column_values
         ]
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+
+
+def test_enum_option_readded_reuses_original_id(
+    client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
+):
+    """Test that removing an enum option and re-adding the same text reuses its original ID."""
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Enum Re-add Test",
+            data_column_values=[
+                DataColumnValue(
+                    data_column=seeded_data_columns[0],
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.ENUM,
+                            value=[
+                                EnumValidationValue(text="Keep"),
+                                EnumValidationValue(text="Readd"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    try:
+        dt = client.data_templates.get_by_id(id=dt.id)
+        original = {x.text: x.id for x in dt.data_column_values[0].validation[0].value}
+        assert original["Readd"] is not None
+
+        dt.data_column_values[0].validation[0].value = [
+            x for x in dt.data_column_values[0].validation[0].value if x.text != "Readd"
+        ]
+        removed_dt = client.data_templates.update(data_template=dt)
+        assert [x.text for x in removed_dt.data_column_values[0].validation[0].value] == ["Keep"]
+
+        removed_dt.data_column_values[0].validation[0].value.append(
+            EnumValidationValue(text="Readd")
+        )
+        readded_dt = client.data_templates.update(data_template=removed_dt)
+
+        readded = {x.text: x.id for x in readded_dt.data_column_values[0].validation[0].value}
+        assert readded == original
     finally:
         with suppress(NotFoundError):
             client.data_templates.delete(id=dt.id)

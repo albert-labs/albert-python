@@ -40,6 +40,7 @@ _ALBERT_PREFIXES = {
     "UnitId": "UNI",
     "TeamId": "TEM",
     "UserId": "USR",
+    "ViewId": "VEW",
     "WorksheetId": "WKS",
     "WorkflowId": "WFL",
     # Search Specific Ids
@@ -381,6 +382,13 @@ def ensure_user_id(id: str) -> str:
 
 
 UserId = Annotated[str, AfterValidator(ensure_user_id)]
+
+
+def ensure_view_id(id: str) -> str:
+    return _ensure_albert_id(id, "ViewId")
+
+
+ViewId = Annotated[str, AfterValidator(ensure_view_id)]
 
 
 def ensure_unit_id(id: str) -> str:

@@ -1,3 +1,4 @@
+import time
 from contextlib import suppress
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ from albert.resources.inventory import (
     InventoryUnitCategory,
 )
 from albert.resources.lots import Lot
+from albert.resources.projects import Project
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.tags import Tag
 from albert.resources.users import User
@@ -288,6 +290,29 @@ def test_get_by_id_preserves_metadata_list_item_names(
         client.inventory.delete(id=created.id)
 
 
+def test_reactivate_inventory(client: Albert, seed_prefix: str, seeded_companies: list[Company]):
+    """Test reactivating a deleted inventory item restores access."""
+    created = client.inventory.create(
+        inventory_item=InventoryItem(
+            name=f"{seed_prefix} - Reactivate {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+        ),
+        avoid_duplicates=False,
+    )
+    try:
+        client.inventory.delete(id=created.id)
+        with pytest.raises(NotFoundError):
+            client.inventory.get_by_id(id=created.id)
+
+        reactivated = client.inventory.reactivate(id=created.id)
+        assert reactivated.id == created.id
+        assert reactivated.status == "active"
+    finally:
+        with suppress(NotFoundError):
+            client.inventory.delete(id=created.id)
+
+
 def test_get_by_ids(client: Albert, seeded_inventory):
     # Use this worker's seeded IDs directly; a search round-trip would race other
     # workers' teardown deletes and fuzzy text matching
@@ -315,22 +340,38 @@ def test_inventory_update(client: Albert, seed_prefix: str, seeded_inventory: li
     assert updated.id == inventory_item.id
 
 
-def test_collection_blocks_formulation(client: Albert, seeded_projects):
-    """assert that trying to create a FORMULATION with a collection block raises an error"""
-
-    # create a formulation with the collection block
-    with pytest.raises(NotImplementedError):
-        r = client.inventory.create(
+def test_create_formula_inventory_item(client: Albert, seed_prefix: str, seeded_locations):
+    """Test creating a Formula inventory item under a Project."""
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - Formula parent project",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+        )
+    )
+    formula = None
+    try:
+        formula = client.inventory.create(
             inventory_item=InventoryItem(
-                name="test formulation",
+                name=f"{seed_prefix} - Test Formula",
                 category=InventoryCategory.FORMULAS,
-                project_id=seeded_projects[0].id,
+                project_id=project.id,
             )
         )
-
-        # delete the collection block in case it was created
-        client.inventory.delete(r)
-        assert not client.inventory.exists(r.id)
+        assert formula.id is not None
+        assert formula.category == InventoryCategory.FORMULAS
+        assert formula.project_id == project.id
+        assert formula.unit_category == InventoryUnitCategory.MASS
+    finally:
+        # A Formula can only be deleted once its parent Project is deleted.
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+        if formula is not None:
+            for _ in range(5):
+                try:
+                    client.inventory.delete(id=formula.id)
+                    break
+                except BadRequestError:
+                    time.sleep(1)
 
 
 def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryItem]):
@@ -412,6 +453,27 @@ def test_update_many_inventory_items(client: Albert, seeded_inventory: list[Inve
     assert set(updated_by_id) == {item.id for item in items}
     for i, item in enumerate(items):
         assert updated_by_id[item.id].description == f"update_many description {i}"
+
+
+def test_update_many_inventory_items_tags_and_company(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seeded_companies: list[Company],
+    seeded_tags: list[Tag],
+):
+    """Test update_many applies tag and company changes in one call."""
+    items = seeded_inventory[:2]
+    to_update = [
+        items[0].model_copy(update={"company": seeded_companies[1], "tags": [seeded_tags[1]]}),
+        items[1].model_copy(update={"tags": [seeded_tags[2]]}),
+    ]
+
+    updated = client.inventory.update_many(inventory_items=to_update)
+
+    updated_by_id = {item.id: item for item in updated}
+    assert updated_by_id[items[0].id].company.id == seeded_companies[1].id
+    assert {t.id for t in updated_by_id[items[0].id].tags} == {seeded_tags[1].id}
+    assert {t.id for t in updated_by_id[items[1].id].tags} == {seeded_tags[2].id}
 
 
 def test_update_inventory_item_advanced_attributes(

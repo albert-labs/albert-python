@@ -7,6 +7,10 @@ from albert.core.shared.identifiers import InventoryId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.pricings import InventoryPricings, Pricing, PricingBy
 
+# No documented cap on the pricings /ids id[] param; 300 matches the documented
+# cap of the peer lots/inventory/workflow collections.
+_IDS_CHUNK_SIZE = 300
+
 
 class PricingCollection(BaseCollection):
     """Manage Pricing entries for Inventory Items in the Albert platform.
@@ -206,7 +210,8 @@ class PricingCollection(BaseCollection):
         """Get pricings for several inventory items at once.
 
         Each returned [`InventoryPricings`][albert.resources.pricings.InventoryPricings] groups
-        one item's pricings under its inventory ID.
+        one item's pricings under its inventory ID. Arbitrarily long ID lists are
+        supported.
 
         !!! example
             ```python
@@ -224,11 +229,19 @@ class PricingCollection(BaseCollection):
         Returns
         -------
         list[InventoryPricings]
-            One entry per item, each holding that item's pricings.
+            One entry per item, each holding that item's pricings. Order is not
+            guaranteed to match the input list.
         """
-        params = {"id": inventory_ids}
-        response = self.session.get(f"{self.base_path}/ids", params=params)
-        return [InventoryPricings(**x) for x in response.json()["Items"]]
+        url = f"{self.base_path}/ids"
+        batches = [
+            inventory_ids[i : i + _IDS_CHUNK_SIZE]
+            for i in range(0, len(inventory_ids), _IDS_CHUNK_SIZE)
+        ]
+        return [
+            InventoryPricings(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()["Items"]
+        ]
 
     @validate_call
     def delete(self, *, id: str) -> None:

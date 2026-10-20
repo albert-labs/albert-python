@@ -10,6 +10,7 @@ from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.lots import Lot, LotAdjustmentAction, LotVolumeUnit
 from albert.resources.storage_locations import StorageLocation
 from tests.integration.seeding import generate_lot_seeds
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("inventory")
 
@@ -72,6 +73,52 @@ def test_lot_get_all_basic(client: Albert, seeded_lots):
     results = list(client.lots.get_all(parent_id=parent_id, max_items=10))
     assert_valid_lot_items(results)
     assert any(lot.id == seeded_lots[0].id for lot in results)
+
+
+def test_search_from_on_hand(client: Albert, seeded_lots: list[Lot]):
+    """Test that search(from_on_hand=...) returns only lots with inventory on hand above the threshold."""
+    # Scope by the seeded lots' unique external barcode IDs; the lot search index
+    # stores inventoryId without the "INV" prefix, so inventory_id cannot scope this.
+    barcode_ids = [seeded_lots[0].external_barcode_id, seeded_lots[1].external_barcode_id]
+
+    # Wait for the seeded lots to become visible in search before asserting on the filter.
+    poll_until(
+        lambda: list(client.lots.search(external_barcode_id=barcode_ids, max_items=100)),
+        predicate=lambda items: seeded_lots[0].id in {item.id for item in items},
+        timeout=60.0,
+    )
+
+    # seeded_lots[0] has 90 on hand, seeded_lots[1] has 400.
+    results = poll_until(
+        lambda: list(
+            client.lots.search(
+                external_barcode_id=barcode_ids,
+                from_on_hand=95.0,
+                max_items=100,
+            )
+        ),
+        predicate=lambda items: seeded_lots[1].id in {item.id for item in items},
+    )
+    result_ids = {item.id for item in results}
+    assert seeded_lots[1].id in result_ids
+    assert seeded_lots[0].id not in result_ids
+
+
+def test_search_by_inventory_id(client: Albert, seeded_lots: list[Lot]):
+    """Test that search(inventory_id=...) matches lots by their standard parent Inventory ID."""
+    seeded_ids = {lot.id for lot in seeded_lots}
+    # seeded_lots[0] and seeded_lots[1] share the same parent inventory item.
+    expected_ids = {seeded_lots[0].id, seeded_lots[1].id}
+    results = poll_until(
+        lambda: [
+            item
+            for item in client.lots.search(inventory_id=seeded_lots[0].inventory_id, max_items=100)
+            if item.id in seeded_ids
+        ],
+        predicate=lambda items: expected_ids <= {item.id for item in items},
+        timeout=60.0,
+    )
+    assert expected_ids <= {item.id for item in results}
 
 
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):
@@ -199,15 +246,6 @@ def test_adjust_set(client: Albert, seeded_lot: Lot):
     assert updated_lot.inventory_on_hand == pytest.approx(target_quantity)
 
 
-def test_adjust_zero(client: Albert, seeded_lot: Lot):
-    updated_lot = client.lots.adjust(
-        lot_id=seeded_lot.id,
-        action=LotAdjustmentAction.ZERO,
-        description="zero test",
-    )
-    assert updated_lot.inventory_on_hand == pytest.approx(0)
-
-
 @pytest.mark.parametrize(
     "action, quantity, error_message",
     [
@@ -317,16 +355,17 @@ def test_transfer_all_quantity(
     assert updated_lot.storage_location.id == destination.id
 
 
-def test_transfer_all_same_location_no_op(client: Albert, seeded_lot: Lot):
-    """Test that transferring ALL to the current location does not raise an error."""
+def test_transfer_all_same_location_warns(client: Albert, seeded_lot: Lot):
+    """Test that transferring ALL to the current location warns and leaves the lot unchanged."""
     current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
     assert current_location_id is not None, "Seeded lot must have a storage location"
 
-    result = client.lots.transfer(
-        lot_id=seeded_lot.id,
-        quantity="ALL",
-        storage_location_id=current_location_id,
-    )
+    with pytest.warns(UserWarning, match="Full Transfer is not allowed"):
+        result = client.lots.transfer(
+            lot_id=seeded_lot.id,
+            quantity="ALL",
+            storage_location_id=current_location_id,
+        )
     assert result.id == seeded_lot.id
     assert result.storage_location is not None
     assert result.storage_location.id == current_location_id
@@ -343,10 +382,12 @@ def test_adjust_set_no_op(client: Albert, seeded_lot: Lot):
 
 
 def test_adjust_zero_no_op(client: Albert, seeded_lot: Lot):
-    """Test that ZERO on a lot already at zero does not raise an error."""
-    # First zero it out
-    client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
-    # Zero again — should be a no-op without error
+    """Test that ZERO empties a lot, and repeating it on an empty lot does not raise."""
+    zeroed = client.lots.adjust(
+        lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO, description="zero test"
+    )
+    assert zeroed.inventory_on_hand == pytest.approx(0)
+    # Zero again; should be a no-op without error
     result = client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
     assert result.inventory_on_hand == pytest.approx(0)
 
