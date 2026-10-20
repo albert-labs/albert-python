@@ -973,7 +973,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "type": item["type"],
                 "session": self.session,
                 "sheet": self,
-                "inventory_id": item.get("id", None),
+                "inventory_id": item.get("id") or item["Formulas"][0]["formulaId"],
             }
             new_dicts.append(this_dict)
         return new_dicts
