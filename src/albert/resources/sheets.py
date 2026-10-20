@@ -1067,7 +1067,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
             col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
         column_id = col.column_id
 
-        self.grid = None  # reset the grid for saftey
         product_rows = list(self.product_design.rows)
         initial_row_ids = {row.row_id for row in product_rows}
 
@@ -1122,14 +1121,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
             except AlbertException:
                 # A failed write must not leave the cleared column blank.
                 if cleared_cells:
-                    self.grid = None
                     self.update_cells(cells=cleared_cells)
                 raise
 
         if total_cells:
             self.update_cells(cells=total_cells)
 
-        self.grid = None
         return column
 
     @validate_call
@@ -1195,7 +1192,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
             formulation_names=[spec.name for spec in formulations]
         )
 
-        self.grid = None
         product_rows = list(self.product_design.rows)
         initial_row_ids = {row.row_id for row in product_rows}
 
@@ -1236,7 +1232,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if total_cells:
             self.update_cells(cells=total_cells)
 
-        self.grid = None
         return columns
 
     @validate_call
@@ -1284,7 +1279,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
             column_id=column_id, inventory_id=inventory_id, column_name=formulation_name
         )
         col_id = col.column_id
-        self.grid = None
 
         product_rows = list(self.product_design.rows)
         all_cells: list[Cell] = []
@@ -1320,27 +1314,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         for component, row_id in zip(components, component_row_ids, strict=True):
             all_cells.append(
-                Cell(
-                    column_id=col_id,
+                self._build_component_cell(
+                    column=col,
+                    component=component,
                     row_id=row_id,
-                    value=str(component.amount),
-                    calculation="",
-                    type=CellType.INVENTORY,
-                    design_id=self.product_design.id,
                     name=col.name or formulation_name or "",
-                    inventory_id=col.inventory_id,
-                    min_value=str(component.min_value)
-                    if component.min_value is not None
-                    else None,
-                    max_value=str(component.max_value)
-                    if component.max_value is not None
-                    else None,
                 )
             )
 
         column = self.get_column(column_id=col_id)
         self.update_cells(cells=all_cells)
-        self.grid = None
         return column
 
     def _get_row_id_for_component(
@@ -1476,6 +1459,180 @@ class Sheet(BaseSessionResource):  # noqa:F811
             used[inv_id] = index + 1
         return row_ids
 
+    @staticmethod
+    def _format_total_value(value: float) -> str:
+        """Format a computed Total value the way the grid renders it (no trailing ``.0``)."""
+        return str(int(value)) if float(value).is_integer() else str(value)
+
+    @staticmethod
+    def _numeric_cell_value(value: CellAttributeValue) -> float | None:
+        """The numeric form of a cell value, reading a blank cell as zero."""
+        if value is None or value == "":
+            return 0.0
+        if isinstance(value, (dict, list)):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _register_new_columns(
+        self, *, columns: list[Column], reference_id: str | None, position: str
+    ) -> None:
+        """Fold freshly created columns into the cached sheet state.
+
+        New columns are created across the sheet's designs. Only the Product
+        Design cache is edited in place; other designs drop their caches so a
+        later read fetches their fresh state.
+        """
+        if not columns:
+            return
+        design = self.product_design
+        if design._columns is not None:
+            index = next(
+                (i for i, c in enumerate(design._columns) if c.column_id == reference_id),
+                None,
+            )
+            if index is None:
+                design._columns.extend(columns)
+            else:
+                if position == ColumnPosition.RIGHT_OF:
+                    index += 1
+                design._columns[index:index] = columns
+        if design._grid is not None:
+            for column in columns:
+                design._grid[column.df_name] = None
+        for other_design in self.designs:
+            if other_design is not design:
+                other_design._grid = None
+                other_design._rows = None
+                other_design._columns = None
+        self.formulations = [
+            *self.formulations,
+            *(
+                SheetFormulationRef(id=col.inventory_id, name=col.name, hidden=False)
+                for col in columns
+                if col.inventory_id is not None
+            ),
+        ]
+        self._grid = None
+
+    def _register_new_rows(
+        self, *, rows: list[Row], reference_id: str | None, position: str
+    ) -> None:
+        """Fold freshly created ingredient rows into the cached Product Design state.
+
+        Rows are placed relative to ``reference_id`` the way the sheet places them
+        (the default lands new ingredient rows directly above the reference row).
+        Cached grids gain the new rows as blank cells.
+        """
+        if not rows:
+            return
+        design = self.product_design
+        if design._rows is not None:
+            index = next((i for i, r in enumerate(design._rows) if r.row_id == reference_id), None)
+            if index is None:
+                design._rows.extend(rows)
+            else:
+                if position == RowPosition.BELOW.value:
+                    index += 1
+                design._rows[index:index] = rows
+        if design._grid is not None:
+            grid = design._grid
+            for row in rows:
+                if row.row_unique_id not in grid.index:
+                    grid.loc[row.row_unique_id, :] = None
+            if design._rows is not None:
+                ordered = [row.row_unique_id for row in design._rows]
+                remaining = [label for label in grid.index if label not in set(ordered)]
+                design._grid = grid.reindex(index=[*ordered, *remaining])
+        self._grid = None
+
+    def _apply_cells_to_cached_grids(self, *, cells: list[Cell]) -> None:
+        """Apply written cells to the cached grids so they stay current.
+
+        The column's cached Total cell moves by the same amount, matching the
+        Total the sheet computes for ingredient writes. A cell that cannot be
+        placed confidently drops that design's caches instead, so the next read
+        fetches fresh state rather than serving stale data.
+        """
+        if not cells:
+            return
+        cells_by_design: dict[str, list[Cell]] = {}
+        for cell in cells:
+            cells_by_design.setdefault(cell.design_id, []).append(cell)
+        for design_id, design_cells in cells_by_design.items():
+            design = next((d for d in self.designs if d.id == design_id), None)
+            if design is None or design._grid is None:
+                continue
+            grid = design._grid
+            column_labels = {}
+            for label in grid.columns:
+                column_labels.setdefault(label.split("#", 1)[0], label)
+            total_row = next((r for r in (design._rows or []) if r.type == CellType.TOTAL), None)
+            total_row_label = f"{design_id}#{total_row.row_id}" if total_row else None
+            row_types = {row.row_id: row.type for row in design._rows or []}
+            for cell in design_cells:
+                column_label = column_labels.get(cell.column_id)
+                if column_label is None:
+                    fallback_label = cell.inventory_id or cell.name
+                    if not fallback_label:
+                        design._grid = None
+                        design._rows = None
+                        design._columns = None
+                        break
+                    column_label = f"{cell.column_id}#{fallback_label}"
+                    column_labels[cell.column_id] = column_label
+                row_label = f"{design_id}#{cell.row_id}"
+                previous = None
+                if row_label in grid.index and column_label in grid.columns:
+                    existing = grid.at[row_label, column_label]
+                    if isinstance(existing, Cell):
+                        previous = existing
+                if previous is not None:
+                    update = {
+                        "value": cell.value,
+                        "calculation": cell.calculation,
+                        "min_value": cell.min_value,
+                        "max_value": cell.max_value,
+                    }
+                    if "format" in cell.model_fields_set and cell.format:
+                        update["format"] = cell.format
+                    cell_to_cache = previous.model_copy(update=update)
+                else:
+                    cell_to_cache = cell
+                    if cell_to_cache.row_type is None:
+                        cell_to_cache = cell.model_copy(
+                            update={"row_type": row_types.get(cell.row_id)}
+                        )
+                if column_label not in grid.columns:
+                    grid[column_label] = None
+                if row_label not in grid.index:
+                    grid.loc[row_label, :] = None
+                grid.at[row_label, column_label] = cell_to_cache
+                if (
+                    total_row_label is not None
+                    and cell.row_id != total_row.row_id
+                    and (cell.row_type == CellType.INVENTORY or cell.type == CellType.INVENTORY)
+                    and total_row_label in grid.index
+                ):
+                    new_amount = self._numeric_cell_value(cell.value)
+                    old_amount = (
+                        self._numeric_cell_value(previous.value) if previous is not None else 0.0
+                    )
+                    if new_amount is not None and old_amount is not None:
+                        delta = new_amount - old_amount
+                        total_cell = grid.at[total_row_label, column_label]
+                        if delta and isinstance(total_cell, Cell):
+                            current_total = self._numeric_cell_value(total_cell.value)
+                            if current_total is not None:
+                                grid.at[total_row_label, column_label] = total_cell.model_copy(
+                                    update={
+                                        "value": self._format_total_value(current_total + delta)
+                                    }
+                                )
+            self._grid = None
+
     def _build_component_cell(
         self, *, column: Column, component: Component, row_id: str, name: str | None
     ) -> Cell:
@@ -1518,7 +1675,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             Cell(
                 column_id=col.column_id,
                 row_id=total_row.row_id,
-                value=str(sum(component.amount for component in components)),
+                value=self._format_total_value(sum(component.amount for component in components)),
                 calculation="="
                 + "+".join(f"{col.column_id}{row_id}" for row_id in ingredient_row_ids),
                 type=CellType.TOTAL,
@@ -1530,6 +1687,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ]
         if not rewrite_other_columns:
             return total_cells
+        product_grid = self.product_design.grid
+        total_row_label = f"{self.product_design.id}#{total_row.row_id}"
+        if total_row_label not in product_grid.index:
+            return total_cells
         for other_col in self.columns:
             if other_col.column_id in new_column_ids or other_col.type != CellType.INVENTORY:
                 continue
@@ -1537,15 +1698,18 @@ class Sheet(BaseSessionResource):  # noqa:F811
             # endpoint answers 206. Skipping it keeps the new formulation in place.
             if other_col.locked:
                 continue
-            other_total_cell = next(
+            column_label = next(
                 (
-                    c
-                    for c in other_col.cells
-                    if isinstance(c, Cell) and c.row_id == total_row.row_id
+                    label
+                    for label in product_grid.columns
+                    if label.split("#", 1)[0] == other_col.column_id
                 ),
                 None,
             )
-            if other_total_cell is None:
+            if column_label is None:
+                continue
+            other_total_cell = product_grid.loc[total_row_label, column_label]
+            if not isinstance(other_total_cell, Cell):
                 continue
             new_calculation = "=" + "+".join(
                 f"{other_col.column_id}{rid}" for rid in ingredient_row_ids
@@ -1616,9 +1780,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
             payload.append(entry)
         response = self.session.post(endpoint, json=payload)
 
-        self.grid = None
-        new_dicts = self._reformat_formulation_addition_payload(response_json=response.json())
-        return [Column(**x) for x in new_dicts]
+        new_columns = [
+            Column(**x)
+            for x in self._reformat_formulation_addition_payload(response_json=response.json())
+        ]
+        self._register_new_columns(
+            columns=new_columns,
+            reference_id=starting_position["reference_id"],
+            position=starting_position["position"],
+        )
+        return new_columns
 
     def add_blank_row(
         self,
@@ -1812,9 +1983,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         response = self.session.post(endpoint, json=payload)
 
-        self.grid = None
         row_dict = response.json()
-        return Row(
+        new_row = Row(
             rowId=row_dict["rowId"],
             inventory_id=inventory_id,
             type=row_dict["type"],
@@ -1824,6 +1994,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
             name=row_dict["name"],
             manufacturer=row_dict["manufacturer"],
         )
+        self._register_new_rows(
+            rows=[new_row],
+            reference_id=position["reference_id"],
+            position=position["position"],
+        )
+        return new_row
 
     @validate_call
     def add_inventory_rows(
@@ -1897,11 +2073,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     )
                 )
 
-        # Rows arrived in an order the cached row list does not reflect; columns
-        # are unaffected by new rows, so only the row/grid caches are stale.
-        design._rows = None
-        design._grid = None
-        self._grid = None
+        # Rows arrived in an order the cached row list does not reflect; fold
+        # them into the cached Product Design state at the reference position.
+        self._register_new_rows(
+            rows=rows,
+            reference_id=position["reference_id"],
+            position=position["position"],
+        )
         return rows
 
     @validate_call
@@ -2473,6 +2651,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     for c in target_cells:
                         if c not in updated:
                             updated.append(c)
+                    self._apply_cells_to_cached_grids(cells=target_cells)
                 elif response.status_code == 206:
                     cell_results = self._filter_cells(
                         cells=target_cells, response_dict=response.json()
@@ -2480,6 +2659,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     for c in cell_results[0]:
                         if c not in updated:
                             updated.append(c)
+                    self._apply_cells_to_cached_grids(cells=cell_results[0])
                     for c in cell_results[1]:
                         if c not in failed:
                             failed.append(c)
@@ -2490,8 +2670,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
                 batch_index += 1
 
-        # reset the in-memory grid after updates
-        self.grid = None
         return (updated, failed)
 
     def _add_column(

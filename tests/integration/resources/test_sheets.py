@@ -172,6 +172,10 @@ def test_add_formulations_builds_columns_with_shared_rows(
     assert [column.name for column in columns] == [name_a, name_b]
     assert all(isinstance(column, Column) for column in columns)
 
+    # Read back fresh from the server rather than the in-memory cache.
+    seeded_sheet.grid = None
+    columns = [seeded_sheet.get_column(column_id=column.column_id) for column in columns]
+
     row_id_to_inv_id = {row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows}
     amounts_by_column = []
     for column in columns:
