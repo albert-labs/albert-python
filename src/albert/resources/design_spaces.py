@@ -54,8 +54,6 @@ class DesignSpaceViolationCode(StrEnum):
     """Machine-readable category of a design-space validation finding."""
 
     INFEASIBLE_DESIGN_SPACE = "infeasible_design_space"
-    CONFLICTING_CONSTRAINTS = "conflicting_constraints"
-    EMPTY_FEASIBLE_REGION = "empty_feasible_region"
     UNKNOWN_REFERENCE = "unknown_reference"
     INVALID_CONSTRAINT = "invalid_constraint"
     FEASIBILITY_INDETERMINATE = "feasibility_indeterminate"
