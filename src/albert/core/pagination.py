@@ -53,6 +53,7 @@ class AlbertPaginator(Iterator[ItemType]):
         method: Literal["GET", "POST"] = "GET",
         json: dict[str, Any] | None = None,
         max_items: int | None = None,
+        retry_safe: bool = False,
     ):
         """
         Initialize a paginator for Albert endpoints.
@@ -75,12 +76,17 @@ class AlbertPaginator(Iterator[ItemType]):
             JSON body for POST requests.
         max_items : int | None, optional
             Maximum number of items to yield.
+        retry_safe : bool, optional
+            Mark the operation as read-only and safe to retry on transient
+            failures regardless of ``method`` (default False). Set for searches
+            issued with ``method="POST"``.
         """
         self.path = path
         self.mode = mode
         self.session = session
         self.deserialize = deserialize
         self.max_items = max_items
+        self.retry_safe = retry_safe
         self.method = method.upper()
         self.params = params or {}
         self.json = json or {}
@@ -281,7 +287,9 @@ class AlbertPaginator(Iterator[ItemType]):
         if self.method == "GET":
             return self.session.get(self.path, params=self.params)
         payload = self._serialize_payload(self.json)
-        return self.session.request(self.method, self.path, params=self.params, json=payload)
+        return self.session.request(
+            self.method, self.path, params=self.params, json=payload, retry_safe=self.retry_safe
+        )
 
     def _serialize_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Serialize a JSON payload for a request."""

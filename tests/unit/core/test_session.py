@@ -9,7 +9,12 @@ import pytest
 import requests
 import responses
 
-from albert.core.session import DEFAULT_TIMEOUT, RETRYABLE_STATUSES, AlbertSession
+from albert.core.session import (
+    DEFAULT_TIMEOUT,
+    RETRYABLE_STATUSES,
+    AlbertSession,
+    _retry_safe_request,
+)
 from albert.core.shared.enums import OrderBy
 from albert.exceptions import (
     AlbertClientError,
@@ -409,6 +414,54 @@ def test_throttled_calls_are_retried_for_every_method(
     retry = session.get_adapter(UNIT_BASE_URL).max_retries
 
     assert retry.is_retry(method, status_code) is expected
+
+
+@pytest.mark.parametrize(
+    "method,status_code,expected",
+    [
+        ("POST", 403, True),
+        ("POST", 500, True),
+        ("PATCH", 502, True),
+        ("POST", 503, True),
+        ("PATCH", 504, True),
+        ("POST", 400, False),
+        ("POST", 404, False),
+    ],
+)
+def test_retry_safe_calls_are_retried_on_forcelist_statuses_for_any_method(
+    method: str, status_code: int, expected: bool
+):
+    """Test that retry-safe calls retry every forcelist status for any method."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    retry = session.get_adapter(UNIT_BASE_URL).max_retries
+
+    marker = _retry_safe_request.set(True)
+    try:
+        assert retry.is_retry(method, status_code) is expected
+    finally:
+        _retry_safe_request.reset(marker)
+
+
+def test_retry_safe_marker_set_only_during_marked_request(monkeypatch: pytest.MonkeyPatch):
+    """Test that retry_safe=True marks the call as retry-safe only for its duration."""
+    observed = []
+
+    def fake_send(self, request, **kwargs):
+        observed.append(_retry_safe_request.get(False))
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b"{}"
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    session.post("/api/v3/x/search", retry_safe=True)
+    session.post("/api/v3/x")
+
+    assert observed == [True, False]
+    assert _retry_safe_request.get(False) is False
 
 
 def test_custom_retries_configures_adapter():

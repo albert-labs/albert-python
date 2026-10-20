@@ -1,3 +1,4 @@
+import contextvars
 import json
 from collections.abc import Mapping
 from enum import Enum
@@ -18,18 +19,31 @@ DEFAULT_TIMEOUT = (10, 300)
 RETRYABLE_STATUSES = (403, 429, 500, 502, 503, 504)
 """Statuses retried with exponential backoff."""
 
+_retry_safe_request: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "retry_safe_request", default=False
+)
+"""Set for the duration of a call opted in to retries regardless of method."""
+
 
 class _AlbertRetry(Retry):
-    """Retry policy that retries throttled calls for every HTTP method.
+    """Retry policy that retries throttled and retry-safe calls for every HTTP method.
 
     urllib3's default policy retries only idempotent methods. A throttled call
     (status 429) is safe to retry for any method because the server rejected it
-    before processing, so 429 is retried for all methods while other statuses
-    keep the default idempotent-only behavior.
+    before processing, so 429 is retried for all methods. Calls marked retry-safe
+    (read-only operations issued with a non-idempotent method, such as searches)
+    retry every ``status_forcelist`` status. All other calls keep the default
+    idempotent-only behavior.
     """
 
     def is_retry(self, method: str, status_code: int, has_retry_after: bool = False) -> bool:
         if status_code == 429:
+            return True
+        if (
+            _retry_safe_request.get(False)
+            and self.status_forcelist
+            and status_code in self.status_forcelist
+        ):
             return True
         return super().is_retry(method, status_code, has_retry_after)
 
@@ -50,8 +64,9 @@ class AlbertSession(requests.Session):
     retries : int, optional
         The number of automatic retries on failed or throttled calls (default is 3).
         Throttled calls are retried for every method; transient server errors are
-        retried for idempotent methods only. A ``Retry-After`` hint from the server
-        is honored.
+        retried for idempotent methods only, unless the call is marked retry-safe
+        (read-only operations such as searches). A ``Retry-After`` hint from the
+        server is honored.
     timeout : float | tuple[float, float], optional
         Default timeout in seconds applied to every call. Accepts a single
         float (applied to both connect and read) or a ``(connect, read)`` tuple.
@@ -117,7 +132,9 @@ class AlbertSession(requests.Session):
             return self._auth_manager.get_access_token()
         return self._provided_token
 
-    def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
+    def request(
+        self, method: str, path: str, *args, retry_safe: bool = False, **kwargs
+    ) -> requests.Response:
         # Send auth via per-request headers: mutating self.headers is not safe when
         # the session is shared across threads. Applied last so neither a
         # per-request header nor a session default can displace it.
@@ -133,10 +150,14 @@ class AlbertSession(requests.Session):
             qs = urlencode(params, doseq=True, quote_via=quote)
             full_url = f"{full_url}?{qs}"
 
-        with handle_http_errors():
-            response = super().request(method, full_url, *args, **kwargs)
-            response.raise_for_status()
-            return response
+        marker = _retry_safe_request.set(retry_safe)
+        try:
+            with handle_http_errors():
+                response = super().request(method, full_url, *args, **kwargs)
+                response.raise_for_status()
+                return response
+        finally:
+            _retry_safe_request.reset(marker)
 
     def _encode_query_params(self, params: dict) -> dict:
         """Encode and clean up query parameters for the request."""
