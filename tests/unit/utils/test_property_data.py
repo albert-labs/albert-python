@@ -34,6 +34,7 @@ from albert.utils.property_data import (
     _safe_eval_math,
     _setpoint_display_value,
     build_interval_setpoint_map,
+    ensure_unique_task_property_targets,
     evaluate_calculation,
     flatten_task_property_data,
     form_calculated_task_property_patches,
@@ -213,6 +214,39 @@ def test_resolve_return_scope_none_returns_empty_list():
     )
 
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# ensure_unique_task_property_targets
+# ---------------------------------------------------------------------------
+
+
+def _task_prop(**kwargs) -> TaskPropertyCreate:
+    kwargs.setdefault("data_column", TaskDataColumn(data_column_id="DAC1", column_sequence="1"))
+    kwargs.setdefault("value", "1")
+    return TaskPropertyCreate(**kwargs)
+
+
+def test_ensure_unique_task_property_targets_rejects_values_defaulting_to_trial_one():
+    """Test that two values for one column with no trial number are rejected."""
+    with pytest.raises(ValueError, match="visible_trial_number=1"):
+        ensure_unique_task_property_targets(
+            properties=[_task_prop(value="1"), _task_prop(value="2")]
+        )
+
+
+@pytest.mark.parametrize(
+    "second",
+    [
+        _task_prop(visible_trial_number=2),
+        _task_prop(interval_combination="ROW2"),
+        _task_prop(data_column=TaskDataColumn(data_column_id="DAC2", column_sequence="2")),
+        _task_prop(data_column=TaskDataColumn(data_column_id="DAC1", column_sequence="3")),
+    ],
+)
+def test_ensure_unique_task_property_targets_accepts_distinct_targets(second):
+    """Test that values differing in trial, interval or column are accepted."""
+    ensure_unique_task_property_targets(properties=[_task_prop(), second])
 
 
 # ---------------------------------------------------------------------------
