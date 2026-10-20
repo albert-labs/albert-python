@@ -43,6 +43,13 @@ def test_list_by_parent_id(client: Albert, seeded_notebooks: list[Notebook]):
     assert nb.name == retrieved_nb.name
 
 
+def test_list_by_parent_id_max_items(client: Albert, seeded_notebooks: list[Notebook]):
+    """Test that max_items caps the number of notebooks returned."""
+    nb = seeded_notebooks[0]
+    retrieved = client.notebooks.list_by_parent_id(parent_id=nb.parent_id, max_items=1)
+    assert len(retrieved) == 1
+
+
 def test_update(client: Albert, seeded_notebook: Notebook):
     notebook = seeded_notebook.model_copy()
 
