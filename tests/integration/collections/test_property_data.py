@@ -1043,3 +1043,25 @@ def test_image_upload_onto_partially_filled_trial(
         for dc_id in dc_ids:
             with suppress(NotFoundError):
                 client.data_columns.delete(id=dc_id)
+
+
+def test_bulk_add_properties_to_inventory(
+    client: Albert,
+    seeded_inventory: list,
+    seeded_data_columns: list,
+):
+    """Test that several custom properties are registered on one item together."""
+    inv = seeded_inventory[1]
+    data_columns = [
+        InventoryDataColumn(data_column_id=seeded_data_columns[0].id, value="55.5"),
+        InventoryDataColumn(data_column_id=seeded_data_columns[1].id, value="66.6"),
+    ]
+    r = client.property_data.bulk_add_properties_to_inventory(
+        inventory_id=inv.id, properties=data_columns
+    )
+    assert len(r) == 2
+    assert all(entry.inventory_id == inv.id for entry in r)
+    assert {entry.data_columns[0].data_column_id for entry in r} == {
+        seeded_data_columns[0].id,
+        seeded_data_columns[1].id,
+    }

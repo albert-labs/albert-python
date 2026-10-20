@@ -25,7 +25,7 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.shared.models.patch import PatchOperation
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertException, NotFoundError
+from albert.exceptions import AlbertException, AlbertPartialError, NotFoundError
 from albert.resources.property_data import (
     BulkPropertyData,
     CheckPropertyData,
@@ -118,6 +118,8 @@ class PropertyDataCollection(BaseCollection):
         Get all property data attached to an inventory item (not Specs/Attributes).
     add_properties_to_inventory(inventory_id, properties) -> list[InventoryPropertyDataCreate]
         Add custom property-data values directly to an inventory item.
+    bulk_add_properties_to_inventory(inventory_id, properties) -> list[InventoryPropertyDataCreate]
+        Add multiple custom property-data values to an inventory item together.
     update_property_on_inventory(inventory_id, property_data) -> InventoryPropertyData
         Update a property-data value on an inventory item.
     get_task_block_properties(inventory_id, task_id, block_id, lot_id=None) -> TaskPropertyData
@@ -260,6 +262,104 @@ class PropertyDataCollection(BaseCollection):
             response_json = response.json()
             logger.info(response_json.get("message", None))
             returned.append(InventoryPropertyDataCreate(**response_json))
+        return returned
+
+    @staticmethod
+    def _generate_custom_bulk_add_payload(
+        *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
+    ) -> dict:
+        """Assemble the body for registering several custom properties on one item."""
+        return {
+            "parentId": inventory_id,
+            "Data": [
+                {
+                    "operation": "add",
+                    "DataColumn": [
+                        {
+                            "id": prop.data_column_id,
+                            **({"value": prop.value} if prop.value is not None else {}),
+                        }
+                    ],
+                }
+                for prop in properties
+            ],
+        }
+
+    @validate_call
+    def bulk_add_properties_to_inventory(
+        self, *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
+    ) -> list[InventoryPropertyDataCreate]:
+        """Add multiple custom property-data values to an inventory item together.
+
+        Same outcome as calling
+        [`add_properties_to_inventory`][albert.collections.property_data.PropertyDataCollection.add_properties_to_inventory]
+        once per property, but all properties are registered together and a
+        failure for one column does not stop the rest.
+
+        !!! example
+            ```python
+            from albert.resources.property_data import InventoryDataColumn
+            props = client.property_data.bulk_add_properties_to_inventory(
+                inventory_id="INVA9999999",
+                properties=[
+                    InventoryDataColumn(data_column_id="DAC9999999", value="1.2"),
+                    InventoryDataColumn(data_column_id="DAC9999998", value="3.4"),
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The inventory item to add properties to (format ``INV...``).
+        properties : list[InventoryDataColumn]
+            The properties to add. Each pairs a data column with a value.
+
+        Returns
+        -------
+        list[InventoryPropertyDataCreate]
+            The registered properties.
+
+        Raises
+        ------
+        AlbertPartialError
+            If only some properties were registered. The error carries the
+            registered (``created_items``) and rejected (``failed_items``)
+            entries.
+
+        Notes
+        -----
+        Adding is create-only: if the item already has a value for a data
+        column, that column is rejected. To change an existing value, use
+        [`update_property_on_inventory`][albert.collections.property_data.PropertyDataCollection.update_property_on_inventory].
+        """
+        if not properties:
+            return []
+        payload = self._generate_custom_bulk_add_payload(
+            inventory_id=inventory_id, properties=properties
+        )
+        response = self.session.post(f"{self.base_path}/custom/bulk", json=payload)
+        if response.status_code == 206:
+            data = response.json()
+            raise AlbertPartialError(
+                "Partial success adding properties to inventory: "
+                f"{len(data.get('FailedItems') or [])} item(s) failed.",
+                created_items=data.get("SuccessItems") or [],
+                failed_items=data.get("FailedItems") or [],
+            )
+        returned = []
+        for entry in response.json():
+            column = (entry.get("DataColumn") or [{}])[0]
+            returned.append(
+                InventoryPropertyDataCreate(
+                    inventory_id=inventory_id,
+                    data_columns=[
+                        InventoryDataColumn(
+                            data_column_id=column.get("id"), value=column.get("value")
+                        )
+                    ],
+                )
+            )
         return returned
 
     @validate_call
