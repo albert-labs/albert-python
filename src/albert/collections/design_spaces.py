@@ -168,8 +168,8 @@ class DesignSpaceCollection(BaseCollection):
             Free-text description of the space's intent.
         smart_dataset_id : SmartDatasetId, optional
             Smart dataset (format ``SDT...``) whose contents seed the first draft. Omit
-            for an empty draft. The dataset must be ready: a dataset that is still
-            building or failed raises a 422 error, and one that does not exist a 404.
+            for an empty draft. The dataset must be ready: one that is still building or
+            failed is rejected, and one that does not exist is not found.
 
         Returns
         -------
@@ -327,7 +327,7 @@ class DesignSpaceCollection(BaseCollection):
         is rejected for any action, and ``mustInclude`` with a ``max`` of 0 is rejected.
         Changing ``min`` or ``max`` of an excluded ingredient with an
         ``UpdateComponentOperation`` is also rejected; change its action first. Both
-        changes can go in one request, since operations apply in order.
+        changes can be applied together, since operations apply in order.
 
         !!! example
             ```python

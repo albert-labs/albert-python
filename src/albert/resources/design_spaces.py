@@ -237,7 +237,7 @@ class DesignSpaceViolation(BaseAlbertModel):
     """Component paths (``<collection>/<key>``) the finding is attributed to."""
 
     op_index: int | None = Field(default=None, alias="opIndex")
-    """Position in the request's ``operations`` of the operation behind the finding.
+    """Position, in the ``operations`` passed to ``apply``, of the operation behind the finding.
 
     Set on findings from [`apply`][albert.collections.design_spaces.DesignSpaceCollection.apply];
     ``None`` when the finding is not tied to an operation.
