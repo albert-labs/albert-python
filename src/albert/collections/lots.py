@@ -20,11 +20,34 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.utils import ensure_list
+from albert.exceptions import AlbertPartialError
 from albert.resources.inventory import InventoryCategory
 from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentAction, LotSearchItem
 
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
+
+# Maximum items per bulk update call, from the BulkPatch schema (maxItems 300)
+# in api-lot's Lot.yaml.
+_BULK_UPDATE_MAX_ITEMS = 300
+
+# Maximum IDs per delete call; api-lot rejects more than 5 IDs per call
+# (lib-deletevalidator).
+_DELETE_MAX_IDS = 5
+
+# Attributes the bulk lot route applies (api-lot bulkMove.js). update() supports
+# more fields; anything outside this set must go through single-lot update.
+_BULK_UPDATABLE_ATTRIBUTES = frozenset(
+    {
+        "storageLocation",
+        "inventoryOnHand",
+        "parentId",
+        "status",
+        "expirationDate",
+        "taskCompletionDate",
+        "cost",
+    }
+)
 
 
 class LotCollection(BaseCollection):
@@ -84,8 +107,12 @@ class LotCollection(BaseCollection):
         Move some or all of a lot's quantity to another storage location.
     update(lot) -> Lot
         Update an existing lot.
+    update_many(lots, notes) -> list[Lot]
+        Update multiple lots, for the subset of fields listed in its Notes.
     delete(id) -> None
         Delete a lot by its ID.
+    delete_many(ids) -> None
+        Delete multiple lots by their IDs.
     """
 
     _api_version = "v3"
@@ -316,6 +343,37 @@ class LotCollection(BaseCollection):
         """
         url = f"{self.base_path}?id={id}"
         self.session.delete(url)
+
+    @validate_call
+    def delete_many(self, *, ids: list[LotId]) -> None:
+        """Delete multiple lots by their IDs.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            client.lots.delete_many(ids=["LOTA1", "LOTA2"])
+            ```
+
+        Parameters
+        ----------
+        ids : list[LotId]
+            The Lot IDs to delete (format ``LOT...``).
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Deletion is limited to five lots at a time; longer lists are handled in
+        groups of five. If one group fails, later groups are not attempted and
+        earlier deletions are not rolled back.
+        """
+        if not ids:
+            return
+        for i in range(0, len(ids), _DELETE_MAX_IDS):
+            self.session.delete(self.base_path, params={"id": ids[i : i + _DELETE_MAX_IDS]})
 
     @validate_call
     def search(
@@ -937,3 +995,106 @@ class LotCollection(BaseCollection):
             self.session.patch(url, json=patch_data.model_dump(mode="json", by_alias=True))
 
         return self.get_by_id(id=lot.id)
+
+    def _generate_bulk_update_item(
+        self, *, existing: Lot, updated: Lot, notes: str
+    ) -> dict | None:
+        """Build one entry for a bulk lot update, or None when nothing changed.
+
+        Raises ValueError when the diff touches fields the bulk route cannot apply,
+        so those changes are never silently dropped.
+        """
+        patch_data = self._generate_lots_patch_payload(existing=existing, updated=updated)
+        if not patch_data.data:
+            return None
+        unsupported = sorted({d.attribute for d in patch_data.data} - _BULK_UPDATABLE_ATTRIBUTES)
+        if unsupported:
+            raise ValueError(
+                f"Lot {updated.id}: update_many cannot apply changes to "
+                f"{', '.join(unsupported)}; use update() for those fields instead."
+            )
+        return {
+            "id": updated.id,
+            "notes": notes,
+            "data": [d.model_dump(mode="json", by_alias=True) for d in patch_data.data],
+        }
+
+    @validate_call
+    def update_many(self, *, lots: list[Lot], notes: str = "Bulk update") -> list[Lot]:
+        """Update multiple lots.
+
+        Same per-field semantics as [`update`][albert.collections.lots.LotCollection.update],
+        but the current state of all lots is fetched up front and unchanged lots
+        are skipped, so updating N lots does not need N individual reads. Only the
+        fields listed in Notes can be changed this way.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            lots = client.lots.get_by_ids(ids=["LOTA1", "LOTA2"])
+            for lot in lots:
+                lot.cost = 42.0
+            updated = client.lots.update_many(lots=lots)
+            ```
+
+        Parameters
+        ----------
+        lots : list[Lot]
+            The lots carrying the desired changes. Each ``id`` identifies the lot
+            to update.
+        notes : str, optional
+            A note recorded against each changed lot. Defaults to "Bulk update".
+
+        Returns
+        -------
+        list[Lot]
+            The refreshed lots. Order is not guaranteed to match the input list.
+
+        Raises
+        ------
+        AlbertPartialError
+            If only some changes were applied. The error carries the applied
+            (``created_items``) and rejected (``failed_items``) entries.
+        NotFoundError
+            If a lot ID does not exist.
+        ValueError
+            If a lot carries changes to fields that update_many cannot apply;
+            update those lots one at a time with
+            [`update`][albert.collections.lots.LotCollection.update] instead.
+
+        Notes
+        -----
+        The following fields can be updated: ``cost``, ``expiration_date``,
+        ``inventory_on_hand``, ``status``, ``storage_location``. For any other
+        field, use [`update`][albert.collections.lots.LotCollection.update].
+        If an error occurs partway through, earlier changes are not rolled back.
+        """
+        if not lots:
+            return []
+        ids = [lot.id for lot in lots]
+        existing_by_id = {lot.id: lot for lot in self.get_by_ids(ids=ids)}
+        items = []
+        for lot in lots:
+            existing_lot = existing_by_id.get(lot.id)
+            if existing_lot is None:
+                # Raises NotFoundError, matching update() on an unknown ID.
+                existing_lot = self.get_by_id(id=lot.id)
+            entry = self._generate_bulk_update_item(
+                existing=existing_lot, updated=lot, notes=notes
+            )
+            if entry is not None:
+                items.append(entry)
+        for i in range(0, len(items), _BULK_UPDATE_MAX_ITEMS):
+            response = self.session.patch(
+                self.base_path, json=items[i : i + _BULK_UPDATE_MAX_ITEMS]
+            )
+            if response.status_code == 206:
+                data = response.json()
+                raise AlbertPartialError(
+                    "Lot bulk update partially succeeded: "
+                    f"{len(data.get('FailedItems') or [])} item(s) failed.",
+                    created_items=data.get("UpdatedItems") or [],
+                    failed_items=data.get("FailedItems") or [],
+                )
+        return self.get_by_ids(ids=ids)

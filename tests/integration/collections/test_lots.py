@@ -491,3 +491,59 @@ def test_update_volume_lot_rejects_readonly_volume_fields(client: Albert, seeded
                 ]
             },
         )
+
+
+def test_update_many(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+    seeded_locations,
+):
+    """Test that update_many applies supported field changes to several lots."""
+    lots = client.lots.create(
+        lots=generate_lot_seeds(
+            seeded_inventory=seeded_inventory,
+            seeded_storage_locations=seeded_storage_locations,
+            seeded_locations=seeded_locations,
+        )[:2]
+    )
+    try:
+        for lot in lots:
+            lot.cost = 42.0
+        updated = client.lots.update_many(lots=lots, notes="integration test")
+        assert len(updated) == len(lots)
+        assert all(lot.cost == 42.0 for lot in updated)
+    finally:
+        for lot in lots:
+            with suppress(NotFoundError):
+                client.lots.delete(id=lot.id)
+
+
+def test_update_many_rejects_unsupported_field(
+    client: Albert,
+    seeded_lot: Lot,
+):
+    """Test that update_many raises instead of silently dropping unsupported changes."""
+    lot = seeded_lot.model_copy()
+    lot.manufacturer_lot_number = f"MLN-{uuid4().hex[:6]}"
+    with pytest.raises(ValueError, match="manufacturerLotNumber"):
+        client.lots.update_many(lots=[lot])
+
+
+def test_delete_many(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+    seeded_locations,
+):
+    """Test that delete_many removes several lots at once."""
+    lots = client.lots.create(
+        lots=generate_lot_seeds(
+            seeded_inventory=seeded_inventory,
+            seeded_storage_locations=seeded_storage_locations,
+            seeded_locations=seeded_locations,
+        )[:2]
+    )
+    ids = [lot.id for lot in lots]
+    client.lots.delete_many(ids=ids)
+    assert client.lots.get_by_ids(ids=ids) == []

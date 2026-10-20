@@ -384,3 +384,48 @@ def test_inventory_id_search_variants_list_flattens() -> None:
 def test_inventory_id_search_variants_unprefixed_not_duplicated() -> None:
     """Test that an ID already lacking the prefix is returned once."""
     assert LotCollection._inventory_id_search_variants("A1") == ["A1"]
+
+
+# --- bulk update entry builder ---
+
+
+def test_bulk_update_item_skips_unchanged_lot(offline_session) -> None:
+    """Test that an unchanged lot produces no bulk update entry."""
+    entry = LotCollection(session=offline_session)._generate_bulk_update_item(
+        existing=_lot(), updated=_lot(), notes="n"
+    )
+
+    assert entry is None
+
+
+def test_bulk_update_item_builds_supported_change(offline_session) -> None:
+    """Test that a supported field change produces an id/notes/data entry."""
+    entry = LotCollection(session=offline_session)._generate_bulk_update_item(
+        existing=_lot(cost=1.0), updated=_lot(cost=2.0), notes="price fix"
+    )
+
+    assert entry["id"] == "LOT1"
+    assert entry["notes"] == "price fix"
+    assert len(entry["data"]) == 1
+    assert entry["data"][0]["attribute"] == "cost"
+    assert entry["data"][0]["operation"] == PatchOperation.UPDATE
+
+
+def test_bulk_update_item_rejects_unsupported_field(offline_session) -> None:
+    """Test that a field the bulk route cannot apply raises instead of being dropped."""
+    with pytest.raises(ValueError, match="manufacturerLotNumber"):
+        LotCollection(session=offline_session)._generate_bulk_update_item(
+            existing=_lot(manufacturer_lot_number="MLN-1"),
+            updated=_lot(manufacturer_lot_number="MLN-2"),
+            notes="n",
+        )
+
+
+def test_bulk_update_item_rejects_metadata_change(offline_session) -> None:
+    """Test that metadata changes raise instead of being silently ignored."""
+    with pytest.raises(ValueError, match="Metadata"):
+        LotCollection(session=offline_session)._generate_bulk_update_item(
+            existing=_lot(metadata={}),
+            updated=_lot(metadata={"key": [{"id": "LST1"}]}),
+            notes="n",
+        )
