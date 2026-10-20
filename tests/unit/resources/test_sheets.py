@@ -1072,6 +1072,14 @@ def test_add_formulations_batches_row_creation_and_defers_totals(offline_session
     assert cached[("ROW1", "COL6")] == "100"
     assert cached[("ROW1", "COL1")] == "10"
 
+    # New ingredient rows land above the Total row in first-referenced order.
+    assert [row.row_id for row in sheet.product_design.rows] == [
+        "ROW3",
+        "ROW4",
+        "ROW1",
+        "ROW2",
+    ]
+
     assert {f.id for f in sheet.formulations} >= {"INVFA", "INVFB"}
 
 

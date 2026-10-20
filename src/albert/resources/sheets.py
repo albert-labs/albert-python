@@ -1151,6 +1151,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Formula inventory item
         ([`InventoryItem`][albert.resources.inventory.InventoryItem]).
 
+        New ingredient rows are created in the order ingredients are first
+        referenced across the list, and existing rows are reused, keeping the
+        sheet compact. There is no ``enforce_order`` option here: with rows
+        shared between formulations, a single row order cannot follow every
+        formulation's component order. Use
+        [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] with
+        ``enforce_order=True`` when one formulation needs its exact component
+        order on the sheet.
+
         !!! example
             ```python
             from albert.resources.sheets import Component, FormulationSpec
