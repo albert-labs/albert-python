@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.64.1](https://github.com/albert-labs/albert-python/compare/v1.64.0...v1.64.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **ci:** unbreak docs deploy and publish lambda layers on release ([#852](https://github.com/albert-labs/albert-python/issues/852)) ([098927e](https://github.com/albert-labs/albert-python/commit/098927e8058280ed485a8bec62e6c17a1f3e6b3a))
+* **sheets:** populate inventory_id on added formulation columns ([#860](https://github.com/albert-labs/albert-python/issues/860)) ([8df45e8](https://github.com/albert-labs/albert-python/commit/8df45e8a2c38bc54c439315c5aebe6980aa5983e))
+
 ## [1.64.0](https://github.com/albert-labs/albert-python/compare/v1.63.0...v1.64.0) (2026-10-16)
 
 
