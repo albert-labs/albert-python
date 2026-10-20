@@ -402,10 +402,11 @@ class DesignSpaceCollection(BaseCollection):
     ) -> DesignSpaceValidationResponse:
         """Check whether a design space can produce valid formulations.
 
-        Feasibility needs no dataset; pass ``smart_dataset_id`` and/or
-        ``design_model_config_id`` to additionally check the space against that
-        context. ``valid=False`` with populated ``violations`` is a normal result, not
-        an exception. A solver timeout is reported as the ``feasibility_indeterminate``
+        Feasibility needs no dataset. ``smart_dataset_id`` and ``design_model_config_id``
+        are accepted for checking the space against that context, but that check is not
+        applied yet: today the result reflects the space's own feasibility only.
+        ``valid=False`` with populated ``violations`` is a normal result, not an
+        exception. A solver timeout is reported as the ``feasibility_indeterminate``
         violation, meaning the answer is unknown rather than infeasible.
 
         !!! example
@@ -421,9 +422,11 @@ class DesignSpaceCollection(BaseCollection):
         id : DesignSpaceId
             The design space ID (format ``DSP...``).
         smart_dataset_id : SmartDatasetId, optional
-            Also check the space against this smart dataset (format ``SDT...``).
+            Smart dataset (format ``SDT...``) to check the space against. Accepted, but
+            not applied yet.
         design_model_config_id : str, optional
-            Also check the space against this design model config.
+            Design model config to check the space against. Accepted, but not applied
+            yet.
 
         Returns
         -------

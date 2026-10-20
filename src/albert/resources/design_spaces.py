@@ -454,10 +454,10 @@ class DesignSpaceValidationRequest(BaseAlbertModel):
     model_config = ConfigDict(extra="forbid")
 
     smart_dataset_id: SmartDatasetId | None = Field(default=None, alias="smartDatasetId")
-    """Also check the space against this smart dataset (format ``SDT...``)."""
+    """Smart dataset (format ``SDT...``) to check the space against; not applied yet."""
 
     design_model_config_id: str | None = Field(default=None, alias="designModelConfigId")
-    """Also check the space against this design model config."""
+    """Design model config to check the space against; not applied yet."""
 
 
 class DesignSpaceSampleRequest(BaseAlbertModel):
