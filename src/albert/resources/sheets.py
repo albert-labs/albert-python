@@ -23,6 +23,20 @@ CellAttributeValue = str | float | int | dict[str, Any] | list[Any] | None
 # The worksheet row-creation schema caps one call at 24 rows (PostWSRows maxItems).
 _MAX_ROWS_PER_CREATE_CALL = 24
 
+# Column creation registers one Formula inventory item per column, serially,
+# inside the worksheet service (postSheetColumns.js); the service's
+# troubleshooting guide directs smaller sets per call to avoid timeouts.
+_MAX_COLUMNS_PER_CREATE_CALL = 25
+
+# The value-update schema allows 1000 entries per call (worksheet.yaml Values
+# maxItems); the service's maintenance guide sets the operational guardrail at
+# 200 per call to bound per-call formula-usage checks.
+_MAX_CELLS_PER_VALUE_UPDATE = 200
+
+# Marks "no baseline supplied" separately from a None baseline (a cell that is
+# genuinely new to the grid) so callers can hand in batch-resolved baselines.
+_CURRENT_CELL_UNSET: Any = object()
+
 
 class CellChangeId(TypedDict):
     """Internal identifier (row ID and column ID) locating a cell in a change payload."""
@@ -1018,6 +1032,18 @@ class Sheet(BaseSessionResource):  # noqa:F811
         [`add_formulations`][albert.resources.sheets.Sheet.add_formulations], which is
         substantially faster for bulk loads.
 
+        !!! warning "Concurrent use"
+            Do not run this method concurrently with other writes to the same
+            sheet, whether from threads, processes, or separate machines. The
+            platform coordinates each sheet's structure through shared records
+            that reject simultaneous updates, so concurrent writers to one
+            sheet can fail partway, sometimes with errors that incorrectly
+            report duplicate names. Concurrent use across different sheets is
+            safe, because each sheet is processed independently. To load many
+            formulations, prefer one
+            [`add_formulations`][albert.resources.sheets.Sheet.add_formulations]
+            call over many concurrent ``add_formulation`` calls.
+
         !!! example
             ```python
             from albert import Albert
@@ -1788,6 +1814,18 @@ class Sheet(BaseSessionResource):  # noqa:F811
         To build a formulation and fill in its components in one step, use
         [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] instead.
 
+        A sheet holds at most 100 columns. Duplicate names can be rejected by
+        the platform, so keep names unique within a sheet.
+
+        !!! warning "Concurrent use"
+            Do not run this method concurrently with other writes to the same
+            sheet, whether from threads, processes, or separate machines. The
+            platform coordinates each sheet's structure through shared records
+            that reject simultaneous updates, so concurrent writers to one
+            sheet can fail partway, sometimes with errors that incorrectly
+            report duplicate names. Concurrent use across different sheets is
+            safe, because each sheet is processed independently.
+
         !!! example
             ```python
             columns = sheet.add_formulation_columns(
@@ -1826,27 +1864,36 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "position": ColumnPosition.RIGHT_OF.value,
             }
 
-        payload = []
-        for formulation_name in formulation_names:
-            entry = {
-                "type": "INV",
-                "name": formulation_name,
-                "referenceId": starting_position["reference_id"],
-                "position": starting_position["position"],
-            }
-            payload.append(entry)
-        response = self.session.post(endpoint, json=payload)
+        created: list[Column] = []
+        reference_id = starting_position["reference_id"]
+        position = starting_position["position"]
+        for i in range(0, len(formulation_names), _MAX_COLUMNS_PER_CREATE_CALL):
+            batch = formulation_names[i : i + _MAX_COLUMNS_PER_CREATE_CALL]
+            payload = [
+                {
+                    "type": "INV",
+                    "name": formulation_name,
+                    "referenceId": reference_id,
+                    "position": position,
+                }
+                for formulation_name in batch
+            ]
+            response = self.session.post(endpoint, json=payload)
 
-        new_columns = [
-            Column(**x)
-            for x in self._reformat_formulation_addition_payload(response_json=response.json())
-        ]
-        self._register_new_columns(
-            columns=new_columns,
-            reference_id=starting_position["reference_id"],
-            position=starting_position["position"],
-        )
-        return new_columns
+            new_columns = [
+                Column(**x)
+                for x in self._reformat_formulation_addition_payload(response_json=response.json())
+            ]
+            self._register_new_columns(
+                columns=new_columns,
+                reference_id=reference_id,
+                position=position,
+            )
+            created.extend(new_columns)
+            if new_columns and position == ColumnPosition.RIGHT_OF.value:
+                # Keep the next group right of this one so requested order holds.
+                reference_id = new_columns[-1].column_id
+        return created
 
     def add_blank_row(
         self,
@@ -2071,6 +2118,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
         formulation column. The ``INV`` prefix is added to each ``inventory_id``
         if absent. All rows in the list are placed relative to the same
         reference row.
+
+        !!! warning "Concurrent use"
+            Do not run this method concurrently with other writes to the same
+            sheet, whether from threads, processes, or separate machines. The
+            platform coordinates each sheet's structure through shared records
+            that reject simultaneous updates, so concurrent writers to one
+            sheet can fail partway, sometimes with errors that incorrectly
+            report duplicate names. Concurrent use across different sheets is
+            safe, because each sheet is processed independently.
 
         !!! example
             ```python
@@ -2462,33 +2518,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         failed = [c for c in cells if (c.row_id, c.column_id) in failed_keys]
         return (updated, failed)
 
-    def _get_current_cell(self, *, cell: Cell) -> Cell:
-        def _matches_column(column_label: str) -> bool:
-            col_parts = column_label.split("#", 1)
-            return col_parts[0] == cell.column_id
-
-        def _matches_row(index_label: str) -> bool:
-            row_parts = index_label.split("#", 2)
-            if len(row_parts) < 2:
-                return False
-            return row_parts[0] == cell.design_id and row_parts[1] == cell.row_id
-
-        # Load only the grid of the design being patched, not all sheet designs.
-        design = next((d for d in self.designs if d.id == cell.design_id), None)
+    def _grid_cells_by_coordinate(self, *, design_id: str) -> dict[tuple[str, str], Cell]:
+        """Map ``(row_id, column_id)`` to the current grid cell for one design."""
+        design = next((d for d in self.designs if d.id == design_id), None)
         if design is None:
-            return None
-        grid = design.grid
+            return {}
+        return {
+            (value.row_id, value.column_id): value
+            for value in design.grid.to_numpy().ravel()
+            if isinstance(value, Cell)
+        }
 
-        filtered_columns = [col for col in grid.columns if _matches_column(col)]
-        filtered_rows = [idx for idx in grid.index if _matches_row(idx)]
-
-        for row in filtered_rows:
-            for col in filtered_columns:
-                # grid.loc may return numpy.NaN for missing cells
-                value = grid.loc[row, col]
-                if isinstance(value, Cell):
-                    return value
-        return None
+    def _get_current_cell(self, *, cell: Cell) -> Cell:
+        current_cells = self._grid_cells_by_coordinate(design_id=cell.design_id)
+        return current_cells.get((cell.row_id, cell.column_id))
 
     def _generate_attribute_change(
         self,
@@ -2520,8 +2563,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
             new_value=new_value,
         )
 
-    def _get_cell_changes(self, *, cell: Cell) -> CellChangePayload | None:
-        current_cell = self._get_current_cell(cell=cell)
+    def _get_cell_changes(
+        self, *, cell: Cell, current_cell: Cell | None = _CURRENT_CELL_UNSET
+    ) -> CellChangePayload | None:
+        if current_cell is _CURRENT_CELL_UNSET:
+            current_cell = self._get_current_cell(cell=cell)
         if current_cell is None:
             # New cell not yet in grid; blank baseline generates "add" operations.
             current_cell = Cell(
@@ -2613,6 +2659,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         such as [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] and [`recolor_cells`][albert.resources.sheets.Column.recolor_cells] call this
         for you; use it directly when editing cells obtained from the grid.
 
+        Edits of any size are accepted; large edits are split to stay within
+        platform limits. If the same sheet is being written elsewhere
+        concurrently, some edits can fail and come back in ``failed``; read the
+        sheet again and retry those.
+
         !!! example
             ```python
             from albert.resources.sheets import CellColor
@@ -2638,6 +2689,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         request_path_dict: dict[str, list[Cell]] = {}
         updated: list[Cell] = []
         failed: list[Cell] = []
+        updated_keys: set[tuple[str, str, str]] = set()
+        failed_keys: set[tuple[str, str, str]] = set()
         # sort by design ID
         for c in cells:
             if c.design_id not in request_path_dict:
@@ -2646,24 +2699,25 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 request_path_dict[c.design_id].append(c)
 
         for design_id, cell_list in request_path_dict.items():
+            # Diff every cell against one snapshot of this design's grid rather
+            # than rescanning the grid per cell.
+            current_cells = self._grid_cells_by_coordinate(design_id=design_id)
             payload_entries: list[tuple[CellChangePayload, Cell]] = []
             for cell in cell_list:
-                change_dict = self._get_cell_changes(cell=cell)
+                change_dict = self._get_cell_changes(
+                    cell=cell, current_cell=current_cells.get((cell.row_id, cell.column_id))
+                )
                 if change_dict is None:
                     continue
 
-                is_calculation_cell = cell.calculation is not None and cell.calculation != ""
-                max_items = 2 if is_calculation_cell else 1
-
-                if len(change_dict["data"]) > max_items:
-                    for item in change_dict["data"]:
-                        single_change: CellChangePayload = {
-                            "Id": change_dict["Id"],
-                            "data": [item],
-                        }
-                        payload_entries.append((single_change, cell))
-                else:
-                    payload_entries.append((change_dict, cell))
+                # The value-update schema allows at most 2 data changes per
+                # entry (worksheet.yaml Values data maxItems).
+                for i in range(0, len(change_dict["data"]), 2):
+                    single_change: CellChangePayload = {
+                        "Id": change_dict["Id"],
+                        "data": change_dict["data"][i : i + 2],
+                    }
+                    payload_entries.append((single_change, cell))
 
             if not payload_entries:
                 continue
@@ -2699,36 +2753,47 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 if not batch_payloads:
                     break
 
-                payload_body = [
-                    {
-                        "Id": payload["Id"],
-                        "data": [datum.model_dump(by_alias=True) for datum in payload["data"]],
-                    }
-                    for payload in batch_payloads
-                ]
-                response = self.session.patch(this_url, json=payload_body)
-                target_cells = _unique_cells(batch_cells)
+                for start in range(0, len(batch_payloads), _MAX_CELLS_PER_VALUE_UPDATE):
+                    chunk_payloads = batch_payloads[start : start + _MAX_CELLS_PER_VALUE_UPDATE]
+                    chunk_cells = batch_cells[start : start + _MAX_CELLS_PER_VALUE_UPDATE]
+                    payload_body = [
+                        {
+                            "Id": payload["Id"],
+                            "data": [datum.model_dump(by_alias=True) for datum in payload["data"]],
+                        }
+                        for payload in chunk_payloads
+                    ]
+                    response = self.session.patch(this_url, json=payload_body)
+                    target_cells = _unique_cells(chunk_cells)
 
-                if response.status_code == 204:
-                    for c in target_cells:
-                        if c not in updated:
-                            updated.append(c)
-                    self._apply_cells_to_cached_grids(cells=target_cells)
-                elif response.status_code == 206:
-                    cell_results = self._filter_cells(
-                        cells=target_cells, response_dict=response.json()
-                    )
-                    for c in cell_results[0]:
-                        if c not in updated:
-                            updated.append(c)
-                    self._apply_cells_to_cached_grids(cells=cell_results[0])
-                    for c in cell_results[1]:
-                        if c not in failed:
-                            failed.append(c)
-                else:
-                    for c in target_cells:
-                        if c not in failed:
-                            failed.append(c)
+                    if response.status_code == 204:
+                        for c in target_cells:
+                            key = (c.design_id, c.row_id, c.column_id)
+                            if key not in updated_keys:
+                                updated_keys.add(key)
+                                updated.append(c)
+                        self._apply_cells_to_cached_grids(cells=target_cells)
+                    elif response.status_code == 206:
+                        cell_results = self._filter_cells(
+                            cells=target_cells, response_dict=response.json()
+                        )
+                        for c in cell_results[0]:
+                            key = (c.design_id, c.row_id, c.column_id)
+                            if key not in updated_keys:
+                                updated_keys.add(key)
+                                updated.append(c)
+                        self._apply_cells_to_cached_grids(cells=cell_results[0])
+                        for c in cell_results[1]:
+                            key = (c.design_id, c.row_id, c.column_id)
+                            if key not in failed_keys:
+                                failed_keys.add(key)
+                                failed.append(c)
+                    else:
+                        for c in target_cells:
+                            key = (c.design_id, c.row_id, c.column_id)
+                            if key not in failed_keys:
+                                failed_keys.add(key)
+                                failed.append(c)
 
                 batch_index += 1
 
