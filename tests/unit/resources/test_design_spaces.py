@@ -189,6 +189,29 @@ def test_parameter_entry_constraint_discriminates_on_type(constraint, expected_t
     assert isinstance(entry.constraint, expected_type)
 
 
+@pytest.mark.parametrize(
+    "ref",
+    [
+        {"parameterId": "PRM1", "dataTemplateId": "DAT1"},
+        {"parameterId": "PRM1", "parameterGroupId": "PRG1", "unitId": "UNI1"},
+    ],
+)
+def test_parameter_ref_parses_without_the_absent_nullable_ids(ref):
+    """Test that a parameter ref with its unused container and unit keys left out parses."""
+    entry = ParameterEntry.model_validate(
+        {
+            "ref": ref,
+            "dataType": "numeric",
+            "constraint": {"type": "continuous", "min": 1.0, "max": 2.0},
+        }
+    )
+
+    assert entry.ref.parameter_id == "PRM1"
+    assert entry.ref.data_template_id == ref.get("dataTemplateId")
+    assert entry.ref.parameter_group_id == ref.get("parameterGroupId")
+    assert entry.ref.unit_id == ref.get("unitId")
+
+
 def test_ingredient_entry_rejects_a_fraction_outside_zero_to_one():
     """Test that a fraction bound outside [0, 1] fails validation."""
     with pytest.raises(ValidationError):

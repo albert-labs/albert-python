@@ -133,15 +133,15 @@ class ParameterRef(BaseAlbertModel):
     parameter_id: ParameterId = Field(alias="parameterId")
     """The parameter (format ``PRM...``)."""
 
-    data_template_id: DataTemplateId | None = Field(alias="dataTemplateId")
+    data_template_id: DataTemplateId | None = Field(default=None, alias="dataTemplateId")
     """The data template (format ``DAT...``) the parameter belongs to. Exactly one of
     ``data_template_id`` / ``parameter_group_id`` is set."""
 
-    parameter_group_id: ParameterGroupId | None = Field(alias="parameterGroupId")
+    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
     """The parameter group (format ``PRG...``) the parameter belongs to. Exactly one of
     ``data_template_id`` / ``parameter_group_id`` is set."""
 
-    unit_id: UnitId | None = Field(alias="unitId")
+    unit_id: UnitId | None = Field(default=None, alias="unitId")
     """The unit (format ``UNI...``) the parameter is expressed in; ``None`` when the
     parameter is unit-less."""
 
