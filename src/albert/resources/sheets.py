@@ -1501,6 +1501,25 @@ class Sheet(BaseSessionResource):  # noqa:F811
         except (TypeError, ValueError):
             return None
 
+    def _render_inventory_cell_for_cache(self, *, cell: Cell) -> Cell:
+        """Render a written inventory cell the way the sheet stores it.
+
+        Amounts come back from the sheet as numbers (integral amounts render
+        without a trailing ``.0``) and bounds at fixed precision, so cells held
+        in the cache are rendered identically rather than kept as written.
+        """
+        updates: dict[str, Any] = {}
+        if isinstance(cell.value, str) and cell.value != "":
+            numeric_value = self._numeric_cell_value(cell.value)
+            if numeric_value is not None:
+                updates["value"] = self._format_total_value(numeric_value)
+        for attribute, bound in (("min_value", cell.min_value), ("max_value", cell.max_value)):
+            if bound is not None:
+                numeric_bound = self._numeric_cell_value(bound)
+                if numeric_bound is not None:
+                    updates[attribute] = f"{numeric_bound:.9f}"
+        return cell.model_copy(update=updates) if updates else cell
+
     def _register_new_columns(
         self, *, columns: list[Column], reference_id: str | None, position: str
     ) -> None:
@@ -1597,6 +1616,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             total_row = next((r for r in (design._rows or []) if r.type == CellType.TOTAL), None)
             total_row_label = f"{design_id}#{total_row.row_id}" if total_row else None
             row_types = {row.row_id: row.type for row in design._rows or []}
+            column_types = {column.column_id: column.type for column in design._columns or []}
             for cell in design_cells:
                 column_label = column_labels.get(cell.column_id)
                 if column_label is None:
@@ -1608,6 +1628,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         break
                     column_label = f"{cell.column_id}#{fallback_label}"
                     column_labels[cell.column_id] = column_label
+                if cell.row_id not in row_types:
+                    # A row the cache does not know (e.g. a not-yet-materialized
+                    # process row) cannot be placed confidently.
+                    design._grid = None
+                    design._rows = None
+                    design._columns = None
+                    break
                 row_label = f"{design_id}#{cell.row_id}"
                 previous = None
                 if row_label in grid.index and column_label in grid.columns:
@@ -1630,6 +1657,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         cell_to_cache = cell.model_copy(
                             update={"row_type": row_types.get(cell.row_id)}
                         )
+                if (
+                    row_types.get(cell.row_id) == CellType.INVENTORY
+                    and column_types.get(cell.column_id) == CellType.INVENTORY
+                ):
+                    cell_to_cache = self._render_inventory_cell_for_cache(cell=cell_to_cache)
                 if column_label not in grid.columns:
                     grid[column_label] = None
                 if row_label not in grid.index:

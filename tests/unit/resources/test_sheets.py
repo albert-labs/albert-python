@@ -1174,10 +1174,10 @@ def test_add_formulations_batches_row_creation_and_defers_totals(offline_session
             cell = grid.at[row_label, col_label]
             if isinstance(cell, Cell):
                 cached[(cell.row_id, cell.column_id)] = cell.value
-    assert cached[("ROW2", "COL5")] == "70.0"
-    assert cached[("ROW3", "COL5")] == "30.0"
-    assert cached[("ROW2", "COL6")] == "55.0"
-    assert cached[("ROW4", "COL6")] == "45.0"
+    assert cached[("ROW2", "COL5")] == "70"
+    assert cached[("ROW3", "COL5")] == "30"
+    assert cached[("ROW2", "COL6")] == "55"
+    assert cached[("ROW4", "COL6")] == "45"
     assert cached[("ROW1", "COL5")] == "100"
     assert cached[("ROW1", "COL6")] == "100"
     assert cached[("ROW1", "COL1")] == "10"
@@ -1547,3 +1547,71 @@ def test_add_inventory_rows_registers_rows_in_the_cached_grid(offline_session):
     assert [row.row_id for row in sheet.product_design.rows] == ["ROW3", "ROW1", "ROW2"]
     assert list(sheet.product_design.grid.index) == ["DES1#ROW3", "DES1#ROW1", "DES1#ROW2"]
     assert len([c for c in responses.calls if c.request.method == "GET"]) == 1
+
+
+@responses.activate
+def test_update_cells_tracks_applied_values_as_the_next_baseline(offline_session):
+    """Test that a second write diffs against the applied value without a refetch."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
+    sheet.update_cells(cells=[cell.model_copy(update={"value": "25"})])
+    sheet.update_cells(cells=[cell.model_copy(update={"value": "40"})])
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    second_payload = json.loads(patches[1].request.body)
+    assert second_payload[0]["data"][0]["oldValue"] == "25"
+    assert second_payload[0]["data"][0]["newValue"] == "40"
+    cached_grid = sheet.product_design.grid
+    assert cached_grid.at["DES1#ROW2", "COL1#INVF0"].value == "40"
+    assert cached_grid.at["DES1#ROW1", "COL1#INVF0"].value == "40"
+    assert len([c for c in responses.calls if c.request.method == "GET"]) == 1
+
+
+@responses.activate
+def test_update_cells_caches_amounts_the_way_the_sheet_stores_them(offline_session):
+    """Test that written amounts render like a refetch: as numbers, not written strings."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
+    sheet.update_cells(
+        cells=[cell.model_copy(update={"value": "80.0", "min_value": "5.0", "max_value": "95.5"})]
+    )
+
+    cached = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
+    assert cached.value == "80"
+    assert cached.min_value == "5.000000000"
+    assert cached.max_value == "95.500000000"
+
+
+@responses.activate
+def test_update_cells_drops_the_cache_for_unknown_rows(offline_session):
+    """Test that a write to a row the cache does not know forces a fresh read."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    _register_products_grid()
+
+    _ = sheet.product_design.grid  # load the cache
+    updated, failed = sheet.update_cells(
+        cells=[
+            Cell(
+                colId="COL1",
+                rowId="ROW99",
+                value="5",
+                type=CellType.INVENTORY,
+                design_id="DES1",
+                row_type=CellType.INVENTORY,
+            )
+        ]
+    )
+
+    assert len(updated) == 1
+    assert failed == []
+    # The design's caches were dropped, so the next read fetched fresh state.
+    _ = sheet.product_design.grid
+    assert len([c for c in responses.calls if c.request.method == "GET"]) == 2
