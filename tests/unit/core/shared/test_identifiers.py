@@ -10,6 +10,7 @@ from albert.core.shared.identifiers import (
     ensure_block_id,
     ensure_data_column_id,
     ensure_datatemplate_id,
+    ensure_design_space_id,
     ensure_interval_id,
     ensure_inventory_id,
     ensure_lot_id,
@@ -40,6 +41,7 @@ from albert.resources.workflows import Interval, IntervalCombination
         (ensure_tag_id, "TAG", "", "TagId cannot be empty"),
         (ensure_data_column_id, "DAC", "", "DataColumnId cannot be empty"),
         (ensure_datatemplate_id, "DAT", "", "DataTemplateId cannot be empty"),
+        (ensure_design_space_id, "DSP", "", "DesignSpaceId cannot be empty"),
         (ensure_propertydata_id, "PTD", "", "PropertyDataId cannot be empty"),
         (ensure_block_id, "BLK", "", "BlockId cannot be empty"),
         (ensure_row_id, "ROW", "", "RowId cannot be empty"),
@@ -72,6 +74,15 @@ def test_ensure_id_functions(
         ensure_func("")
     with pytest.raises(ValueError, match=error_msg):
         ensure_func(None)
+
+
+def test_ensure_design_space_id_keeps_the_uuid_case():
+    uuid = "0b7e2c1a-4f3d-4c8e-9a51-2d6f8b9e1c47"
+    assert ensure_design_space_id(f"DSP{uuid}") == f"DSP{uuid}"
+    assert ensure_design_space_id(f"dsp{uuid}") == f"DSP{uuid}"
+    assert ensure_design_space_id(uuid) == f"DSP{uuid}"
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_design_space_id(f"INV{uuid}")
 
 
 def test_ensure_lot_id_display_format():
