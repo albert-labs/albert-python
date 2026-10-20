@@ -198,6 +198,43 @@ def test_add_formulations_builds_columns_with_shared_rows(
     assert len(rows_a & rows_b) == 1
 
 
+def test_add_formulations_enforce_order_follows_component_order(
+    seed_prefix: str,
+    seeded_sheet: Sheet,
+    seeded_inventory: list[InventoryItem],
+):
+    """Test that ordered bulk builds arrange ingredient rows in component order."""
+    first = seeded_inventory[1]
+    second = seeded_inventory[0]
+
+    columns = seeded_sheet.add_formulations(
+        enforce_order=True,
+        formulations=[
+            FormulationSpec(
+                name=f"{seed_prefix} - bulk ordered",
+                components=[
+                    Component(inventory_item=first, amount=60.0),
+                    Component(inventory_item=second, amount=40.0),
+                ],
+            )
+        ],
+    )
+    assert len(columns) == 1
+
+    # Read back fresh from the server rather than the in-memory cache.
+    seeded_sheet.grid = None
+    column = seeded_sheet.get_column(column_id=columns[0].column_id)
+
+    row_id_to_inv_id = {row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows}
+    row_order = [row.row_id for row in seeded_sheet.product_design.rows]
+    ordered_inventory = [
+        row_id_to_inv_id[cell.row_id]
+        for cell in sorted(_inventory_cells(column), key=lambda cell: row_order.index(cell.row_id))
+    ]
+    assert ordered_inventory == [first.id, second.id]
+    assert {float(cell.value) for cell in _inventory_cells(column)} == {60.0, 40.0}
+
+
 # Because you cannot delete Formulation Columns, We will need to mock this test.
 # def test_crud_formulation_column(sheet):
 #     new_col = sheet.add_formulation_columns(formulation_names=["my cool formulation"])[0]

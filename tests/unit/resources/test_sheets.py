@@ -1193,6 +1193,239 @@ def test_add_formulations_batches_row_creation_and_defers_totals(offline_session
     assert {f.id for f in sheet.formulations} >= {"INVFA", "INVFB"}
 
 
+# --- Sheet._plan_ordered_component_rows ---
+
+
+def test_plan_ordered_component_rows_fresh_sheet_creates_one_run_in_order():
+    """Test that a fresh sheet plans one anchored-at-default run in component order."""
+    assignments, runs, virtual_order = Sheet._plan_ordered_component_rows(
+        formulations_components=[
+            [
+                Component(inventory_id="INVA1", amount=1.0),
+                Component(inventory_id="INVA2", amount=2.0),
+                Component(inventory_id="INVA1", amount=3.0),
+            ]
+        ],
+        product_rows=[],
+    )
+
+    assert assignments == [["__new_0__", "__new_1__", "__new_2__"]]
+    assert runs == [
+        {
+            "anchor": None,
+            "inventory_ids": ["INVA1", "INVA2", "INVA1"],
+            "keys": ["__new_0__", "__new_1__", "__new_2__"],
+        }
+    ]
+    assert virtual_order == ["__new_0__", "__new_1__", "__new_2__"]
+
+
+def test_plan_ordered_component_rows_reuses_rows_already_in_order():
+    """Test that existing rows are reused when they already follow component order."""
+    sheet = _empty_sheet()
+    product_rows = [
+        Row(rowId="ROW1", type=CellType.TOTAL, design=sheet.product_design, sheet=sheet),
+        _inv_row(sheet, "ROW2", "INVA1"),
+        _inv_row(sheet, "ROW3", "INVA2"),
+    ]
+
+    assignments, runs, virtual_order = Sheet._plan_ordered_component_rows(
+        formulations_components=[
+            [
+                Component(inventory_id="INVA1", amount=1.0),
+                Component(inventory_id="INVA2", amount=2.0),
+            ]
+        ],
+        product_rows=product_rows,
+    )
+
+    assert assignments == [["ROW2", "ROW3"]]
+    assert runs == []
+    assert virtual_order == ["ROW1", "ROW2", "ROW3"]
+
+
+def test_plan_ordered_component_rows_duplicates_rows_that_are_too_early():
+    """Test that an ingredient whose row sits before the running position gets a new row."""
+    sheet = _empty_sheet()
+    product_rows = [
+        Row(rowId="ROW1", type=CellType.TOTAL, design=sheet.product_design, sheet=sheet),
+        _inv_row(sheet, "ROW2", "INVA2"),
+        _inv_row(sheet, "ROW3", "INVA1"),
+    ]
+
+    assignments, runs, virtual_order = Sheet._plan_ordered_component_rows(
+        formulations_components=[
+            [
+                Component(inventory_id="INVA1", amount=1.0),
+                Component(inventory_id="INVA2", amount=2.0),
+            ]
+        ],
+        product_rows=product_rows,
+    )
+
+    assert assignments == [["ROW3", "__new_0__"]]
+    assert runs == [{"anchor": "ROW3", "inventory_ids": ["INVA2"], "keys": ["__new_0__"]}]
+    assert virtual_order == ["ROW1", "ROW2", "ROW3", "__new_0__"]
+
+
+def test_plan_ordered_component_rows_starts_a_new_run_per_anchor():
+    """Test that creations anchored to different rows become separate runs."""
+    sheet = _empty_sheet()
+    product_rows = [
+        Row(rowId="ROW1", type=CellType.TOTAL, design=sheet.product_design, sheet=sheet),
+        _inv_row(sheet, "ROW2", "INVA1"),
+    ]
+
+    assignments, runs, virtual_order = Sheet._plan_ordered_component_rows(
+        formulations_components=[
+            [
+                Component(inventory_id="INVA1", amount=1.0),
+                Component(inventory_id="INVA2", amount=2.0),
+            ],
+            [
+                Component(inventory_id="INVA1", amount=3.0),
+                Component(inventory_id="INVA3", amount=4.0),
+            ],
+        ],
+        product_rows=product_rows,
+    )
+
+    assert assignments == [["ROW2", "__new_0__"], ["ROW2", "__new_1__"]]
+    assert runs == [
+        {"anchor": "ROW2", "inventory_ids": ["INVA2"], "keys": ["__new_0__"]},
+        {"anchor": "ROW2", "inventory_ids": ["INVA3"], "keys": ["__new_1__"]},
+    ]
+    assert virtual_order == ["ROW1", "ROW2", "__new_1__", "__new_0__"]
+
+
+@responses.activate
+def test_add_formulations_enforce_order_creates_runs_in_place(offline_session):
+    """Test ordered bulk creation places new rows below their anchor rows."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+        json=[
+            {
+                "name": "FA",
+                "type": "INV",
+                "id": "INVFA",
+                "Formulas": [{"colId": "COL5", "formulaId": "INVFA"}],
+            },
+            {
+                "name": "FB",
+                "type": "INV",
+                "id": "INVFB",
+                "Formulas": [{"colId": "COL6", "formulaId": "INVFB"}],
+            },
+        ],
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [
+                        {
+                            "colId": "COL1",
+                            "value": "10",
+                            "calculation": "=COL1ROW2+COL1ROW3",
+                            "id": "INVF0",
+                            "type": "INV",
+                        }
+                    ],
+                },
+                {
+                    "rowId": "ROW2",
+                    "rowUniqueId": "DES1#ROW2",
+                    "name": "Salt",
+                    "type": "INV",
+                    "id": "INVA1",
+                    "Values": [{"colId": "COL1", "value": "5", "id": "INVF0", "type": "INV"}],
+                },
+                {
+                    "rowId": "ROW3",
+                    "rowUniqueId": "DES1#ROW3",
+                    "name": "Ethanol",
+                    "type": "INV",
+                    "id": "INVA2",
+                    "Values": [{"colId": "COL1", "value": "5", "id": "INVF0", "type": "INV"}],
+                },
+            ],
+            "Formulas": [{"colId": "COL1", "name": "Existing", "state": {}}],
+        },
+    )
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {"rowId": "ROW9", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None}
+        ],
+    )
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {"rowId": "ROW10", "id": "INVA3", "type": "INV", "name": "Water", "manufacturer": None}
+        ],
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        enforce_order=True,
+        formulations=[
+            FormulationSpec(
+                name="FA",
+                components=[
+                    Component(inventory_id="INVA2", amount=50.0),
+                    Component(inventory_id="INVA1", amount=50.0),
+                ],
+            ),
+            FormulationSpec(
+                name="FB",
+                components=[
+                    Component(inventory_id="INVA1", amount=60.0),
+                    Component(inventory_id="INVA3", amount=40.0),
+                ],
+            ),
+        ],
+    )
+
+    assert [col.column_id for col in columns] == ["COL5", "COL6"]
+
+    rows_posts = [
+        c
+        for c in responses.calls
+        if c.request.method == "POST" and c.request.url.endswith("/rows")
+    ]
+    assert len(rows_posts) == 2
+    assert json.loads(rows_posts[0].request.body) == [
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW3", "position": "below"}
+    ]
+    assert json.loads(rows_posts[1].request.body) == [
+        {"type": "INV", "id": "INVA3", "referenceId": "ROW2", "position": "below"}
+    ]
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    ingredient_payload = json.loads(patches[0].request.body)
+    assert [(entry["Id"]["rowId"], entry["Id"]["colId"]) for entry in ingredient_payload] == [
+        ("ROW3", "COL5"),
+        ("ROW9", "COL5"),
+        ("ROW2", "COL6"),
+        ("ROW10", "COL6"),
+    ]
+
+    # The cached rows follow the planned order without a refetch.
+    assert [row.row_id for row in sheet.product_design.rows] == [
+        "ROW1",
+        "ROW2",
+        "ROW10",
+        "ROW3",
+        "ROW9",
+    ]
+
+
 @responses.activate
 def test_update_cells_applies_writes_to_the_cached_grid(offline_session):
     """Test that written values land in the cached grid without a refetch."""

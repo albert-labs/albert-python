@@ -1134,6 +1134,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self,
         *,
         formulations: list[FormulationSpec],
+        enforce_order: bool = False,
     ) -> list[Column]:
         """Build multiple formulations on this sheet in one operation.
 
@@ -1150,15 +1151,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ``clear=True``). Building a formulation this way is what registers a
         Formula inventory item
         ([`InventoryItem`][albert.resources.inventory.InventoryItem]).
-
-        New ingredient rows are created in the order ingredients are first
-        referenced across the list, and existing rows are reused, keeping the
-        sheet compact. There is no ``enforce_order`` option here: with rows
-        shared between formulations, a single row order cannot follow every
-        formulation's component order. Use
-        [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] with
-        ``enforce_order=True`` when one formulation needs its exact component
-        order on the sheet.
 
         !!! example
             ```python
@@ -1188,6 +1180,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
         formulations : list[FormulationSpec]
             The formulations to build, each pairing a column name with its
             components.
+        enforce_order : bool, optional
+            When True, each formulation's ingredient rows follow its component
+            order on the sheet: existing rows are reused where their position
+            allows, and new rows (including duplicates of an ingredient already
+            on the sheet) are added where it does not, matching
+            [`add_formulation`][albert.resources.sheets.Sheet.add_formulation]
+            with ``enforce_order=True``. When False (default), existing rows are
+            shared and new rows are created in first-referenced order, keeping
+            the sheet compact.
 
         Returns
         -------
@@ -1204,18 +1205,33 @@ class Sheet(BaseSessionResource):  # noqa:F811
         product_rows = list(self.product_design.rows)
         initial_row_ids = {row.row_id for row in product_rows}
 
-        rows_by_inventory_id = self._ensure_rows_for_components(
-            formulations_components=[spec.components for spec in formulations],
-            product_rows=product_rows,
-        )
+        if enforce_order:
+            assignments, runs, virtual_order = self._plan_ordered_component_rows(
+                formulations_components=[spec.components for spec in formulations],
+                product_rows=product_rows,
+            )
+            product_rows, resolved_rows = self._create_planned_rows(
+                runs=runs, product_rows=product_rows, virtual_order=virtual_order
+            )
+            row_ids_per_formulation = [
+                [resolved_rows[key].row_id for key in assignment] for assignment in assignments
+            ]
+        else:
+            rows_by_inventory_id = self._ensure_rows_for_components(
+                formulations_components=[spec.components for spec in formulations],
+                product_rows=product_rows,
+            )
+            row_ids_per_formulation = [
+                self._assign_component_rows(
+                    components=spec.components, rows_by_inventory_id=rows_by_inventory_id
+                )
+                for spec in formulations
+            ]
         new_row_ids = [row.row_id for row in product_rows if row.row_id not in initial_row_ids]
 
         ingredient_cells: list[Cell] = []
-        for col, spec in zip(created, formulations, strict=True):
-            component_row_ids = self._assign_component_rows(
-                components=spec.components, rows_by_inventory_id=rows_by_inventory_id
-            )
-            for component, row_id in zip(spec.components, component_row_ids, strict=True):
+        for col, spec, row_ids in zip(created, formulations, row_ids_per_formulation, strict=True):
+            for component, row_id in zip(spec.components, row_ids, strict=True):
                 ingredient_cells.append(
                     self._build_component_cell(
                         column=col,
@@ -1467,6 +1483,89 @@ class Sheet(BaseSessionResource):  # noqa:F811
             row_ids.append(pool[index])
             used[inv_id] = index + 1
         return row_ids
+
+    @staticmethod
+    def _plan_ordered_component_rows(
+        *, formulations_components: list[list[Component]], product_rows: list[Row]
+    ) -> tuple[list[list[str]], list[dict], list[str]]:
+        """Row assignments and a batched row-creation plan in component order.
+
+        Mirrors the row placement of ``add_formulation(..., enforce_order=True)``:
+        each component reuses the first unused row for its inventory ID positioned
+        at or after the formulation's running position, and a new row is planned
+        directly after that position when no qualifying row exists. Returns, per
+        formulation, the row key for each component (real row IDs, or ``__new__``
+        placeholders for rows to create), the creation runs to execute in order
+        (each a contiguous block inserted below one anchor row), and the resulting
+        virtual row order.
+        """
+        virtual_rows = [(row.row_id, row.inventory_id) for row in product_rows]
+        assignments: list[list[str]] = []
+        runs: list[dict] = []
+        creation_count = 0
+        for components in formulations_components:
+            used_row_ids: list[str] = []
+            assignment: list[str] = []
+            for component in components:
+                inv_id = component.inventory_item_id
+                existing_inv_order = [key for key, inv in virtual_rows if inv is not None]
+                index_last_row = 0
+                for used in used_row_ids:
+                    if used in existing_inv_order:
+                        used_index = existing_inv_order.index(used)
+                        if used_index > index_last_row:
+                            index_last_row = used_index
+                chosen = None
+                for key, inv in virtual_rows:
+                    if inv != inv_id or key in used_row_ids:
+                        continue
+                    if existing_inv_order.index(key) >= index_last_row:
+                        chosen = key
+                        break
+                if chosen is None:
+                    chosen = f"__new_{creation_count}__"
+                    creation_count += 1
+                    anchor = existing_inv_order[index_last_row] if existing_inv_order else None
+                    if runs and anchor is not None and runs[-1]["keys"][-1] == anchor:
+                        runs[-1]["inventory_ids"].append(inv_id)
+                        runs[-1]["keys"].append(chosen)
+                    else:
+                        runs.append(
+                            {"anchor": anchor, "inventory_ids": [inv_id], "keys": [chosen]}
+                        )
+                    if anchor is None:
+                        virtual_rows.append((chosen, inv_id))
+                    else:
+                        anchor_index = next(
+                            i for i, (key, _) in enumerate(virtual_rows) if key == anchor
+                        )
+                        virtual_rows.insert(anchor_index + 1, (chosen, inv_id))
+                used_row_ids.append(chosen)
+                assignment.append(chosen)
+            assignments.append(assignment)
+        return assignments, runs, [key for key, _ in virtual_rows]
+
+    def _create_planned_rows(
+        self, *, runs: list[dict], product_rows: list[Row], virtual_order: list[str]
+    ) -> tuple[list[Row], dict[str, Row]]:
+        """Create the planned rows run by run and map every row key to its Row.
+
+        Each run shares one anchor row, so it is created with one call (chained
+        in 24-row chunks to preserve order). Returns the product rows in the
+        planned order and the resolution of every row key, including ``__new__``
+        placeholders.
+        """
+        key_to_row: dict[str, Row] = {row.row_id: row for row in product_rows}
+        for run in runs:
+            position = None
+            if run["anchor"] is not None:
+                position = {"reference_id": key_to_row[run["anchor"]].row_id, "position": "below"}
+            created_rows = self.add_inventory_rows(
+                inventory_ids=run["inventory_ids"], position=position
+            )
+            for key, row in zip(run["keys"], created_rows, strict=True):
+                key_to_row[key] = row
+        return [key_to_row[key] for key in virtual_order], key_to_row
 
     @staticmethod
     def _format_total_value(value: float) -> str:
@@ -2051,13 +2150,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
         endpoint = f"/api/v3/worksheet/design/{design.id}/rows"
 
         rows: list[Row] = []
+        reference_id = position["reference_id"]
         for i in range(0, len(inventory_ids), _MAX_ROWS_PER_CREATE_CALL):
             batch = inventory_ids[i : i + _MAX_ROWS_PER_CREATE_CALL]
             payload = [
                 {
                     "type": "INV",
                     "id": inv_id if inv_id.startswith("INV") else f"INV{inv_id}",
-                    "referenceId": position["reference_id"],
+                    "referenceId": reference_id,
                     "position": position["position"],
                 }
                 for inv_id in batch
@@ -2065,22 +2165,26 @@ class Sheet(BaseSessionResource):  # noqa:F811
             response = self.session.post(endpoint, json=payload)
             data = response.json()
             items = data if isinstance(data, list) else [data]
-            for item, sent in zip(items, payload, strict=True):
-                raw_id = item.get("id")
-                rows.append(
-                    Row(
-                        rowId=item["rowId"],
-                        inventory_id=(raw_id if str(raw_id).startswith("INV") else f"INV{raw_id}")
-                        if raw_id
-                        else sent["id"],
-                        type=item["type"],
-                        session=self.session,
-                        design=design,
-                        sheet=self,
-                        name=item.get("name"),
-                        manufacturer=item.get("manufacturer"),
-                    )
+            chunk_rows = [
+                Row(
+                    rowId=item["rowId"],
+                    inventory_id=(raw_id if str(raw_id).startswith("INV") else f"INV{raw_id}")
+                    if (raw_id := item.get("id"))
+                    else sent["id"],
+                    type=item["type"],
+                    session=self.session,
+                    design=design,
+                    sheet=self,
+                    name=item.get("name"),
+                    manufacturer=item.get("manufacturer"),
                 )
+                for item, sent in zip(items, payload, strict=True)
+            ]
+            rows.extend(chunk_rows)
+            # With "below" placement, each chunk must anchor to the previous
+            # chunk's last row, or later chunks would land ahead of earlier ones.
+            if chunk_rows and position["position"] == RowPosition.BELOW.value:
+                reference_id = chunk_rows[-1].row_id
 
         # Rows arrived in an order the cached row list does not reflect; fold
         # them into the cached Product Design state at the reference position.
