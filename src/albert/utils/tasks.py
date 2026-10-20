@@ -518,21 +518,23 @@ def generate_adv_patch_payload(
                 if key not in existing_unique
             ]
 
-            if inv_to_remove:
-                base_payload.data.append(
-                    {
-                        "operation": PatchOperation.DELETE,
-                        "attribute": "inventory",
-                        "oldValue": inv_to_remove,
-                    }
-                )
-
+            # Add before removing: a task must always keep at least one inventory item,
+            # so replacing the only item fails if the removal is applied first.
             if inv_to_add:
                 base_payload.data.append(
                     {
                         "operation": PatchOperation.ADD,
                         "attribute": "inventory",
                         "newValue": inv_to_add,
+                    }
+                )
+
+            if inv_to_remove:
+                base_payload.data.append(
+                    {
+                        "operation": PatchOperation.DELETE,
+                        "attribute": "inventory",
+                        "oldValue": inv_to_remove,
                     }
                 )
 
