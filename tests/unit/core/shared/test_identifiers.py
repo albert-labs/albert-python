@@ -76,6 +76,15 @@ def test_ensure_id_functions(
         ensure_func(None)
 
 
+def test_ensure_design_space_id_keeps_the_uuid_case():
+    uuid = "0b7e2c1a-4f3d-4c8e-9a51-2d6f8b9e1c47"
+    assert ensure_design_space_id(f"DSP{uuid}") == f"DSP{uuid}"
+    assert ensure_design_space_id(f"dsp{uuid}") == f"DSP{uuid}"
+    assert ensure_design_space_id(uuid) == f"DSP{uuid}"
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_design_space_id(f"INV{uuid}")
+
+
 def test_ensure_lot_id_display_format():
     # Test non-batch display format: {lot_number}-{lot_id} → LOT{lot_id}
     assert ensure_lot_id("100000-3") == "LOT3"

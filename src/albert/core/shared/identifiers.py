@@ -284,7 +284,9 @@ PropertyDataId = Annotated[str, AfterValidator(ensure_propertydata_id)]
 
 
 def ensure_design_space_id(id: str) -> str:
-    return _ensure_albert_id(id, "DesignSpaceId")
+    # Ids are DSP + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
+    _ensure_albert_id(id, "DesignSpaceId")
+    return f"DSP{id[3:]}" if id[:3].upper() == "DSP" else f"DSP{id}"
 
 
 DesignSpaceId = Annotated[str, AfterValidator(ensure_design_space_id)]
