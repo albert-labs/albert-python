@@ -116,7 +116,9 @@ class IngredientEntry(BaseAlbertModel):
 
     action: IngredientAction
     """``mustInclude`` pins the ingredient into every formulation, ``mayInclude`` leaves
-    it optional, and ``exclude`` bans it (bounds are then ignored)."""
+    it optional, and ``exclude`` bans it. An excluded ingredient keeps its ``min`` and
+    ``max``, but they are not applied while it is excluded; they apply again once the
+    action changes back to ``mayInclude`` or ``mustInclude``."""
 
     min: float | None = Field(default=None, ge=0, le=1)
     """Fraction lower bound (0 to 1)."""

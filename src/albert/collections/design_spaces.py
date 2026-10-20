@@ -323,6 +323,12 @@ class DesignSpaceCollection(BaseCollection):
         - [`UpdateComponentOperation`][albert.resources.design_spaces.UpdateComponentOperation]:
           change one field of a component in place.
 
+        Ingredient bounds are checked as they are applied: ``min`` greater than ``max``
+        is rejected for any action, and ``mustInclude`` with a ``max`` of 0 is rejected.
+        Changing ``min`` or ``max`` of an excluded ingredient with an
+        ``UpdateComponentOperation`` is also rejected; change its action first. Both
+        changes can go in one request, since operations apply in order.
+
         !!! example
             ```python
             from albert.resources.design_spaces import IngredientEntry, SetIngredientOperation
@@ -364,8 +370,8 @@ class DesignSpaceCollection(BaseCollection):
         Raises
         ------
         AlbertClientError
-            An operation could not apply (unknown reference, invalid constraint, or a
-            conflicting edit), or the space is published.
+            An operation could not apply (unknown reference, invalid constraint,
+            invalid ingredient bounds, or a conflicting edit), or the space is published.
         AlbertHTTPError
             Other failures.
         """
