@@ -12,6 +12,27 @@ from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import AlbertSSOClient
 from albert.exceptions import handle_http_errors
 
+DEFAULT_TIMEOUT = (10, 300)
+"""Default (connect, read) timeout in seconds applied to every call."""
+
+RETRYABLE_STATUSES = (403, 429, 500, 502, 503, 504)
+"""Statuses retried with exponential backoff."""
+
+
+class _AlbertRetry(Retry):
+    """Retry policy that retries throttled calls for every HTTP method.
+
+    urllib3's default policy retries only idempotent methods. A throttled call
+    (status 429) is safe to retry for any method because the server rejected it
+    before processing, so 429 is retried for all methods while other statuses
+    keep the default idempotent-only behavior.
+    """
+
+    def is_retry(self, method: str, status_code: int, has_retry_after: bool = False) -> bool:
+        if status_code == 429:
+            return True
+        return super().is_retry(method, status_code, has_retry_after)
+
 
 class AlbertSession(requests.Session):
     """
@@ -27,13 +48,15 @@ class AlbertSession(requests.Session):
         An authentication manager used to dynamically fetch and refresh tokens.
         If provided, it overrides `token`.
     retries : int, optional
-        The number of automatic retries on failed requests (default is 3).
+        The number of automatic retries on failed or throttled calls (default is 3).
+        Throttled calls are retried for every method; transient server errors are
+        retried for idempotent methods only. A ``Retry-After`` hint from the server
+        is honored.
     timeout : float | tuple[float, float], optional
-        Default timeout in seconds applied to every request. Accepts a single
+        Default timeout in seconds applied to every call. Accepts a single
         float (applied to both connect and read) or a ``(connect, read)`` tuple.
-        When ``None`` (the default), requests have no timeout and can block
-        indefinitely. A per-call ``timeout`` passed to a request always takes
-        precedence.
+        Defaults to ``DEFAULT_TIMEOUT`` (10 s connect, 300 s read). Pass ``None``
+        for no timeout. A per-call ``timeout`` always takes precedence.
     headers : Mapping[str, str], optional
         Extra headers applied to every request made through this session, for
         example a caller-supplied correlation or audit header. Merged over the
@@ -51,7 +74,7 @@ class AlbertSession(requests.Session):
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
     ):
         super().__init__()
@@ -75,12 +98,12 @@ class AlbertSession(requests.Session):
 
         # Set up retry logic
         retries = retries if retries is not None else 3
-        retry = Retry(
+        retry = _AlbertRetry(
             total=retries,
             read=retries,
             connect=retries,
             backoff_factor=0.3,
-            status_forcelist=(500, 502, 503, 504, 403),
+            status_forcelist=RETRYABLE_STATUSES,
             raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry)

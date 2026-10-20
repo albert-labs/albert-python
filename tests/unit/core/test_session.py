@@ -9,7 +9,7 @@ import pytest
 import requests
 import responses
 
-from albert.core.session import AlbertSession
+from albert.core.session import DEFAULT_TIMEOUT, RETRYABLE_STATUSES, AlbertSession
 from albert.core.shared.enums import OrderBy
 from albert.exceptions import (
     AlbertClientError,
@@ -252,8 +252,8 @@ def test_caller_supplied_authorization_header_cannot_override():
 # --- timeout passthrough -------------------------------------------------------
 
 
-def test_default_timeout_is_none_when_not_configured(monkeypatch: pytest.MonkeyPatch):
-    """Test that requests have no timeout by default (kwargs.setdefault with None)."""
+def test_default_timeout_applied_when_not_configured(monkeypatch: pytest.MonkeyPatch):
+    """Test that the session default timeout applies when no timeout is configured."""
     captured = {}
 
     def fake_send(self, request, **kwargs):
@@ -266,6 +266,26 @@ def test_default_timeout_is_none_when_not_configured(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(requests.Session, "send", fake_send)
     session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    session.get("/api/v3/x")
+
+    assert captured["timeout"] == DEFAULT_TIMEOUT
+
+
+def test_timeout_none_disables_timeout(monkeypatch: pytest.MonkeyPatch):
+    """Test that passing timeout=None explicitly leaves calls without a timeout."""
+    captured = {}
+
+    def fake_send(self, request, **kwargs):
+        captured.update(kwargs)
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b"{}"
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t", timeout=None)
 
     session.get("/api/v3/x")
 
@@ -362,8 +382,33 @@ def test_default_retry_configuration_on_adapter():
     assert retry.read == 3
     assert retry.connect == 3
     assert retry.backoff_factor == 0.3
-    assert retry.status_forcelist == (500, 502, 503, 504, 403)
+    assert retry.status_forcelist == RETRYABLE_STATUSES
     assert retry.raise_on_status is False
+
+
+@pytest.mark.parametrize(
+    "method,status_code,expected",
+    [
+        ("GET", 429, True),
+        ("POST", 429, True),
+        ("PATCH", 429, True),
+        ("DELETE", 429, True),
+        ("GET", 500, True),
+        ("PUT", 503, True),
+        ("POST", 500, False),
+        ("PATCH", 503, False),
+        ("POST", 400, False),
+        ("GET", 400, False),
+    ],
+)
+def test_throttled_calls_are_retried_for_every_method(
+    method: str, status_code: int, expected: bool
+):
+    """Test that 429 is retryable for all methods while 5xx stays idempotent-only."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    retry = session.get_adapter(UNIT_BASE_URL).max_retries
+
+    assert retry.is_retry(method, status_code) is expected
 
 
 def test_custom_retries_configures_adapter():
