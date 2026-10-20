@@ -72,6 +72,7 @@ class UserCollection(BaseCollection):
 
     _api_version = "v3"
     _updatable_attributes = {"name", "status", "email", "metadata"}
+    _non_updatable_attributes = frozenset({"location", "roles", "user_class", "witnesser"})
 
     def __init__(self, *, session: AlbertSession):
         """Initialize a UserCollection.
@@ -401,8 +402,9 @@ class UserCollection(BaseCollection):
         """Update an existing user.
 
         Fetch the user (e.g. via [`get_by_id`][albert.collections.users.UserCollection.get_by_id]), modify the updatable
-        fields, then pass it here. Only the fields listed in Notes are applied;
-        changes to other fields are ignored.
+        fields, then pass it here. Only the fields listed in Notes are applied.
+        Changing ``location``, ``roles``, ``user_class`` or ``witnesser`` raises an
+        error instead of being ignored.
 
         !!! example
             ```python
@@ -422,6 +424,12 @@ class UserCollection(BaseCollection):
         -------
         User
             The updated user.
+
+        Raises
+        ------
+        AlbertException
+            If ``location``, ``roles``, ``user_class`` or ``witnesser`` differs from
+            the current value. These fields cannot be changed with this method.
 
         Notes
         -----

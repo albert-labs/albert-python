@@ -1,9 +1,12 @@
 from typing import Any
 
+from pydantic import BaseModel
+
 from albert.core.session import AlbertSession
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
+from albert.exceptions import AlbertException
 
 
 class BaseCollection:
@@ -26,8 +29,48 @@ class BaseCollection:
     # the set rather than mutating it in place.
     _non_deletable_attributes: set[str] = set()
 
+    # Fields that update() cannot change. When the caller sets one of these to a value
+    # that differs from the current one, update() raises instead of dropping the change
+    # without notice. Opt-in per collection: a generic check over every field would
+    # flag read-only values (audit stamps, server-normalized links) that callers carry
+    # along unchanged. Treat as immutable: subclasses replace the set.
+    _non_updatable_attributes: frozenset[str] = frozenset()
+
     def __init__(self, *, session: AlbertSession):
         self.session = session
+
+    @staticmethod
+    def _comparable_value(value: Any) -> Any:
+        """Reduce a field value to a form that ignores server-side normalization.
+
+        Linked entities compare by ID, lists compare without regard to order, and
+        ``None`` and empty containers compare equal.
+        """
+        if value is None or value == [] or value == {}:
+            return None
+        if isinstance(value, BaseModel):
+            entity_id = getattr(value, "id", None)
+            return entity_id if entity_id is not None else value.model_dump(mode="json")
+        if isinstance(value, list | tuple):
+            return sorted((BaseCollection._comparable_value(item) for item in value), key=repr)
+        return value
+
+    def _raise_on_non_updatable_changes(
+        self, *, existing: BaseResource, updated: BaseResource
+    ) -> None:
+        """Raise if the caller changed a field listed in ``_non_updatable_attributes``."""
+        changed = sorted(
+            attribute
+            for attribute in self._non_updatable_attributes
+            if attribute in updated.model_fields_set
+            and self._comparable_value(getattr(updated, attribute, None))
+            != self._comparable_value(getattr(existing, attribute, None))
+        )
+        if changed:
+            raise AlbertException(
+                f"{type(updated).__name__} field(s) {', '.join(changed)} cannot be changed "
+                "with update(). Leave them unset or at their current value."
+            )
 
     def _metadata_list_patch_value(self, links: list[EntityLink], *, as_list: bool = False) -> Any:
         """Serialize list metadata for PATCH. Override in subclasses when needed.
@@ -188,6 +231,7 @@ class BaseCollection:
 
         This is overriden for some clases with more compex patch formation.
         """
+        self._raise_on_non_updatable_changes(existing=existing, updated=updated)
         data = []
         for attribute in self._updatable_attributes:
             old_value = getattr(existing, attribute, None)

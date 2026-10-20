@@ -14,7 +14,7 @@ import pytest
 import responses
 
 from albert.collections.inventory import InventoryCollection
-from albert.exceptions import AlbertPartialError
+from albert.exceptions import AlbertException, AlbertPartialError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
@@ -34,6 +34,32 @@ def _item(**kwargs) -> InventoryItem:
 
 def _collection(offline_session) -> InventoryCollection:
     return InventoryCollection(session=offline_session)
+
+
+# --- symbols cannot be updated ---
+
+
+def test_changed_symbols_raise(offline_session) -> None:
+    """Test that changing symbols raises instead of being dropped."""
+    existing = _item(symbols=[{"id": "SYM1"}])
+    updated = _item(symbols=[{"id": "SYM2"}])
+
+    with pytest.raises(AlbertException, match="symbols"):
+        _collection(offline_session)._generate_inventory_patch_payload(
+            existing=existing, updated=updated
+        )
+
+
+def test_unchanged_symbols_in_any_order_emit_no_op(offline_session) -> None:
+    """Test that symbols carried along unchanged, in any order, do not raise."""
+    existing = _item(symbols=[{"id": "SYM1"}, {"id": "SYM2"}])
+    updated = _item(symbols=[{"id": "SYM2"}, {"id": "SYM1"}])
+
+    payload = _collection(offline_session)._generate_inventory_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload["data"] == []
 
 
 # --- base scalar attributes pass through _generate_patch_payload unmodified ---
