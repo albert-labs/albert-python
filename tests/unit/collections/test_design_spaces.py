@@ -1,11 +1,13 @@
 """Unit tests for the design-spaces collection: request shapes and cursor pagination."""
 
 import json
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 import responses
 
-from albert.collections.design_spaces import DesignSpaceCollection, _iter_last_key_pages
+from albert.collections.design_spaces import DesignSpaceCollection, _LastKeyCursorPaginator
+from albert.core.pagination import PaginationMode
 from albert.exceptions import AlbertClientError
 from albert.resources.design_spaces import (
     DesignSpace,
@@ -33,70 +35,64 @@ SPACE = {
     "created": {"at": "2026-10-01T09:00:00Z", "by": "USR12", "byName": "Jane Doe"},
 }
 
-# --- _iter_last_key_pages ---
+# --- _LastKeyCursorPaginator ---
 
 
-def _pager(pages: list[dict]):
-    calls = []
-    by_cursor = {cursor: page for cursor, page in pages}
-
-    def fetch(cursor):
-        calls.append(cursor)
-        return by_cursor[cursor]
-
-    return fetch, calls
-
-
-def test_iter_last_key_pages_yields_across_pages():
-    """Test that pages are followed until a page returns no cursor."""
-    fetch, calls = _pager(
-        [
-            (None, {"items": [{"id": 1}, {"id": 2}], "lastKey": "k1"}),
-            ("k1", {"items": [{"id": 3}], "lastKey": None}),
-        ]
+def _listing(offline_session, pages: list[dict], **kwargs) -> _LastKeyCursorPaginator:
+    for page in pages:
+        responses.add(responses.GET, f"{UNIT_BASE_URL}{BASE}", json=page)
+    return _LastKeyCursorPaginator(
+        mode=PaginationMode.KEY,
+        path=BASE,
+        session=offline_session,
+        params={"parentId": "PRO456"},
+        deserialize=lambda items: [item["id"] for item in items],
+        **kwargs,
     )
 
-    assert [item["id"] for item in _iter_last_key_pages(fetch)] == [1, 2, 3]
-    assert calls == [None, "k1"]
+
+def _sent_cursors() -> list[str | None]:
+    return [
+        parse_qs(urlparse(call.request.url).query).get("lastKey", [None])[0]
+        for call in responses.calls
+    ]
 
 
-def test_iter_last_key_pages_stops_mid_page_at_max_items():
-    """Test that max_items stops iteration without fetching another page."""
-    fetch, calls = _pager(
-        [
-            (None, {"items": [{"id": 1}, {"id": 2}], "lastKey": "k1"}),
-            ("k1", {"items": [{"id": 3}], "lastKey": None}),
-        ]
+@responses.activate
+def test_last_key_paginator_sends_the_cursor_back_as_last_key(offline_session):
+    """Test that each page's lastKey is sent back as lastKey until a page has none."""
+    pager = _listing(
+        offline_session,
+        [{"items": [{"id": 1}, {"id": 2}], "lastKey": "k1"}, {"items": [{"id": 3}]}],
     )
 
-    assert [item["id"] for item in _iter_last_key_pages(fetch, max_items=1)] == [1]
-    assert calls == [None]
+    assert list(pager) == [1, 2, 3]
+    assert _sent_cursors() == [None, "k1"]
+    assert pager.has_more is False
 
 
-def test_iter_last_key_pages_drops_a_page_with_a_repeated_cursor():
-    """Test that a page whose lastKey was already seen is dropped, ending iteration."""
-    fetch, calls = _pager(
-        [
-            (None, {"items": [{"id": 1}], "lastKey": "k1"}),
-            ("k1", {"items": [{"id": 2}], "lastKey": "k1"}),
-        ]
+@responses.activate
+def test_last_key_paginator_reports_more_when_max_items_stops_early(offline_session):
+    """Test that stopping at max_items with a cursor in hand reports more results."""
+    pager = _listing(
+        offline_session, [{"items": [{"id": 1}, {"id": 2}], "lastKey": "k1"}], max_items=1
     )
 
-    assert [item["id"] for item in _iter_last_key_pages(fetch)] == [1]
-    assert calls == [None, "k1"]
+    assert list(pager) == [1]
+    assert len(responses.calls) == 1
+    assert pager.has_more is True
 
 
-def test_iter_last_key_pages_continues_past_an_empty_page_with_a_cursor():
-    """Test that an empty page carrying a cursor does not end iteration."""
-    fetch, calls = _pager(
-        [
-            (None, {"items": [], "lastKey": "k1"}),
-            ("k1", {"items": [{"id": 1}], "lastKey": None}),
-        ]
+@responses.activate
+def test_last_key_paginator_stops_on_a_repeated_cursor(offline_session):
+    """Test that a page repeating an already-seen lastKey ends iteration."""
+    pager = _listing(
+        offline_session,
+        [{"items": [{"id": 1}], "lastKey": "k1"}, {"items": [{"id": 2}], "lastKey": "k1"}],
     )
 
-    assert [item["id"] for item in _iter_last_key_pages(fetch)] == [1]
-    assert calls == [None, "k1"]
+    assert list(pager) == [1]
+    assert _sent_cursors() == [None, "k1"]
 
 
 # --- create ---

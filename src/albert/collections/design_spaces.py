@@ -1,9 +1,10 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from typing import Any
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import DesignSpaceId, ProjectId, SmartDatasetId
 from albert.resources.design_spaces import (
@@ -24,35 +25,20 @@ from albert.resources.design_spaces import (
 )
 
 
-def _iter_last_key_pages(
-    fetch_page: Callable[[str | None], dict[str, Any]],
-    *,
-    max_items: int | None = None,
-) -> Iterator[dict[str, Any]]:
-    """Yield raw items across ``lastKey`` cursor pages.
+class _LastKeyCursorPaginator(AlbertPaginator):
+    """KEY-mode paginator for a service that takes its cursor back as ``lastKey``.
 
-    ``fetch_page`` is called with the cursor of the previous page (``None`` for the
-    first page) and returns one decoded page. A page whose ``lastKey`` repeats a key
-    already seen is dropped wholesale, so a misbehaving cursor cannot loop forever.
+    The base KEY mode sends the previous page's ``lastKey`` as ``startKey``; the
+    design-spaces listing reads the cursor from a ``lastKey`` query parameter instead.
     """
-    seen_cursors: set[str] = set()
-    cursor: str | None = None
-    yielded = 0
-    while True:
-        data = fetch_page(cursor)
-        next_cursor = data.get("lastKey")
-        if next_cursor is not None:
-            if next_cursor in seen_cursors:
-                return
-            seen_cursors.add(next_cursor)
-        for item in data.get("items") or []:
-            if max_items is not None and yielded >= max_items:
-                return
-            yield item
-            yielded += 1
-        if next_cursor is None:
-            return
-        cursor = next_cursor
+
+    def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
+        last_key = data.get("lastKey")
+        self._last_key = last_key
+        if not last_key:
+            return False
+        self._pagination_params["lastKey"] = last_key
+        return True
 
 
 class DesignSpaceCollection(BaseCollection):
@@ -242,13 +228,16 @@ class DesignSpaceCollection(BaseCollection):
         Iterator[DesignSpace]
             A lazily paginated iterator over the project's design spaces.
         """
-        params: dict[str, Any] = {"parentId": parent_id, "state": state}
-
-        def fetch_page(cursor: str | None) -> dict[str, Any]:
-            return self.session.get(self.base_path, params={**params, "lastKey": cursor}).json()
-
-        return (
-            DesignSpace(**item) for item in _iter_last_key_pages(fetch_page, max_items=max_items)
+        params = {"parentId": parent_id}
+        if state is not None:
+            params["state"] = state
+        return _LastKeyCursorPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [DesignSpace(**item) for item in items],
         )
 
     @validate_call
