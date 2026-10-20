@@ -63,7 +63,7 @@ class InventoryCollection(BaseCollection):
     """Manage Inventory Items in the Albert platform.
 
     An Inventory Item is a catalog entry for a physical or formulated material
-    tracked in Albert. Every item belongs to one of four categories:
+    tracked in Albert. Every item belongs to one of five categories:
 
     - ``RawMaterials``: purchased substances used as ingredients (e.g. a solvent
       or pigment), typically linked to a manufacturing Company and one or more
@@ -73,6 +73,7 @@ class InventoryCollection(BaseCollection):
     - ``Formulas``: mixtures designed in Albert. A Formula item is created under
       its parent Project by passing ``project_id`` to
       [`create`][albert.collections.inventory.InventoryCollection.create].
+    - ``Reaction``: products of chemical reactions recorded in Albert.
 
     Inventory Items are referenced throughout the platform by their Inventory ID
     (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
@@ -903,7 +904,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1151,7 +1152,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1441,7 +1442,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
