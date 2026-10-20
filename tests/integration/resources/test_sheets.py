@@ -235,6 +235,55 @@ def test_add_formulations_enforce_order_follows_component_order(
     assert {float(cell.value) for cell in _inventory_cells(column)} == {60.0, 40.0}
 
 
+def test_add_formulations_clear_rebuilds_existing_columns(
+    seed_prefix: str,
+    seeded_sheet: Sheet,
+    seeded_inventory: list[InventoryItem],
+):
+    """Test that a repeated bulk build updates the same columns in place."""
+    name = f"{seed_prefix} - bulk rebuildable"
+    kept = seeded_inventory[0]
+    dropped = seeded_inventory[1]
+
+    first = seeded_sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                name=name,
+                components=[
+                    Component(inventory_item=kept, amount=10.0),
+                    Component(inventory_item=dropped, amount=30.0),
+                ],
+            )
+        ]
+    )[0]
+
+    second = seeded_sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                name=name,
+                components=[Component(inventory_item=kept, amount=25.0)],
+            )
+        ]
+    )[0]
+
+    # The same name was updated in place rather than duplicated.
+    assert second.column_id == first.column_id
+    matching = [c for c in seeded_sheet.columns if c.name == name]
+    assert len(matching) == 1
+
+    # Read back fresh from the server rather than the in-memory cache: the
+    # rebuilt column holds only the new amounts, the dropped ingredient is blank.
+    seeded_sheet.grid = None
+    column = seeded_sheet.get_column(column_id=first.column_id)
+    row_id_to_inv_id = {row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows}
+    amounts = {
+        row_id_to_inv_id[cell.row_id]: float(cell.value)
+        for cell in _inventory_cells(column)
+        if cell.value not in (None, "")
+    }
+    assert amounts == {kept.id: 25.0}
+
+
 # Because you cannot delete Formulation Columns, We will need to mock this test.
 # def test_crud_formulation_column(sheet):
 #     new_col = sheet.add_formulation_columns(formulation_names=["my cool formulation"])[0]

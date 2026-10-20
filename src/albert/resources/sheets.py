@@ -1153,6 +1153,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         *,
         formulations: list[FormulationSpec],
         enforce_order: bool = False,
+        clear: bool = True,
     ) -> list[Column]:
         """Build multiple formulations on this sheet in one operation.
 
@@ -1164,11 +1165,28 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Total formulas extended to cover new rows once at the end rather than
         after every formulation.
 
-        A new column is always created for each entry; existing columns with the
-        same name are left untouched (unlike ``add_formulation`` with
-        ``clear=True``). Building a formulation this way is what registers a
-        Formula inventory item
-        ([`InventoryItem`][albert.resources.inventory.InventoryItem]).
+        With ``clear=True`` (the default), an entry whose name matches an
+        existing column on this sheet updates that column in place: the column
+        is emptied and rebuilt from the entry's components, and no new column is
+        added. Re-running a call after a failure is therefore safe. With
+        ``clear=False``, a new column is added for every entry and existing
+        columns are left untouched; duplicate names can then be rejected by the
+        platform, so keep names unique within the list and within the sheet. A
+        sheet holds at most 100 columns.
+
+        Building a formulation this way is what registers a Formula inventory
+        item ([`InventoryItem`][albert.resources.inventory.InventoryItem]).
+
+        !!! warning "Concurrent use"
+            Do not run this method concurrently with other writes to the same
+            sheet, whether from threads, processes, or separate machines. The
+            platform coordinates each sheet's structure through shared records
+            that reject simultaneous updates, so concurrent writers to one
+            sheet can fail partway, sometimes with errors that incorrectly
+            report duplicate names. Concurrent use across different sheets is
+            safe, because each sheet is processed independently. One call with
+            many formulations is the fastest and safest way to load a sheet;
+            never split a bulk load across concurrent calls to the same sheet.
 
         !!! example
             ```python
@@ -1207,18 +1225,48 @@ class Sheet(BaseSessionResource):  # noqa:F811
             with ``enforce_order=True``. When False (default), existing rows are
             shared and new rows are created in first-referenced order, keeping
             the sheet compact.
+        clear : bool, optional
+            When True (default), an entry whose name matches an existing column
+            empties and rebuilds that column rather than adding a new one,
+            matching
+            [`add_formulation`][albert.resources.sheets.Sheet.add_formulation]
+            with ``clear=True``. When False, a new column is added for every
+            entry.
 
         Returns
         -------
         list[Column]
-            The formulation columns created, in the order requested.
+            The formulation columns created or updated, in the order requested.
         """
         if not formulations:
             return []
 
-        created = self.add_formulation_columns(
-            formulation_names=[spec.name for spec in formulations]
-        )
+        # Resolve names against existing columns first so a rejected column
+        # addition cannot leave previously cleared columns empty.
+        existing_by_name: dict[str, Column] = {}
+        if clear:
+            for column in self.columns:
+                if column.name is not None:
+                    existing_by_name.setdefault(column.name, column)
+
+        resolved: list[Column | None] = []
+        names_to_create: list[str] = []
+        for spec in formulations:
+            existing = existing_by_name.get(spec.name)
+            if existing is None:
+                resolved.append(None)
+                names_to_create.append(spec.name)
+            else:
+                resolved.append(existing)
+
+        created = self.add_formulation_columns(formulation_names=names_to_create)
+        created_iter = iter(created)
+        target_columns = [col if col is not None else next(created_iter) for col in resolved]
+
+        cleared_cells: list[Cell] = []
+        for col in resolved:
+            if col is not None:
+                cleared_cells.extend(self._clear_formulation_from_column(column=col))
 
         product_rows = list(self.product_design.rows)
         initial_row_ids = {row.row_id for row in product_rows}
@@ -1248,7 +1296,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         new_row_ids = [row.row_id for row in product_rows if row.row_id not in initial_row_ids]
 
         ingredient_cells: list[Cell] = []
-        for col, spec, row_ids in zip(created, formulations, row_ids_per_formulation, strict=True):
+        for col, spec, row_ids in zip(
+            target_columns, formulations, row_ids_per_formulation, strict=True
+        ):
             for component, row_id in zip(spec.components, row_ids, strict=True):
                 ingredient_cells.append(
                     self._build_component_cell(
@@ -1261,16 +1311,23 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         total_cells = self._build_formulation_total_cells(
             columns_components=[
-                (col, spec.components) for col, spec in zip(created, formulations, strict=True)
+                (col, spec.components)
+                for col, spec in zip(target_columns, formulations, strict=True)
             ],
             product_rows=product_rows,
             rewrite_other_columns=bool(new_row_ids),
         )
-        columns = [self.get_column(column_id=col.column_id) for col in created]
+        columns = [self.get_column(column_id=col.column_id) for col in target_columns]
 
         # Send ingredient cells first, then Total cells in a separate call.
         if ingredient_cells:
-            self.update_cells(cells=ingredient_cells)
+            try:
+                self.update_cells(cells=ingredient_cells)
+            except AlbertException:
+                # A failed write must not leave the cleared columns blank.
+                if cleared_cells:
+                    self.update_cells(cells=cleared_cells)
+                raise
 
         if total_cells:
             self.update_cells(cells=total_cells)

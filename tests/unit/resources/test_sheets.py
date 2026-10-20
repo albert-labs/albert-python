@@ -1615,3 +1615,175 @@ def test_update_cells_drops_the_cache_for_unknown_rows(offline_session):
     # The design's caches were dropped, so the next read fetched fresh state.
     _ = sheet.product_design.grid
     assert len([c for c in responses.calls if c.request.method == "GET"]) == 2
+
+
+@responses.activate
+def test_update_cells_groups_large_writes_into_platform_sized_calls(offline_session):
+    """Test that a write of more than 200 cells is split at the platform guardrail."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    _ = sheet.product_design.grid  # load the cache
+    cells = [
+        Cell(
+            colId="COL1",
+            rowId=f"ROW{1000 + i}",
+            value=str(i),
+            type=CellType.INVENTORY,
+            design_id="DES1",
+        )
+        for i in range(450)
+    ]
+    updated, failed = sheet.update_cells(cells=cells)
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert [len(json.loads(c.request.body)) for c in patches] == [200, 200, 50]
+    assert len(updated) == 450
+    assert failed == []
+
+
+@responses.activate
+def test_update_cells_packs_two_changes_per_entry(offline_session):
+    """Test a combined value-and-calculation clear travels as a single entry."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW1", "COL1#INVF0"]
+    assert cell.calculation == "=COL1ROW2"
+    updated, failed = sheet.update_cells(
+        cells=[cell.model_copy(update={"value": "", "calculation": ""})]
+    )
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert len(patches) == 1
+    body = json.loads(patches[0].request.body)
+    assert len(body) == 1
+    assert body[0]["Id"] == {"rowId": "ROW1", "colId": "COL1"}
+    assert [(d["attribute"], d["operation"]) for d in body[0]["data"]] == [
+        ("calculation", "delete"),
+        ("cell", "delete"),
+    ]
+    assert len(updated) == 1
+    assert failed == []
+
+
+@responses.activate
+def test_add_formulation_columns_groups_large_additions_and_preserves_order(offline_session):
+    """Test that adding many columns splits at 25 per call and keeps the requested order."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+
+    names = [f"F{i}" for i in range(60)]
+    for offset, count in ((0, 25), (25, 25), (50, 10)):
+        responses.post(
+            f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+            json=[
+                {
+                    "name": names[offset + j],
+                    "type": "INV",
+                    "id": f"INVF{offset + j}",
+                    "Formulas": [
+                        {"colId": f"COL{100 + offset + j}", "formulaId": f"INVF{offset + j}"}
+                    ],
+                }
+                for j in range(count)
+            ],
+        )
+
+    columns = sheet.add_formulation_columns(formulation_names=names)
+
+    posts = [c for c in responses.calls if c.request.method == "POST"]
+    bodies = [json.loads(c.request.body) for c in posts]
+    assert [len(body) for body in bodies] == [25, 25, 10]
+    assert bodies[0][0]["referenceId"] == "COL1"
+    assert bodies[1][0]["referenceId"] == "COL124"
+    assert bodies[2][0]["referenceId"] == "COL149"
+    assert [col.name for col in columns] == names
+
+
+@responses.activate
+def test_add_formulations_clear_reuses_existing_columns(offline_session):
+    """Test that clear=True rebuilds an existing named column instead of adding one."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+        json=[
+            {
+                "name": "FB",
+                "type": "INV",
+                "id": "INVFB",
+                "Formulas": [{"colId": "COL5", "formulaId": "INVFB"}],
+            },
+        ],
+    )
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                name="Existing", components=[Component(inventory_id="INVA1", amount=99.0)]
+            ),
+            FormulationSpec(name="FB", components=[Component(inventory_id="INVA1", amount=5.0)]),
+        ]
+    )
+
+    # Only the genuinely new name adds a column.
+    posts = [c for c in responses.calls if c.request.method == "POST"]
+    assert len(posts) == 1
+    assert [entry["name"] for entry in json.loads(posts[0].request.body)] == ["FB"]
+
+    # Results follow the requested order: reused column first, then the new one.
+    assert [col.column_id for col in columns] == ["COL1", "COL5"]
+
+    patches = [json.loads(c.request.body) for c in responses.calls if c.request.method == "PATCH"]
+    assert len(patches) == 3
+    # The existing column is emptied before the new amounts land.
+    assert [
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["operation"])
+        for entry in patches[0]
+    ] == [("ROW2", "COL1", "delete")]
+    assert {
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["newValue"])
+        for entry in patches[1]
+    } == {("ROW2", "COL1", "99.0"), ("ROW2", "COL5", "5.0")}
+
+
+@responses.activate
+def test_add_formulations_clear_false_adds_new_columns(offline_session):
+    """Test that clear=False adds a new column even when the name already exists."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+        json=[
+            {
+                "name": "Existing",
+                "type": "INV",
+                "id": "INVFA2",
+                "Formulas": [{"colId": "COL5", "formulaId": "INVFA2"}],
+            },
+        ],
+    )
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                name="Existing", components=[Component(inventory_id="INVA1", amount=99.0)]
+            )
+        ],
+        clear=False,
+    )
+
+    posts = [c for c in responses.calls if c.request.method == "POST"]
+    assert len(posts) == 1
+    assert [entry["name"] for entry in json.loads(posts[0].request.body)] == ["Existing"]
+    assert [col.column_id for col in columns] == ["COL5"]
+    # No clearing write: the first patch already carries the new amount.
+    first_patch = json.loads(
+        [c for c in responses.calls if c.request.method == "PATCH"][0].request.body
+    )
+    assert first_patch[0]["data"][0]["newValue"] == "99.0"
