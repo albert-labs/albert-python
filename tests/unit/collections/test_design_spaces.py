@@ -2,9 +2,11 @@
 
 import json
 
+import pytest
 import responses
 
 from albert.collections.design_spaces import DesignSpaceCollection, _iter_last_key_pages
+from albert.exceptions import AlbertClientError
 from albert.resources.design_spaces import (
     DesignSpace,
     DesignSpaceCreated,
@@ -399,6 +401,19 @@ def test_get_sample_preview_sends_the_asked_size(offline_session):
     DesignSpaceCollection(session=offline_session).get_sample_preview(id="DSP123", num_samples=5)
 
     assert json.loads(responses.calls[0].request.body) == {"numSamples": 5}
+
+
+@responses.activate
+def test_get_sample_preview_raises_on_an_invalid_space(offline_session):
+    """Test that a space that fails the feasibility check raises with its violations."""
+    responses.post(
+        f"{UNIT_BASE_URL}{BASE}/DSP123/samples",
+        status=422,
+        json={"errors": [{"code": "infeasible_design_space", "message": "m"}]},
+    )
+
+    with pytest.raises(AlbertClientError, match="infeasible_design_space"):
+        DesignSpaceCollection(session=offline_session).get_sample_preview(id="DSP123")
 
 
 # --- publish ---

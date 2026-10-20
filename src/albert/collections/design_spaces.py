@@ -447,7 +447,9 @@ class DesignSpaceCollection(BaseCollection):
         """Get a sample of the formulations a design space would produce.
 
         A quick preview of the envelope (search space), for inspecting what the bounds
-        allow before committing a design run to them.
+        allow before committing a design run to them. The space is checked for
+        feasibility before any formulation is drawn, so the call can take up to about a
+        minute for a hard space.
 
         !!! example
             ```python
@@ -465,6 +467,14 @@ class DesignSpaceCollection(BaseCollection):
         -------
         DesignSpaceSample
             The drawn sample.
+
+        Raises
+        ------
+        AlbertClientError
+            The space is not valid (infeasible, or its feasibility could not be
+            determined in time); the violations are listed.
+        AlbertHTTPError
+            Other failures.
         """
         body = DesignSpaceSampleRequest(num_samples=num_samples).model_dump(
             by_alias=True, mode="json", exclude_none=True
