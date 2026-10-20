@@ -1070,31 +1070,23 @@ class Sheet(BaseSessionResource):  # noqa:F811
         product_rows = list(self.product_design.rows)
         initial_row_ids = {row.row_id for row in product_rows}
 
-        # Without order enforcement, all missing ingredient rows are created up
-        # front in as few calls as possible instead of one call per row.
-        rows_by_inventory_id = (
-            None
-            if enforce_order
-            else self._ensure_rows_for_components(
+        # Row placement is planned up front, then missing rows are created in as
+        # few calls as possible instead of one call per row.
+        if enforce_order:
+            assignments, runs, virtual_order = self._plan_ordered_component_rows(
                 formulations_components=[components], product_rows=product_rows
             )
-        )
-        if rows_by_inventory_id is not None:
+            product_rows, resolved_rows = self._create_planned_rows(
+                runs=runs, product_rows=product_rows, virtual_order=virtual_order
+            )
+            component_row_ids = [resolved_rows[key].row_id for key in assignments[0]]
+        else:
+            rows_by_inventory_id = self._ensure_rows_for_components(
+                formulations_components=[components], product_rows=product_rows
+            )
             component_row_ids = self._assign_component_rows(
                 components=components, rows_by_inventory_id=rows_by_inventory_id
             )
-        else:
-            component_row_ids = []
-            for component in components:
-                row_id = self._get_row_id_for_component(
-                    inventory_id=component.inventory_item_id,
-                    existing_cells=ingredient_cells,
-                    enforce_order=enforce_order,
-                    product_rows=product_rows,
-                )
-                if row_id is None:
-                    raise AlbertException(f"No Component with id {component.inventory_item_id}")
-                component_row_ids.append(row_id)
 
         for component, row_id in zip(components, component_row_ids, strict=True):
             ingredient_cells.append(
@@ -1307,35 +1299,23 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         product_rows = list(self.product_design.rows)
         all_cells: list[Cell] = []
-        # Without order enforcement, all missing ingredient rows are created up
-        # front in as few calls as possible instead of one call per row.
-        rows_by_inventory_id = (
-            None
-            if enforce_order
-            else self._ensure_rows_for_components(
+        # Row placement is planned up front, then missing rows are created in as
+        # few calls as possible instead of one call per row.
+        if enforce_order:
+            assignments, runs, virtual_order = self._plan_ordered_component_rows(
                 formulations_components=[components], product_rows=product_rows
             )
-        )
-        if rows_by_inventory_id is not None:
+            product_rows, resolved_rows = self._create_planned_rows(
+                runs=runs, product_rows=product_rows, virtual_order=virtual_order
+            )
+            component_row_ids = [resolved_rows[key].row_id for key in assignments[0]]
+        else:
+            rows_by_inventory_id = self._ensure_rows_for_components(
+                formulations_components=[components], product_rows=product_rows
+            )
             component_row_ids = self._assign_component_rows(
                 components=components, rows_by_inventory_id=rows_by_inventory_id
             )
-        else:
-            component_row_ids = []
-            for component in components:
-                inv_item = component.inventory_item
-                item_id: InventoryId = (
-                    inv_item.id if inv_item is not None else component.inventory_id
-                )
-                row_id = self._get_row_id_for_component(
-                    inventory_id=item_id,
-                    existing_cells=all_cells,
-                    enforce_order=enforce_order,
-                    product_rows=product_rows,
-                )
-                if row_id is None:
-                    raise AlbertException(f"No row found for inventory ID {item_id}")
-                component_row_ids.append(row_id)
 
         for component, row_id in zip(components, component_row_ids, strict=True):
             all_cells.append(
@@ -1350,69 +1330,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
         column = self.get_column(column_id=col_id)
         self.update_cells(cells=all_cells)
         return column
-
-    def _get_row_id_for_component(
-        self,
-        *,
-        inventory_id: InventoryId,
-        existing_cells,
-        enforce_order,
-        product_rows: list[Row],
-    ):
-        sheet_inv_id = inventory_id
-        matching_rows = [row for row in product_rows if row.inventory_id == sheet_inv_id]
-
-        used_row_ids = [cell.row_id for cell in existing_cells]
-
-        existing_inv_order: list[str] = []
-        index_last_row = 0
-        if enforce_order:
-            existing_inv_order = [
-                row.row_id for row in product_rows if row.inventory_id is not None
-            ]
-            for row_id in used_row_ids:
-                if row_id in existing_inv_order:
-                    this_row_index = existing_inv_order.index(row_id)
-                    if this_row_index > index_last_row:
-                        index_last_row = this_row_index
-
-        for row in matching_rows:
-            if row.row_id in used_row_ids:
-                continue
-            if not enforce_order:
-                return row.row_id
-
-            if row.row_id in existing_inv_order:
-                if existing_inv_order.index(row.row_id) >= index_last_row:
-                    return row.row_id
-                continue
-
-        if enforce_order:
-            if existing_inv_order:
-                reference_row_id = existing_inv_order[index_last_row]
-                new_row = self.add_inventory_row(
-                    inventory_id=inventory_id,
-                    position={"reference_id": reference_row_id, "position": "below"},
-                )
-
-                insert_position = None
-                for idx, row in enumerate(product_rows):
-                    if row.row_id == reference_row_id:
-                        insert_position = idx + 1
-                        break
-                if insert_position is None:
-                    product_rows.append(new_row)
-                else:
-                    product_rows.insert(insert_position, new_row)
-                return new_row.row_id
-
-            new_row = self.add_inventory_row(inventory_id=inventory_id)
-            product_rows.append(new_row)
-            return new_row.row_id
-
-        new_row = self.add_inventory_row(inventory_id=inventory_id)
-        product_rows.append(new_row)
-        return new_row.row_id
 
     @staticmethod
     def _plan_missing_inventory_rows(

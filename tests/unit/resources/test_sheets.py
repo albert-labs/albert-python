@@ -1427,6 +1427,60 @@ def test_add_formulations_enforce_order_creates_runs_in_place(offline_session):
 
 
 @responses.activate
+def test_add_formulation_enforce_order_batches_new_rows(offline_session):
+    """Test that a single ordered formulation creates its new rows in one call."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+        json=[
+            {
+                "name": "FA",
+                "type": "INV",
+                "id": "INVFA",
+                "Formulas": [{"colId": "COL5", "formulaId": "INVFA"}],
+            }
+        ],
+    )
+    _register_products_grid()
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {
+                "rowId": "ROW9",
+                "id": "INVA2",
+                "type": "INV",
+                "name": "Ethanol",
+                "manufacturer": None,
+            },
+            {"rowId": "ROW10", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None},
+        ],
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    column = sheet.add_formulation(
+        formulation_name="FA",
+        components=[
+            Component(inventory_id="INVA2", amount=50.0),
+            Component(inventory_id="INVA1", amount=50.0),
+        ],
+        enforce_order=True,
+        clear=False,
+    )
+
+    assert column.column_id == "COL5"
+    rows_posts = [
+        c
+        for c in responses.calls
+        if c.request.method == "POST" and c.request.url.endswith("/rows")
+    ]
+    assert len(rows_posts) == 1
+    assert json.loads(rows_posts[0].request.body) == [
+        {"type": "INV", "id": "INVA2", "referenceId": "ROW2", "position": "below"},
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW2", "position": "below"},
+    ]
+
+
+@responses.activate
 def test_update_cells_applies_writes_to_the_cached_grid(offline_session):
     """Test that written values land in the cached grid without a refetch."""
     sheet = _products_sheet(session=offline_session)
