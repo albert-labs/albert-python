@@ -183,13 +183,11 @@ def test_check_feasibility_returns_a_result(
 
 @ignore_in_ten0
 @builder_not_deployed
-def test_get_sample_preview_returns_a_sample(
-    client: Albert, seeded_projects: list[Project]
-) -> None:
+def test_get_sample_returns_a_sample(client: Albert, seeded_projects: list[Project]) -> None:
     """Test drawing a small sample preview from a draft."""
     space = _create_space(client, seeded_projects[0].id, "sample")
     try:
-        sample = client.design_spaces.get_sample_preview(id=space.id, num_samples=2)
+        sample = client.design_spaces.get_sample(id=space.id, num_samples=2)
         assert isinstance(sample, DesignSpaceSample)
     finally:
         with suppress(NotFoundError):

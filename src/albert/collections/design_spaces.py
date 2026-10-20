@@ -96,7 +96,7 @@ class DesignSpaceCollection(BaseCollection):
         Apply builder operations to a draft design space.
     check_feasibility(id, smart_dataset_id=None, design_model_config_id=None) -> DesignSpaceValidationResponse
         Check whether a design space can produce valid formulations.
-    get_sample_preview(id, num_samples=10) -> DesignSpaceSample
+    get_sample(id, num_samples=10) -> DesignSpaceSample
         Get a sample of the formulations a design space would produce.
     publish(id) -> DesignSpace
         Publish a draft design space, freezing it for use by design runs.
@@ -430,7 +430,7 @@ class DesignSpaceCollection(BaseCollection):
         return DesignSpaceValidationResponse(**response.json())
 
     @validate_call
-    def get_sample_preview(
+    def get_sample(
         self,
         *,
         id: DesignSpaceId,
@@ -438,14 +438,14 @@ class DesignSpaceCollection(BaseCollection):
     ) -> DesignSpaceSample:
         """Get a sample of the formulations a design space would produce.
 
-        A quick preview of the envelope (search space), for inspecting what the bounds
+        A quick look at the envelope (search space), for inspecting what the bounds
         allow before committing a design run to them. The space is checked for
         feasibility before any formulation is drawn, so the call can take up to about a
         minute for a hard space.
 
         !!! example
             ```python
-            sample = client.design_spaces.get_sample_preview(id="DSP123", num_samples=5)
+            sample = client.design_spaces.get_sample(id="DSP123", num_samples=5)
             ```
 
         Parameters
