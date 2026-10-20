@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
@@ -205,6 +204,12 @@ class TaskState(str, Enum):
     The state generally advances as work progresses: an unclaimed task is
     picked up, started, finished, and eventually closed (or cancelled).
 
+    State is coupled to the assignee: a task without an assignee is always
+    ``Unclaimed``, and a task cannot be ``Not Started`` or ``In Progress``
+    with no one assigned. Creating a task without an assignee defaults its
+    state to ``Unclaimed``; see
+    [`create`][albert.collections.tasks.TaskCollection.create].
+
     Attributes
     ----------
     UNCLAIMED : str
@@ -341,18 +346,11 @@ class Block(BaseAlbertModel):
 
     @property
     @deprecated(
-        "`Block.combinations_count` is deprecated; the platform returns the combination "
-        "count on the block's final Workflow element, not on the Block. Use "
-        "`Workflow.combinations_count` instead."
+        "`Block.combinations_count` is deprecated and will be removed in a future release; "
+        "read `combinations_count` from the block's final Workflow instead."
     )
     def combinations_count(self) -> int | None:
         """Deprecated alias for the ``combinations_count`` of the block's final workflow."""
-        warnings.warn(
-            "`Block.combinations_count` is deprecated and will be removed in a future "
-            "release; read `combinations_count` from the block's final Workflow instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         for workflow in self.workflow or []:
             count = getattr(workflow, "combinations_count", None)
             if count is not None:
@@ -456,7 +454,7 @@ class BaseTask(BaseTaggedResource):
     """Overall result summary for the task."""
 
     state: TaskState | None = Field(default=None)
-    """Current lifecycle state of the task."""
+    """Current lifecycle state of the task. A task without an ``assigned_to`` is always ``Unclaimed``; ``Not Started`` and ``In Progress`` require an assignee. On create, a missing state defaults to ``Unclaimed`` when the task has no assignee."""
 
     project: SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]] | None = Field(
         default=None, alias="Project"
@@ -466,7 +464,7 @@ class BaseTask(BaseTaggedResource):
     assigned_to: (
         SerializeAsEntityLinkWithName[User] | SerializeAsEntityLinkWithName[Team] | None
     ) = Field(default=None, alias="AssignedTo")
-    """The user or team responsible for the task."""
+    """The user or team responsible for the task. When ``None``, the task is unassigned and its ``state`` must be ``Unclaimed`` (terminal states such as ``Completed`` are allowed on create for ingestion flows)."""
 
     page_state: PageState | None = Field(
         alias="PageState",

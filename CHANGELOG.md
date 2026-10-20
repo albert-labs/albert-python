@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.64.1](https://github.com/albert-labs/albert-python/compare/v1.64.0...v1.64.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **ci:** unbreak docs deploy and publish lambda layers on release ([#852](https://github.com/albert-labs/albert-python/issues/852)) ([098927e](https://github.com/albert-labs/albert-python/commit/098927e8058280ed485a8bec62e6c17a1f3e6b3a))
+* **sheets:** populate inventory_id on added formulation columns ([#860](https://github.com/albert-labs/albert-python/issues/860)) ([8df45e8](https://github.com/albert-labs/albert-python/commit/8df45e8a2c38bc54c439315c5aebe6980aa5983e))
+
+## [1.64.0](https://github.com/albert-labs/albert-python/compare/v1.63.0...v1.64.0) (2026-10-16)
+
+
+### Features
+
+* **inventory:** support creating Formula inventory items ([#829](https://github.com/albert-labs/albert-python/issues/829)) ([a23eb30](https://github.com/albert-labs/albert-python/commit/a23eb3029e2d57d1473b68267c708b756ba36fc7))
+* **lots:** warn when ALL transfer targets the current storage location ([#846](https://github.com/albert-labs/albert-python/issues/846)) ([9534b60](https://github.com/albert-labs/albert-python/commit/9534b60e2e49ffe6fb8c0715951b55ba4f12007a))
+* **tasks:** block inventory exclusions ("masks") — worked example ([#832](https://github.com/albert-labs/albert-python/issues/832)) ([a5125dc](https://github.com/albert-labs/albert-python/commit/a5125dc829eac4518cf1db4a31b4e7d710b73000))
+
+
+### Bug Fixes
+
+* **collections:** chunk /ids lookups for targets, attributes, and pricings ([#844](https://github.com/albert-labs/albert-python/issues/844)) ([efd7d44](https://github.com/albert-labs/albert-python/commit/efd7d4456d0321e1373428b1bd600b7ea8ee6c37))
+* **property_data:** relax parameterGroupId validation on search results ([#843](https://github.com/albert-labs/albert-python/issues/843)) ([2c1206b](https://github.com/albert-labs/albert-python/commit/2c1206ba44ba3eeebc17bdb738c195d534cc6e17))
+* **resources:** emit a single DeprecationWarning for deprecated aliases ([#850](https://github.com/albert-labs/albert-python/issues/850)) ([1c5bd7b](https://github.com/albert-labs/albert-python/commit/1c5bd7bce8a1f7ca8fa9230da810617cb1420007))
+
+
+### Documentation
+
+* **attributes:** promote attributes from beta to GA ([#849](https://github.com/albert-labs/albert-python/issues/849)) ([0b21ae0](https://github.com/albert-labs/albert-python/commit/0b21ae0c0f30660d91c2902793afd7005241a0a3))
+
+## [1.63.0](https://github.com/albert-labs/albert-python/compare/v1.62.0...v1.63.0) (2026-10-15)
+
+
+### Features
+
+* **design_runs:** add v4 design runs collection alongside v3 (AIM-1370) ([#842](https://github.com/albert-labs/albert-python/issues/842)) ([ad1824a](https://github.com/albert-labs/albert-python/commit/ad1824abbd343fe8406261323209ec209a85aec4))
+* **lots:** add from_on_hand filter to lots search ([#839](https://github.com/albert-labs/albert-python/issues/839)) ([f88fcf1](https://github.com/albert-labs/albert-python/commit/f88fcf17aaee7cee261ac1284bffc4031e5170c3))
+
+
+### Bug Fixes
+
+* **add_formulation:** new inventory row and locked formula columns ([#837](https://github.com/albert-labs/albert-python/issues/837)) ([efcf381](https://github.com/albert-labs/albert-python/commit/efcf3812e2ba4fad8c359d9057e60bc3bac92b76))
+* **collections:** support metadata scalar/list cardinality changes ([#838](https://github.com/albert-labs/albert-python/issues/838)) ([c2cdd8c](https://github.com/albert-labs/albert-python/commit/c2cdd8cd60ecd781dd33c30b301e00d4833552a1))
+* **tags:** resolve and deduplicate tags on create and update ([#835](https://github.com/albert-labs/albert-python/issues/835)) ([d09fac2](https://github.com/albert-labs/albert-python/commit/d09fac2e1cb887f190b8500f30110c1b630497a5))
+
 ## [1.62.0](https://github.com/albert-labs/albert-python/compare/v1.61.0...v1.62.0) (2026-10-09)
 
 

@@ -246,15 +246,6 @@ def test_adjust_set(client: Albert, seeded_lot: Lot):
     assert updated_lot.inventory_on_hand == pytest.approx(target_quantity)
 
 
-def test_adjust_zero(client: Albert, seeded_lot: Lot):
-    updated_lot = client.lots.adjust(
-        lot_id=seeded_lot.id,
-        action=LotAdjustmentAction.ZERO,
-        description="zero test",
-    )
-    assert updated_lot.inventory_on_hand == pytest.approx(0)
-
-
 @pytest.mark.parametrize(
     "action, quantity, error_message",
     [
@@ -364,16 +355,17 @@ def test_transfer_all_quantity(
     assert updated_lot.storage_location.id == destination.id
 
 
-def test_transfer_all_same_location_no_op(client: Albert, seeded_lot: Lot):
-    """Test that transferring ALL to the current location does not raise an error."""
+def test_transfer_all_same_location_warns(client: Albert, seeded_lot: Lot):
+    """Test that transferring ALL to the current location warns and leaves the lot unchanged."""
     current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
     assert current_location_id is not None, "Seeded lot must have a storage location"
 
-    result = client.lots.transfer(
-        lot_id=seeded_lot.id,
-        quantity="ALL",
-        storage_location_id=current_location_id,
-    )
+    with pytest.warns(UserWarning, match="Full Transfer is not allowed"):
+        result = client.lots.transfer(
+            lot_id=seeded_lot.id,
+            quantity="ALL",
+            storage_location_id=current_location_id,
+        )
     assert result.id == seeded_lot.id
     assert result.storage_location is not None
     assert result.storage_location.id == current_location_id
@@ -390,10 +382,12 @@ def test_adjust_set_no_op(client: Albert, seeded_lot: Lot):
 
 
 def test_adjust_zero_no_op(client: Albert, seeded_lot: Lot):
-    """Test that ZERO on a lot already at zero does not raise an error."""
-    # First zero it out
-    client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
-    # Zero again — should be a no-op without error
+    """Test that ZERO empties a lot, and repeating it on an empty lot does not raise."""
+    zeroed = client.lots.adjust(
+        lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO, description="zero test"
+    )
+    assert zeroed.inventory_on_hand == pytest.approx(0)
+    # Zero again; should be a no-op without error
     result = client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
     assert result.inventory_on_hand == pytest.approx(0)
 

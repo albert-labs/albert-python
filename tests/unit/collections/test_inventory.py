@@ -966,3 +966,20 @@ def test_apply_many_ignores_206_without_failed_items(offline_session) -> None:
     _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
 
     assert len(responses.calls) == 1
+
+
+# --- _dedup_applies_to ---
+
+
+def test_dedup_applies_to_formula_is_false() -> None:
+    """Test that duplicate matching is skipped for Formulas."""
+    assert InventoryCollection._dedup_applies_to(category=InventoryCategory.FORMULAS) is False
+
+
+@pytest.mark.parametrize(
+    "category",
+    [InventoryCategory.RAW_MATERIALS, InventoryCategory.CONSUMABLES, InventoryCategory.EQUIPMENT],
+)
+def test_dedup_applies_to_non_formula_categories(category: InventoryCategory) -> None:
+    """Test that duplicate matching applies to non-Formula categories."""
+    assert InventoryCollection._dedup_applies_to(category=category) is True

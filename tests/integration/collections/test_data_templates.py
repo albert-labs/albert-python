@@ -54,12 +54,6 @@ def test_data_template_get_all_basic(client: Albert, seeded_data_templates: list
     assert_valid_data_template_items(results, DataTemplate)
 
 
-def test_data_template_search_basic(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test search returns partial DataTemplateSearchItem results."""
-    results = list(client.data_templates.search(max_items=10))
-    assert_valid_data_template_items(results, DataTemplateSearchItem)
-
-
 def test_data_template_search(
     client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
 ):

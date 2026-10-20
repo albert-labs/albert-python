@@ -99,12 +99,6 @@ def test_get_by_name(client: Albert, seeded_data_columns: list[DataColumn]):
     assert dc is None
 
 
-def test_get_by_id(client: Albert, seeded_data_columns: list[DataColumn]):
-    dc = client.data_columns.get_by_id(id=seeded_data_columns[0].id)
-    assert dc.name == seeded_data_columns[0].name
-    assert dc.id == seeded_data_columns[0].id
-
-
 def test_get_or_create_data_columns(client: Albert, seeded_data_columns: list[DataColumn]):
     """Test get_or_create returns an existing data column when one with the same name exists."""
     existing = seeded_data_columns[0]

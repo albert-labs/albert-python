@@ -401,6 +401,116 @@ def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch)
     assert "COL6" not in total_column_ids
 
 
+def test_reformat_formulation_addition_payload_reads_inventory_id_from_formula_id():
+    """Test that the created column's inventory ID comes from its formula entry."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+    )
+    response_json = [
+        {
+            "type": "INV",
+            "name": "Formulation A",
+            "referenceId": "COL5",
+            "Formulas": [{"formulaId": "INVP623-002", "colId": "COL6"}],
+            "childCols": [],
+        }
+    ]
+
+    result = sheet._reformat_formulation_addition_payload(response_json=response_json)
+
+    assert result == [
+        {
+            "colId": "COL6",
+            "Formulas": [{"formulaId": "INVP623-002", "name": "Formulation A"}],
+            "name": "Formulation A",
+            "type": "INV",
+            "session": None,
+            "sheet": sheet,
+            "inventory_id": "INVP623-002",
+        }
+    ]
+
+
+def test_reformat_formulation_addition_payload_prefers_top_level_id():
+    """Test that a top-level id on the item wins over the formula entry."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+    )
+    response_json = [
+        {
+            "id": "INVP623-002",
+            "type": "INV",
+            "name": "Formulation A",
+            "Formulas": [{"formulaId": "INVP623-999", "colId": "COL6"}],
+        }
+    ]
+
+    result = sheet._reformat_formulation_addition_payload(response_json=response_json)
+
+    assert result[0]["inventory_id"] == "INVP623-002"
+
+
+def test_reformat_formulation_addition_payload_maps_each_response_item():
+    """Test that each created column keeps its own formula's inventory ID, in order."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[{"albertId": "DES1", "designType": "products", "state": {}}],
+        projectId="PRJ1",
+    )
+    response_json = [
+        {
+            "type": "INV",
+            "name": "Formulation A",
+            "referenceId": "COL5",
+            "Formulas": [{"formulaId": "INVP623-001", "colId": "COL6"}],
+            "childCols": [],
+        },
+        {
+            "type": "INV",
+            "name": "Formulation B",
+            "referenceId": "COL6",
+            "Formulas": [{"formulaId": "INVP623-002", "colId": "COL7"}],
+            "childCols": [],
+        },
+    ]
+
+    result = sheet._reformat_formulation_addition_payload(response_json=response_json)
+
+    assert result == [
+        {
+            "colId": "COL6",
+            "Formulas": [{"formulaId": "INVP623-001", "name": "Formulation A"}],
+            "name": "Formulation A",
+            "type": "INV",
+            "session": None,
+            "sheet": sheet,
+            "inventory_id": "INVP623-001",
+        },
+        {
+            "colId": "COL7",
+            "Formulas": [{"formulaId": "INVP623-002", "name": "Formulation B"}],
+            "name": "Formulation B",
+            "type": "INV",
+            "session": None,
+            "sheet": sheet,
+            "inventory_id": "INVP623-002",
+        },
+    ]
+
+
 def test_add_parameter_group_row_requires_process_design():
     """Test that adding a PRG row fails when the sheet has no Process Design."""
     sheet = Sheet(

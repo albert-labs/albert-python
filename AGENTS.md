@@ -367,7 +367,11 @@ class TagCollection(BaseCollection):
 
 ## Deprecations
 
-See `OPINIONS.md` for the `@deprecated` runtime warning gotcha.
+- Deprecate functions, methods, properties, and classes with `@deprecated` from
+  `typing_extensions`. It emits the runtime `DeprecationWarning`; do not also call
+  `warnings.warn` inside them, or callers see the warning twice.
+- Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=2)` only for deprecated
+  parameters or argument values. Pydantic model caveat: see `OPINIONS.md`.
 
 ## After Every Code Edit
 
