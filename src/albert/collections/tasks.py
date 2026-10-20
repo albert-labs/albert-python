@@ -84,6 +84,7 @@ from albert.utils.tasks import (
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
     resolve_attachment,
+    resolve_unassigned_task_state,
 )
 from albert.utils.worker_jobs import poll_worker_job
 
@@ -243,6 +244,15 @@ class TaskCollection(BaseCollection):
             [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
             for each block after ``create``. General tasks are not affected.
 
+        Lifecycle state on create is coupled to the assignee:
+
+        - No ``assigned_to``: the task starts ``Unclaimed``. A missing ``state``
+          is defaulted for you, and ``Not Started`` / ``In Progress`` are rejected,
+          since a task cannot be in progress with no one assigned. Explicit
+          terminal states (``Completed``, ``Closed``, ``Cancelled``) are preserved
+          for ingestion flows.
+        - With ``assigned_to``: the task starts ``Not Started``.
+
         !!! example
             ```python
             from albert.resources.tasks import GeneralTask
@@ -262,6 +272,12 @@ class TaskCollection(BaseCollection):
         BaseTask
             The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
             populated with its assigned Task ID.
+
+        Raises
+        ------
+        AlbertException
+            If ``task`` has no ``assigned_to`` but ``state`` is ``Not Started`` or
+            ``In Progress``.
         """
         if task.tags:
             task.tags = resolve_tags(session=self.session, tags=task.tags)
@@ -269,6 +285,8 @@ class TaskCollection(BaseCollection):
             payload=task.model_dump(mode="json", by_alias=True, exclude_none=True),
             parent_id=task.parent_id,
         )
+        if task.assigned_to is None:
+            payload["state"] = resolve_unassigned_task_state(state=task.state).value
         url = f"{self.base_path}/multi?category={task.category.value}"
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"
@@ -284,6 +302,12 @@ class TaskCollection(BaseCollection):
 
         All tasks must share the same category (mixing task types is not
         supported) and, when set, the same ``parent_id``.
+
+        Lifecycle state on create follows the same rule as
+        [`create`][albert.collections.tasks.TaskCollection.create]: a task without
+        ``assigned_to`` starts ``Unclaimed`` (a missing ``state`` is defaulted, and
+        ``Not Started`` / ``In Progress`` are rejected), while a task with an
+        assignee starts ``Not Started``.
 
         !!! warning "Property tasks with increased intervals (🧪 Beta)"
             When increased intervals is enabled for your tenant, ``create_many`` does not
@@ -324,8 +348,9 @@ class TaskCollection(BaseCollection):
         Raises
         ------
         AlbertException
-            If ``tasks`` is empty or if items have conflicting categories or
-            parent IDs.
+            If ``tasks`` is empty, if items have conflicting categories or
+            parent IDs, or if any task has no ``assigned_to`` but ``state`` is
+            ``Not Started`` or ``In Progress``.
         """
         if not tasks:
             raise AlbertException("tasks must include at least one task.")
@@ -346,6 +371,9 @@ class TaskCollection(BaseCollection):
             )
             for t in tasks
         ]
+        for t, item in zip(tasks, payload, strict=True):
+            if t.assigned_to is None:
+                item["state"] = resolve_unassigned_task_state(state=t.state).value
         url = f"{self.base_path}/multi?category={task.category.value}"
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"
@@ -2433,6 +2461,9 @@ class TaskCollection(BaseCollection):
         ``inventory_information``, ``metadata``, ``name``, ``priority``, ``project``,
         ``state``, ``tags``.
 
+        ``state`` and ``assigned_to`` are coupled: a task cannot be ``In Progress``
+        (or any state beyond ``Not Started``) while unassigned, so moving an
+        unclaimed task forward also assigns it to the calling user.
         Any tags that do not yet exist in Albert are created automatically.
         """
         if "tags" in task.model_fields_set and task.tags:
