@@ -55,7 +55,7 @@ class BaseCollection:
         data = []
         for key, value in existing_metadata.items():
             attribute = f"Metadata.{key}"
-            if key not in updated_metadata or updated_metadata[key] is None:
+            if key not in updated_metadata:
                 if isinstance(value, str | int | float):
                     data.append(
                         PatchDatum(

@@ -7,6 +7,9 @@ from albert.core.shared.models.base import BaseResource, EntityLink, EntityLinkW
 
 EntityType = TypeVar("EntityType", bound=BaseResource)
 # ``None`` covers custom fields the platform returns as null after a user clears them.
+# A ``None`` value means "cleared": it is treated as absent when diffing metadata, so
+# ``update()`` never emits an op for it. A model built with a ``None`` value and passed
+# to ``create()`` sends it as ``null``; omit the key to leave a field unset.
 MetadataItem = (
     float
     | int
