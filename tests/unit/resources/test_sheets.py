@@ -239,7 +239,9 @@ def test_add_formulation_restores_cleared_column_when_write_fails(monkeypatch):
     monkeypatch.setattr(Sheet, "columns", property(lambda self: [column]))
     monkeypatch.setattr(Sheet, "get_column", lambda self, **_: column)
     monkeypatch.setattr(Column, "cells", property(lambda self: [original]))
-    monkeypatch.setattr(Sheet, "update_cells", lambda self, *, cells: _update_cells(cells=cells))
+    monkeypatch.setattr(
+        Sheet, "update_cells", lambda self, *, cells, **_: _update_cells(cells=cells)
+    )
     monkeypatch.setattr(
         Sheet,
         "_ensure_rows_for_components",
@@ -271,7 +273,9 @@ def test_clear_formulation_ignores_empty_grid_padding(monkeypatch):
         return cells, []
 
     monkeypatch.setattr(Column, "cells", property(lambda self: [original, None, float("nan")]))
-    monkeypatch.setattr(Sheet, "update_cells", lambda self, *, cells: _update_cells(cells=cells))
+    monkeypatch.setattr(
+        Sheet, "update_cells", lambda self, *, cells, **_: _update_cells(cells=cells)
+    )
 
     cleared = sheet._clear_formulation_from_column(column=column)
 
@@ -355,9 +359,43 @@ def test_filter_cells_ignores_updated_items_column_records():
     assert [cell.column_id for cell in failed] == ["COL6", "COL7"]
 
 
-def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch):
+@responses.activate
+def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch, offline_session):
     """A new ingredient row must not rewrite Total formulas on locked columns."""
-    sheet = _empty_sheet()
+    sheet = _products_sheet(session=offline_session)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [
+                        {
+                            "colId": "COL2",
+                            "value": "10",
+                            "calculation": "=COL2ROW2",
+                            "id": "INVO",
+                            "type": "INV",
+                        },
+                        {
+                            "colId": "COL6",
+                            "value": "10",
+                            "calculation": "=COL6ROW2",
+                            "id": "INVL",
+                            "type": "INV",
+                        },
+                    ],
+                }
+            ],
+            "Formulas": [
+                {"colId": "COL2", "name": "Open", "state": {}},
+                {"colId": "COL6", "name": "Locked", "state": {}},
+            ],
+        },
+    )
     total_row = Row(
         rowId="ROW1",
         type=CellType.TOTAL,
@@ -373,25 +411,6 @@ def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch)
     locked = Column(colId="COL6", name="Locked", type=CellType.INVENTORY, sheet=sheet, locked=True)
     written: list[list[Cell]] = []
 
-    def _total_grid_cell(col_id: str) -> Cell:
-        return Cell(
-            colId=col_id,
-            rowId="ROW1",
-            value="10",
-            calculation=f"={col_id}ROW2",
-            type=CellType.TOTAL,
-            row_type=CellType.TOTAL,
-            design_id="DES1",
-        )
-
-    sheet.product_design._grid = pd.DataFrame(
-        {
-            "COL2#INVO": [_total_grid_cell("COL2")],
-            "COL6#INVL": [_total_grid_cell("COL6")],
-        },
-        index=["DES1#ROW1"],
-    )
-
     def _ensure_rows(self, *, formulations_components, product_rows):
         product_rows.append(
             Row(
@@ -405,7 +424,7 @@ def test_add_formulation_skips_locked_columns_when_extending_totals(monkeypatch)
         )
         return {"INVA1": ["ROW9"]}
 
-    def _update_cells(self, *, cells):
+    def _update_cells(self, *, cells, **_):
         written.append(list(cells))
         return ([], [])
 
@@ -1198,36 +1217,16 @@ def test_add_formulations_batches_row_creation_and_defers_totals(offline_session
         }
     ]
 
-    # The initial load is the only read: columns, rows, and written cells are
-    # folded into the cached grid in memory.
+    # The initial load is the only read during the call: columns, rows, and
+    # written cells are folded into the cached grid in memory while building.
     gets = [c for c in responses.calls if c.request.method == "GET"]
     assert len(gets) == 1
 
-    # The cached grid reflects the written state without a refetch.
-    grid = sheet.product_design.grid
-    cached = {}
-    for col_label in grid.columns:
-        for row_label in grid.index:
-            cell = grid.at[row_label, col_label]
-            if isinstance(cell, Cell):
-                cached[(cell.row_id, cell.column_id)] = cell.value
-    assert cached[("ROW2", "COL5")] == "70"
-    assert cached[("ROW3", "COL5")] == "30"
-    assert cached[("ROW2", "COL6")] == "55"
-    assert cached[("ROW4", "COL6")] == "45"
-    assert cached[("ROW1", "COL5")] == "100"
-    assert cached[("ROW1", "COL6")] == "100"
-    assert cached[("ROW1", "COL1")] == "10"
-
-    # New ingredient rows land above the Total row in first-referenced order.
-    assert [row.row_id for row in sheet.product_design.rows] == [
-        "ROW3",
-        "ROW4",
-        "ROW1",
-        "ROW2",
-    ]
-
-    assert {f.id for f in sheet.formulations} >= {"INVFA", "INVFB"}
+    # The cache is dropped when the operation completes, so the next read
+    # reloads fresh state.
+    assert sheet.product_design._grid is None
+    _ = sheet.product_design.grid
+    assert len([c for c in responses.calls if c.request.method == "GET"]) == 2
 
 
 # --- Sheet._plan_ordered_component_rows ---
@@ -1453,14 +1452,9 @@ def test_add_formulations_enforce_order_creates_runs_in_place(offline_session):
         ("ROW10", "COL6"),
     ]
 
-    # The cached rows follow the planned order without a refetch.
-    assert [row.row_id for row in sheet.product_design.rows] == [
-        "ROW1",
-        "ROW2",
-        "ROW10",
-        "ROW3",
-        "ROW9",
-    ]
+    # The cache is dropped when the operation completes, so the next read
+    # reloads fresh state.
+    assert sheet.product_design._grid is None
 
 
 @responses.activate
@@ -1525,7 +1519,9 @@ def test_update_cells_applies_writes_to_the_cached_grid(offline_session):
     responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
 
     cell = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
-    updated, failed = sheet.update_cells(cells=[cell.model_copy(update={"value": "25"})])
+    updated, failed = sheet.update_cells(
+        refresh=False, cells=[cell.model_copy(update={"value": "25"})]
+    )
 
     assert len(updated) == 1
     assert failed == []
@@ -1550,7 +1546,9 @@ def test_update_cells_keeps_failed_cells_out_of_the_cache(offline_session):
     )
 
     cell = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
-    updated, failed = sheet.update_cells(cells=[cell.model_copy(update={"value": "25"})])
+    updated, failed = sheet.update_cells(
+        refresh=False, cells=[cell.model_copy(update={"value": "25"})]
+    )
 
     assert updated == []
     assert len(failed) == 1
@@ -1594,8 +1592,8 @@ def test_update_cells_tracks_applied_values_as_the_next_baseline(offline_session
     responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
 
     cell = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
-    sheet.update_cells(cells=[cell.model_copy(update={"value": "25"})])
-    sheet.update_cells(cells=[cell.model_copy(update={"value": "40"})])
+    sheet.update_cells(refresh=False, cells=[cell.model_copy(update={"value": "25"})])
+    sheet.update_cells(refresh=False, cells=[cell.model_copy(update={"value": "40"})])
 
     patches = [c for c in responses.calls if c.request.method == "PATCH"]
     second_payload = json.loads(patches[1].request.body)
@@ -1616,13 +1614,32 @@ def test_update_cells_caches_amounts_the_way_the_sheet_stores_them(offline_sessi
 
     cell = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
     sheet.update_cells(
-        cells=[cell.model_copy(update={"value": "80.0", "min_value": "5.0", "max_value": "95.5"})]
+        refresh=False,
+        cells=[cell.model_copy(update={"value": "80.0", "min_value": "5.0", "max_value": "95.5"})],
     )
 
     cached = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
     assert cached.value == "80"
     assert cached.min_value == "5.000000000"
     assert cached.max_value == "95.500000000"
+
+
+@responses.activate
+def test_update_cells_refresh_default_discards_the_cache(offline_session):
+    """Test a direct write drops the cached grid so the next read reloads it."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    _register_products_grid()
+
+    cell = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
+    updated, failed = sheet.update_cells(cells=[cell.model_copy(update={"value": "25"})])
+
+    assert len(updated) == 1
+    assert failed == []
+    assert sheet.product_design._grid is None
+    _ = sheet.product_design.grid
+    assert len([c for c in responses.calls if c.request.method == "GET"]) == 2
 
 
 @responses.activate
@@ -1635,6 +1652,7 @@ def test_update_cells_drops_the_cache_for_unknown_rows(offline_session):
 
     _ = sheet.product_design.grid  # load the cache
     updated, failed = sheet.update_cells(
+        refresh=False,
         cells=[
             Cell(
                 colId="COL1",
@@ -1644,7 +1662,7 @@ def test_update_cells_drops_the_cache_for_unknown_rows(offline_session):
                 design_id="DES1",
                 row_type=CellType.INVENTORY,
             )
-        ]
+        ],
     )
 
     assert len(updated) == 1

@@ -1004,7 +1004,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         cleared_cells = [
             cell.model_copy(update={"value": "", "calculation": ""}) for cell in original_cells
         ]
-        self.update_cells(cells=cleared_cells)
+        self.update_cells(cells=cleared_cells, refresh=False)
         return original_cells
 
     def add_formulation(
@@ -1084,6 +1084,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             The formulation column that was created or updated.
         """
 
+        self.grid = None  # plan from the latest sheet state
         ingredient_cells: list[Cell] = []
         cleared_cells: list[Cell] = []
         existing_formulation_names = [x.name for x in self.columns]
@@ -1137,16 +1138,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Send ingredient cells first, then Total cells in a separate call.
         if ingredient_cells:
             try:
-                self.update_cells(cells=ingredient_cells)
+                self.update_cells(cells=ingredient_cells, refresh=False)
             except AlbertException:
                 # A failed write must not leave the cleared column blank.
                 if cleared_cells:
-                    self.update_cells(cells=cleared_cells)
+                    self.update_cells(cells=cleared_cells, refresh=False)
+                self.grid = None
                 raise
 
         if total_cells:
-            self.update_cells(cells=total_cells)
+            self.update_cells(cells=total_cells, refresh=False)
 
+        # Reads after the call load the latest state, and the next write plans
+        # from it too.
+        self.grid = None
         return column
 
     @validate_call
@@ -1243,6 +1248,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if not formulations:
             return []
 
+        self.grid = None  # plan from the latest sheet state
+
         # Resolve names against existing columns first so a rejected column
         # addition cannot leave previously cleared columns empty.
         existing_by_name: dict[str, Column] = {}
@@ -1324,16 +1331,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Send ingredient cells first, then Total cells in a separate call.
         if ingredient_cells:
             try:
-                self.update_cells(cells=ingredient_cells)
+                self.update_cells(cells=ingredient_cells, refresh=False)
             except AlbertException:
                 # A failed write must not leave the cleared columns blank.
                 if cleared_cells:
-                    self.update_cells(cells=cleared_cells)
+                    self.update_cells(cells=cleared_cells, refresh=False)
+                self.grid = None
                 raise
 
         if total_cells:
-            self.update_cells(cells=total_cells)
+            self.update_cells(cells=total_cells, refresh=False)
 
+        # Reads after the call load the latest state, and the next write plans
+        # from it too.
+        self.grid = None
         return columns
 
     @validate_call
@@ -1377,6 +1388,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Column
             The updated formulation column.
         """
+        self.grid = None  # plan from the latest sheet state
         col = self.get_column(
             column_id=column_id, inventory_id=inventory_id, column_name=formulation_name
         )
@@ -1413,7 +1425,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
 
         column = self.get_column(column_id=col_id)
-        self.update_cells(cells=all_cells)
+        self.update_cells(cells=all_cells, refresh=False)
+        self.grid = None
         return column
 
     @staticmethod
@@ -2711,7 +2724,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Return False if neither comparison returned True
         return False
 
-    def update_cells(self, *, cells: list[Cell]):
+    def update_cells(self, *, cells: list[Cell], refresh: bool = True):
         """Write changed cells back to the sheet.
 
         Compares each cell against the current grid and sends only the changed
@@ -2738,6 +2751,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
         cells : list[Cell]
             The cells to update. Typically copies of existing cells with modified
             values or formatting.
+        refresh : bool, optional
+            When True (default), the sheet's in-memory view is discarded after the
+            write, so the next read loads the latest state, including anything the
+            platform computed as a side effect of the write (calculated cells,
+            synced rows, Total formatting). When False, the written cells are
+            applied to the in-memory view instead and no reload happens; this is
+            intended for long bulk operations that write many times in a row and
+            would be slowed down by reloading between writes. Bulk methods such as
+            [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] use
+            this internally and refresh once the whole operation completes, so
+            their callers still read fully up-to-date state afterwards.
 
         Returns
         -------
@@ -2843,7 +2867,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
                             if key not in updated_keys:
                                 updated_keys.add(key)
                                 updated.append(c)
-                        self._apply_cells_to_cached_grids(cells=target_cells)
+                        if not refresh:
+                            self._apply_cells_to_cached_grids(cells=target_cells)
                     elif response.status_code == 206:
                         cell_results = self._filter_cells(
                             cells=target_cells, response_dict=response.json()
@@ -2853,7 +2878,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
                             if key not in updated_keys:
                                 updated_keys.add(key)
                                 updated.append(c)
-                        self._apply_cells_to_cached_grids(cells=cell_results[0])
+                        if not refresh:
+                            self._apply_cells_to_cached_grids(cells=cell_results[0])
                         for c in cell_results[1]:
                             key = (c.design_id, c.row_id, c.column_id)
                             if key not in failed_keys:
@@ -2868,6 +2894,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
                 batch_index += 1
 
+        if refresh:
+            self.grid = None
         return (updated, failed)
 
     def _add_column(
