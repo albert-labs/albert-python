@@ -1,7 +1,9 @@
+from contextlib import suppress
+
 import pandas as pd
 import pytest
 
-from albert.exceptions import AlbertException
+from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.inventory import InventoryItem
 from albert.resources.sheets import (
     Cell,
@@ -158,6 +160,26 @@ def test_add_and_remove_blank_rows(seeded_sheet: Sheet):
         new_row = seeded_sheet.add_blank_row(
             row_name="TEST results Design", design=DesignType.RESULTS
         )
+
+
+def test_replace_inventory_on_row(seeded_sheet: Sheet, seeded_inventory: list[InventoryItem]):
+    """Test replacing the inventory item on a private ingredient row."""
+    original = seeded_inventory[2]
+    replacement = seeded_inventory[3]
+    new_row = seeded_sheet.add_inventory_row(inventory_id=original.id)
+    try:
+        updated_row = new_row.replace_inventory(inventory_item=replacement)
+        assert updated_row.inventory_id == replacement.id
+        assert updated_row.name == replacement.name
+
+        refreshed = {row.row_id: row for row in seeded_sheet.product_design.rows}
+        assert refreshed[new_row.row_id].inventory_id == replacement.id
+        assert refreshed[new_row.row_id].name == replacement.name
+    finally:
+        with suppress(NotFoundError):
+            seeded_sheet.delete_row(
+                row_id=new_row.row_id, design_id=seeded_sheet.product_design.id
+            )
 
 
 ########################## CELLS ##########################
