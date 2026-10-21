@@ -491,7 +491,7 @@ class BaseTask(BaseTaggedResource):
     """Internal UI layout state for the task page."""
 
     entity_type: TaskEntityType | None = Field(default=None, alias="EntityType")
-    """Internal entity-type classification. See Also --------"""
+    """Internal entity-type classification."""
 
 
 class PropertyTask(BaseTask):
