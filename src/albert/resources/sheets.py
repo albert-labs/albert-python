@@ -3382,8 +3382,7 @@ class Row(BaseSessionResource):  # noqa:F811
             json=payload,
         )
 
-        if self.sheet._grid is not None:  # if the sheet has a grid loaded into memory, adjust it.
-            self.sheet.grid = None
+        self.sheet.grid = None  # clear cached grids/rows so the next read reflects the swap
         self.inventory_id = inventory_item.id
         self.name = inventory_item.name
         return self

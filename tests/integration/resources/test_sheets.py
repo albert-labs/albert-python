@@ -168,6 +168,10 @@ def test_replace_inventory_on_row(seeded_sheet: Sheet, seeded_inventory: list[In
     replacement = seeded_inventory[3]
     new_row = seeded_sheet.add_inventory_row(inventory_id=original.id)
     try:
+        # Populate the cached rows before the swap so the re-read exercises cache invalidation.
+        cached = {row.row_id: row for row in seeded_sheet.product_design.rows}
+        assert cached[new_row.row_id].inventory_id == original.id
+
         updated_row = new_row.replace_inventory(inventory_item=replacement)
         assert updated_row.inventory_id == replacement.id
         assert updated_row.name == replacement.name
