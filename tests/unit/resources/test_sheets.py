@@ -257,6 +257,28 @@ def test_add_formulation_restores_cleared_column_when_write_fails(monkeypatch):
     assert writes[-1] == [original]
 
 
+def test_clear_formulation_ignores_empty_grid_padding(monkeypatch):
+    """Test clearing a column skips empty grid padding instead of failing."""
+    sheet = _empty_sheet()
+    original = Cell(
+        colId="COL1", rowId="ROW1", value="7", type=CellType.INVENTORY, design_id="DES1"
+    )
+    column = Column(colId="COL1", name="F1", type=CellType.INVENTORY, sheet=sheet)
+    writes: list[list[Cell]] = []
+
+    def _update_cells(*, cells):
+        writes.append(cells)
+        return cells, []
+
+    monkeypatch.setattr(Column, "cells", property(lambda self: [original, None, float("nan")]))
+    monkeypatch.setattr(Sheet, "update_cells", lambda self, *, cells: _update_cells(cells=cells))
+
+    cleared = sheet._clear_formulation_from_column(column=column)
+
+    assert cleared == [original]
+    assert [[cell.value for cell in cells] for cells in writes] == [[""]]
+
+
 def _empty_sheet() -> Sheet:
     return Sheet(
         albertId="SHEET1",

@@ -997,7 +997,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         original_cells = [
             cell
             for cell in column.cells
-            if cell.type == CellType.INVENTORY and cell.row_type != CellType.TOTAL
+            if isinstance(cell, Cell)
+            and cell.type == CellType.INVENTORY
+            and cell.row_type != CellType.TOTAL
         ]
         cleared_cells = [
             cell.model_copy(update={"value": "", "calculation": ""}) for cell in original_cells
