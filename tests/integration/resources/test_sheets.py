@@ -25,7 +25,10 @@ def _inventory_cells(column: Column) -> list[Cell]:
     return [
         cell
         for cell in column.cells
-        if cell.type == CellType.INVENTORY and cell.row_type == CellType.INVENTORY
+        if isinstance(cell, Cell)
+        and cell.type == CellType.INVENTORY
+        and cell.row_type == CellType.INVENTORY
+        and cell.value not in (None, "")
     ]
 
 
@@ -184,6 +187,8 @@ def test_add_formulations_builds_columns_with_shared_rows(
             if not isinstance(cell, Cell):
                 continue
             if cell.type == CellType.INVENTORY and cell.row_type == CellType.INVENTORY:
+                if cell.value in (None, ""):
+                    continue
                 amounts[row_id_to_inv_id[cell.row_id]] = float(cell.value)
             elif cell.row_type == CellType.TOTAL:
                 assert float(cell.value) == pytest.approx(100.0)
