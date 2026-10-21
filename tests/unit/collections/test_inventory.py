@@ -1019,6 +1019,45 @@ def test_get_by_ids_returns_empty_when_all_ids_missing(offline_session) -> None:
 
 
 @responses.activate
+def test_get_by_ids_warns_with_ids_dropped_from_a_partial_batch(offline_session, caplog) -> None:
+    """Test that IDs missing from an otherwise found batch are named in a warning."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item("INVA1")]})
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(ids=["INVA1", "INVZ1"])
+
+    assert [r.message for r in caplog.records] == ["Skipped 1 inventory IDs not found: INVZ1"]
+
+
+@responses.activate
+def test_get_by_ids_warns_with_ids_from_a_fully_missing_batch(offline_session, caplog) -> None:
+    """Test that every ID in a batch that was entirely missing is counted in the warning."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item(f"INVA{i}") for i in range(300)]})
+    responses.get(_IDS_URL, status=404, json=_NOT_FOUND)
+    missing = [f"INVZ{i}" for i in range(12)]
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(
+            ids=[*(f"INVA{i}" for i in range(300)), *missing]
+        )
+
+    assert [r.message for r in caplog.records] == [
+        f"Skipped 12 inventory IDs not found: {', '.join(missing[:10])} (and 2 more)"
+    ]
+
+
+@responses.activate
+def test_get_by_ids_does_not_warn_when_all_ids_found(offline_session, caplog) -> None:
+    """Test that no warning is logged when every ID is found, with or without the prefix."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item("INVA1"), _ids_item("A2")]})
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(ids=["INVA1", "INVA2"])
+
+    assert caplog.records == []
+
+
+@responses.activate
 def test_get_by_ids_still_raises_other_errors(offline_session) -> None:
     """Test that errors other than not-found still propagate."""
     responses.get(_IDS_URL, status=403, json={"errors": [{"msg": "Forbidden"}]})

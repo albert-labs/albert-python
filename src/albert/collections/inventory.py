@@ -8,6 +8,7 @@ from typing_extensions import deprecated
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
+from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
@@ -57,6 +58,9 @@ _INSTRUCTIONS_PAGE_SIZE = 100
 
 # Bulk instruction reads accept at most this many formula IDs per call.
 _INSTRUCTIONS_BULK_MAX_IDS = 15
+
+# get_by_ids lists at most this many skipped IDs in its warning.
+_MAX_SKIPPED_IDS_SHOWN = 10
 
 
 class InventoryCollection(BaseCollection):
@@ -442,7 +446,7 @@ class InventoryCollection(BaseCollection):
         """Get multiple fully populated inventory items by their IDs.
 
         Arbitrarily long ID lists are supported. Items not found are omitted
-        from the result.
+        from the result, and a warning lists the IDs that were skipped.
 
         !!! example
             ```python
@@ -468,10 +472,18 @@ class InventoryCollection(BaseCollection):
             try:
                 response = self.session.get(f"{self.base_path}/ids", params={"id": batch})
             except NotFoundError:
-                # Missing IDs are dropped silently unless the whole batch is missing,
-                # which is reported as not found; omit it like any other missing ID.
+                # Missing IDs are dropped unless the whole batch is missing, which is
+                # reported as not found; omit it like any other missing ID.
                 continue
             inventory.extend([InventoryItem(**item) for item in response.json()["Items"]])
+
+        found = {item.id if item.id.startswith("INV") else f"INV{item.id}" for item in inventory}
+        skipped = [item_id for item_id in dict.fromkeys(ids) if item_id not in found]
+        if skipped:
+            shown = ", ".join(skipped[:_MAX_SKIPPED_IDS_SHOWN])
+            more = len(skipped) - _MAX_SKIPPED_IDS_SHOWN
+            suffix = f" (and {more} more)" if more > 0 else ""
+            logger.warning(f"Skipped {len(skipped)} inventory IDs not found: {shown}{suffix}")
         return inventory
 
     @deprecated(
