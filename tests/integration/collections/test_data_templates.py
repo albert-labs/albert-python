@@ -373,7 +373,7 @@ def calculation_dt(client: Albert, seeded_data_columns: list[DataColumn], seed_p
 def test_update_delete_data_column(
     client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
 ):
-    """Test removing a data column from a data template via update with remove_omitted_rows."""
+    """Test removing a data column from a data template via update."""
     dt = client.data_templates.create(
         data_template=DataTemplate(
             name=f"{seed_prefix} - Delete Column Test",
@@ -392,7 +392,7 @@ def test_update_delete_data_column(
         dt.data_column_values = [
             x for x in dt.data_column_values if x.data_column_id != column_to_delete.data_column_id
         ]
-        updated_dt = client.data_templates.update(data_template=dt, remove_omitted_rows=True)
+        updated_dt = client.data_templates.update(data_template=dt)
 
         assert len(updated_dt.data_column_values) == original_count - 1
         assert column_to_delete.data_column_id not in [
@@ -406,10 +406,10 @@ def test_update_delete_data_column(
             client.data_templates.delete(id=dt.id)
 
 
-def test_update_partial_data_column_list_keeps_omitted_columns(
+def test_update_partial_data_column_list_keeps_omitted_columns_when_not_removing(
     client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
 ):
-    """Test that a partial data column list updates listed columns and keeps the rest."""
+    """Test that with remove_omitted_rows=False a partial list keeps the unlisted columns."""
     dt = client.data_templates.create(
         data_template=DataTemplate(
             name=f"{seed_prefix} - Partial Column Update Test",
@@ -426,7 +426,8 @@ def test_update_partial_data_column_list_keeps_omitted_columns(
         )
 
         updated_dt = client.data_templates.update(
-            data_template=DataTemplate(id=dt.id, name=dt.name, data_column_values=[kept])
+            data_template=DataTemplate(id=dt.id, name=dt.name, data_column_values=[kept]),
+            remove_omitted_rows=False,
         )
 
         assert sorted(x.data_column_id for x in updated_dt.data_column_values) == original_ids

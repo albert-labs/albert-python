@@ -976,8 +976,8 @@ def _two_row_template(**kwargs) -> DataTemplate:
     )
 
 
-def test_generate_data_template_patches_partial_lists_keep_omitted_rows():
-    """Test that partial column and parameter lists update listed rows and delete nothing."""
+def test_generate_data_template_patches_partial_lists_keep_omitted_rows_when_not_removing():
+    """Test that with remove_omitted_rows=False, partial lists update listed rows only."""
     existing = _two_row_template()
     updated = _data_template(
         data_column_values=[_dc(data_column_id="DAC1", sequence="1", value="11")],
@@ -985,7 +985,10 @@ def test_generate_data_template_patches_partial_lists_keep_omitted_rows():
     )
 
     general_patches, new_cols, _, new_params, _, p_patches, _, _ = generate_data_template_patches(
-        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
+        PatchPayload(data=[]),
+        updated_data_template=updated,
+        existing_data_template=existing,
+        remove_omitted_rows=False,
     )
 
     assert [(p.attribute, p.colId) for p in general_patches.data] == [("datacolumn", "1")]
@@ -994,21 +997,24 @@ def test_generate_data_template_patches_partial_lists_keep_omitted_rows():
     assert new_params == []
 
 
-def test_generate_data_template_patches_empty_lists_keep_all_rows():
-    """Test that explicit empty column and parameter lists delete nothing by default."""
+def test_generate_data_template_patches_empty_lists_keep_all_rows_when_not_removing():
+    """Test that with remove_omitted_rows=False, explicit empty lists delete nothing."""
     existing = _two_row_template()
     updated = _data_template(data_column_values=[], parameter_values=[])
 
     general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
-        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
+        PatchPayload(data=[]),
+        updated_data_template=updated,
+        existing_data_template=existing,
+        remove_omitted_rows=False,
     )
 
     assert general_patches.data == []
     assert p_patches == []
 
 
-def test_generate_data_template_patches_remove_omitted_rows_deletes_unlisted():
-    """Test that remove_omitted_rows deletes the columns and parameters left out of the lists."""
+def test_generate_data_template_patches_deletes_unlisted_rows_by_default():
+    """Test that by default the columns and parameters left out of the lists are deleted."""
     existing = _two_row_template()
     updated = _data_template(
         data_column_values=[_dc(data_column_id="DAC1", sequence="1", value="10")],
@@ -1016,10 +1022,7 @@ def test_generate_data_template_patches_remove_omitted_rows_deletes_unlisted():
     )
 
     general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
-        PatchPayload(data=[]),
-        updated_data_template=updated,
-        existing_data_template=existing,
-        remove_omitted_rows=True,
+        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
     )
 
     assert [(p.operation, p.attribute, p.old_value) for p in general_patches.data] == [
@@ -1028,16 +1031,13 @@ def test_generate_data_template_patches_remove_omitted_rows_deletes_unlisted():
     assert p_patches == [PGPatchDatum(operation="delete", attribute="parameters", oldValue=["2"])]
 
 
-def test_generate_data_template_patches_remove_omitted_rows_ignores_unset_lists():
-    """Test that remove_omitted_rows never deletes rows when the lists are left unset."""
+def test_generate_data_template_patches_unset_lists_delete_nothing():
+    """Test that rows are never deleted when the lists are left unset."""
     existing = _two_row_template()
     updated = _data_template(name="Renamed")
 
     general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
-        PatchPayload(data=[]),
-        updated_data_template=updated,
-        existing_data_template=existing,
-        remove_omitted_rows=True,
+        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
     )
 
     assert general_patches.data == []

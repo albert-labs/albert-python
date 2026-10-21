@@ -659,14 +659,13 @@ def generate_data_template_patches(
     updated_data_template: DataTemplate,
     existing_data_template: DataTemplate,
     *,
-    remove_omitted_rows: bool = False,
+    remove_omitted_rows: bool = True,
 ):
     """Generate the patches for a data template update.
 
-    Data column and parameter lists on ``updated_data_template`` are merged into the
-    existing template: listed rows are added or updated, and rows that are not listed
-    are kept. Pass ``remove_omitted_rows=True`` to delete the existing rows that are
-    not listed.
+    Data column and parameter lists on ``updated_data_template`` replace the existing
+    rows: listed rows are added or updated, and rows that are not listed are deleted.
+    Pass ``remove_omitted_rows=False`` to keep the rows that are not listed.
     """
     updated_data_columns = (
         updated_data_template.data_column_values
