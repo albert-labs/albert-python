@@ -255,7 +255,7 @@ class DataTemplate(BaseTaggedResource):
     """The original template name as stored in Albert. Read-only."""
 
     full_name: str | None = Field(default=None, alias="fullName", exclude=True, frozen=True)
-    """The fully qualified template name. Read-only. See Also --------"""
+    """The fully qualified template name. Read-only."""
 
 
 class ImportMode(str, Enum):
