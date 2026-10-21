@@ -3572,8 +3572,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         payload = [{"colId": column_id}]
         self.session.delete(endpoint, json=payload)
 
-        if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
-            self.grid = None
+        self.grid = None
 
     @validate_call
     def delete_columns(self, *, column_ids: list[str]) -> None:
@@ -3600,8 +3599,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         payload = [{"colId": column_id} for column_id in column_ids]
         self.session.delete(endpoint, json=payload)
 
-        if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
-            self.grid = None
+        self.grid = None
 
     def delete_row(self, *, row_id: str, design_id: str) -> None:
         """Delete a row from a Design section of this sheet.
@@ -3626,8 +3624,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         payload = [{"rowId": row_id}]
         self.session.delete(endpoint, json=payload)
 
-        if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
-            self.grid = None
+        self.grid = None
 
     @validate_call
     def delete_rows(self, *, row_ids: list[str], design_id: str) -> None:
@@ -3653,8 +3650,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         payload = [{"rowId": row_id} for row_id in row_ids]
         self.session.delete(endpoint, json=payload)
 
-        if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
-            self.grid = None
+        self.grid = None
 
     @staticmethod
     def _move_rows_payload(

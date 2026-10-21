@@ -815,6 +815,40 @@ def test_move_rows_rejects_reference_in_moved_rows():
         sheet.move_rows(row_ids=["ROW1", "ROW2"], reference_id="ROW2", design_id="DES1")
 
 
+@responses.activate
+@pytest.mark.parametrize(
+    ("method", "kwargs", "url"),
+    [
+        (
+            "delete_row",
+            {"row_id": "ROW1", "design_id": "DES1"},
+            "/api/v3/worksheet/design/DES1/rows",
+        ),
+        (
+            "delete_rows",
+            {"row_ids": ["ROW1"], "design_id": "DES1"},
+            "/api/v3/worksheet/design/DES1/rows",
+        ),
+        ("delete_column", {"column_id": "COL1"}, "/api/v3/worksheet/sheet/SHEET1/columns"),
+        ("delete_columns", {"column_ids": ["COL1"]}, "/api/v3/worksheet/sheet/SHEET1/columns"),
+    ],
+)
+def test_delete_clears_design_level_grid_cache(offline_session, method, kwargs, url):
+    """Test that deletes clear cached design grids even when the sheet grid itself is unset."""
+    sheet = _products_sheet(session=offline_session)
+    design = sheet.product_design
+    design._grid = pd.DataFrame(index=["DES1#ROW1"])
+    design._rows = [_inv_row(sheet, "ROW1", "INV1")]
+    design._columns = [Column(colId="COL1", type=CellType.LKP, sheet=sheet)]
+    responses.delete(f"{UNIT_BASE_URL}{url}", status=204)
+
+    getattr(sheet, method)(**kwargs)
+
+    assert design._grid is None
+    assert design._rows is None
+    assert design._columns is None
+
+
 def _products_sheet(session=None) -> Sheet:
     return Sheet(
         albertId="SHEET1",
