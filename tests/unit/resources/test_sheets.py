@@ -16,6 +16,7 @@ from albert.resources.sheets import (
     DesignType,
     Row,
     RowConfig,
+    RowPosition,
     Sheet,
 )
 from tests.unit.conftest import UNIT_BASE_URL
@@ -727,3 +728,37 @@ def test_row_config_invalid_value_coerced_to_none():
     design = sheet.designs[0]
     row = Row(rowId="ROW1", type=CellType.APP, design=design, sheet=sheet, config="bogus")
     assert row.config is None
+
+
+def test_move_rows_payload_whole_shape():
+    """Test the row-move payload for multiple rows moved below a reference row."""
+    assert Sheet._move_rows_payload(
+        row_ids=["ROW13", "ROW16"], reference_id="ROW10", position=RowPosition.BELOW
+    ) == {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "sequence",
+                "sourceId": ["ROW13", "ROW16"],
+                "referenceId": "ROW10",
+                "position": "below",
+            }
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    ("position", "expected"),
+    [(RowPosition.ABOVE, "above"), (RowPosition.BELOW, "below"), ("above", "above")],
+)
+def test_move_rows_payload_position(position, expected):
+    """Test that the row-move payload serializes enum and string positions to wire values."""
+    payload = Sheet._move_rows_payload(row_ids=["ROW2"], reference_id="ROW1", position=position)
+    assert payload["data"][0]["position"] == expected
+
+
+def test_move_rows_rejects_reference_in_moved_rows():
+    """Test that move_rows rejects a reference row that is also being moved."""
+    sheet = Sheet(**_PROCESS_SHEET)
+    with pytest.raises(AlbertException, match="reference_id"):
+        sheet.move_rows(row_ids=["ROW1", "ROW2"], reference_id="ROW2", design_id="DES1")

@@ -754,6 +754,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Delete a row.
     delete_rows(row_ids, design_id) -> None
         Delete multiple rows from a Design section in one call.
+    move_rows(row_ids, reference_id, design_id, ...) -> None
+        Move (reorder) rows within a Design section, above or below a reference row.
     """
 
     id: str = Field(alias="albertId")
@@ -2901,6 +2903,78 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
             self.grid = None
+
+    @staticmethod
+    def _move_rows_payload(
+        *, row_ids: list[str], reference_id: str, position: RowPosition
+    ) -> dict:
+        return {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "sequence",
+                    "sourceId": list(row_ids),
+                    "referenceId": reference_id,
+                    "position": position.value if isinstance(position, RowPosition) else position,
+                }
+            ]
+        }
+
+    @validate_call
+    def move_rows(
+        self,
+        *,
+        row_ids: list[str],
+        reference_id: str,
+        design_id: str,
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> None:
+        """Move (reorder) one or more rows within a Design section of this sheet.
+
+        The rows keep their given relative order and are placed together above
+        or below the reference row.
+
+        !!! example
+            ```python
+            sheet.move_rows(
+                row_ids=["ROW3", "ROW4"],
+                reference_id="ROW10",
+                design_id=sheet.product_design.id,
+            )
+            ```
+
+        Parameters
+        ----------
+        row_ids : list[str]
+            The IDs of the rows to move. The rows are moved together in their
+            given order.
+        reference_id : str
+            The ID of the row to move relative to. Must not be one of ``row_ids``.
+        design_id : str
+            The ID of the Design (section) the rows belong to.
+        position : RowPosition, optional
+            Whether to place the rows ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AlbertException
+            If ``reference_id`` is included in ``row_ids``.
+        """
+        if not row_ids:
+            return
+        if reference_id in row_ids:
+            raise AlbertException("reference_id must not be one of the rows being moved.")
+
+        payload = self._move_rows_payload(
+            row_ids=row_ids, reference_id=reference_id, position=position
+        )
+        self.session.patch(f"/api/v3/worksheet/{design_id}/designs", json=payload)
+        self.grid = None
 
     def _find_column(self, *, column_id: str = "", column_name: str = ""):
         if column_id == None:
