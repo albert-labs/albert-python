@@ -18,7 +18,7 @@ from albert.core.shared.identifiers import (
     WorksheetId,
 )
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertPartialError
+from albert.exceptions import AlbertPartialError, NotFoundError
 from albert.resources.facet import FacetItem
 from albert.resources.instructions import (
     Instruction,
@@ -465,7 +465,12 @@ class InventoryCollection(BaseCollection):
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
         inventory = []
         for batch in batches:
-            response = self.session.get(f"{self.base_path}/ids", params={"id": batch})
+            try:
+                response = self.session.get(f"{self.base_path}/ids", params={"id": batch})
+            except NotFoundError:
+                # Missing IDs are dropped silently unless the whole batch is missing,
+                # which is reported as not found; omit it like any other missing ID.
+                continue
             inventory.extend([InventoryItem(**item) for item in response.json()["Items"]])
         return inventory
 
