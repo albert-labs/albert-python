@@ -1838,7 +1838,7 @@ def test_update_cells_drops_the_cache_for_unknown_rows(offline_session):
 
 @responses.activate
 def test_update_cells_groups_large_writes_into_platform_sized_calls(offline_session):
-    """Test that a write of more than 200 cells is split at the platform guardrail."""
+    """Test that a write of more than 1000 cells is split at the platform guardrail."""
     sheet = _products_sheet(session=offline_session)
     _register_products_grid()
     responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
@@ -1852,13 +1852,13 @@ def test_update_cells_groups_large_writes_into_platform_sized_calls(offline_sess
             type=CellType.INVENTORY,
             design_id="DES1",
         )
-        for i in range(450)
+        for i in range(2050)
     ]
     updated, failed = sheet.update_cells(cells=cells)
 
     patches = [c for c in responses.calls if c.request.method == "PATCH"]
-    assert [len(json.loads(c.request.body)) for c in patches] == [200, 200, 50]
-    assert len(updated) == 450
+    assert [len(json.loads(c.request.body)) for c in patches] == [1000, 1000, 50]
+    assert len(updated) == 2050
     assert failed == []
 
 
