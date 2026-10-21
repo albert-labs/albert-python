@@ -22,15 +22,6 @@ def test_get_by_id(client: Albert, seeded_workflows: list[Workflow]):
     assert retrieved_wf.id == wf.id
 
 
-def test_blocks_dupes(client: Albert, seeded_workflows: list[Workflow]):
-    wf = seeded_workflows[0].model_copy()
-    wf.id = None
-    wf.status = None
-
-    r = client.workflows.create(workflows=wf)
-    assert r[0].id == seeded_workflows[0].id
-
-
 def test_create_returns_populated_workflow(client: Albert, seeded_workflows: list[Workflow]):
     """Test that create returns fully populated matched workflows."""
     wf = seeded_workflows[0].model_copy()

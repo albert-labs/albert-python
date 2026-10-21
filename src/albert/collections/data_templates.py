@@ -456,7 +456,12 @@ class DataTemplateCollection(BaseCollection):
         to_updated_at : str, optional
             Only include templates updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         is_drop_down : bool, optional
             When True, apply smart dropdown search behavior.
         sort_by : str, optional
@@ -814,7 +819,12 @@ class DataTemplateCollection(BaseCollection):
         to_updated_at : str, optional
             Only include templates updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         is_drop_down : bool, optional
             When True, apply smart dropdown search behavior.
         sort_by : str, optional

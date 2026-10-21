@@ -123,10 +123,11 @@ def test_serialize_as_entity_link_with_name_round_trip():
         EntityLink(id="LNK1"),
         EntityLinkWithName(id="LNK1", name="named"),
         [EntityLink(id="LNK1"), EntityLinkWithName(id="LNK2", name="named")],
+        pytest.param(None, id="cleared-field"),
     ],
 )
 def test_metadata_item_accepts_each_member_of_the_union(value):
-    """Test that MetadataItem accepts scalars, entity links, and lists of entity links."""
+    """Test that MetadataItem accepts scalars, entity links, lists of links, and None."""
     holder = FakeMetadataHolder(metadata={"key": value})
 
     assert holder.metadata["key"] == value

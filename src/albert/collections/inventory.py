@@ -63,16 +63,17 @@ class InventoryCollection(BaseCollection):
     """Manage Inventory Items in the Albert platform.
 
     An Inventory Item is a catalog entry for a physical or formulated material
-    tracked in Albert. Every item belongs to one of four categories:
+    tracked in Albert. Every item belongs to one of five categories:
 
     - ``RawMaterials``: purchased substances used as ingredients (e.g. a solvent
       or pigment), typically linked to a manufacturing Company and one or more
       CAS numbers.
     - ``Consumables``: supplies consumed during lab work (e.g. gloves, vials).
     - ``Equipment``: instruments and apparatus.
-    - ``Formulas``: mixtures designed in Albert. Formulas are created through the
-      Worksheet collection ([`WorksheetCollection`][albert.collections.worksheets.WorksheetCollection]),
-      not here; [`create`][albert.collections.inventory.InventoryCollection.create] rejects Formula items.
+    - ``Formulas``: mixtures designed in Albert. A Formula item is created under
+      its parent Project by passing ``project_id`` to
+      [`create`][albert.collections.inventory.InventoryCollection.create].
+    - ``Reaction``: products of chemical reactions recorded in Albert.
 
     Inventory Items are referenced throughout the platform by their Inventory ID
     (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
@@ -108,7 +109,7 @@ class InventoryCollection(BaseCollection):
     Methods
     -------
     create(inventory_item, avoid_duplicates=True) -> InventoryItem
-        Create a new inventory item (raw material, consumable, or equipment).
+        Create a new inventory item (raw material, consumable, equipment, or formula).
     get_by_id(id) -> InventoryItem
         Get a single fully populated item by its ID.
     get_by_ids(ids) -> list[InventoryItem]
@@ -320,6 +321,15 @@ class InventoryCollection(BaseCollection):
                 return inv
         return None
 
+    @staticmethod
+    def _dedup_applies_to(*, category: InventoryCategory) -> bool:
+        """Whether name+company duplicate matching applies to a category.
+
+        Formulas are always created as a new item with a unique ID under their
+        Project, so an existing item with the same name is never a duplicate.
+        """
+        return category != InventoryCategory.FORMULAS
+
     def create(
         self,
         *,
@@ -328,9 +338,9 @@ class InventoryCollection(BaseCollection):
     ) -> InventoryItem:
         """Create a new inventory item.
 
-        Use this to add a raw material, consumable, or equipment item to the
-        catalog. Formula items are not supported here; build those through the
-        Worksheet collection.
+        Use this to add a raw material, consumable, equipment, or formula item to
+        the catalog. A Formula item (``category="Formulas"``) represents a mixture
+        designed in a Project and requires ``project_id`` set to that Project's ID.
 
         Any tags or company on the item that do not yet exist in Albert are
         created automatically before the item is registered (see
@@ -357,30 +367,19 @@ class InventoryCollection(BaseCollection):
             The item to create. ``name`` and ``category`` are required. For raw
             materials, set ``company`` to the manufacturing Company and ``cas`` to
             the relevant CAS numbers. Volume items (``unit_category="volume"``)
-            require a positive ``density`` at creation.
+            require a positive ``density`` at creation. Formula items require
+            ``project_id``.
         avoid_duplicates : bool, optional
             When True (default), if an item with the same name and company already
             exists, that existing item is returned instead of creating a duplicate.
-            Set to False to force creation.
+            Set to False to force creation. Not applied to Formula items, which are
+            always created as a new item under their Project.
 
         Returns
         -------
         InventoryItem
             The newly created item, populated with its assigned Inventory ID.
-
-        Raises
-        ------
-        NotImplementedError
-            If ``inventory_item.category`` is ``Formulas``.
         """
-        category = (
-            inventory_item.category
-            if isinstance(inventory_item.category, str)
-            else inventory_item.category.value
-        )
-        if category == InventoryCategory.FORMULAS.value:
-            # This will need to interact with worksheets
-            raise NotImplementedError("Registrations of formulas not yet implemented")
         if inventory_item.tags:
             inventory_item.tags = resolve_tags(session=self.session, tags=inventory_item.tags)
         if inventory_item.company and inventory_item.company.id is None:
@@ -389,7 +388,7 @@ class InventoryCollection(BaseCollection):
                 company=inventory_item.company
             )
         # Check to see if there is a match on name + Company already
-        if avoid_duplicates:
+        if avoid_duplicates and self._dedup_applies_to(category=inventory_item.category):
             existing = self.get_match_or_none(inventory_item=inventory_item)
             if isinstance(existing, InventoryItem):
                 logging.warning(
@@ -906,7 +905,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1154,7 +1153,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1196,7 +1195,12 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional
@@ -1444,7 +1448,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1486,7 +1490,12 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional

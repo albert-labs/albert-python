@@ -162,12 +162,25 @@ Never expose positional arguments on public collection or resource methods. Priv
   the field already exists in the API response; the SDK was just incomplete.
   Reserve `feat` for new methods, parameters, or other caller-visible capabilities.
 
-## Deprecations — @deprecated does not emit a runtime warning
+## Deprecations — @deprecated already emits the runtime warning
 
 `@deprecated` from `typing_extensions` gives IDE strike-through and static-analysis
-warnings only. It does **not** fire a `DeprecationWarning` at runtime. For class
-deprecations that need a runtime warning at instantiation (e.g. `CasCollection`),
-use `warnings.warn(..., DeprecationWarning, stacklevel=2)` in `__init__` as well.
+warnings **and** fires a `DeprecationWarning` at runtime each time the decorated
+function, method, or property getter is called, or the decorated class is
+instantiated. Do not add a manual `warnings.warn(...)` inside a decorated callable:
+callers get the same warning twice. Put the full message (what to use instead,
+removal timeline) in the decorator.
+
+Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=2)` only for a
+deprecated **parameter** or **argument value** on a method that is not itself
+deprecated (e.g. `data_template_id` on property data void/unvoid).
+
+Pydantic models: a deprecation warning raised during construction (custom
+`__init__` or a class decorator) also fires when Pydantic builds that model from
+server data, e.g. as a nested field. Callers who never touched the deprecated model
+then see warnings pointing into Pydantic internals. Prefer deprecating the methods
+that accept or return the model, and add a unit test that parsing server data
+emits no warning.
 
 ## Releases — docs vs chore commit type
 

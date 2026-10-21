@@ -130,7 +130,7 @@ nav:
           - Overview: migration/index.md
           - Alpha → v1.0: migration/alpha-to-v1.md
           - Substances v3 → v4 (🧪Beta): migration/substances-v4.md
-          - Specs → Attributes (🧪 Beta): migration/specs-to-attributes.md
+          - Specs → Attributes: migration/specs-to-attributes.md
       - Contributing: CONTRIBUTING.md
   - SDK Reference:
       - Clients:
@@ -146,7 +146,7 @@ nav:
       - Collections:
           - Activities: collections/activities.md
           - Attachments: collections/attachments.md
-          - Attributes (🧪 Beta): collections/attributes.md
+          - Attributes: collections/attributes.md
           - Batch Data: collections/batch_data.md
           - Base: collections/base.md
           - Breakthrough:
@@ -165,6 +165,7 @@ nav:
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
           - Design Runs (🧪Beta): collections/design_runs.md
+          - Design Spaces (🧪Beta): collections/design_spaces.md
           - Entity Types: collections/entity_types.md
           - Files: collections/files.md
           - Hazards: collections/hazards.md
@@ -207,7 +208,7 @@ nav:
       - Resources:
           - Activities: resources/activities.md
           - Attachments: resources/attachments.md
-          - Attributes (🧪 Beta): resources/attributes.md
+          - Attributes: resources/attributes.md
           - ACL: resources/acls.md
           - Batch Data: resources/batch_data.md
           - Breakthrough:
@@ -222,6 +223,7 @@ nav:
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
           - Design: resources/design.md
+          - Design Spaces (🧪Beta): resources/design_spaces.md
           - Documents: resources/documents.md
           - Entity Types: resources/entity_types.md
           - Enums: resources/enums.md

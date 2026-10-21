@@ -7,7 +7,7 @@ diff behavior in ``BaseCollection._generate_metadata_diff`` with no I/O to fake.
 from albert.collections.base import BaseCollection
 from albert.collections.companies import CompanyCollection
 from albert.core.shared.models.base import BaseResource, EntityLink
-from albert.core.shared.models.patch import PatchOperation
+from albert.core.shared.models.patch import PatchDatum, PatchOperation
 from albert.core.shared.types import MetadataItem
 from albert.resources.companies import Company
 
@@ -507,3 +507,48 @@ def test_metadata_add_single_entity_value_uses_bare_id() -> None:
     assert len(data) == 1
     assert data[0].operation == PatchOperation.ADD
     assert data[0].new_value == "LST1"
+
+
+def test_metadata_cleared_existing_value_left_cleared_emits_no_op() -> None:
+    """Test that a cleared (None) metadata value that stays None emits no op."""
+    data = BaseCollection(session=None)._generate_metadata_diff(
+        existing_metadata={"textField": None},
+        updated_metadata={"textField": None},
+    )
+
+    assert data == []
+
+
+def test_metadata_cleared_existing_value_dropped_from_update_emits_no_op() -> None:
+    """Test that dropping a key whose existing value is cleared (None) emits no op."""
+    data = BaseCollection(session=None)._generate_metadata_diff(
+        existing_metadata={"textField": None},
+        updated_metadata={},
+    )
+
+    assert data == []
+
+
+def test_metadata_cleared_existing_value_set_emits_add() -> None:
+    """Test that setting a key whose existing value is cleared (None) emits an add."""
+    data = BaseCollection(session=None)._generate_metadata_diff(
+        existing_metadata={"textField": None, "linkField": None},
+        updated_metadata={"textField": "value", "linkField": EntityLink(id="LST1")},
+    )
+
+    assert data == [
+        PatchDatum(
+            attribute="Metadata.textField", operation=PatchOperation.ADD, new_value="value"
+        ),
+        PatchDatum(attribute="Metadata.linkField", operation=PatchOperation.ADD, new_value="LST1"),
+    ]
+
+
+def test_metadata_new_key_set_to_none_emits_no_op() -> None:
+    """Test that a key absent from existing metadata and None in the update emits no op."""
+    data = BaseCollection(session=None)._generate_metadata_diff(
+        existing_metadata={},
+        updated_metadata={"textField": None},
+    )
+
+    assert data == []

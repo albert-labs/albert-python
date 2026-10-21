@@ -48,27 +48,10 @@ def test_get_by_ids(client: Albert, seeded_parameter_groups: list[ParameterGroup
         assert u.name == seeded_parameter_groups[i].name
 
 
-def test_parameter_group_search_basic(
-    client: Albert, seeded_parameter_groups: list[ParameterGroup]
-):
-    """Test basic search for Parameter Groups."""
-    results = list(client.parameter_groups.search(max_items=10))
-    assert_valid_parameter_groups(results, ParameterGroupSearchItem)
-
-
 def test_parameter_group_get_all(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
     """Test get_all for fully hydrated Parameter Groups."""
     results = list(client.parameter_groups.get_all(max_items=10))
     assert_valid_parameter_groups(results, ParameterGroup)
-
-
-def test_parameter_group_search_with_filters(
-    client: Albert, seeded_parameter_groups: list[ParameterGroup]
-):
-    """Test search with text and type filters."""
-    pg = seeded_parameter_groups[0]
-    results = list(client.parameter_groups.search(text=pg.name, types=[pg.type], max_items=10))
-    assert_valid_parameter_groups(results, ParameterGroupSearchItem)
 
 
 def test_parameter_group_search(
@@ -106,6 +89,7 @@ def test_parameter_group_search(
             for hit in client.parameter_groups.search(
                 text=seed_prefix,
                 owner=[owner],
+                types=[pg.type],
                 tags=[tag],
                 parameters=[parameter],
                 additional_field=["owner", "tags", "createdByName"],

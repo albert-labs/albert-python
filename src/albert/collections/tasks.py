@@ -45,6 +45,7 @@ from albert.resources.interval_combinations import (
     CombinationOverride,
     ExclusionRule,
     IntervalCombinationItem,
+    InventoryExclusion,
 )
 from albert.resources.tasks import (
     BaseTask,
@@ -83,6 +84,7 @@ from albert.utils.tasks import (
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
     resolve_attachment,
+    resolve_unassigned_task_state,
 )
 from albert.utils.worker_jobs import poll_worker_job
 
@@ -185,6 +187,10 @@ class TaskCollection(BaseCollection):
         Get combination rules and overrides for a block.
     set_block_rules(task_id, block_id, rules=None, overrides=None, generate_combinations=True, old_workflow_id=None, wait=True) -> BlockRules (🧪 Beta)
         Set combination rules and overrides for a block, automatically regenerating combinations.
+    add_block_inventory_exclusions(task_id, block_id, exclusions) -> BlockRules (🧪 Beta)
+        Mask inventory x combination pairs on a block.
+    remove_block_inventory_exclusions(task_id, block_id, exclusion_ids) -> BlockRules (🧪 Beta)
+        Unmask inventory x combination pairs on a block.
     generate_block_combinations(task_id, block_id, old_workflow_id=None, wait=True) -> WorkerJob (🧪 Beta)
         Generate child-workflow interval combinations for a task block.
     import_results(...) -> BaseTask
@@ -238,6 +244,15 @@ class TaskCollection(BaseCollection):
             [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
             for each block after ``create``. General tasks are not affected.
 
+        Lifecycle state on create is coupled to the assignee:
+
+        - No ``assigned_to``: the task starts ``Unclaimed``. A missing ``state``
+          is defaulted for you, and ``Not Started`` / ``In Progress`` are rejected,
+          since a task cannot be in progress with no one assigned. Explicit
+          terminal states (``Completed``, ``Closed``, ``Cancelled``) are preserved
+          for ingestion flows.
+        - With ``assigned_to``: the task starts ``Not Started``.
+
         !!! example
             ```python
             from albert.resources.tasks import GeneralTask
@@ -257,6 +272,12 @@ class TaskCollection(BaseCollection):
         BaseTask
             The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
             populated with its assigned Task ID.
+
+        Raises
+        ------
+        AlbertException
+            If ``task`` has no ``assigned_to`` but ``state`` is ``Not Started`` or
+            ``In Progress``.
         """
         if task.tags:
             task.tags = resolve_tags(session=self.session, tags=task.tags)
@@ -264,6 +285,8 @@ class TaskCollection(BaseCollection):
             payload=task.model_dump(mode="json", by_alias=True, exclude_none=True),
             parent_id=task.parent_id,
         )
+        if task.assigned_to is None:
+            payload["state"] = resolve_unassigned_task_state(state=task.state).value
         url = f"{self.base_path}/multi?category={task.category.value}"
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"
@@ -279,6 +302,12 @@ class TaskCollection(BaseCollection):
 
         All tasks must share the same category (mixing task types is not
         supported) and, when set, the same ``parent_id``.
+
+        Lifecycle state on create follows the same rule as
+        [`create`][albert.collections.tasks.TaskCollection.create]: a task without
+        ``assigned_to`` starts ``Unclaimed`` (a missing ``state`` is defaulted, and
+        ``Not Started`` / ``In Progress`` are rejected), while a task with an
+        assignee starts ``Not Started``.
 
         !!! warning "Property tasks with increased intervals (🧪 Beta)"
             When increased intervals is enabled for your tenant, ``create_many`` does not
@@ -319,8 +348,9 @@ class TaskCollection(BaseCollection):
         Raises
         ------
         AlbertException
-            If ``tasks`` is empty or if items have conflicting categories or
-            parent IDs.
+            If ``tasks`` is empty, if items have conflicting categories or
+            parent IDs, or if any task has no ``assigned_to`` but ``state`` is
+            ``Not Started`` or ``In Progress``.
         """
         if not tasks:
             raise AlbertException("tasks must include at least one task.")
@@ -341,6 +371,9 @@ class TaskCollection(BaseCollection):
             )
             for t in tasks
         ]
+        for t, item in zip(tasks, payload, strict=True):
+            if t.assigned_to is None:
+                item["state"] = resolve_unassigned_task_state(state=t.state).value
         url = f"{self.base_path}/multi?category={task.category.value}"
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"
@@ -950,7 +983,203 @@ class TaskCollection(BaseCollection):
             block_id=data["blockId"],
             rules=all_rules,
             overrides=data.get("overrides", []),
+            inventory_exclusions=data.get("inventoryExclusions", []),
         )
+
+    @validate_call
+    def add_block_inventory_exclusions(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        exclusions: list[InventoryExclusion],
+    ) -> BlockRules:
+        """Add inventory x combination exclusions ("masks") to a task block (🧪 Beta).
+
+        Each exclusion marks one task-level inventory tuple
+        (``inv_lot_unique_id``, occurrence included) as excluded from one interval
+        combination (``interval_row_key``). Excluded pairs are omitted from
+        property-data grids, exports, and data-completeness checks for the block.
+
+        Exclusions are validated on save: both the inventory tuple and the
+        combination row key must exist on the task/block, and masking the same pair
+        twice is rejected. Additions are idempotent-safe via
+        [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]:
+        check ``inventory_exclusions`` first if re-running a script.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example "Masking an inventory x combination pair"
+            ```python
+            from albert import Albert
+            from albert.resources.interval_combinations import InventoryExclusion
+
+            client = Albert()
+
+            # 1. Create the task (a Property task with intervalized workflow blocks)
+            task = client.tasks.create_with_combinations(task=my_property_task)
+
+            # 2. Pick the inventory row to mask. Each task inventory row carries
+            #    its identity as inv_lot_unique_id (e.g. "INV123#LOT456#1").
+            for inv in task.inventory_information:
+                print(inv.inventory_id, inv.lot_id, inv.inv_lot_unique_id)
+            inv_lot_unique_id = task.inventory_information[0].inv_lot_unique_id
+
+            # 3. Pick the combination to mask it from. Each combination carries
+            #    its stable identity as interval_row_key (e.g. "ROW3XROW7").
+            for combo in client.tasks.get_block_combinations(
+                task_id=task.id, block_id="BLK1"
+            ):
+                print(combo.name, combo.interval_row_key)
+            interval_row_key = "ROW3XROW7"
+
+            # 4. Mask the pair. That inventory row no longer appears against
+            #    this combination on the block's grid.
+            client.tasks.add_block_inventory_exclusions(
+                task_id=task.id,
+                block_id="BLK1",
+                exclusions=[
+                    InventoryExclusion(
+                        inv_lot_unique_id=inv_lot_unique_id,
+                        interval_row_key=interval_row_key,
+                    )
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block ID whose exclusions to add (format ``BLK...``), obtained
+            from ``task.blocks[i].id`` on a fetched task.
+        exclusions : list[InventoryExclusion]
+            Exclusions to add. An empty list is a no-op.
+
+        Returns
+        -------
+        BlockRules
+            The block's rules, overrides, and inventory exclusions after the change.
+        """
+        if not exclusions:
+            return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+        url = f"{self.base_path}/{task_id}/blocks/{block_id}/rules"
+        payload = {
+            "data": [
+                {
+                    "operation": "add",
+                    "attribute": "inventoryExclusion",
+                    "newValue": [
+                        e.model_dump(by_alias=True, mode="json", exclude={"id"})
+                        for e in exclusions
+                    ],
+                }
+            ]
+        }
+        self.session.patch(url, json=payload)
+        return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+    @validate_call
+    def remove_block_inventory_exclusions(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        exclusion_ids: list[str],
+    ) -> BlockRules:
+        """Remove inventory x combination exclusions ("masks") from a task block (🧪 Beta).
+
+        Unmasks previously excluded inventory x combination pairs; the pairs render
+        again on property-data grids.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example "Unmasking pairs"
+            ```python
+            from albert import Albert
+
+            client = Albert()
+
+            # Read the block's current masks; each has a server-assigned id.
+            rules = client.tasks.get_block_rules(task_id="TASFOR1", block_id="BLK1")
+
+            # Unmask everything on the block (or pick specific ones by id).
+            client.tasks.remove_block_inventory_exclusions(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                exclusion_ids=[e.id for e in rules.inventory_exclusions],
+            )
+            ```
+
+        !!! example "Changing a mask"
+            A mask has no editable fields (it *is* the pair), so changing one
+            means removing it and adding the new pair:
+
+            ```python
+            from albert import Albert
+            from albert.resources.interval_combinations import InventoryExclusion
+
+            client = Albert()
+            rules = client.tasks.get_block_rules(task_id="TASFOR1", block_id="BLK1")
+
+            # The mask pointing at the wrong combination:
+            old = next(
+                e for e in rules.inventory_exclusions
+                if e.inv_lot_unique_id == "INV123#LOT456#1"
+            )
+            client.tasks.remove_block_inventory_exclusions(
+                task_id="TASFOR1", block_id="BLK1", exclusion_ids=[old.id]
+            )
+            client.tasks.add_block_inventory_exclusions(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                exclusions=[
+                    InventoryExclusion(
+                        inv_lot_unique_id=old.inv_lot_unique_id,
+                        interval_row_key="ROW3XROW8",  # the right combination
+                    )
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block ID whose exclusions to remove (format ``BLK...``).
+        exclusion_ids : list[str]
+            Server-assigned exclusion IDs (UUIDs), from
+            ``get_block_rules(...).inventory_exclusions[i].id``. An empty list is a
+            no-op.
+
+        Returns
+        -------
+        BlockRules
+            The block's rules, overrides, and inventory exclusions after the change.
+        """
+        if not exclusion_ids:
+            return self.get_block_rules(task_id=task_id, block_id=block_id)
+
+        url = f"{self.base_path}/{task_id}/blocks/{block_id}/rules"
+        payload = {
+            "data": [
+                {"operation": "delete", "attribute": "inventoryExclusion", "id": exclusion_id}
+                for exclusion_id in exclusion_ids
+            ]
+        }
+        self.session.patch(url, json=payload)
+        return self.get_block_rules(task_id=task_id, block_id=block_id)
 
     @staticmethod
     def _get_block_current_workflow_id(block: Block) -> str | None:
@@ -1917,7 +2146,12 @@ class TaskCollection(BaseCollection):
         witness_status : list[str], optional
             Filter by witness status (e.g. ``"witnessed"``).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         order_by : OrderBy, optional
             The order in which to return results (asc or desc), default DESCENDING.
         sort_by : str, optional
@@ -2131,7 +2365,12 @@ class TaskCollection(BaseCollection):
         witness_status : list[str], optional
             Filter by witness status (e.g. ``"witnessed"``).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         order_by : OrderBy, optional
             Sort direction. Default ``OrderBy.DESCENDING``.
         sort_by : str, optional
@@ -2232,6 +2471,9 @@ class TaskCollection(BaseCollection):
         ``inventory_information``, ``metadata``, ``name``, ``priority``, ``project``,
         ``state``, ``tags``.
 
+        ``state`` and ``assigned_to`` are coupled: a task cannot be ``In Progress``
+        (or any state beyond ``Not Started``) while unassigned, so moving an
+        unclaimed task forward also assigns it to the calling user.
         Any tags that do not yet exist in Albert are created automatically.
         """
         if "tags" in task.model_fields_set and task.tags:

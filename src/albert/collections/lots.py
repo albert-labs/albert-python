@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Iterator
 from decimal import Decimal
 from typing import Any, Literal
@@ -410,7 +411,12 @@ class LotCollection(BaseCollection):
         storage_location : list[str], optional
             Filter by storage location name(s).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         owner : list[str], optional
             Filter by lot owner display name(s) or UserId(s).
         status : list[str], optional
@@ -810,7 +816,9 @@ class LotCollection(BaseCollection):
             The amount to transfer, or ``"ALL"`` to move the full current
             inventory on hand. A numeric quantity must be greater than zero.
         storage_location_id : StorageLocationId
-            Destination storage location ID (format ``STL...``).
+            Destination storage location ID (format ``STL...``). Must differ
+            from the lot's current storage location when ``quantity`` is
+            ``"ALL"``.
         owner : UserId, optional
             User ID (format ``USR...``) to own the destination lot. Defaults to
             the current user.
@@ -826,13 +834,28 @@ class LotCollection(BaseCollection):
         ValueError
             If a numeric ``quantity`` is not greater than zero, or the current
             user cannot be resolved when ``owner`` is omitted.
+
+        Warns
+        -----
+        UserWarning
+            If ``quantity`` is ``"ALL"`` and ``storage_location_id`` matches the
+            lot's current storage location. Full Transfer is not allowed for the
+            same storage location (matching the Albert UI), so the transfer is
+            skipped and the lot is returned unchanged.
         """
         if quantity == "ALL":
             source_lot = self.get_by_id(id=lot_id)
             current_location_id = (
                 source_lot.storage_location.id if source_lot.storage_location else None
             )
-            if current_location_id != storage_location_id:
+            if current_location_id == storage_location_id:
+                warnings.warn(
+                    "Full Transfer is not allowed for the same storage location; "
+                    "the lot was not changed.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            else:
                 patch_payload = PatchPayload(
                     data=[
                         PatchDatum(
