@@ -12463,8 +12463,8 @@ synchronization of dependent records. Omit for no delay.</p>
 
         <p>Get a single, fully populated task by its ID.</p>
 <p>The returned object is the concrete type matching the task's category:
-<code>PropertyTask</code>, <code>BatchTask</code>, <code>GeneralTask</code>, or <code>ReactionBatchTask</code>.
-For a PropertyTask this includes its blocks.</p>
+<code>PropertyTask</code>, <code>BatchTask</code>, or <code>GeneralTask</code>. For a PropertyTask
+this includes its blocks.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">task</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">"TASFOR1"</span><span class="p">)</span>
@@ -12562,8 +12562,8 @@ For a PropertyTask this includes its blocks.</p>
 </span><span id="__span-0-1993"><a id="__codelineno-0-1993" name="__codelineno-0-1993"></a><span class="w">    </span><span class="sd">"""Get a single, fully populated task by its ID.</span>
 </span><span id="__span-0-1994"><a id="__codelineno-0-1994" name="__codelineno-0-1994"></a>
 </span><span id="__span-0-1995"><a id="__codelineno-0-1995" name="__codelineno-0-1995"></a><span class="sd">    The returned object is the concrete type matching the task's category:</span>
-</span><span id="__span-0-1996"><a id="__codelineno-0-1996" name="__codelineno-0-1996"></a><span class="sd">    ``PropertyTask``, ``BatchTask``, ``GeneralTask``, or ``ReactionBatchTask``.</span>
-</span><span id="__span-0-1997"><a id="__codelineno-0-1997" name="__codelineno-0-1997"></a><span class="sd">    For a PropertyTask this includes its blocks.</span>
+</span><span id="__span-0-1996"><a id="__codelineno-0-1996" name="__codelineno-0-1996"></a><span class="sd">    ``PropertyTask``, ``BatchTask``, or ``GeneralTask``. For a PropertyTask</span>
+</span><span id="__span-0-1997"><a id="__codelineno-0-1997" name="__codelineno-0-1997"></a><span class="sd">    this includes its blocks.</span>
 </span><span id="__span-0-1998"><a id="__codelineno-0-1998" name="__codelineno-0-1998"></a>
 </span><span id="__span-0-1999"><a id="__codelineno-0-1999" name="__codelineno-0-1999"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-2000"><a id="__codelineno-0-2000" name="__codelineno-0-2000"></a><span class="sd">        ```python</span>
@@ -12744,7 +12744,7 @@ use <a class="autorefs autorefs-internal" href="#albert.collections.tasks.TaskCo
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Filter by task category: <code>Property</code>, <code>Batch</code>, <code>General</code>, or <code>ReactionBatch</code>.</p>
+                <p>Filter by task category: <code>Property</code>, <code>Batch</code>, or <code>General</code>.</p>
               </div>
             </td>
             <td>
@@ -13572,7 +13572,7 @@ matches.</p>
 </span><span id="__span-0-2087"><a id="__codelineno-0-2087" name="__codelineno-0-2087"></a><span class="sd">    linked_task : list[str], optional</span>
 </span><span id="__span-0-2088"><a id="__codelineno-0-2088" name="__codelineno-0-2088"></a><span class="sd">        Task IDs linked to the ones being searched.</span>
 </span><span id="__span-0-2089"><a id="__codelineno-0-2089" name="__codelineno-0-2089"></a><span class="sd">    category : TaskCategory, optional</span>
-</span><span id="__span-0-2090"><a id="__codelineno-0-2090" name="__codelineno-0-2090"></a><span class="sd">        Filter by task category: ``Property``, ``Batch``, ``General``, or ``ReactionBatch``.</span>
+</span><span id="__span-0-2090"><a id="__codelineno-0-2090" name="__codelineno-0-2090"></a><span class="sd">        Filter by task category: ``Property``, ``Batch``, or ``General``.</span>
 </span><span id="__span-0-2091"><a id="__codelineno-0-2091" name="__codelineno-0-2091"></a><span class="sd">    albert_id : list[str], optional</span>
 </span><span id="__span-0-2092"><a id="__codelineno-0-2092" name="__codelineno-0-2092"></a><span class="sd">        Filter by Albert IDs of entities linked to the tasks (e.g. inventory</span>
 </span><span id="__span-0-2093"><a id="__codelineno-0-2093" name="__codelineno-0-2093"></a><span class="sd">        IDs like ``["INVA46", "INVA50"]``).</span>
@@ -13780,7 +13780,7 @@ matches.</p>
 
         <p>Get fully populated tasks matching the given filters.</p>
 <p>Accepts the same filters as <a class="autorefs autorefs-internal" href="#albert.collections.tasks.TaskCollection.search"><code>search</code></a> but returns complete task
-entities (<code>PropertyTask</code>, <code>BatchTask</code>, <code>GeneralTask</code>, or <code>ReactionBatchTask</code>) rather than
+entities (<code>PropertyTask</code>, <code>BatchTask</code>, or <code>GeneralTask</code>) rather than
 lightweight search results. This is slower because it fetches full detail
 for every match, so prefer <a class="autorefs autorefs-internal" href="#albert.collections.tasks.TaskCollection.search"><code>search</code></a> when you only need names, IDs, or
 status. Results are returned as a lazily paginated iterator.</p>
@@ -13879,7 +13879,7 @@ status. Results are returned as a lazily paginated iterator.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Filter by task category: <code>Property</code>, <code>Batch</code>, <code>General</code>, or <code>ReactionBatch</code>.</p>
+                <p>Filter by task category: <code>Property</code>, <code>Batch</code>, or <code>General</code>.</p>
               </div>
             </td>
             <td>
@@ -14667,7 +14667,7 @@ underlying search paginator.</p>
 </span><span id="__span-0-2281"><a id="__codelineno-0-2281" name="__codelineno-0-2281"></a><span class="w">    </span><span class="sd">"""Get fully populated tasks matching the given filters.</span>
 </span><span id="__span-0-2282"><a id="__codelineno-0-2282" name="__codelineno-0-2282"></a>
 </span><span id="__span-0-2283"><a id="__codelineno-0-2283" name="__codelineno-0-2283"></a><span class="sd">    Accepts the same filters as [`search`][albert.collections.tasks.TaskCollection.search] but returns complete task</span>
-</span><span id="__span-0-2284"><a id="__codelineno-0-2284" name="__codelineno-0-2284"></a><span class="sd">    entities (``PropertyTask``, ``BatchTask``, ``GeneralTask``, or ``ReactionBatchTask``) rather than</span>
+</span><span id="__span-0-2284"><a id="__codelineno-0-2284" name="__codelineno-0-2284"></a><span class="sd">    entities (``PropertyTask``, ``BatchTask``, or ``GeneralTask``) rather than</span>
 </span><span id="__span-0-2285"><a id="__codelineno-0-2285" name="__codelineno-0-2285"></a><span class="sd">    lightweight search results. This is slower because it fetches full detail</span>
 </span><span id="__span-0-2286"><a id="__codelineno-0-2286" name="__codelineno-0-2286"></a><span class="sd">    for every match, so prefer [`search`][albert.collections.tasks.TaskCollection.search] when you only need names, IDs, or</span>
 </span><span id="__span-0-2287"><a id="__codelineno-0-2287" name="__codelineno-0-2287"></a><span class="sd">    status. Results are returned as a lazily paginated iterator.</span>
@@ -14692,7 +14692,7 @@ underlying search paginator.</p>
 </span><span id="__span-0-2306"><a id="__codelineno-0-2306" name="__codelineno-0-2306"></a><span class="sd">    linked_task : list[str], optional</span>
 </span><span id="__span-0-2307"><a id="__codelineno-0-2307" name="__codelineno-0-2307"></a><span class="sd">        Task IDs linked to the ones being searched.</span>
 </span><span id="__span-0-2308"><a id="__codelineno-0-2308" name="__codelineno-0-2308"></a><span class="sd">    category : TaskCategory, optional</span>
-</span><span id="__span-0-2309"><a id="__codelineno-0-2309" name="__codelineno-0-2309"></a><span class="sd">        Filter by task category: ``Property``, ``Batch``, ``General``, or ``ReactionBatch``.</span>
+</span><span id="__span-0-2309"><a id="__codelineno-0-2309" name="__codelineno-0-2309"></a><span class="sd">        Filter by task category: ``Property``, ``Batch``, or ``General``.</span>
 </span><span id="__span-0-2310"><a id="__codelineno-0-2310" name="__codelineno-0-2310"></a><span class="sd">    albert_id : list[str], optional</span>
 </span><span id="__span-0-2311"><a id="__codelineno-0-2311" name="__codelineno-0-2311"></a><span class="sd">        Filter by Albert IDs of entities linked to the tasks (e.g. inventory</span>
 </span><span id="__span-0-2312"><a id="__codelineno-0-2312" name="__codelineno-0-2312"></a><span class="sd">        IDs like ``["INVA46", "INVA50"]``).</span>
