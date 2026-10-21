@@ -2147,9 +2147,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
         response = self.session.post(endpoint, json=payload)
 
         row_dict = response.json()
+        raw_id = row_dict.get("id") or payload["id"]
         new_row = Row(
             rowId=row_dict["rowId"],
-            inventory_id=inventory_id,
+            inventory_id=raw_id if str(raw_id).startswith("INV") else f"INV{raw_id}",
             type=row_dict["type"],
             session=self.session,
             design=self.product_design,

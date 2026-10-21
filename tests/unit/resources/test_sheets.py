@@ -1039,6 +1039,21 @@ def test_add_inventory_rows_chunks_at_platform_limit(offline_session):
 
 
 @responses.activate
+def test_add_inventory_row_normalizes_unprefixed_inventory_id(offline_session):
+    """Test a created row carries the normalized INV-prefixed inventory ID."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json={"rowId": "ROW10", "id": "INVA123", "type": "INV", "name": "n", "manufacturer": None},
+    )
+
+    row = sheet.add_inventory_row(inventory_id="A123")
+
+    assert row.inventory_id == "INVA123"
+    assert json.loads(responses.calls[0].request.body)["id"] == "INVA123"
+
+
+@responses.activate
 def test_add_inventory_rows_short_circuits_on_empty_input(offline_session):
     """Test that an empty list makes no call and returns no rows."""
     sheet = _products_sheet(session=offline_session)
