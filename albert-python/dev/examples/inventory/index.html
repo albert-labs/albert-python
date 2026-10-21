@@ -5142,6 +5142,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#search-inventory-via-metadatacustom-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search inventory via metadata/custom fields
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5419,6 +5430,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#search-inventory-via-metadatacustom-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search inventory via metadata/custom fields
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5479,6 +5501,27 @@ Use it by updating an existing inventory item.</p>
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="nb">print</span><span class="p">(</span><span class="n">updated_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
+<h2 id="search-inventory-via-metadatacustom-fields">Search inventory via metadata/custom fields</h2>
+<div class="admonition example">
+<p class="admonition-title">Search inventory using metadata filters</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_client_credentials</span><span class="p">()</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">items</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">metadata_filters</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s2">"batchCode"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"B-100"</span><span class="p">,</span> <span class="s2">"B-200"</span><span class="p">],</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="s2">"grade"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"Premium"</span><span class="p">]},</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="p">},</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">)</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># batchCode is a string-type custom field.</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># grade is a list-type custom field.</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p>Keys are custom field names. String-type custom fields take a list of values; list-type custom fields take a <code>{"name": [...]}</code> dict of list item names. Multiple values on one field match any of them (OR); different fields must all match (AND). The same <code>metadata_filters</code> shape is supported on <code>search()</code> for projects, tasks, lots, parameter groups, data templates, data columns, and users.</p>
 
 
 
