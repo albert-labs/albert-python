@@ -35,13 +35,13 @@ _BULK_UPDATE_MAX_ITEMS = 300
 # (lib-deletevalidator).
 _DELETE_MAX_IDS = 5
 
-# Attributes the bulk lot route applies (api-lot bulkMove.js). update() supports
-# more fields; anything outside this set must go through single-lot update.
+# Attributes the bulk lot route applies (api-lot bulkMove.js), limited to fields
+# the lot diff can emit. update() supports more fields; anything outside this
+# set must go through single-lot update.
 _BULK_UPDATABLE_ATTRIBUTES = frozenset(
     {
         "storageLocation",
         "inventoryOnHand",
-        "parentId",
         "status",
         "expirationDate",
         "taskCompletionDate",

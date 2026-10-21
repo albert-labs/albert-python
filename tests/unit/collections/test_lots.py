@@ -411,6 +411,15 @@ def test_bulk_update_item_builds_supported_change(offline_session) -> None:
     assert entry["data"][0]["operation"] == PatchOperation.UPDATE
 
 
+def test_bulk_update_item_skips_inventory_id_change(offline_session) -> None:
+    """Test that an inventory_id change is not applied by bulk update."""
+    entry = LotCollection(session=offline_session)._generate_bulk_update_item(
+        existing=_lot(inventory_id="INVA1"), updated=_lot(inventory_id="INVA2"), notes="n"
+    )
+
+    assert entry is None
+
+
 def test_bulk_update_item_rejects_unsupported_field(offline_session) -> None:
     """Test that a field the bulk route cannot apply raises instead of being dropped."""
     with pytest.raises(ValueError, match="manufacturerLotNumber"):
