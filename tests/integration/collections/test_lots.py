@@ -7,7 +7,7 @@ import pytest
 from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError, NotFoundError
-from albert.resources.lots import Lot, LotAdjustmentAction, LotVolumeUnit
+from albert.resources.lots import Lot, LotAdjustmentAction, LotStatus, LotVolumeUnit
 from albert.resources.storage_locations import StorageLocation
 from tests.integration.seeding import generate_lot_seeds
 from tests.utils.wait import poll_until
@@ -536,7 +536,7 @@ def test_delete_many(
     seeded_storage_locations,
     seeded_locations,
 ):
-    """Test that delete_many removes several lots at once."""
+    """Test that delete_many marks several lots inactive at once."""
     lots = client.lots.create(
         lots=generate_lot_seeds(
             seeded_inventory=seeded_inventory,
@@ -546,4 +546,6 @@ def test_delete_many(
     )
     ids = [lot.id for lot in lots]
     client.lots.delete_many(ids=ids)
-    assert client.lots.get_by_ids(ids=ids) == []
+    deleted = client.lots.get_by_ids(ids=ids)
+    assert {lot.id for lot in deleted} == set(ids)
+    assert all(lot.status == LotStatus.INACTIVE for lot in deleted)
