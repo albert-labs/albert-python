@@ -12,6 +12,9 @@ from albert.core.logging import logger
 from albert.exceptions import AlbertAuthError, handle_http_errors
 from albert.utils._auth import default_albert_base_url
 
+DEFAULT_LOGIN_TIMEOUT = 120
+_VALIDATE_EMAIL_TIMEOUT = 30
+
 
 class AlbertSSOClient(BaseAlbertModel, AuthManager):
     """
@@ -54,7 +57,7 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         minimum_port: int = 5000,
         maximum_port: int | None = None,
         tenant_id: str | None = None,
-        timeout: int = 5,
+        timeout: int = DEFAULT_LOGIN_TIMEOUT,
     ) -> OAuthTokenInfo:
         """
         Launch an interactive browser-based SSO login and return an OAuth token.
@@ -72,11 +75,20 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
             minimum port will be tried.
         tenant_id : str | None, optional
             Optional tenant ID to scope the SSO login request.
+        timeout : int, optional
+            Seconds to wait for the user to complete the browser login (default is 120).
+            Increase this for slow networks or identity providers with lengthy MFA steps.
 
         Returns
         -------
         OAuthTokenInfo
             The initial token info containing the refresh token.
+
+        Raises
+        ------
+        AlbertAuthError
+            If the login does not complete within `timeout` seconds, or the callback
+            does not contain a token.
         """
         self._validate_email(email=self.email, tenant_id=tenant_id)
         with local_http_server(
@@ -88,6 +100,12 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
             webbrowser.open(login_url)
             # Block here until one request arrives at localhost:port/?token=…
             server.handle_request()
+            if server.timed_out:
+                raise AlbertAuthError(
+                    f"SSO Login timed out after waiting {timeout} seconds for the user to "
+                    "authenticate. Pass a larger `timeout` to `authenticate()` or "
+                    "`login_timeout` to `Albert.from_sso()` if login takes longer."
+                )
             refresh_token = server.token
             if not refresh_token:
                 raise AlbertAuthError("SSO Login failed! Please try again.")
@@ -196,7 +214,7 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         url = f"{urljoin(self.base_url, path)}?{urlencode(params)}"
 
         try:
-            response = requests.get(url, allow_redirects=False, timeout=5)
+            response = requests.get(url, allow_redirects=False, timeout=_VALIDATE_EMAIL_TIMEOUT)
         except requests.RequestException as e:
             raise AlbertAuthError(f"SSO Login failed: {e}") from e
 
