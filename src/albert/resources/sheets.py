@@ -1004,7 +1004,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
         cleared_cells = [
             cell.model_copy(update={"value": "", "calculation": ""}) for cell in original_cells
         ]
-        self.update_cells(cells=cleared_cells, refresh=False)
+        # Clearing a value deletes the whole cell record platform-side, bounds
+        # included, which the in-memory cache does not model. Refresh instead of
+        # folding so the rewrite that follows re-sends bounds and values.
+        self.update_cells(cells=cleared_cells)
         return original_cells
 
     def add_formulation(
