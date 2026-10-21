@@ -4,8 +4,9 @@ Allowed under the patch-builder exception in OPINIONS.md: these guard
 non-obvious diff behavior in ``_generate_inventory_patch_payload`` (the
 company/tags/cas/acls special cases and the formula-override normalization)
 and pure parameter-mapping behavior in ``_prepare_parameters``, with no I/O to
-fake. ``_apply_inventory_patch_payload`` batching is covered with ``responses``
-since it only asserts on the requests the SDK sends.
+fake. ``_apply_inventory_patch_payload`` batching and ``get_by_ids`` handling of
+missing IDs are covered with ``responses`` since they only assert on the requests
+the SDK sends and how it reacts to errors.
 """
 
 import json
@@ -14,7 +15,7 @@ import pytest
 import responses
 
 from albert.collections.inventory import InventoryCollection
-from albert.exceptions import AlbertPartialError
+from albert.exceptions import AlbertHTTPError, AlbertPartialError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
@@ -983,3 +984,83 @@ def test_dedup_applies_to_formula_is_false() -> None:
 def test_dedup_applies_to_non_formula_categories(category: InventoryCategory) -> None:
     """Test that duplicate matching applies to non-Formula categories."""
     assert InventoryCollection._dedup_applies_to(category=category) is True
+
+
+_IDS_URL = f"{UNIT_BASE_URL}/api/v3/inventories/ids"
+_NOT_FOUND = {"errors": [{"msg": "No Record Found"}]}
+
+
+def _ids_item(item_id: str) -> dict:
+    return {"albertId": item_id, "name": item_id, "category": "RawMaterials"}
+
+
+@responses.activate
+def test_get_by_ids_omits_batch_where_every_id_is_missing(offline_session) -> None:
+    """Test that a batch of only missing IDs is omitted instead of raising."""
+    found = [_ids_item(f"INVA{i}") for i in range(300)]
+    responses.get(_IDS_URL, json={"Items": found})
+    responses.get(_IDS_URL, status=404, json=_NOT_FOUND)
+    ids = [f"INVA{i}" for i in range(301)]
+
+    result = InventoryCollection(session=offline_session).get_by_ids(ids=ids)
+
+    assert [item.id for item in result] == ids[:300]
+    assert len(responses.calls) == 2
+
+
+@responses.activate
+def test_get_by_ids_returns_empty_when_all_ids_missing(offline_session) -> None:
+    """Test that looking up only missing IDs returns an empty list."""
+    responses.get(_IDS_URL, status=404, json=_NOT_FOUND)
+
+    result = InventoryCollection(session=offline_session).get_by_ids(ids=["INVZ1"])
+
+    assert result == []
+
+
+@responses.activate
+def test_get_by_ids_warns_with_ids_dropped_from_a_partial_batch(offline_session, caplog) -> None:
+    """Test that IDs missing from an otherwise found batch are named in a warning."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item("INVA1")]})
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(ids=["INVA1", "INVZ1"])
+
+    assert [r.message for r in caplog.records] == ["Skipped 1 inventory IDs not found: INVZ1"]
+
+
+@responses.activate
+def test_get_by_ids_warns_with_ids_from_a_fully_missing_batch(offline_session, caplog) -> None:
+    """Test that every ID in a batch that was entirely missing is counted in the warning."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item(f"INVA{i}") for i in range(300)]})
+    responses.get(_IDS_URL, status=404, json=_NOT_FOUND)
+    missing = [f"INVZ{i}" for i in range(12)]
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(
+            ids=[*(f"INVA{i}" for i in range(300)), *missing]
+        )
+
+    assert [r.message for r in caplog.records] == [
+        f"Skipped 12 inventory IDs not found: {', '.join(missing[:10])} (and 2 more)"
+    ]
+
+
+@responses.activate
+def test_get_by_ids_does_not_warn_when_all_ids_found(offline_session, caplog) -> None:
+    """Test that no warning is logged when every ID is found, with or without the prefix."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item("INVA1"), _ids_item("A2")]})
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(ids=["INVA1", "INVA2"])
+
+    assert caplog.records == []
+
+
+@responses.activate
+def test_get_by_ids_still_raises_other_errors(offline_session) -> None:
+    """Test that errors other than not-found still propagate."""
+    responses.get(_IDS_URL, status=403, json={"errors": [{"msg": "Forbidden"}]})
+
+    with pytest.raises(AlbertHTTPError):
+        InventoryCollection(session=offline_session).get_by_ids(ids=["INVA1"])

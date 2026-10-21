@@ -35,3 +35,26 @@ Use it by updating an existing inventory item.
     updated_item = client.inventory.update(inventory_item=inventory_item)
     print(updated_item.id)
     ```
+
+## Search inventory via metadata/custom fields
+
+!!! example "Search inventory using metadata filters"
+    ```python
+    from albert import Albert
+
+    client = Albert.from_client_credentials()
+
+    items = client.inventory.search(
+        metadata_filters={
+            "batchCode": ["B-100", "B-200"],
+            "grade": {"name": ["Premium"]},
+        },
+    )
+    # batchCode is a string-type custom field.
+    # grade is a list-type custom field.
+
+    for item in items:
+        print(item)
+    ```
+
+Keys are custom field names. String-type custom fields take a list of values; list-type custom fields take a `{"name": [...]}` dict of list item names. Multiple values on one field match any of them (OR); different fields must all match (AND). The same `metadata_filters` shape is supported on `search()` for projects, tasks, lots, parameter groups, data templates, data columns, and users.

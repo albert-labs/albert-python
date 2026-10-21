@@ -90,12 +90,15 @@ class InventoryCategory(str, Enum):
     FORMULAS : str
         A mixture designed in Albert under a Project. Creating a Formula item
         requires ``project_id`` set to the parent Project's ID.
+    REACTION : str
+        A product of a chemical reaction recorded in Albert.
     """
 
     RAW_MATERIALS = "RawMaterials"
     CONSUMABLES = "Consumables"
     EQUIPMENT = "Equipment"
     FORMULAS = "Formulas"
+    REACTION = "Reaction"
 
 
 class InventoryUnitCategory(str, Enum):
@@ -103,7 +106,7 @@ class InventoryUnitCategory(str, Enum):
 
     Determines how quantities on hand and in formulas are interpreted. When not
     supplied, the category defaults based on [`InventoryCategory`][albert.resources.inventory.InventoryCategory]: ``MASS``
-    for raw materials and formulas, ``UNITS`` for equipment and consumables.
+    for raw materials, formulas, and reaction products, ``UNITS`` for equipment and consumables.
 
     Attributes
     ----------
@@ -238,7 +241,7 @@ class CasAmount(BaseAlbertModel):
         alias="Updated",
         frozen=True,
     )
-    """Audit metadata for the last update. Read-only. See Also --------"""
+    """Audit metadata for the last update. Read-only."""
 
     @model_validator(mode="after")
     def set_cas_attributes(self: CasAmount) -> CasAmount:
@@ -274,7 +277,7 @@ class InventoryMinimum(BaseAlbertModel):
     """The Location object this minimum applies to. Excluded from serialization. Provide either a ``location`` or an ``id``."""
 
     minimum: float = Field(ge=0, le=1000000000000000)
-    """The minimum amount of the item that must be kept in stock at the Location. Must be between 0 and 1e15. See Also --------"""
+    """The minimum amount of the item that must be kept in stock at the Location. Must be between 0 and 1e15."""
 
     @model_validator(mode="after")
     def check_id_or_location(self: InventoryMinimum) -> InventoryMinimum:
@@ -347,10 +350,10 @@ class InventoryItem(BaseTaggedResource):
     """A free-text description of the item."""
 
     category: InventoryCategory
-    """The kind of material this item represents. Required. One of ``RawMaterials``, ``Consumables``, ``Equipment``, or ``Formulas``."""
+    """The kind of material this item represents. Required. One of ``RawMaterials``, ``Consumables``, ``Equipment``, ``Formulas``, or ``Reaction``."""
 
     unit_category: InventoryUnitCategory | None = Field(default=None, alias="unitCategory")
-    """The dimension the item is measured in (mass, volume, length, pressure, or units). If not supplied, it defaults from ``category``: mass for raw materials and formulas, units for equipment and consumables."""
+    """The dimension the item is measured in (mass, volume, length, pressure, or units). If not supplied, it defaults from ``category``: mass for raw materials, formulas, and reaction products, units for equipment and consumables."""
 
     density: InventoryDensity | None = Field(default=None)
     """The density in g/mL for volume-based inventory items. Required at creation when ``unit_category`` is volume. Locked at creation and cannot be changed."""
@@ -408,7 +411,7 @@ class InventoryItem(BaseTaggedResource):
     recent_atachment_id: str | None = Field(
         default=None, alias="recentAttachmentId", exclude=True, frozen=True
     )
-    """The ID of the most recent attachment on the item. Read-only. See Also --------"""
+    """The ID of the most recent attachment on the item. Read-only."""
 
     @field_validator("company", mode="before")
     @classmethod
@@ -439,7 +442,11 @@ class InventoryItem(BaseTaggedResource):
     def set_unit_category(self) -> InventoryItem:
         """Set unit category from category if not defined."""
         if self.unit_category is None:
-            if self.category in [InventoryCategory.RAW_MATERIALS, InventoryCategory.FORMULAS]:
+            if self.category in [
+                InventoryCategory.RAW_MATERIALS,
+                InventoryCategory.FORMULAS,
+                InventoryCategory.REACTION,
+            ]:
                 object.__setattr__(self, "unit_category", InventoryUnitCategory.MASS)
             elif self.category in [InventoryCategory.EQUIPMENT, InventoryCategory.CONSUMABLES]:
                 object.__setattr__(self, "unit_category", InventoryUnitCategory.UNITS)
@@ -572,7 +579,7 @@ class InventorySpec(BaseAlbertModel):
     """Additional spec configuration. Serialized as ``specConfig``."""
 
     value: InventorySpecValue | None = Field(default=None, alias="Value")
-    """The expected value or range for the property. Serialized as ``Value``. See Also --------"""
+    """The expected value or range for the property. Serialized as ``Value``."""
 
 
 class InventorySpecList(BaseAlbertModel):
@@ -594,7 +601,7 @@ class InventorySpecList(BaseAlbertModel):
     """The Inventory ID of the item the specs belong to. Serialized as ``parentId``."""
 
     specs: list[InventorySpec] = Field(..., alias="Specs")
-    """The specs attached to the item. Serialized as ``Specs``. See Also --------"""
+    """The specs attached to the item. Serialized as ``Specs``."""
 
 
 # TODO: Find other pictogram items across the platform
@@ -684,7 +691,7 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
     """Total amount currently on hand. Defaults to 0 when absent (none on hand). Serialized as ``inventoryOnHand``."""
 
     sds: InventorySearchSDSItem | None = Field(default=None, alias="SDS")
-    """Safety Data Sheet summary fields. Serialized as ``SDS``. See Also --------"""
+    """Safety Data Sheet summary fields. Serialized as ``SDS``."""
 
     distance: float | None = None
     """Search relevance distance when returned by semantic search."""
@@ -720,4 +727,4 @@ class MergeInventory(BaseAlbertModel):
     """The child item(s) to merge into the parent, each given as a mapping such as ``{"id": "INVB1"}``. Serialized as ``ChildInventories``."""
 
     modules: list[InventoryMergeModule] | None = Field(default=None)
-    """The data modules to carry over from the children. When ``None``, all modules are merged. See Also --------"""
+    """The data modules to carry over from the children. When ``None``, all modules are merged."""

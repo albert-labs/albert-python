@@ -229,6 +229,7 @@ def test_inventory_un_number_treats_na_as_none(un_number, expected):
         (InventoryCategory.CONSUMABLES, {}, InventoryUnitCategory.UNITS),
         (InventoryCategory.EQUIPMENT, {}, InventoryUnitCategory.UNITS),
         (InventoryCategory.FORMULAS, {"project_id": "PRO1"}, InventoryUnitCategory.MASS),
+        (InventoryCategory.REACTION, {}, InventoryUnitCategory.MASS),
     ],
 )
 def test_inventory_unit_category_defaults_from_category(category, extra, expected_unit_category):
@@ -236,6 +237,20 @@ def test_inventory_unit_category_defaults_from_category(category, extra, expecte
     item = InventoryItem(name="Test", category=category, **extra)
 
     assert item.unit_category == expected_unit_category
+
+
+def test_inventory_reaction_item_deserializes():
+    """Test that a reaction product item from the platform parses with the Reaction category."""
+    item = InventoryItem(
+        albertId="INVP779-048",
+        name="P779-048",
+        category="Reaction",
+        unitCategory="mass",
+        parentId="PROP779",
+    )
+
+    assert item.category == InventoryCategory.REACTION
+    assert item.unit_category == InventoryUnitCategory.MASS
 
 
 def test_inventory_unit_category_explicit_value_is_kept():

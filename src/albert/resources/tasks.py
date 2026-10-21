@@ -10,6 +10,7 @@ from typing_extensions import deprecated
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import InventoryId, LotId, TaskId
+from albert.core.shared.models.base import EntityLinkWithName
 from albert.core.shared.models.patch import PatchPayload
 from albert.core.shared.types import (
     MetadataItem,
@@ -47,12 +48,16 @@ class TaskCategory(str, Enum):
     BATCH_WITH_QC : str
         A batch task that also carries quality-control data. A variant of
         [`BatchTask`][albert.resources.tasks.BatchTask].
+    REACTION_BATCH : str
+        A synthesis batch task created from a reaction on a reaction worksheet.
+        Corresponds to [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask].
     """
 
     PROPERTY = "Property"
     BATCH = "Batch"
     GENERAL = "General"
     BATCH_WITH_QC = "BatchWithQC"
+    REACTION_BATCH = "ReactionBatch"
 
 
 class BatchSizeUnit(str, Enum):
@@ -204,6 +209,12 @@ class TaskState(str, Enum):
     The state generally advances as work progresses: an unclaimed task is
     picked up, started, finished, and eventually closed (or cancelled).
 
+    State is coupled to the assignee: a task without an assignee is always
+    ``Unclaimed``, and a task cannot be ``Not Started`` or ``In Progress``
+    with no one assigned. Creating a task without an assignee defaults its
+    state to ``Unclaimed``; see
+    [`create`][albert.collections.tasks.TaskCollection.create].
+
     Attributes
     ----------
     UNCLAIMED : str
@@ -270,6 +281,19 @@ class TaskInventoryInformation(BaseAlbertModel):
 
     selected_lot: bool | None = Field(alias="selectedLot", default=None, exclude=True)
     """Read-only. Whether this lot is the one selected for the task."""
+
+    inventory_on_hand: float | None = Field(
+        default=None, alias="inventoryOnHand", exclude=True, frozen=True
+    )
+    """Read-only. Amount on hand of the output lot, populated on [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask] rows once the task is completed. Mass is kilograms, volume is litres."""
+
+    parent_unit: str | None = Field(default=None, alias="parentUnit", exclude=True, frozen=True)
+    """Read-only. Display unit hint for the output lot on a [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask]: ``mass`` displays kilograms, ``volume`` displays litres."""
+
+    location: EntityLinkWithName | None = Field(
+        default=None, alias="Location", exclude=True, frozen=True
+    )
+    """Read-only. Location of the output lot on a [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask], set once the task is completed."""
 
 
 class Block(BaseAlbertModel):
@@ -448,7 +472,7 @@ class BaseTask(BaseTaggedResource):
     """Overall result summary for the task."""
 
     state: TaskState | None = Field(default=None)
-    """Current lifecycle state of the task."""
+    """Current lifecycle state of the task. A task without an ``assigned_to`` is always ``Unclaimed``; ``Not Started`` and ``In Progress`` require an assignee. On create, a missing state defaults to ``Unclaimed`` when the task has no assignee."""
 
     project: SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]] | None = Field(
         default=None, alias="Project"
@@ -458,7 +482,7 @@ class BaseTask(BaseTaggedResource):
     assigned_to: (
         SerializeAsEntityLinkWithName[User] | SerializeAsEntityLinkWithName[Team] | None
     ) = Field(default=None, alias="AssignedTo")
-    """The user or team responsible for the task."""
+    """The user or team responsible for the task. When ``None``, the task is unassigned and its ``state`` must be ``Unclaimed`` (terminal states such as ``Completed`` are allowed on create for ingestion flows)."""
 
     page_state: PageState | None = Field(
         alias="PageState",
@@ -467,7 +491,7 @@ class BaseTask(BaseTaggedResource):
     """Internal UI layout state for the task page."""
 
     entity_type: TaskEntityType | None = Field(default=None, alias="EntityType")
-    """Internal entity-type classification. See Also --------"""
+    """Internal entity-type classification."""
 
 
 class PropertyTask(BaseTask):
@@ -602,7 +626,86 @@ class GeneralTask(BaseTask):
     category: Literal[TaskCategory.GENERAL] = TaskCategory.GENERAL
 
 
-TaskUnion = Annotated[PropertyTask | BatchTask | GeneralTask, Field(..., discriminator="category")]
+class ReactionUnitOverride(BaseAlbertModel):
+    """A per-row unit override on a [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask].
+
+    Sets the display unit for a single row of the reaction grid, identified by
+    its ``stt_id``. Rows without an override use the task's
+    [`default_unit`][albert.resources.tasks.ReactionBatchTask.default_unit]."""
+
+    stt_id: str = Field(alias="sttId")
+    """The reaction grid row ID (format ``STT...``)."""
+
+    unit: str
+    """The display unit for the row (for example ``g`` or ``mg``)."""
+
+
+class ReactionBatchTask(BatchTask):
+    """A synthesis batch task created from a reaction on a reaction worksheet.
+
+    A reaction batch task manufactures the product of a recorded reaction: it
+    links back to its source reaction, worksheet, and designs, and its
+    [`inventory_information`][albert.resources.tasks.BaseTask.inventory_information]
+    rows expose the output lot once the task is completed. The reaction grid
+    itself (reagents, picked lots, products, actuals) is managed through
+    [`BatchDataCollection`][albert.collections.batch_data.BatchDataCollection]
+    (``client.batch_data.get_reaction``).
+
+    Reaction batch tasks are created by the platform from a reaction; the SDK
+    reads them but does not create them. Inherits all fields from
+    [`BatchTask`][albert.resources.tasks.BatchTask]; its
+    [`category`][albert.resources.tasks.ReactionBatchTask.category] is always
+    [`REACTION_BATCH`][albert.resources.tasks.TaskCategory.REACTION_BATCH].
+
+    !!! example
+        ```python
+        task = client.tasks.get_by_id(id="TASREA1")
+        task.category
+        # <TaskCategory.REACTION_BATCH: 'ReactionBatch'>
+        ```
+    """
+
+    category: Literal[TaskCategory.REACTION_BATCH] = TaskCategory.REACTION_BATCH
+
+    reaction_id: str | None = Field(default=None, alias="reactionId", exclude=True, frozen=True)
+    """Read-only. The ID of the source reaction (format ``RXN...``)."""
+
+    reaction_name: str | None = Field(
+        default=None, alias="reactionName", exclude=True, frozen=True
+    )
+    """Read-only. The title of the source reaction, frozen at task creation. Omitted on older tasks."""
+
+    worksheet_id: str | None = Field(default=None, alias="worksheetId", exclude=True, frozen=True)
+    """Read-only. The worksheet the source reaction was created on (format ``WKS...``)."""
+
+    reagents_design_id: str | None = Field(
+        default=None, alias="reagentsDesignId", exclude=True, frozen=True
+    )
+    """Read-only. The reagents design on the reaction worksheet (format ``DES...``)."""
+
+    products_design_id: str | None = Field(
+        default=None, alias="productsDesignId", exclude=True, frozen=True
+    )
+    """Read-only. The products design on the reaction worksheet (format ``DES...``)."""
+
+    inventory_id: InventoryId | None = Field(
+        default=None, alias="inventoryId", exclude=True, frozen=True
+    )
+    """Read-only. The Reaction-category inventory item minted for the reaction product (format ``INV...``)."""
+
+    default_unit: str | None = Field(default=None, alias="defaultUnit", exclude=True, frozen=True)
+    """Read-only. Display unit for lot on-hand amounts. Defaults to kilograms when omitted."""
+
+    units: list[ReactionUnitOverride] | None = Field(
+        default=None, alias="Units", exclude=True, frozen=True
+    )
+    """Read-only. Per-row unit overrides for the reaction grid. See [`ReactionUnitOverride`][albert.resources.tasks.ReactionUnitOverride]."""
+
+
+TaskUnion = Annotated[
+    PropertyTask | BatchTask | GeneralTask | ReactionBatchTask,
+    Field(..., discriminator="category"),
+]
 TaskAdapter = TypeAdapter(TaskUnion)
 
 
