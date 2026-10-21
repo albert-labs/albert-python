@@ -9,12 +9,13 @@ since it only asserts on the requests the SDK sends.
 """
 
 import json
+import warnings
 
 import pytest
 import responses
 
 from albert.collections.inventory import InventoryCollection
-from albert.exceptions import AlbertException, AlbertPartialError
+from albert.exceptions import AlbertPartialError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
@@ -39,25 +40,29 @@ def _collection(offline_session) -> InventoryCollection:
 # --- symbols cannot be updated ---
 
 
-def test_changed_symbols_raise(offline_session) -> None:
-    """Test that changing symbols raises instead of being dropped."""
+def test_changed_symbols_warn(offline_session) -> None:
+    """Test that changing symbols warns instead of being dropped silently."""
     existing = _item(symbols=[{"id": "SYM1"}])
     updated = _item(symbols=[{"id": "SYM2"}])
 
-    with pytest.raises(AlbertException, match="symbols"):
-        _collection(offline_session)._generate_inventory_patch_payload(
+    with pytest.warns(UserWarning, match="symbols"):
+        payload = _collection(offline_session)._generate_inventory_patch_payload(
             existing=existing, updated=updated
         )
 
+    assert payload["data"] == []
+
 
 def test_unchanged_symbols_in_any_order_emit_no_op(offline_session) -> None:
-    """Test that symbols carried along unchanged, in any order, do not raise."""
+    """Test that symbols carried along unchanged, in any order, do not warn."""
     existing = _item(symbols=[{"id": "SYM1"}, {"id": "SYM2"}])
     updated = _item(symbols=[{"id": "SYM2"}, {"id": "SYM1"}])
 
-    payload = _collection(offline_session)._generate_inventory_patch_payload(
-        existing=existing, updated=updated
-    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        payload = _collection(offline_session)._generate_inventory_patch_payload(
+            existing=existing, updated=updated
+        )
 
     assert payload["data"] == []
 

@@ -403,8 +403,8 @@ class UserCollection(BaseCollection):
 
         Fetch the user (e.g. via [`get_by_id`][albert.collections.users.UserCollection.get_by_id]), modify the updatable
         fields, then pass it here. Only the fields listed in Notes are applied.
-        Changing ``location``, ``roles``, ``user_class`` or ``witnesser`` raises an
-        error instead of being ignored.
+        Changes to ``location``, ``roles``, ``user_class`` or ``witnesser`` are
+        ignored with a warning.
 
         !!! example
             ```python
@@ -425,11 +425,12 @@ class UserCollection(BaseCollection):
         User
             The updated user.
 
-        Raises
-        ------
-        AlbertException
+        Warns
+        -----
+        UserWarning
             If ``location``, ``roles``, ``user_class`` or ``witnesser`` differs from
-            the current value. These fields cannot be changed with this method.
+            the current value. These fields cannot be changed with this method, so
+            the change is ignored and the other changes are applied.
 
         Notes
         -----

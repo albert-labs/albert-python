@@ -1803,8 +1803,8 @@ class InventoryCollection(BaseCollection):
 
         Fetch the item (e.g. with [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]), modify the updatable fields
         on the returned object, then pass it here. Only the fields listed in Notes
-        are applied; changes to other fields are ignored, except that changing
-        ``symbols`` raises an error.
+        are applied; changes to other fields are ignored, and a change to
+        ``symbols`` also emits a warning.
 
         !!! example
             ```python
@@ -1827,12 +1827,15 @@ class InventoryCollection(BaseCollection):
 
         Raises
         ------
-        AlbertException
-            If ``symbols`` differs from the current value. Symbols cannot be
-            changed with this method.
         AlbertPartialError
             If a tag or company change only partially succeeds. The error carries
             the succeeded (``created_items``) and failed (``failed_items``) items.
+
+        Warns
+        -----
+        UserWarning
+            If ``symbols`` differs from the current value. Symbols cannot be
+            changed with this method, so the change is ignored.
 
         Notes
         -----
@@ -1943,12 +1946,16 @@ class InventoryCollection(BaseCollection):
 
         Raises
         ------
-        AlbertException
-            If ``symbols`` differs from the current value on any item.
         AlbertPartialError
             If a batched tag or company change only partially succeeds. The error
             carries the succeeded (``created_items``) and failed (``failed_items``)
             items.
+
+        Warns
+        -----
+        UserWarning
+            If ``symbols`` differs from the current value on any item. The change
+            is ignored.
 
         Notes
         -----

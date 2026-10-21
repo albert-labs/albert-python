@@ -1,3 +1,4 @@
+import warnings
 from typing import Any
 
 from pydantic import BaseModel
@@ -6,7 +7,6 @@ from albert.core.session import AlbertSession
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
-from albert.exceptions import AlbertException
 
 
 class BaseCollection:
@@ -30,8 +30,8 @@ class BaseCollection:
     _non_deletable_attributes: set[str] = set()
 
     # Fields that update() cannot change. When the caller sets one of these to a value
-    # that differs from the current one, update() raises instead of dropping the change
-    # without notice. Opt-in per collection: a generic check over every field would
+    # that differs from the current one, update() applies the other changes and warns
+    # that this one was ignored, instead of dropping it without notice. Opt-in per collection: a generic check over every field would
     # flag read-only values (audit stamps, server-normalized links) that callers carry
     # along unchanged. Treat as immutable: subclasses replace the set.
     _non_updatable_attributes: frozenset[str] = frozenset()
@@ -55,10 +55,10 @@ class BaseCollection:
             return sorted((BaseCollection._comparable_value(item) for item in value), key=repr)
         return value
 
-    def _raise_on_non_updatable_changes(
+    def _warn_on_non_updatable_changes(
         self, *, existing: BaseResource, updated: BaseResource
     ) -> None:
-        """Raise if the caller changed a field listed in ``_non_updatable_attributes``."""
+        """Warn if the caller changed a field listed in ``_non_updatable_attributes``."""
         changed = sorted(
             attribute
             for attribute in self._non_updatable_attributes
@@ -67,9 +67,12 @@ class BaseCollection:
             != self._comparable_value(getattr(existing, attribute, None))
         )
         if changed:
-            raise AlbertException(
-                f"{type(updated).__name__} field(s) {', '.join(changed)} cannot be changed "
-                "with update(). Leave them unset or at their current value."
+            warnings.warn(
+                f"{type(updated).__name__} {updated.id}: update() cannot change "
+                f"{', '.join(changed)}, so these changes were ignored. Other changes "
+                "are applied.",
+                UserWarning,
+                stacklevel=4,
             )
 
     def _metadata_list_patch_value(self, links: list[EntityLink], *, as_list: bool = False) -> Any:
@@ -231,7 +234,7 @@ class BaseCollection:
 
         This is overriden for some clases with more compex patch formation.
         """
-        self._raise_on_non_updatable_changes(existing=existing, updated=updated)
+        self._warn_on_non_updatable_changes(existing=existing, updated=updated)
         data = []
         for attribute in self._updatable_attributes:
             old_value = getattr(existing, attribute, None)
