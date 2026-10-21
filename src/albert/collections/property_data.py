@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from contextlib import suppress
 
 import pandas as pd
+import requests
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
@@ -285,6 +286,37 @@ class PropertyDataCollection(BaseCollection):
             ],
         }
 
+    @staticmethod
+    def _unpack_custom_bulk_response(
+        *, response: requests.Response, inventory_id: InventoryId
+    ) -> list[InventoryPropertyDataCreate]:
+        """Unpack the registered properties from a bulk custom-property add."""
+        data = response.json()
+        if response.status_code == 206:
+            # This service reports partial success as {"SuccessItems": [...],
+            # "FailedItems": [...]} (bulkCustomInline), not the "CreatedItems"
+            # envelope used by other bulk endpoints.
+            raise AlbertPartialError(
+                "Partial success adding properties to inventory: "
+                f"{len(data.get('FailedItems') or [])} item(s) failed.",
+                created_items=data.get("SuccessItems") or [],
+                failed_items=data.get("FailedItems") or [],
+            )
+        returned = []
+        for entry in data:
+            column = (entry.get("DataColumn") or [{}])[0]
+            returned.append(
+                InventoryPropertyDataCreate(
+                    inventory_id=inventory_id,
+                    data_columns=[
+                        InventoryDataColumn(
+                            data_column_id=column.get("id"), value=column.get("value")
+                        )
+                    ],
+                )
+            )
+        return returned
+
     @validate_call
     def bulk_add_properties_to_inventory(
         self, *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
@@ -339,28 +371,7 @@ class PropertyDataCollection(BaseCollection):
             inventory_id=inventory_id, properties=properties
         )
         response = self.session.post(f"{self.base_path}/custom/bulk", json=payload)
-        if response.status_code == 206:
-            data = response.json()
-            raise AlbertPartialError(
-                "Partial success adding properties to inventory: "
-                f"{len(data.get('FailedItems') or [])} item(s) failed.",
-                created_items=data.get("SuccessItems") or [],
-                failed_items=data.get("FailedItems") or [],
-            )
-        returned = []
-        for entry in response.json():
-            column = (entry.get("DataColumn") or [{}])[0]
-            returned.append(
-                InventoryPropertyDataCreate(
-                    inventory_id=inventory_id,
-                    data_columns=[
-                        InventoryDataColumn(
-                            data_column_id=column.get("id"), value=column.get("value")
-                        )
-                    ],
-                )
-            )
-        return returned
+        return self._unpack_custom_bulk_response(response=response, inventory_id=inventory_id)
 
     @validate_call
     def update_property_on_inventory(
