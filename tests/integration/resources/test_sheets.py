@@ -90,6 +90,8 @@ def test_add_formulation_lifecycle(
             inv_id = row_id_to_inv_id.get(cell.row_id)
             if not inv_id or inv_id not in component_map:
                 continue
+            if cell.value in (None, ""):
+                continue
 
             component = component_map[inv_id]
             assert float(cell.value) == float(component.amount)

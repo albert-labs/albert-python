@@ -1797,7 +1797,93 @@ def test_add_formulations_clear_reuses_existing_columns(offline_session):
             },
         ],
     )
-    _register_products_grid()
+    # The grid is re-read after the cleared column's write drops the cache; the
+    # second read reflects the platform state with the new column present.
+    grid_calls = {"count": 0}
+
+    def _grid_callback(request):
+        grid_calls["count"] += 1
+        if grid_calls["count"] == 1:
+            return (
+                200,
+                {},
+                json.dumps(
+                    {
+                        "Items": [
+                            {
+                                "rowId": "ROW1",
+                                "rowUniqueId": "DES1#ROW1",
+                                "name": "Total",
+                                "type": "TOT",
+                                "Values": [
+                                    {
+                                        "colId": "COL1",
+                                        "value": "10",
+                                        "calculation": "=COL1ROW2",
+                                        "id": "INVF0",
+                                        "type": "INV",
+                                    }
+                                ],
+                            },
+                            {
+                                "rowId": "ROW2",
+                                "rowUniqueId": "DES1#ROW2",
+                                "name": "Salt",
+                                "type": "INV",
+                                "id": "INVA1",
+                                "Values": [
+                                    {"colId": "COL1", "value": "10", "id": "INVF0", "type": "INV"}
+                                ],
+                            },
+                        ],
+                        "Formulas": [{"colId": "COL1", "name": "Existing", "state": {}}],
+                    }
+                ),
+            )
+        return (
+            200,
+            {},
+            json.dumps(
+                {
+                    "Items": [
+                        {
+                            "rowId": "ROW1",
+                            "rowUniqueId": "DES1#ROW1",
+                            "name": "Total",
+                            "type": "TOT",
+                            "Values": [
+                                {
+                                    "colId": "COL1",
+                                    "value": "10",
+                                    "calculation": "=COL1ROW2",
+                                    "id": "INVF0",
+                                    "type": "INV",
+                                },
+                                {"colId": "COL5", "value": "", "id": "INVFB", "type": "INV"},
+                            ],
+                        },
+                        {
+                            "rowId": "ROW2",
+                            "rowUniqueId": "DES1#ROW2",
+                            "name": "Salt",
+                            "type": "INV",
+                            "id": "INVA1",
+                            "Values": [
+                                {"colId": "COL5", "value": "", "id": "INVFB", "type": "INV"}
+                            ],
+                        },
+                    ],
+                    "Formulas": [
+                        {"colId": "COL1", "name": "Existing", "state": {}},
+                        {"colId": "COL5", "name": "FB", "state": {}},
+                    ],
+                }
+            ),
+        )
+
+    responses.add_callback(
+        responses.GET, f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid", _grid_callback
+    )
     responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
 
     columns = sheet.add_formulations(
