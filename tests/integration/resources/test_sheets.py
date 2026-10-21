@@ -4,6 +4,7 @@ import pytest
 from albert.exceptions import AlbertException
 from albert.resources.inventory import InventoryItem
 from albert.resources.sheets import (
+    AppRowValue,
     Cell,
     CellType,
     Column,
@@ -140,6 +141,28 @@ def test_add_formulation_lifecycle(
 # Because you cannot delete Formulation Columns, We will need to mock this test.
 # def test_crud_formulation_column(sheet):
 #     new_col = sheet.add_formulation_columns(formulation_names=["my cool formulation"])[0]
+
+
+def test_get_app_rows(seeded_sheet: Sheet, seed_prefix: str):
+    """Test reading app rows with their computed values from a sheet."""
+    new_row = seeded_sheet.add_app_row(app_id="APP1", name=f"{seed_prefix} - app row read")
+    try:
+        app_rows = seeded_sheet.get_app_rows()
+        matched = [row for row in app_rows if row.row_id == new_row.row_id]
+        assert len(matched) == 1
+
+        app_row = matched[0]
+        assert app_row.id == "APP1"
+        assert app_row.type == CellType.APP
+        assert app_row.name == f"{seed_prefix} - app row read"
+        assert app_row.values, "Expected one computed value per Apps section column"
+        for value in app_row.values:
+            assert isinstance(value, AppRowValue)
+            assert value.column_id
+            assert isinstance(value.value, str)
+            assert isinstance(value.calculation, str)
+    finally:
+        seeded_sheet.delete_row(row_id=new_row.row_id, design_id=seeded_sheet.app_design.id)
 
 
 def test_add_and_remove_blank_rows(seeded_sheet: Sheet):

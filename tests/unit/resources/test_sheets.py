@@ -727,3 +727,75 @@ def test_row_config_invalid_value_coerced_to_none():
     design = sheet.designs[0]
     row = Row(rowId="ROW1", type=CellType.APP, design=design, sheet=sheet, config="bogus")
     assert row.config is None
+
+
+@responses.activate
+def test_get_app_rows_filters_to_app_rows(offline_session):
+    """Test that get_app_rows parses app rows and drops non-app rows."""
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES3/apps/grid/new",
+        json={
+            "total": 2,
+            "lastKey": "COL2",
+            "designId": "DES3",
+            "state": None,
+            "RowSequence": [],
+            "Formulas": [],
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES3#ROW1",
+                    "type": "TAG",
+                    "name": "Tags",
+                    "Values": [],
+                },
+                {
+                    "id": "APP1",
+                    "rowId": "ROW7",
+                    "rowUniqueId": "DES3#ROW7",
+                    "type": "APP",
+                    "name": "Cost insight",
+                    "Values": [
+                        {
+                            "colId": "COL1",
+                            "type": "DEF",
+                            "name": "Inventory ID",
+                            "value": "",
+                            "calculation": "",
+                        },
+                        {
+                            "id": "INV1",
+                            "colId": "COL2",
+                            "type": "INV",
+                            "name": "Formulation A",
+                            "value": "42.0",
+                            "calculation": '{"op": "sum"}',
+                        },
+                    ],
+                },
+            ],
+        },
+    )
+
+    rows = _process_sheet(offline_session).get_app_rows()
+
+    assert [row.row_id for row in rows] == ["ROW7"]
+    row = rows[0]
+    assert row.id == "APP1"
+    assert row.type == CellType.APP
+    assert row.name == "Cost insight"
+    assert [value.column_id for value in row.values] == ["COL1", "COL2"]
+    assert row.values[1].id == "INV1"
+    assert row.values[1].value == "42.0"
+    assert row.values[1].calculation == '{"op": "sum"}'
+
+
+@responses.activate
+def test_get_app_rows_empty_apps_section(offline_session):
+    """Test that get_app_rows returns an empty list when the Apps section has no app rows."""
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES3/apps/grid/new",
+        json={"total": 0, "designId": "DES3", "Items": [], "Formulas": [], "RowSequence": []},
+    )
+
+    assert _process_sheet(offline_session).get_app_rows() == []
