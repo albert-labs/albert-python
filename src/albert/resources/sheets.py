@@ -646,6 +646,13 @@ class Design(BaseSessionResource):
                 ]
                 groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
 
+        # The row sequence does not carry group names; fill them in from the grid rows.
+        if any(g.name is None for g in groups):
+            name_by_row_id = {r.row_id: r.name for r in self.rows}
+            for g in groups:
+                if g.name is None:
+                    g.name = name_by_row_id.get(g.row_id)
+
         self._groups_cache = groups
         return groups
 
