@@ -2768,13 +2768,24 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     continue
 
                 # The value-update schema allows at most 2 data changes per
-                # entry (worksheet.yaml Values data maxItems).
-                for i in range(0, len(change_dict["data"]), 2):
-                    single_change: CellChangePayload = {
-                        "Id": change_dict["Id"],
-                        "data": change_dict["data"][i : i + 2],
-                    }
-                    payload_entries.append((single_change, cell))
+                # entry (worksheet.yaml Values data maxItems), and the worksheet
+                # service accepts a multi-change entry only when one of the
+                # changes is a calculation (patchWSCellValue), so only entries
+                # carrying a calculation change travel packed; everything else
+                # goes out one change per entry.
+                data = change_dict["data"]
+                packs = 1 < len(data) <= 2 and any(
+                    datum.attribute == "calculation" for datum in data
+                )
+                if packs or len(data) == 1:
+                    payload_entries.append((change_dict, cell))
+                else:
+                    for datum in data:
+                        single_change: CellChangePayload = {
+                            "Id": change_dict["Id"],
+                            "data": [datum],
+                        }
+                        payload_entries.append((single_change, cell))
 
             if not payload_entries:
                 continue

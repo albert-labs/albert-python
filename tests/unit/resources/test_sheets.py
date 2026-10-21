@@ -1670,6 +1670,30 @@ def test_update_cells_packs_two_changes_per_entry(offline_session):
 
 
 @responses.activate
+def test_update_cells_splits_non_calculation_changes_into_single_change_entries(offline_session):
+    """Test a value+bounds write on a plain cell travels as one change per entry."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW2", "COL1#INVF0"]
+    assert cell.calculation in (None, "")
+    updated, failed = sheet.update_cells(
+        cells=[cell.model_copy(update={"value": "20", "min_value": "1", "max_value": "30"})]
+    )
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert len(patches) == 3
+    for patch, attribute in zip(patches, ["cell", "minValue", "maxValue"], strict=True):
+        body = json.loads(patch.request.body)
+        assert len(body) == 1
+        assert body[0]["Id"] == {"rowId": "ROW2", "colId": "COL1"}
+        assert [d["attribute"] for d in body[0]["data"]] == [attribute]
+    assert len(updated) == 1
+    assert failed == []
+
+
+@responses.activate
 def test_add_formulation_columns_groups_large_additions_and_preserves_order(offline_session):
     """Test that adding many columns splits at 25 per call and keeps the requested order."""
     sheet = _products_sheet(session=offline_session)
