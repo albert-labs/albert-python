@@ -80,8 +80,16 @@ class PropertyDataCollection(BaseCollection):
       integer trial number.
 
     The void/unvoid methods mirror this hierarchy: void an entire task block, a
-    single interval, or a single trial. Voided data is retained but excluded from
-    results; unvoiding restores it.
+    single interval, or a single trial. Voided data is retained, not deleted, and
+    unvoiding restores it. Task reads
+    ([`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties],
+    [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties],
+    [`get_task_property_records`][albert.collections.property_data.PropertyDataCollection.get_task_property_records])
+    still return voided data and flag it with ``void`` on each interval and trial
+    (or record), so filter on that flag to exclude it.
+    [`search`][albert.collections.property_data.PropertyDataCollection.search] results
+    may include voided data and do not indicate void status; use the task reads when
+    voided data must be excluded.
 
     **Writing results.** Use [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task] for brand-new values,
     [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties] to upsert, and
@@ -894,7 +902,7 @@ class PropertyDataCollection(BaseCollection):
     ) -> None:
         """Void all recorded results in a task block for one inventory item.
 
-        Voided data is retained but excluded from results; restore it with
+        Voided data is retained and flagged with ``void`` in task reads; restore it with
         [`unvoid_task_data`][albert.collections.property_data.PropertyDataCollection.unvoid_task_data]. To void a narrower scope, use
         [`void_interval_data`][albert.collections.property_data.PropertyDataCollection.void_interval_data] or [`void_trial_data`][albert.collections.property_data.PropertyDataCollection.void_trial_data].
 
@@ -996,7 +1004,7 @@ class PropertyDataCollection(BaseCollection):
     ) -> None:
         """Void the results of one interval combination in a task block.
 
-        Voided data is retained but excluded from results; restore it with
+        Voided data is retained and flagged with ``void`` in task reads; restore it with
         [`unvoid_interval_data`][albert.collections.property_data.PropertyDataCollection.unvoid_interval_data].
 
         !!! example
@@ -1762,6 +1770,12 @@ class PropertyDataCollection(BaseCollection):
         compact result-query syntax for filtering by measured value under a
         condition. Results are returned as a lazily paginated iterator.
 
+        Results may include voided data and do not indicate void status. When voided
+        values must be excluded, read the task's results with
+        [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
+        or [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties],
+        whose intervals and trials carry ``void``.
+
         !!! example
             ```python
             hits = client.property_data.search(
@@ -1896,7 +1910,7 @@ class PropertyDataCollection(BaseCollection):
         }
 
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.SEARCH_AFTER,
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,

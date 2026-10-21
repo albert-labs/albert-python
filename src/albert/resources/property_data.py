@@ -986,7 +986,9 @@ class PropertyDataSearchItem(BaseAlbertModel):
     Yielded by
     [`search`][albert.collections.property_data.PropertyDataCollection.search]. Flattens
     a single measured result together with the workflow setpoints, data template, and
-    the task/inventory/project it belongs to."""
+    the task/inventory/project it belongs to. Search items may include voided data and
+    carry no void status; see
+    [`search`][albert.collections.property_data.PropertyDataCollection.search]."""
 
     id: PropertyDataId
     """The property data record ID (format ``PTD...``)."""

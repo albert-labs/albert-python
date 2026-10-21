@@ -42,7 +42,8 @@ class _ScriptedSession:
         return len(self.requests)
 
     def get(self, path: str, params: dict[str, Any] | None = None, **kwargs: Any) -> _JsonResponse:
-        self.requests.append({"method": "GET", "path": path, "params": params})
+        # Snapshot: the paginator mutates its params dict in place between pages.
+        self.requests.append({"method": "GET", "path": path, "params": dict(params or {})})
         return _JsonResponse(self._pages.pop(0))
 
     def request(
@@ -54,7 +55,7 @@ class _ScriptedSession:
         **kwargs: Any,
     ) -> _JsonResponse:
         self.requests.append(
-            {"method": method, "path": path, "params": params, "json": json, **kwargs}
+            {"method": method, "path": path, "params": params, "json": dict(json or {}), **kwargs}
         )
         return _JsonResponse(self._pages.pop(0))
 
@@ -656,3 +657,166 @@ def test_paginator_skips_unparseable_item_without_losing_page(caplog) -> None:
     assert results == [1, 3]
     assert paginator.skipped_items == 1
     assert any("A2" in record.message for record in caplog.records)
+
+
+def _cursor_page(
+    items: list[int],
+    *,
+    next_search_after: list | None,
+    total: int | None = None,
+) -> dict[str, Any]:
+    """A search_after page; ``nextSearchAfter`` is always present on supporting backends."""
+    data = _page(items, offset=0, total=total)
+    data["nextSearchAfter"] = next_search_after
+    data["prevSearchAfter"] = None
+    return data
+
+
+def test_search_after_post_follows_cursor_until_empty_page() -> None:
+    """Test search_after mode starts with an empty cursor and sends each returned cursor."""
+    session = _ScriptedSession(
+        [
+            _cursor_page([0, 1], next_search_after=["2026-01-02", "INV1"]),
+            _cursor_page([2, 3], next_search_after=["2026-01-01", "INV3"]),
+            _cursor_page([], next_search_after=None),
+        ]
+    )
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.SEARCH_AFTER,
+        path="/api/v3/inventories/search",
+        session=session,
+        deserialize=lambda items: [item["id"] for item in items],
+        method="POST",
+        json={"text": "resin"},
+    )
+
+    assert list(pag) == [0, 1, 2, 3]
+    assert [r["json"] for r in session.requests] == [
+        {"text": "resin", "limit": 1000, "searchAfter": []},
+        {"text": "resin", "limit": 1000, "searchAfter": ["2026-01-02", "INV1"]},
+        {"text": "resin", "limit": 1000, "searchAfter": ["2026-01-01", "INV3"]},
+    ]
+    assert pag.has_more is False
+
+
+def test_search_after_get_sends_cursor_as_json_text() -> None:
+    """Test search_after mode encodes the cursor as JSON text in query strings."""
+    session = _ScriptedSession(
+        [
+            _cursor_page([0], next_search_after=[1.5, "PTD0"]),
+            _cursor_page([], next_search_after=None),
+        ]
+    )
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.SEARCH_AFTER,
+        path="/api/v3/propertydata/search",
+        session=session,
+        deserialize=lambda items: items,
+        params={"text": "density"},
+    )
+    list(pag)
+
+    assert [r["params"]["searchAfter"] for r in session.requests] == ["[]", '[1.5, "PTD0"]']
+    assert all("offset" not in r["params"] for r in session.requests)
+
+
+def test_search_after_stops_on_null_cursor_without_extra_request() -> None:
+    """Test a null nextSearchAfter ends iteration without another request."""
+    session = _ScriptedSession([_cursor_page([0, 1], next_search_after=None)])
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.SEARCH_AFTER,
+        path="/api/v3/lots/search",
+        session=session,
+        deserialize=lambda items: items,
+        method="POST",
+        json={},
+    )
+
+    assert len(list(pag)) == 2
+    assert session.call_count == 1
+    assert pag.has_more is False
+
+
+def test_search_after_falls_back_to_offset_when_backend_ignores_cursor() -> None:
+    """Test a backend without search_after support is paged by offset instead of looping."""
+    session = _ScriptedSession(
+        [
+            _page([0, 1], offset=0),
+            _page([2], offset=2),
+            _page([], offset=3),
+        ]
+    )
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.SEARCH_AFTER,
+        path="/api/v3/tasks/search",
+        session=session,
+        deserialize=lambda items: [item["id"] for item in items],
+        params={"text": "x"},
+    )
+
+    assert list(pag) == [0, 1, 2]
+    assert [r["params"].get("searchAfter") for r in session.requests] == ["[]", None, None]
+    assert [r["params"].get("offset") for r in session.requests] == [None, 2, 3]
+
+
+def test_search_after_keeps_offset_mode_for_caller_offset() -> None:
+    """Test a caller-supplied starting offset is honored rather than dropped."""
+    session = _ScriptedSession([_page([5, 6], offset=5), _page([], offset=7)])
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.SEARCH_AFTER,
+        path="/api/v3/tasks/search",
+        session=session,
+        deserialize=lambda items: [item["id"] for item in items],
+        params={"offset": 5},
+    )
+
+    assert list(pag) == [5, 6]
+    assert pag.mode == PaginationMode.OFFSET
+    assert session.requests[0]["params"] == {"offset": 5, "limit": 1000}
+
+
+def test_search_after_has_more_uses_total_at_cap() -> None:
+    """Test max_items reached mid-results reports has_more from the reported total."""
+    session = _ScriptedSession(
+        [_cursor_page([0, 1], next_search_after=["c", "INV1"], total=50000)]
+    )
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.SEARCH_AFTER,
+        path="/api/v3/inventories/search",
+        session=session,
+        deserialize=lambda items: items,
+        params={"limit": 2},
+        max_items=2,
+    )
+
+    assert len(list(pag)) == 2
+    assert pag.has_more is True
+    assert pag.total == 50000
+    assert session.call_count == 1
+
+
+@pytest.mark.parametrize(
+    ("next_search_after", "expected"),
+    [(["c", "INV1"], True), (None, False)],
+)
+def test_search_after_has_more_without_total(next_search_after, expected) -> None:
+    """Test a full page at the cap signals more only while a cursor remains."""
+    session = _ScriptedSession([_cursor_page([0, 1], next_search_after=next_search_after)])
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.SEARCH_AFTER,
+        path="/api/v3/inventories/search",
+        session=session,
+        deserialize=lambda items: items,
+        params={"limit": 2},
+        max_items=2,
+    )
+    list(pag)
+
+    assert pag.has_more is expected

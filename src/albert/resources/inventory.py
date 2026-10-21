@@ -90,12 +90,15 @@ class InventoryCategory(str, Enum):
     FORMULAS : str
         A mixture designed in Albert under a Project. Creating a Formula item
         requires ``project_id`` set to the parent Project's ID.
+    REACTION : str
+        A product of a chemical reaction recorded in Albert.
     """
 
     RAW_MATERIALS = "RawMaterials"
     CONSUMABLES = "Consumables"
     EQUIPMENT = "Equipment"
     FORMULAS = "Formulas"
+    REACTION = "Reaction"
 
 
 class InventoryUnitCategory(str, Enum):
@@ -103,7 +106,7 @@ class InventoryUnitCategory(str, Enum):
 
     Determines how quantities on hand and in formulas are interpreted. When not
     supplied, the category defaults based on [`InventoryCategory`][albert.resources.inventory.InventoryCategory]: ``MASS``
-    for raw materials and formulas, ``UNITS`` for equipment and consumables.
+    for raw materials, formulas, and reaction products, ``UNITS`` for equipment and consumables.
 
     Attributes
     ----------
@@ -347,10 +350,10 @@ class InventoryItem(BaseTaggedResource):
     """A free-text description of the item."""
 
     category: InventoryCategory
-    """The kind of material this item represents. Required. One of ``RawMaterials``, ``Consumables``, ``Equipment``, or ``Formulas``."""
+    """The kind of material this item represents. Required. One of ``RawMaterials``, ``Consumables``, ``Equipment``, ``Formulas``, or ``Reaction``."""
 
     unit_category: InventoryUnitCategory | None = Field(default=None, alias="unitCategory")
-    """The dimension the item is measured in (mass, volume, length, pressure, or units). If not supplied, it defaults from ``category``: mass for raw materials and formulas, units for equipment and consumables."""
+    """The dimension the item is measured in (mass, volume, length, pressure, or units). If not supplied, it defaults from ``category``: mass for raw materials, formulas, and reaction products, units for equipment and consumables."""
 
     density: InventoryDensity | None = Field(default=None)
     """The density in g/mL for volume-based inventory items. Required at creation when ``unit_category`` is volume. Locked at creation and cannot be changed."""
@@ -439,7 +442,11 @@ class InventoryItem(BaseTaggedResource):
     def set_unit_category(self) -> InventoryItem:
         """Set unit category from category if not defined."""
         if self.unit_category is None:
-            if self.category in [InventoryCategory.RAW_MATERIALS, InventoryCategory.FORMULAS]:
+            if self.category in [
+                InventoryCategory.RAW_MATERIALS,
+                InventoryCategory.FORMULAS,
+                InventoryCategory.REACTION,
+            ]:
                 object.__setattr__(self, "unit_category", InventoryUnitCategory.MASS)
             elif self.category in [InventoryCategory.EQUIPMENT, InventoryCategory.CONSUMABLES]:
                 object.__setattr__(self, "unit_category", InventoryUnitCategory.UNITS)
