@@ -127,7 +127,7 @@ class PropertyData(BaseAlbertModel):
     """Remarks associated with curve data. Serialized as ``curveRemarks``."""
 
     athena: dict[str, Any] | None = Field(default=None)
-    """Backing analytical store metadata for curve data. See Also --------"""
+    """Backing analytical store metadata for curve data."""
 
 
 class PropertyValue(BaseAlbertModel):
@@ -168,7 +168,7 @@ class PropertyValue(BaseAlbertModel):
     """The unique ID of the data column this result captures. Serialized as ``dataColumnUniqueId``."""
 
     hidden: bool | None = Field(default=False)
-    """Whether the result is hidden. See Also --------"""
+    """Whether the result is hidden."""
 
 
 class Trial(BaseAlbertModel):
@@ -191,7 +191,7 @@ class Trial(BaseAlbertModel):
     """Internal trial identifier. Serialized as ``backEndTrialNo``."""
 
     data_columns: list[PropertyValue] = Field(default_factory=list, alias="DataColumns")
-    """The results measured in this trial, one per data column. Serialized as ``DataColumns``. See Also --------"""
+    """The results measured in this trial, one per data column. Serialized as ``DataColumns``."""
 
 
 class DataInterval(BaseAlbertModel):
@@ -212,7 +212,7 @@ class DataInterval(BaseAlbertModel):
     """The replicate measurements recorded for this interval. Serialized as ``Trials``."""
 
     name: str | None = Field(default=None)
-    """An optional display name for the interval. See Also --------"""
+    """An optional display name for the interval."""
 
 
 class TaskData(BaseAlbertModel):
@@ -257,7 +257,7 @@ class TaskData(BaseAlbertModel):
     """The data template whose columns were measured (format ``DAT...``). Serialized as ``Datatemplate``."""
 
     data: list[DataInterval] = Field(default_factory=list, alias="Data")
-    """The interval data recorded, one entry per interval combination. Serialized as ``Data``. See Also --------"""
+    """The interval data recorded, one entry per interval combination. Serialized as ``Data``."""
 
 
 class CustomInventoryDataColumn(BaseAlbertModel):
@@ -280,7 +280,7 @@ class CustomData(BaseAlbertModel):
     """The lot the value applies to, if any. Serialized as ``Lot``."""
 
     data_column: CustomInventoryDataColumn = Field(alias="DataColumn")
-    """The data column and its stored value. Serialized as ``DataColumn``. See Also --------"""
+    """The data column and its stored value. Serialized as ``DataColumn``."""
 
 
 class PropertyDataInventoryInformation(BaseAlbertModel):
@@ -341,7 +341,7 @@ class InventoryPropertyData(BaseResource):
     """Results measured on tasks that roll up to this item. Serialized as ``Task``."""
 
     custom_property_data: list[CustomData] = Field(default_factory=list, alias="NoTask")
-    """Values entered directly on the item, independent of any task. Serialized as ``NoTask``. See Also --------"""
+    """Values entered directly on the item, independent of any task. Serialized as ``NoTask``."""
 
 
 class TaskPropertyData(BaseResource):
@@ -403,7 +403,7 @@ class TaskPropertyData(BaseResource):
     """The interval data recorded, one entry per interval combination. Serialized as ``Data``."""
 
     block_id: str | None = Field(alias="blockId", default=None)
-    """The block the data belongs to (format ``BLK...``). Serialized as ``blockId``. See Also --------"""
+    """The block the data belongs to (format ``BLK...``). Serialized as ``blockId``."""
 
 
 class BulkPropertyDataColumn(BaseAlbertModel):
@@ -685,7 +685,7 @@ class ImagePropertyValue(BaseAlbertModel):
         ```"""
 
     file_path: str | Path
-    """Local path to the image file to upload. See Also --------"""
+    """Local path to the image file to upload."""
 
 
 class CurvePropertyValue(BaseAlbertModel):
@@ -709,7 +709,7 @@ class CurvePropertyValue(BaseAlbertModel):
     """Import mode for the curve data. Defaults to ``ImportMode.CSV``."""
 
     field_mapping: dict[str, str] | None = None
-    """Optional mapping from CSV headers to curve result identifiers. See Also --------"""
+    """Optional mapping from CSV headers to curve result identifiers."""
 
 
 class ImagePropertyValuePayload(BaseAlbertModel):
@@ -741,7 +741,7 @@ class TaskDataColumn(BaseAlbertModel):
     """The data column (format ``DAC...``). Serialized as ``id``."""
 
     column_sequence: str | None = Field(default=None, alias="columnId")
-    """The column's sequence identifier within the block. Serialized as ``columnId``. See Also --------"""
+    """The column's sequence identifier within the block. Serialized as ``columnId``."""
 
 
 class TaskDataColumnValue(TaskDataColumn):
@@ -789,7 +789,7 @@ class InventoryDataColumn(BaseAlbertModel):
     """The data column to write to (format ``DAC...``). Serialized as ``id``."""
 
     value: str | None = Field(default=None)
-    """The value to store. See Also --------"""
+    """The value to store."""
 
 
 ########################## Task Property POST Classes ##########################
@@ -949,7 +949,7 @@ class InventoryPropertyDataCreate(BaseResource):
     """The property to write. At most one column per request. Serialized as ``DataColumn``."""
 
     status: PropertyDataStatus | None = Field(default=None)
-    """The outcome status reported by the API. See Also --------"""
+    """The outcome status reported by the API."""
 
 
 ####### Property Data Search #######
@@ -1027,7 +1027,7 @@ class PropertyDataSearchItem(BaseAlbertModel):
     """The workflow (format ``WFL...``). Serialized as ``workflowId``."""
 
     task_id: TaskId | None = Field(default=None, alias="taskId")
-    """The task the result was measured on, if any (format ``TAS...``). Serialized as ``taskId``. See Also --------"""
+    """The task the result was measured on, if any (format ``TAS...``). Serialized as ``taskId``."""
 
 
 ReturnScope = Literal["task", "block", "none"]

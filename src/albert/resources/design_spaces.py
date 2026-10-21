@@ -64,10 +64,25 @@ class DesignSpaceViolationCode(StrEnum):
     INTERNAL = "internal"
 
 
-class ContinuousConstraint(BaseAlbertModel):
-    """A numeric parameter restricted to a range. Either bound may be omitted."""
+class _ParameterConstraintBase(BaseAlbertModel):
+    """Base for parameter constraints, keeping ``type`` when serialized with unset-field exclusion.
+
+    Operations are serialized with ``exclude_unset=True``, which would drop the defaulted
+    ``type`` discriminator of a constraint built without passing it, and the service
+    cannot read a constraint that does not say which kind it is. Re-adding it here
+    covers a constraint nested in an operation or passed as an update value.
+    """
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_serializer(mode="wrap")
+    def _keep_type_discriminator(self, handler):
+        """Re-add the defaulted ``type`` field after standard serialization."""
+        return {"type": self.type, **handler(self)}
+
+
+class ContinuousConstraint(_ParameterConstraintBase):
+    """A numeric parameter restricted to a range. Either bound may be omitted."""
 
     type: Literal["continuous"] = "continuous"
     """Constraint kind; fixed to ``continuous``."""
@@ -79,10 +94,8 @@ class ContinuousConstraint(BaseAlbertModel):
     """Largest allowed value. Omit for no upper bound."""
 
 
-class DiscreteConstraint(BaseAlbertModel):
+class DiscreteConstraint(_ParameterConstraintBase):
     """A numeric parameter restricted to an explicit set of numbers."""
-
-    model_config = ConfigDict(extra="forbid")
 
     type: Literal["discrete"] = "discrete"
     """Constraint kind; fixed to ``discrete``."""
@@ -91,10 +104,8 @@ class DiscreteConstraint(BaseAlbertModel):
     """The allowed values."""
 
 
-class CategoricalConstraint(BaseAlbertModel):
+class CategoricalConstraint(_ParameterConstraintBase):
     """A parameter restricted to an explicit set of category labels."""
-
-    model_config = ConfigDict(extra="forbid")
 
     type: Literal["categorical"] = "categorical"
     """Constraint kind; fixed to ``categorical``."""

@@ -1,3 +1,4 @@
+import json as jsonlib
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from typing import Any, Literal, TypeVar
 
@@ -26,6 +27,13 @@ class AlbertPaginator(Iterator[ItemType]):
         - Uses the `startKey` query parameter and expects a `lastKey` in the response
         - Continues until `lastKey` is not present in the response
         - The page size limit is not explicitly set in the query; it defaults to what the backend API provides
+
+    - Search-after pagination (`PaginationMode.SEARCH_AFTER`)
+        - Sends `searchAfter` (the sort values of the last item seen; `[]` for the first page)
+          and expects `nextSearchAfter` in the response
+        - Has no 10k depth cap, unlike offset search pagination
+        - Continues until a page has no `Items` or `nextSearchAfter` is null
+        - Falls back to offset pagination when the backend does not return `nextSearchAfter`
 
     A custom `deserialize` function is provided when additional logic is required to load
     the raw items returned by the search listing, e.g., making additional Albert API calls.
@@ -86,7 +94,14 @@ class AlbertPaginator(Iterator[ItemType]):
         self.json = json or {}
         self._pagination_params = self.params if self.method == "GET" else self.json
 
-        if self.mode == PaginationMode.OFFSET:
+        if self.mode == PaginationMode.SEARCH_AFTER:
+            # A cursor cannot start mid-stream, so a caller-supplied offset keeps offset mode.
+            if self._pagination_params.get("offset"):
+                self.mode = PaginationMode.OFFSET
+            else:
+                self._pagination_params.pop("offset", None)
+                self._set_search_after([])
+        if self.mode in (PaginationMode.OFFSET, PaginationMode.SEARCH_AFTER):
             self._pagination_params.setdefault("limit", DEFAULT_LIMIT)
 
         self._last_key: str | None = None
@@ -159,7 +174,7 @@ class AlbertPaginator(Iterator[ItemType]):
             items = self._response_items(data)
             item_count = len(items)
 
-            if not items and self.mode == PaginationMode.OFFSET:
+            if not items and self.mode in (PaginationMode.OFFSET, PaginationMode.SEARCH_AFTER):
                 # Backend returned empty for offset>0 while ``total`` still exceeds what
                 # we have (common when ``limit`` is ignored and offset is broken).
                 if self._total_implies_more(yielded):
@@ -216,6 +231,12 @@ class AlbertPaginator(Iterator[ItemType]):
                     self._has_more = True
                 return
 
+    def _set_search_after(self, cursor: list) -> None:
+        """Store the cursor for the next request; query strings carry it as JSON text."""
+        self._pagination_params["searchAfter"] = (
+            jsonlib.dumps(cursor) if self.method == "GET" else cursor
+        )
+
     def _next_request_offset(self, *, data: dict[str, Any], count: int) -> int:
         """Compute the offset for the next page request."""
         offset = data.get("offset")
@@ -244,6 +265,11 @@ class AlbertPaginator(Iterator[ItemType]):
             case PaginationMode.KEY:
                 # Match _update_params: an empty-string lastKey is a terminal signal.
                 return bool(current_key)
+            case PaginationMode.SEARCH_AFTER:
+                if count == 0 or data.get("nextSearchAfter") is None:
+                    return False
+                limit = int(self._pagination_params.get("limit", DEFAULT_LIMIT))
+                return count >= limit
             case mode:
                 raise AlbertException(f"Unknown pagination mode {mode}.")
 
@@ -264,6 +290,23 @@ class AlbertPaginator(Iterator[ItemType]):
                 if not last_key:
                     return False
                 self._pagination_params["startKey"] = last_key
+            case PaginationMode.SEARCH_AFTER:
+                if count == 0:
+                    return False
+                if "nextSearchAfter" not in data:
+                    # Backend predates search_after support and ignored the cursor, so this
+                    # page is the offset-0 page: continue with offset pagination instead.
+                    logger.warning(
+                        f"{self.path} does not support search_after; using offset pagination."
+                    )
+                    self.mode = PaginationMode.OFFSET
+                    self._pagination_params.pop("searchAfter", None)
+                    self._pagination_params["offset"] = count
+                    return True
+                cursor = data["nextSearchAfter"]
+                if cursor is None:
+                    return False
+                self._set_search_after(cursor)
             case mode:
                 raise AlbertException(f"Unknown pagination mode {mode}.")
         return True
