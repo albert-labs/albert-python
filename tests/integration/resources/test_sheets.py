@@ -166,15 +166,25 @@ def test_add_and_remove_blank_rows(seeded_sheet: Sheet):
         )
 
 
-def test_rename_row_group(client: Albert, seed_prefix: str, seeded_locations: list[Location]):
+def test_rename_row_group(client: Albert, seed_prefix: str):
     """Test renaming a row group's header row persists the new name."""
-    project = client.projects.create(
-        project=Project(
-            description=f"{seed_prefix} - rename row group",
-            locations=[EntityLink(id=seeded_locations[0].id)],
+    location = client.locations.create(
+        location=Location(
+            name=f"{seed_prefix} - rename row group",
+            latitude=40.7,
+            longitude=-74.0,
+            address="1 Main St",
+            country="US",
         )
     )
+    project = None
     try:
+        project = client.projects.create(
+            project=Project(
+                description=f"{seed_prefix} - rename row group",
+                locations=[EntityLink(id=location.id)],
+            )
+        )
         worksheet = client.worksheets.setup_worksheet(project_id=project.id, add_sheet=True)
         sheet = worksheet.sheets[0]
         design = sheet.product_design
@@ -196,8 +206,11 @@ def test_rename_row_group(client: Albert, seed_prefix: str, seeded_locations: li
         groups = design.get_groups(refresh=True)
         assert next(g for g in groups if g.row_id == group.row_id).name == renamed
     finally:
+        if project is not None:
+            with suppress(NotFoundError, BadRequestError):
+                client.projects.delete(id=project.id)
         with suppress(NotFoundError, BadRequestError):
-            client.projects.delete(id=project.id)
+            client.locations.delete(id=location.id)
 
 
 ########################## CELLS ##########################
