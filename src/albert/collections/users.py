@@ -203,7 +203,8 @@ class UserCollection(BaseCollection):
         teams : list[str], optional
             Restrict to members of any of these teams.
         locations : list[str], optional
-            Restrict to users at any of these location IDs.
+            Restrict to users at any of these locations, by location name
+            (for example, ``"Albert HQ"``). Location IDs (``LOC...``) are not accepted.
         status : list[Status], optional
             Restrict to users with any of these statuses (e.g. active, inactive).
         user_id : list[UserId], optional
