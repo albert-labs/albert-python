@@ -8,6 +8,7 @@ import mimetypes
 import operator
 import re
 import uuid
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -254,8 +255,8 @@ def resolve_curve_property_value(
     return value.model_dump(by_alias=True, mode="json", exclude_none=True)
 
 
-def ensure_unique_task_property_targets(*, properties: list[TaskPropertyCreate]) -> None:
-    """Raise if two values in one batch target the same cell.
+def warn_on_duplicate_task_property_targets(*, properties: list[TaskPropertyCreate]) -> None:
+    """Warn if two values in one batch target the same cell.
 
     A cell is identified by interval, data column, column sequence and visible trial
     number. Values that share a cell would overwrite each other, which most often
@@ -278,10 +279,13 @@ def ensure_unique_task_property_targets(*, properties: list[TaskPropertyCreate])
             )
         seen.add(key)
     if duplicates:
-        raise ValueError(
-            "More than one value targets the same interval and trial for a data column: "
+        warnings.warn(
+            "More than one value targets the same interval and trial for a data column, "
+            "so one overwrites the other: "
             + "; ".join(duplicates)
-            + ". Give each value a distinct visible_trial_number."
+            + ". Give each value a distinct visible_trial_number to keep them all.",
+            UserWarning,
+            stacklevel=3,
         )
 
 

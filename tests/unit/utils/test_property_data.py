@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from types import SimpleNamespace
 
 import pandas as pd
@@ -34,7 +35,6 @@ from albert.utils.property_data import (
     _safe_eval_math,
     _setpoint_display_value,
     build_interval_setpoint_map,
-    ensure_unique_task_property_targets,
     evaluate_calculation,
     flatten_task_property_data,
     form_calculated_task_property_patches,
@@ -49,6 +49,7 @@ from albert.utils.property_data import (
     resolve_return_scope,
     resolve_trial_number,
     trial_has_recorded_data,
+    warn_on_duplicate_task_property_targets,
 )
 
 # ---------------------------------------------------------------------------
@@ -217,7 +218,7 @@ def test_resolve_return_scope_none_returns_empty_list():
 
 
 # ---------------------------------------------------------------------------
-# ensure_unique_task_property_targets
+# warn_on_duplicate_task_property_targets
 # ---------------------------------------------------------------------------
 
 
@@ -227,10 +228,10 @@ def _task_prop(**kwargs) -> TaskPropertyCreate:
     return TaskPropertyCreate(**kwargs)
 
 
-def test_ensure_unique_task_property_targets_rejects_values_defaulting_to_trial_one():
-    """Test that two values for one column with no trial number are rejected."""
-    with pytest.raises(ValueError, match="visible_trial_number=1"):
-        ensure_unique_task_property_targets(
+def test_duplicate_task_property_targets_warn_for_values_defaulting_to_trial_one():
+    """Test that two values for one column with no trial number produce a warning."""
+    with pytest.warns(UserWarning, match="visible_trial_number=1"):
+        warn_on_duplicate_task_property_targets(
             properties=[_task_prop(value="1"), _task_prop(value="2")]
         )
 
@@ -244,9 +245,11 @@ def test_ensure_unique_task_property_targets_rejects_values_defaulting_to_trial_
         _task_prop(data_column=TaskDataColumn(data_column_id="DAC1", column_sequence="3")),
     ],
 )
-def test_ensure_unique_task_property_targets_accepts_distinct_targets(second):
-    """Test that values differing in trial, interval or column are accepted."""
-    ensure_unique_task_property_targets(properties=[_task_prop(), second])
+def test_distinct_task_property_targets_do_not_warn(second):
+    """Test that values differing in trial, interval or column do not warn."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        warn_on_duplicate_task_property_targets(properties=[_task_prop(), second])
 
 
 # ---------------------------------------------------------------------------
