@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.65.0](https://github.com/albert-labs/albert-python/compare/v1.64.1...v1.65.0) (2026-10-21)
+
+
+### Features
+
+* **design_spaces:** add DesignSpaceCollection and resource models ([#847](https://github.com/albert-labs/albert-python/issues/847)) ([083fdd9](https://github.com/albert-labs/albert-python/commit/083fdd9ceeacf6c2d08222e4eb530349ecd1a490))
+* **tasks:** enforce unassigned tasks start Unclaimed on create ([#808](https://github.com/albert-labs/albert-python/issues/808)) ([fd56ad3](https://github.com/albert-labs/albert-python/commit/fd56ad360a88c38a00e3487e872b50520b46ddaa))
+
+
+### Bug Fixes
+
+* **inventory:** support the Reaction inventory category ([#867](https://github.com/albert-labs/albert-python/issues/867)) ([13a4bd1](https://github.com/albert-labs/albert-python/commit/13a4bd1177e29505742d39566d4c1c8cf6dd7d88))
+* **resources:** accept null values for cleared custom metadata fields ([#855](https://github.com/albert-labs/albert-python/issues/855)) ([c1ed502](https://github.com/albert-labs/albert-python/commit/c1ed502df9dd6cbdaee4d5e6251f4596b191efd3))
+
+
+### Documentation
+
+* **collections:** document metadata_filters shape on search methods ([#856](https://github.com/albert-labs/albert-python/issues/856)) ([c0b9d4e](https://github.com/albert-labs/albert-python/commit/c0b9d4e2c4c14611e53a48d1efbfb8f9b296a619))
+* **users:** clarify locations filter expects location names ([#857](https://github.com/albert-labs/albert-python/issues/857)) ([ac857a8](https://github.com/albert-labs/albert-python/commit/ac857a8115db05d79f609637b383858635a87034))
+
 ## [1.64.1](https://github.com/albert-labs/albert-python/compare/v1.64.0...v1.64.1) (2026-10-20)
 
 
