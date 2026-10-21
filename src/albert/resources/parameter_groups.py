@@ -35,7 +35,7 @@ def _sanitize_metadata(value: Any) -> Any:
         if isinstance(item, list) and item and all(isinstance(e, list) for e in item):
             item = [entry for sub in item for entry in sub]
         if isinstance(item, dict) and "id" not in item:
-            continue  # drop; MetadataItem has no None option to fall back to
+            continue  # drop; an id-less link carries no usable value
         if isinstance(item, list):
             sanitized[key] = [
                 entry for entry in item if not (isinstance(entry, dict) and "id" not in entry)
