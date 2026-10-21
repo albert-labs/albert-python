@@ -1023,10 +1023,10 @@ class LotCollection(BaseCollection):
     def update_many(self, *, lots: list[Lot], notes: str = "Bulk update") -> list[Lot]:
         """Update multiple lots.
 
-        Same per-field semantics as [`update`][albert.collections.lots.LotCollection.update],
-        but the current state of all lots is fetched up front and unchanged lots
-        are skipped, so updating N lots does not need N individual reads. Only the
-        fields listed in Notes can be changed this way.
+        Same per-field semantics as [`update`][albert.collections.lots.LotCollection.update]:
+        each lot is changed to match the given state, and lots submitted without
+        changes are left untouched. Only the fields listed in Notes can be
+        changed this way.
 
         !!! example
             ```python
