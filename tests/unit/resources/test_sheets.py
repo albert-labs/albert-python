@@ -813,6 +813,8 @@ def test_move_rows_rejects_reference_in_moved_rows():
     sheet = Sheet(**_PROCESS_SHEET)
     with pytest.raises(AlbertException, match="reference_id"):
         sheet.move_rows(row_ids=["ROW1", "ROW2"], reference_id="ROW2", design_id="DES1")
+
+
 def _products_sheet(session=None) -> Sheet:
     return Sheet(
         albertId="SHEET1",
