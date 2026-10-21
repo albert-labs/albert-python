@@ -872,6 +872,8 @@ def test_row_rename_rejects_overlong_name(offline_session):
 
     with pytest.raises(AlbertException, match="at most 255"):
         row.rename(new_name="x" * 256)
+
+
 def _products_sheet(session=None) -> Sheet:
     return Sheet(
         albertId="SHEET1",
