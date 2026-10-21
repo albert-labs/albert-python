@@ -1910,7 +1910,7 @@ class PropertyDataCollection(BaseCollection):
         }
 
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.SEARCH_AFTER,
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,

@@ -13,8 +13,11 @@ from albert.resources.design_spaces import (
     DesignSpaceSample,
     DesignSpaceViolation,
     DiscreteConstraint,
+    ParameterAssignment,
     ParameterEntry,
     SetCountBoundsOperation,
+    SetParameterOperation,
+    UpdateComponentOperation,
 )
 
 
@@ -210,6 +213,62 @@ def test_parameter_ref_parses_without_the_absent_nullable_ids(ref):
     assert entry.ref.data_template_id == ref.get("dataTemplateId")
     assert entry.ref.parameter_group_id == ref.get("parameterGroupId")
     assert entry.ref.unit_id == ref.get("unitId")
+
+
+def _apply_body(operation) -> dict:
+    """Serialize one operation the way ``apply`` sends it."""
+    request = DesignSpaceOperationsRequest(operations=[operation])
+    return request.model_dump(by_alias=True, mode="json", exclude_unset=True)["operations"][0]
+
+
+_CONSTRAINTS = [
+    pytest.param(ContinuousConstraint(min=1.0, max=2.0), "numeric", "continuous", id="continuous"),
+    pytest.param(DiscreteConstraint(values=[1.0, 2.0]), "numeric", "discrete", id="discrete"),
+    pytest.param(
+        CategoricalConstraint(values=["a", "b"]), "categorical", "categorical", id="categorical"
+    ),
+]
+
+
+@pytest.mark.parametrize(("constraint", "data_type", "expected_type"), _CONSTRAINTS)
+def test_set_parameter_sends_the_constraint_type_when_it_was_left_to_default(
+    constraint, data_type, expected_type
+):
+    """Test that a constraint built without an explicit type still serializes its type."""
+    operation = SetParameterOperation(
+        parameter_id="PRM1",
+        data_template_id="DAT1",
+        parameter_group_id=None,
+        unit_id=None,
+        value=ParameterAssignment(data_type=data_type, constraint=constraint),
+    )
+
+    sent = _apply_body(operation)["value"]["constraint"]
+
+    assert sent["type"] == expected_type
+    assert sent == {
+        "type": expected_type,
+        **constraint.model_dump(exclude={"type"}, exclude_none=True),
+    }
+
+
+@pytest.mark.parametrize(("constraint", "data_type", "expected_type"), _CONSTRAINTS)
+def test_update_component_sends_a_typed_constraint_value_with_its_type(
+    constraint, data_type, expected_type
+):
+    """Test that a constraint object passed as an update value keeps its type on the wire."""
+    operation = UpdateComponentOperation(
+        path="parameters/DAT1#PRM1", field="constraint", value=constraint
+    )
+
+    assert _apply_body(operation)["value"]["type"] == expected_type
+
+
+def test_a_constraint_still_validates_from_its_serialized_form():
+    """Test that the always-serialized type does not break reading a constraint back."""
+    constraint = ContinuousConstraint(min=1.0, max=2.0)
+
+    assert ContinuousConstraint.model_validate(constraint.model_dump()) == constraint
 
 
 def test_ingredient_entry_rejects_a_fraction_outside_zero_to_one():
