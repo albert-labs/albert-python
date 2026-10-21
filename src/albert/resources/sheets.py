@@ -1665,8 +1665,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     index += 1
                 design._columns[index:index] = columns
         if design._grid is not None:
-            for column in columns:
-                design._grid[column.df_name] = None
+            # Add all new columns in one concat; inserting them one at a time
+            # fragments the DataFrame and gets quadratically slow on wide loads.
+            design._grid = pd.concat(
+                [
+                    design._grid,
+                    pd.DataFrame(
+                        None, index=design._grid.index, columns=[c.df_name for c in columns]
+                    ),
+                ],
+                axis=1,
+            )
         for other_design in self.designs:
             if other_design is not design:
                 other_design._grid = None
