@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.66.0](https://github.com/albert-labs/albert-python/compare/v1.65.0...v1.66.0) (2026-10-22)
+
+
+### Features
+
+* **collections:** stop silent data loss and no-op updates ([#862](https://github.com/albert-labs/albert-python/issues/862)) ([60bb327](https://github.com/albert-labs/albert-python/commit/60bb3278ad40652980838635288c60768e2d3186))
+* **lots:** add update_many and delete_many for bulk lot operations ([#866](https://github.com/albert-labs/albert-python/issues/866)) ([88928b9](https://github.com/albert-labs/albert-python/commit/88928b906326968e7364dd0f845f51314439501a))
+* **property_data:** exclude voided records from search by default ([#858](https://github.com/albert-labs/albert-python/issues/858)) ([8042bea](https://github.com/albert-labs/albert-python/commit/8042bea15d5d2f8a9744e3bf99bd3143bf414498))
+* **search:** add cursor pagination to lift the 10k search result cap ([#851](https://github.com/albert-labs/albert-python/issues/851)) ([31ccb47](https://github.com/albert-labs/albert-python/commit/31ccb47ba3720a3d7b98904224c81d3585d693c4))
+* **session:** retry throttled calls and apply a default timeout ([#865](https://github.com/albert-labs/albert-python/issues/865)) ([30c3a21](https://github.com/albert-labs/albert-python/commit/30c3a2132ca41de92094c24a6cabda6d70ee1a6a))
+* **sheets:** add Row.rename for blank, group header, and task rows ([#875](https://github.com/albert-labs/albert-python/issues/875)) ([5f6aca9](https://github.com/albert-labs/albert-python/commit/5f6aca9f979697806bc1d3f9c340fd6344772464))
+* **sheets:** add Row.replace_inventory to swap a row's inventory item ([#874](https://github.com/albert-labs/albert-python/issues/874)) ([5162ccc](https://github.com/albert-labs/albert-python/commit/5162ccc8cb96df13762a6d5036a689213f1c965e))
+* **sheets:** add Sheet.get_app_rows for reading app calculation values ([#873](https://github.com/albert-labs/albert-python/issues/873)) ([033e71c](https://github.com/albert-labs/albert-python/commit/033e71c6dcd9e25308d62dd92fc15008f174bfa1))
+* **sheets:** add Sheet.move_rows for reordering rows within a Design ([#872](https://github.com/albert-labs/albert-python/issues/872)) ([8f59814](https://github.com/albert-labs/albert-python/commit/8f59814416c1a00f8db8a0ee3a9b146fe68961fb))
+* **sheets:** batch ingredient row creation and add bulk add_formulations ([#861](https://github.com/albert-labs/albert-python/issues/861)) ([24f5929](https://github.com/albert-labs/albert-python/commit/24f5929684c21bfaf6f18b0cd26e738b847e06d1))
+* **tasks:** support the ReactionBatch task category ([#869](https://github.com/albert-labs/albert-python/issues/869)) ([ac127ec](https://github.com/albert-labs/albert-python/commit/ac127ec2035292b5ef4990484d86843f32779e21))
+* **worksheets:** add delete_sheet and reactivate_sheet methods ([#871](https://github.com/albert-labs/albert-python/issues/871)) ([abe2ad0](https://github.com/albert-labs/albert-python/commit/abe2ad05dfaf2145dd743ca6c17f890586d25b6e))
+
+
+### Bug Fixes
+
+* **auth:** respect login timeout in from_sso and raise clear timeout error ([#870](https://github.com/albert-labs/albert-python/issues/870)) ([17d47aa](https://github.com/albert-labs/albert-python/commit/17d47aa12f5d159efce32781b6d469bf2431a35d))
+* **design_spaces:** keep the constraint type when serializing operations ([#876](https://github.com/albert-labs/albert-python/issues/876)) ([4ce611e](https://github.com/albert-labs/albert-python/commit/4ce611e4005f7ea6c9ace978c70976812e34b02e))
+* **design:** use v4 API prefix for design runs and design spaces ([#882](https://github.com/albert-labs/albert-python/issues/882)) ([e05bde5](https://github.com/albert-labs/albert-python/commit/e05bde5f90df47e631f6eb9fe2fc21fc5b72bb49))
+* **resources:** preserve extra page_context keys on ChatMessage ([#881](https://github.com/albert-labs/albert-python/issues/881)) ([e6bc190](https://github.com/albert-labs/albert-python/commit/e6bc190617ef9d8ebfbbff8997e64380f5f92874))
+* **warnings:** attribute SDK warnings to the caller's line ([#884](https://github.com/albert-labs/albert-python/issues/884)) ([5868297](https://github.com/albert-labs/albert-python/commit/5868297afb875f0d32c66ffad157d66c4fc726c7))
+* **warnings:** replace hardcoded stacklevel with find_stack_level ([#887](https://github.com/albert-labs/albert-python/issues/887)) ([6f1c613](https://github.com/albert-labs/albert-python/commit/6f1c61321ecafa31c9bcc16f3e6887b66bca1d2e))
+
+
+### Documentation
+
+* **resources:** remove malformed "See Also" fragments from attribute docstrings ([#878](https://github.com/albert-labs/albert-python/issues/878)) ([53b6570](https://github.com/albert-labs/albert-python/commit/53b6570290732507dc807dd63f913f093b655758))
+
 ## [1.65.0](https://github.com/albert-labs/albert-python/compare/v1.64.1...v1.65.0) (2026-10-21)
 
 
