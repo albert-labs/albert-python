@@ -191,7 +191,7 @@ class ChatSession(BaseResource):
     """An external identifier that links this session to a source system. Required. Serialized as ``sourceSessionId``."""
 
     last_message_at: str | None = Field(default=None, alias="lastMessageAt")
-    """ISO 8601 timestamp of the most recent message in the session. Read from the server. Serialized as ``lastMessageAt``. See Also --------"""
+    """ISO 8601 timestamp of the most recent message in the session. Read from the server. Serialized as ``lastMessageAt``."""
 
 
 class ChatMessageAttachment(BaseAlbertModel):
@@ -342,7 +342,7 @@ class ChatFolder(BaseResource):
     """Whether this is a top-level (root) or nested (child) folder. Serialized as ``type``."""
 
     parent_id: str | None = Field(default=None, alias="parentId")
-    """The parent folder for a nested folder, if any. Serialized as ``parentId``. See Also --------"""
+    """The parent folder for a nested folder, if any. Serialized as ``parentId``."""
 
 
 class ChatFlagType(str, Enum):
@@ -406,7 +406,7 @@ class ChatFlag(BaseResource):
     """Whether the message is marked as downloaded."""
 
     hallucinated: bool | None = Field(default=None)
-    """Whether the message is flagged as a hallucination. See Also --------"""
+    """Whether the message is flagged as a hallucination."""
 
 
 class ChatFlagsInMessage(BaseAlbertModel):

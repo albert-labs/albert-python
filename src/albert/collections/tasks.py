@@ -1993,8 +1993,8 @@ class TaskCollection(BaseCollection):
         """Get a single, fully populated task by its ID.
 
         The returned object is the concrete type matching the task's category:
-        ``PropertyTask``, ``BatchTask``, or ``GeneralTask``. For a PropertyTask
-        this includes its blocks.
+        ``PropertyTask``, ``BatchTask``, ``GeneralTask``, or ``ReactionBatchTask``.
+        For a PropertyTask this includes its blocks.
 
         !!! example
             ```python
@@ -2087,7 +2087,7 @@ class TaskCollection(BaseCollection):
         linked_task : list[str], optional
             Task IDs linked to the ones being searched.
         category : TaskCategory, optional
-            Filter by task category: ``Property``, ``Batch``, or ``General``.
+            Filter by task category: ``Property``, ``Batch``, ``General``, or ``ReactionBatch``.
         albert_id : list[str], optional
             Filter by Albert IDs of entities linked to the tasks (e.g. inventory
             IDs like ``["INVA46", "INVA50"]``).
@@ -2218,17 +2218,18 @@ class TaskCollection(BaseCollection):
                 "metadataFilters": {"metadata": metadata_filters},
             }
             return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
+                mode=PaginationMode.SEARCH_AFTER,
                 path=f"{self.base_path}/search",
                 session=self.session,
                 max_items=max_items,
                 deserialize=deserialize,
                 method="POST",
+                retry_safe=True,
                 json=payload,
             )
 
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.SEARCH_AFTER,
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
@@ -2281,7 +2282,7 @@ class TaskCollection(BaseCollection):
         """Get fully populated tasks matching the given filters.
 
         Accepts the same filters as [`search`][albert.collections.tasks.TaskCollection.search] but returns complete task
-        entities (``PropertyTask``, ``BatchTask``, or ``GeneralTask``) rather than
+        entities (``PropertyTask``, ``BatchTask``, ``GeneralTask``, or ``ReactionBatchTask``) rather than
         lightweight search results. This is slower because it fetches full detail
         for every match, so prefer [`search`][albert.collections.tasks.TaskCollection.search] when you only need names, IDs, or
         status. Results are returned as a lazily paginated iterator.
@@ -2306,7 +2307,7 @@ class TaskCollection(BaseCollection):
         linked_task : list[str], optional
             Task IDs linked to the ones being searched.
         category : TaskCategory, optional
-            Filter by task category: ``Property``, ``Batch``, or ``General``.
+            Filter by task category: ``Property``, ``Batch``, ``General``, or ``ReactionBatch``.
         albert_id : list[str], optional
             Filter by Albert IDs of entities linked to the tasks (e.g. inventory
             IDs like ``["INVA46", "INVA50"]``).

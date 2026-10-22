@@ -1,7 +1,7 @@
 import pytest
 
 from albert.exceptions import AlbertException
-from albert.resources.sheets import Cell, CellColor, CellType, Column, Sheet
+from albert.resources.sheets import Cell, CellColor, CellType, Column, RowPosition, Sheet
 
 pytestmark = pytest.mark.xdist_group("sheetcolumns")
 
@@ -60,6 +60,32 @@ def test_bulk_column_and_row_operations(seeded_sheet: Sheet, seed_prefix: str):
         )
     finally:
         seeded_sheet.delete_columns(column_ids=[c.column_id for c in columns])
+
+
+def test_move_rows(seeded_sheet: Sheet, seed_prefix: str):
+    """Test moving rows above and below a reference row within a Design."""
+    design_id = seeded_sheet.product_design.id
+    rows = seeded_sheet.add_blank_rows(row_names=[f"{seed_prefix} move row {x}" for x in "ABC"])
+    row_a, row_b, row_c = (r.row_id for r in rows)
+
+    def _design_row_order() -> list[str]:
+        return [r.row_id for r in seeded_sheet.product_design.rows]
+
+    try:
+        seeded_sheet.move_rows(row_ids=[row_c], reference_id=row_a, design_id=design_id)
+        order = _design_row_order()
+        assert order.index(row_c) < order.index(row_a) < order.index(row_b)
+
+        seeded_sheet.move_rows(
+            row_ids=[row_c, row_a],
+            reference_id=row_b,
+            design_id=design_id,
+            position=RowPosition.BELOW,
+        )
+        order = _design_row_order()
+        assert order.index(row_b) < order.index(row_c) < order.index(row_a)
+    finally:
+        seeded_sheet.delete_rows(row_ids=[row_a, row_b, row_c], design_id=design_id)
 
 
 def test_recolor_column(seeded_sheet: Sheet):

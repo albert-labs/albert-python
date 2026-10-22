@@ -646,7 +646,7 @@ class ProjectCollection(BaseCollection):
             payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.SEARCH_AFTER,
             path=f"{self.base_path}/search",
             session=self.session,
             max_items=max_items,
@@ -654,6 +654,7 @@ class ProjectCollection(BaseCollection):
                 ProjectSearchItem(**item)._bind_collection(self) for item in items
             ],
             method="POST",
+            retry_safe=True,
             json=payload,
         )
 

@@ -410,6 +410,7 @@ class AttributeCollection(BaseCollection):
             session=self.session,
             deserialize=lambda items: [AttributeSearchItem(**item) for item in items],
             method="POST",
+            retry_safe=True,
             json=body,
             max_items=max_items,
         )
