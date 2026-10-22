@@ -4,13 +4,19 @@ Allowed under the patch-builder exception in OPINIONS.md: these guard
 non-obvious diff behavior in ``_generate_lots_patch_payload`` (inventory_on_hand
 is patched as a delta, cost_l always uses update, storage_location/owner are
 flattened to bare ids, workflow_id is update-only) with no I/O to fake.
+``_raise_on_partial_update`` is covered for the verified partial-success
+envelope key mapping.
 """
 
+import json
+
 import pytest
+import requests
 
 from albert.collections.lots import LotCollection
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchOperation
+from albert.exceptions import AlbertPartialError
 from albert.resources.lots import Lot, LotStatus
 
 
@@ -488,3 +494,43 @@ def test_bulk_update_item_rejects_more_than_four_changes(offline_session) -> Non
             ),
             notes="n",
         )
+
+
+# --- _raise_on_partial_update ---
+
+
+def _make_response(status_code: int, body) -> requests.Response:
+    response = requests.Response()
+    response.status_code = status_code
+    response._content = json.dumps(body).encode()
+    return response
+
+
+@pytest.mark.parametrize("status_code", [200, 204])
+def test_raise_on_partial_update_ignores_non_206(status_code) -> None:
+    """Test that non-partial statuses never raise."""
+    LotCollection._raise_on_partial_update(_make_response(status_code, {}))
+
+
+def test_raise_on_partial_update_maps_envelope_keys() -> None:
+    """Test that a partial success surfaces UpdatedItems and FailedItems."""
+    body = {
+        "message": "Partial Success",
+        "UpdatedItems": [{"id": "LOT1", "attribute": "status", "message": "updated"}],
+        "FailedItems": [{"id": "LOT2", "attribute": "cost", "message": "boom"}],
+    }
+
+    with pytest.raises(AlbertPartialError) as excinfo:
+        LotCollection._raise_on_partial_update(_make_response(206, body))
+
+    assert excinfo.value.created_items == body["UpdatedItems"]
+    assert excinfo.value.failed_items == body["FailedItems"]
+
+
+def test_raise_on_partial_update_tolerates_missing_item_keys() -> None:
+    """Test that a partial success without item lists raises with empty lists."""
+    with pytest.raises(AlbertPartialError) as excinfo:
+        LotCollection._raise_on_partial_update(_make_response(206, {"message": "Partial Success"}))
+
+    assert excinfo.value.created_items == []
+    assert excinfo.value.failed_items == []
