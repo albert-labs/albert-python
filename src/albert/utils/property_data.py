@@ -8,6 +8,7 @@ import mimetypes
 import operator
 import re
 import uuid
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -252,6 +253,40 @@ def resolve_curve_property_value(
         ),
     )
     return value.model_dump(by_alias=True, mode="json", exclude_none=True)
+
+
+def warn_on_duplicate_task_property_targets(*, properties: list[TaskPropertyCreate]) -> None:
+    """Warn if two values in one batch target the same cell.
+
+    A cell is identified by interval, data column, column sequence and visible trial
+    number. Values that share a cell would overwrite each other, which most often
+    happens when several values for one column leave ``visible_trial_number`` unset
+    and all default to trial 1.
+    """
+    seen: set[tuple] = set()
+    duplicates: list[str] = []
+    for prop in properties:
+        key = (
+            prop.interval_combination,
+            prop.data_column.data_column_id,
+            prop.data_column.column_sequence,
+            prop.visible_trial_number,
+        )
+        if key in seen:
+            duplicates.append(
+                f"interval={key[0]}, data_column={key[1]}, "
+                f"column_sequence={key[2]}, visible_trial_number={key[3]}"
+            )
+        seen.add(key)
+    if duplicates:
+        warnings.warn(
+            "More than one value targets the same interval and trial for a data column, "
+            "so one overwrites the other: "
+            + "; ".join(duplicates)
+            + ". Give each value a distinct visible_trial_number to keep them all.",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 def resolve_data_template_id(*, prop: TaskPropertyCreate) -> DataTemplateId:

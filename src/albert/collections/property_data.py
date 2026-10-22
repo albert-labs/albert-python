@@ -1320,12 +1320,21 @@ class PropertyDataCollection(BaseCollection):
         list[TaskPropertyData]
             The task's results after the add, scoped per ``return_scope``.
 
+        Warns
+        -----
+        UserWarning
+            If two values share the same interval combination, data column and
+            visible trial number, so one overwrites the other.
+
         Notes
         -----
         To add to an existing trial, set ``trial_number`` on the
         ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
         trials one call at a time (loop for many) to avoid unexpected behavior.
+        To add several trials in one call, give each value a distinct
+        ``visible_trial_number``; values without one default to trial 1.
         """
+        property_data_utils.warn_on_duplicate_task_property_targets(properties=properties)
         params = {
             "blockId": block_id,
             "inventoryId": inventory_id,

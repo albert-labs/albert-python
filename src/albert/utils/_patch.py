@@ -364,9 +364,14 @@ def parameter_validation_patch(
 def generate_data_column_patches(
     initial_data_column: list[DataColumnValue] | None,
     updated_data_column: list[DataColumnValue] | None,
+    *,
+    remove_omitted: bool = True,
 ) -> tuple[list[DTPatchDatum], list[DataColumnValue], dict[str, list[dict]]]:
     """Generate patches for a data column.
-    Returns a group of patches as well as the data column values to add/put
+    Returns a group of patches as well as the data column values to add/put.
+
+    When ``remove_omitted`` is False, existing columns missing from
+    ``updated_data_column`` are kept instead of deleted.
     """
     if initial_data_column is None:
         initial_data_column = []
@@ -379,11 +384,15 @@ def generate_data_column_patches(
         for x in updated_data_column
         if x.sequence not in [y.sequence for y in initial_data_column] or not x.sequence
     ]
-    deleted_data_columns = [
-        x
-        for x in initial_data_column
-        if x.sequence not in [y.sequence for y in updated_data_column]
-    ]
+    deleted_data_columns = (
+        [
+            x
+            for x in initial_data_column
+            if x.sequence not in [y.sequence for y in updated_data_column]
+        ]
+        if remove_omitted
+        else []
+    )
     updated_data_columns = [
         x for x in updated_data_column if x.sequence in [y.sequence for y in initial_data_column]
     ]
@@ -522,8 +531,14 @@ def generate_parameter_patches(
     initial_parameters: list[ParameterValue] | None,
     updated_parameters: list[ParameterValue] | None,
     parameter_attribute_name: str = "parameter",
+    *,
+    remove_omitted: bool = True,
 ) -> tuple[list[PGPatchDatum], list[ParameterValue], dict[str, list[dict]]]:
-    """Generate patches for a parameter."""
+    """Generate patches for a parameter.
+
+    When ``remove_omitted`` is False, existing parameters missing from
+    ``updated_parameters`` are kept instead of deleted.
+    """
     parameter_patches = []
     enum_patches = {}
     if initial_parameters is None:
@@ -555,9 +570,11 @@ def generate_parameter_patches(
             new_parameters.append(p_updated)
 
     updated_matched_sequences = {p_updated.sequence for _, p_updated in updated_param_pairs}
-    deleted_parameters = [
-        p for p in initial_parameters if p.sequence not in updated_matched_sequences
-    ]
+    deleted_parameters = (
+        [p for p in initial_parameters if p.sequence not in updated_matched_sequences]
+        if remove_omitted
+        else []
+    )
 
     if len(deleted_parameters) > 0:
         parameter_patches.append(
@@ -641,7 +658,15 @@ def generate_data_template_patches(
     initial_patches: PatchPayload,
     updated_data_template: DataTemplate,
     existing_data_template: DataTemplate,
+    *,
+    remove_omitted_rows: bool = True,
 ):
+    """Generate the patches for a data template update.
+
+    Data column and parameter lists on ``updated_data_template`` replace the existing
+    rows: listed rows are added or updated, and rows that are not listed are deleted.
+    Pass ``remove_omitted_rows=False`` to keep the rows that are not listed.
+    """
     updated_data_columns = (
         updated_data_template.data_column_values
         if updated_data_template.data_column_values is not None
@@ -657,6 +682,7 @@ def generate_data_template_patches(
     patches, new_data_columns, data_column_enum_patches = generate_data_column_patches(
         initial_data_column=existing_data_template.data_column_values,
         updated_data_column=updated_data_columns,
+        remove_omitted=remove_omitted_rows,
     )
 
     tag_patches = (
@@ -676,6 +702,7 @@ def generate_data_template_patches(
         initial_parameters=existing_data_template.parameter_values,
         updated_parameters=updated_parameters,
         parameter_attribute_name="parameters",
+        remove_omitted=remove_omitted_rows,
     )
 
     acl_add_values: list[dict[str, str]] = []

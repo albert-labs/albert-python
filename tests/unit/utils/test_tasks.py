@@ -279,7 +279,7 @@ def test_inventory_information_explicit_empty_clears_existing(offline_session):
 
 
 def test_inventory_information_add_and_remove_by_key(offline_session):
-    """Test that add/remove are keyed on inventory_id#lot_id, in delete-then-add order."""
+    """Test that add/remove are keyed on inventory_id#lot_id, in add-then-delete order."""
     existing = GeneralTask(
         id="TAS1",
         name="Task",
@@ -301,14 +301,43 @@ def test_inventory_information_add_and_remove_by_key(offline_session):
 
     assert payload.data == [
         {
+            "operation": PatchOperation.ADD,
+            "attribute": "inventory",
+            "newValue": [{"id": "INV3", "lotId": "LOT3"}],
+        },
+        {
             "operation": PatchOperation.DELETE,
             "attribute": "inventory",
             "oldValue": [{"id": "INV1", "lotId": "LOT1"}],
         },
+    ]
+
+
+def test_inventory_information_replacing_only_item_adds_before_deleting(offline_session):
+    """Test that swapping a task's only inventory item adds the new one before removing the old."""
+    existing = GeneralTask(
+        id="TAS1",
+        name="Task",
+        inventory_information=[TaskInventoryInformation(inventory_id="INV1")],
+    )
+    updated = GeneralTask(
+        id="TAS1",
+        name="Task",
+        inventory_information=[TaskInventoryInformation(inventory_id="INV2")],
+    )
+
+    payload = _payload(offline_session, existing=existing, updated=updated)
+
+    assert payload.data == [
         {
             "operation": PatchOperation.ADD,
             "attribute": "inventory",
-            "newValue": [{"id": "INV3", "lotId": "LOT3"}],
+            "newValue": [{"id": "INV2"}],
+        },
+        {
+            "operation": PatchOperation.DELETE,
+            "attribute": "inventory",
+            "oldValue": [{"id": "INV1"}],
         },
     ]
 

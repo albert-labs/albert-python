@@ -406,6 +406,36 @@ def test_update_delete_data_column(
             client.data_templates.delete(id=dt.id)
 
 
+def test_update_partial_data_column_list_keeps_omitted_columns_when_not_removing(
+    client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
+):
+    """Test that with remove_omitted_rows=False a partial list keeps the unlisted columns."""
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Partial Column Update Test",
+            data_column_values=[
+                DataColumnValue(data_column=seeded_data_columns[0]),
+                DataColumnValue(data_column=seeded_data_columns[1]),
+            ],
+        )
+    )
+    try:
+        original_ids = sorted(x.data_column_id for x in dt.data_column_values)
+        kept = next(
+            x for x in dt.data_column_values if x.data_column_id == seeded_data_columns[0].id
+        )
+
+        updated_dt = client.data_templates.update(
+            data_template=DataTemplate(id=dt.id, name=dt.name, data_column_values=[kept]),
+            remove_omitted_rows=False,
+        )
+
+        assert sorted(x.data_column_id for x in updated_dt.data_column_values) == original_ids
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+
+
 def test_enum_option_readded_reuses_original_id(
     client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
 ):

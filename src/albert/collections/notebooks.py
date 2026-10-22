@@ -86,7 +86,7 @@ class NotebookCollection(BaseCollection):
         Get a single notebook by its ID.
     search(...) -> Iterator[NotebookSearchItem]
         Search notebook block content across projects.
-    list_by_parent_id(parent_id) -> list[Notebook]
+    list_by_parent_id(parent_id, max_items=None) -> list[Notebook]
         List the notebooks attached to a given parent (project or task).
     create(notebook) -> Notebook
         Find or create an (empty) notebook for the given parent.
@@ -144,7 +144,9 @@ class NotebookCollection(BaseCollection):
         return Notebook(**response.json())
 
     @validate_call
-    def list_by_parent_id(self, *, parent_id: ProjectId | TaskId) -> list[Notebook]:
+    def list_by_parent_id(
+        self, *, parent_id: ProjectId | TaskId, max_items: int | None = None
+    ) -> list[Notebook]:
         """List the Notebooks attached to a given parent entity.
 
         !!! example
@@ -162,6 +164,9 @@ class NotebookCollection(BaseCollection):
         parent_id : ProjectId or TaskId
             The ID of the parent entity whose notebooks should be listed
             (a Project ID, format ``PRO...``, or a Task ID, format ``TAS...``).
+        max_items : int, optional
+            Maximum number of notebooks to return. If None (the default), returns
+            every notebook attached to the parent.
 
         Returns
         -------
@@ -171,8 +176,10 @@ class NotebookCollection(BaseCollection):
 
         # search
         response = self.session.get(f"{self.base_path}/{parent_id}/search")
-        # return
-        return [self.get_by_id(id=x["id"]) for x in response.json()["Items"]]
+        items = response.json()["Items"]
+        if max_items is not None:
+            items = items[:max_items]
+        return [self.get_by_id(id=x["id"]) for x in items]
 
     @validate_call
     def search(

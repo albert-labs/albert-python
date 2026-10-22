@@ -1641,6 +1641,15 @@ class TaskCollection(BaseCollection):
         ]
         self.session.patch(url=url, json=payload)
 
+    @staticmethod
+    def _ensure_import_results_supported(*, task: BaseTask) -> None:
+        """Raise if results cannot be imported into this kind of task."""
+        if isinstance(task, BatchTask):
+            raise ValueError(
+                f"Task {task.id} is a batch task. import_results only imports results "
+                "into property tasks; record batch task data with client.batch_data."
+            )
+
     @validate_call
     def import_results(
         self,
@@ -1724,6 +1733,11 @@ class TaskCollection(BaseCollection):
         -------
         BaseTask
             The task with the newly imported results.
+
+        Raises
+        ------
+        ValueError
+            If the task is a batch task, which this method does not support.
         """
         logger.info("Importing results for task %s using %s mode", task_id, mode)
 
@@ -1738,13 +1752,13 @@ class TaskCollection(BaseCollection):
         property_data_collection = PropertyDataCollection(session=self.session)
         data_template = data_template_collection.get_by_id(id=data_template_id)
 
-        needs_task_details = block_id is None or mode is ImportMode.SCRIPT
-        task_details = self.get_by_id(id=task_id) if needs_task_details else None
+        task_details = self.get_by_id(id=task_id)
+        self._ensure_import_results_supported(task=task_details)
 
         if block_id is None:
             block_ids = [
                 blk.id
-                for blk in (task_details.blocks if task_details else [])
+                for blk in (getattr(task_details, "blocks", None) or [])
                 if getattr(blk, "id", None)
             ]
             if not block_ids:

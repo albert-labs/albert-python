@@ -120,7 +120,7 @@ class DataTemplateCollection(BaseCollection):
         Attach result data columns to an existing template.
     add_parameters(data_template_id, parameters) -> DataTemplate
         Attach condition parameters to an existing template.
-    update(data_template) -> DataTemplate
+    update(data_template, remove_omitted_rows=True) -> DataTemplate
         Update an existing template.
     delete(id) -> None
         Delete a template by its ID.
@@ -543,12 +543,19 @@ class DataTemplateCollection(BaseCollection):
             ],
         )
 
-    def update(self, *, data_template: DataTemplate) -> DataTemplate:
+    def update(
+        self, *, data_template: DataTemplate, remove_omitted_rows: bool = True
+    ) -> DataTemplate:
         """Update an existing data template.
 
         Only the fields listed in Notes are applied. New data columns and parameters
         present on the supplied template (including their enum validations) are
         created as part of this call.
+
+        By default, ``data_column_values`` and ``parameter_values`` replace the
+        template's rows: listed rows are added or updated, and existing rows that are
+        not listed are deleted. Pass ``remove_omitted_rows=False`` to merge instead and
+        keep the rows that are not listed.
 
         !!! example
             ```python
@@ -563,6 +570,11 @@ class DataTemplateCollection(BaseCollection):
             The template to update. Its ``id`` must be set and match the template to
             update. Retrieve it with [`get_by_id`][albert.collections.data_templates.DataTemplateCollection.get_by_id], modify the fields listed in
             Notes, then pass it here.
+        remove_omitted_rows : bool, optional
+            If True (the default), delete the existing data columns and parameters
+            that are not listed in ``data_column_values`` or ``parameter_values``. If
+            False, keep them, so a partial list only adds or updates the rows it
+            names. A list that is left unset (``None``) never removes rows.
 
         Returns
         -------
@@ -573,7 +585,8 @@ class DataTemplateCollection(BaseCollection):
         -----
         The following fields can be updated: ``name``, ``description``,
         ``metadata``, and ``tags`` on the template itself, and per-parameter ``value``, ``unit``,
-        ``required``, and ``validation``.
+        ``required``, and ``validation``. Data columns and parameters are removed by
+        leaving them out of the list, unless ``remove_omitted_rows=False``.
 
         Any tags that do not yet exist in Albert are created automatically.
 
@@ -604,6 +617,7 @@ class DataTemplateCollection(BaseCollection):
             initial_patches=base_payload,
             updated_data_template=data_template,
             existing_data_template=existing,
+            remove_omitted_rows=remove_omitted_rows,
         )
 
         if len(new_data_columns) > 0:

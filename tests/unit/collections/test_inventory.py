@@ -10,6 +10,7 @@ the SDK sends and how it reacts to errors.
 """
 
 import json
+import warnings
 
 import pytest
 import responses
@@ -35,6 +36,36 @@ def _item(**kwargs) -> InventoryItem:
 
 def _collection(offline_session) -> InventoryCollection:
     return InventoryCollection(session=offline_session)
+
+
+# --- symbols cannot be updated ---
+
+
+def test_changed_symbols_warn(offline_session) -> None:
+    """Test that changing symbols warns instead of being dropped silently."""
+    existing = _item(symbols=[{"id": "SYM1"}])
+    updated = _item(symbols=[{"id": "SYM2"}])
+
+    with pytest.warns(UserWarning, match="symbols"):
+        payload = _collection(offline_session)._generate_inventory_patch_payload(
+            existing=existing, updated=updated
+        )
+
+    assert payload["data"] == []
+
+
+def test_unchanged_symbols_in_any_order_emit_no_op(offline_session) -> None:
+    """Test that symbols carried along unchanged, in any order, do not warn."""
+    existing = _item(symbols=[{"id": "SYM1"}, {"id": "SYM2"}])
+    updated = _item(symbols=[{"id": "SYM2"}, {"id": "SYM1"}])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        payload = _collection(offline_session)._generate_inventory_patch_payload(
+            existing=existing, updated=updated
+        )
+
+    assert payload["data"] == []
 
 
 # --- base scalar attributes pass through _generate_patch_payload unmodified ---

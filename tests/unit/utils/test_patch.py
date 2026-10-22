@@ -962,6 +962,108 @@ def test_generate_data_template_patches_tags_explicit_empty_clears_all():
     ]
 
 
+def _two_row_template(**kwargs) -> DataTemplate:
+    return _data_template(
+        data_column_values=[
+            _dc(data_column_id="DAC1", sequence="1", value="10"),
+            _dc(data_column_id="DAC2", sequence="2", value="20"),
+        ],
+        parameter_values=[
+            _pv(id="PRM1", sequence="1", value="a"),
+            _pv(id="PRM2", sequence="2", value="b"),
+        ],
+        **kwargs,
+    )
+
+
+def test_generate_data_template_patches_partial_lists_keep_omitted_rows_when_not_removing():
+    """Test that with remove_omitted_rows=False, partial lists update listed rows only."""
+    existing = _two_row_template()
+    updated = _data_template(
+        data_column_values=[_dc(data_column_id="DAC1", sequence="1", value="11")],
+        parameter_values=[_pv(id="PRM1", sequence="1", value="z")],
+    )
+
+    general_patches, new_cols, _, new_params, _, p_patches, _, _ = generate_data_template_patches(
+        PatchPayload(data=[]),
+        updated_data_template=updated,
+        existing_data_template=existing,
+        remove_omitted_rows=False,
+    )
+
+    assert [(p.attribute, p.colId) for p in general_patches.data] == [("datacolumn", "1")]
+    assert [(p.operation, p.attribute, p.rowId) for p in p_patches] == [("update", "value", "1")]
+    assert new_cols == []
+    assert new_params == []
+
+
+def test_generate_data_template_patches_empty_lists_keep_all_rows_when_not_removing():
+    """Test that with remove_omitted_rows=False, explicit empty lists delete nothing."""
+    existing = _two_row_template()
+    updated = _data_template(data_column_values=[], parameter_values=[])
+
+    general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
+        PatchPayload(data=[]),
+        updated_data_template=updated,
+        existing_data_template=existing,
+        remove_omitted_rows=False,
+    )
+
+    assert general_patches.data == []
+    assert p_patches == []
+
+
+def test_generate_data_template_patches_deletes_unlisted_rows_by_default():
+    """Test that by default the columns and parameters left out of the lists are deleted."""
+    existing = _two_row_template()
+    updated = _data_template(
+        data_column_values=[_dc(data_column_id="DAC1", sequence="1", value="10")],
+        parameter_values=[_pv(id="PRM1", sequence="1", value="a")],
+    )
+
+    general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
+        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
+    )
+
+    assert [(p.operation, p.attribute, p.old_value) for p in general_patches.data] == [
+        ("delete", "datacolumns", ["2"])
+    ]
+    assert p_patches == [PGPatchDatum(operation="delete", attribute="parameters", oldValue=["2"])]
+
+
+def test_generate_data_template_patches_unset_lists_delete_nothing():
+    """Test that rows are never deleted when the lists are left unset."""
+    existing = _two_row_template()
+    updated = _data_template(name="Renamed")
+
+    general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
+        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
+    )
+
+    assert general_patches.data == []
+    assert p_patches == []
+
+
+def test_generate_data_column_patches_keeps_omitted_when_remove_omitted_is_false():
+    """Test that omitted columns emit no delete op when remove_omitted is False."""
+    initial = [_dc(sequence="1"), _dc(sequence="2")]
+
+    patches, new_cols, _ = generate_data_column_patches(initial, [], remove_omitted=False)
+
+    assert patches == []
+    assert new_cols == []
+
+
+def test_generate_parameter_patches_keeps_omitted_when_remove_omitted_is_false():
+    """Test that omitted parameters emit no delete op when remove_omitted is False."""
+    initial = [_pv(id="PRM1", sequence="1"), _pv(id="PRM2", sequence="2")]
+
+    patches, new_params, _ = generate_parameter_patches(initial, [], remove_omitted=False)
+
+    assert patches == []
+    assert new_params == []
+
+
 # ---------------------------------------------------------------------------
 # build_acl_patch_payload
 # ---------------------------------------------------------------------------
