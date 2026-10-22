@@ -11,7 +11,7 @@ import pytest
 from albert.collections.lots import LotCollection
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchOperation
-from albert.resources.lots import Lot
+from albert.resources.lots import Lot, LotStatus
 
 
 def _lot(**kwargs) -> Lot:
@@ -384,3 +384,107 @@ def test_inventory_id_search_variants_list_flattens() -> None:
 def test_inventory_id_search_variants_unprefixed_not_duplicated() -> None:
     """Test that an ID already lacking the prefix is returned once."""
     assert LotCollection._inventory_id_search_variants("A1") == ["A1"]
+
+
+# --- bulk update entry builder ---
+
+
+def test_bulk_update_item_skips_unchanged_lot(offline_session) -> None:
+    """Test that an unchanged lot produces no bulk update entry."""
+    entry = LotCollection(session=offline_session)._generate_bulk_update_item(
+        existing=_lot(), updated=_lot(), notes="n"
+    )
+
+    assert entry is None
+
+
+def test_bulk_update_item_builds_supported_change(offline_session) -> None:
+    """Test that a supported field change produces an id/notes/data entry."""
+    entry = LotCollection(session=offline_session)._generate_bulk_update_item(
+        existing=_lot(cost=1.0), updated=_lot(cost=2.0), notes="price fix"
+    )
+
+    assert entry["id"] == "LOT1"
+    assert entry["notes"] == "price fix"
+    assert len(entry["data"]) == 1
+    assert entry["data"][0]["attribute"] == "cost"
+    assert entry["data"][0]["operation"] == PatchOperation.UPDATE
+
+
+def test_bulk_update_item_skips_inventory_id_change(offline_session) -> None:
+    """Test that an inventory_id change is not applied by bulk update."""
+    entry = LotCollection(session=offline_session)._generate_bulk_update_item(
+        existing=_lot(inventory_id="INVA1"), updated=_lot(inventory_id="INVA2"), notes="n"
+    )
+
+    assert entry is None
+
+
+def test_bulk_update_item_rejects_unsupported_field(offline_session) -> None:
+    """Test that a field the bulk route cannot apply raises instead of being dropped."""
+    with pytest.raises(ValueError, match="manufacturerLotNumber"):
+        LotCollection(session=offline_session)._generate_bulk_update_item(
+            existing=_lot(manufacturer_lot_number="MLN-1"),
+            updated=_lot(manufacturer_lot_number="MLN-2"),
+            notes="n",
+        )
+
+
+def test_bulk_update_item_rejects_metadata_change(offline_session) -> None:
+    """Test that metadata changes raise instead of being silently ignored."""
+    with pytest.raises(ValueError, match="Metadata"):
+        LotCollection(session=offline_session)._generate_bulk_update_item(
+            existing=_lot(metadata={}),
+            updated=_lot(metadata={"key": [{"id": "LST1"}]}),
+            notes="n",
+        )
+
+
+def test_bulk_update_item_rejects_cleared_field(offline_session) -> None:
+    """Test that clearing a supported field raises instead of being silently dropped."""
+    with pytest.raises(ValueError, match="cannot clear expirationDate"):
+        LotCollection(session=offline_session)._generate_bulk_update_item(
+            existing=_lot(expiration_date="2030-01-01"),
+            updated=_lot(expiration_date=None),
+            notes="n",
+        )
+
+
+def test_bulk_update_item_rejects_first_time_expiration_date(offline_session) -> None:
+    """Test that setting expiration_date on a lot without one raises a clear error."""
+    with pytest.raises(ValueError, match="does not already have one"):
+        LotCollection(session=offline_session)._generate_bulk_update_item(
+            existing=_lot(), updated=_lot(expiration_date="2030-01-01"), notes="n"
+        )
+
+
+def test_bulk_update_item_allows_first_time_cost(offline_session) -> None:
+    """Test that setting cost on a lot without one produces an add entry."""
+    entry = LotCollection(session=offline_session)._generate_bulk_update_item(
+        existing=_lot(), updated=_lot(cost=2.0), notes="n"
+    )
+
+    assert len(entry["data"]) == 1
+    assert entry["data"][0]["attribute"] == "cost"
+    assert entry["data"][0]["operation"] == PatchOperation.ADD
+
+
+def test_bulk_update_item_rejects_more_than_four_changes(offline_session) -> None:
+    """Test that a lot carrying five supported changes raises instead of failing the update."""
+    with pytest.raises(ValueError, match="at most 4 changed fields"):
+        LotCollection(session=offline_session)._generate_bulk_update_item(
+            existing=_lot(
+                cost=1.0,
+                expiration_date="2030-01-01",
+                status=LotStatus.ACTIVE,
+                storage_location=EntityLink(id="STL1"),
+            ),
+            updated=_lot(
+                cost=2.0,
+                expiration_date="2031-01-01",
+                status=LotStatus.QUARANTINED,
+                storage_location=EntityLink(id="STL2"),
+                inventory_on_hand=6.0,
+            ),
+            notes="n",
+        )

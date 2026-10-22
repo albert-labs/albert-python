@@ -7,7 +7,7 @@ import pytest
 from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError, NotFoundError
-from albert.resources.lots import Lot, LotAdjustmentAction, LotVolumeUnit
+from albert.resources.lots import Lot, LotAdjustmentAction, LotStatus, LotVolumeUnit
 from albert.resources.storage_locations import StorageLocation
 from tests.integration.seeding import generate_lot_seeds
 from tests.utils.wait import poll_until
@@ -492,3 +492,61 @@ def test_update_volume_lot_rejects_readonly_volume_fields(client: Albert, seeded
                 ]
             },
         )
+
+
+def test_update_many(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+    seeded_locations,
+):
+    """Test that update_many applies supported field changes to several lots."""
+    lots = client.lots.create(
+        lots=generate_lot_seeds(
+            seeded_inventory=seeded_inventory,
+            seeded_storage_locations=seeded_storage_locations,
+            seeded_locations=seeded_locations,
+        )[:2]
+    )
+    try:
+        for lot in lots:
+            lot.cost = 42.0
+        updated = client.lots.update_many(lots=lots, notes="integration test")
+        assert len(updated) == len(lots)
+        assert all(lot.cost == 42.0 for lot in updated)
+    finally:
+        for lot in lots:
+            with suppress(NotFoundError):
+                client.lots.delete(id=lot.id)
+
+
+def test_update_many_rejects_unsupported_field(
+    client: Albert,
+    seeded_lot: Lot,
+):
+    """Test that update_many raises instead of silently dropping unsupported changes."""
+    lot = seeded_lot.model_copy()
+    lot.manufacturer_lot_number = f"MLN-{uuid4().hex[:6]}"
+    with pytest.raises(ValueError, match="manufacturerLotNumber"):
+        client.lots.update_many(lots=[lot])
+
+
+def test_delete_many(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+    seeded_locations,
+):
+    """Test that delete_many marks several lots inactive at once."""
+    lots = client.lots.create(
+        lots=generate_lot_seeds(
+            seeded_inventory=seeded_inventory,
+            seeded_storage_locations=seeded_storage_locations,
+            seeded_locations=seeded_locations,
+        )[:2]
+    )
+    ids = [lot.id for lot in lots]
+    client.lots.delete_many(ids=ids)
+    deleted = client.lots.get_by_ids(ids=ids)
+    assert {lot.id for lot in deleted} == set(ids)
+    assert all(lot.status == LotStatus.INACTIVE for lot in deleted)
