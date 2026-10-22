@@ -191,9 +191,20 @@ instantiated. Do not add a manual `warnings.warn(...)` inside a decorated callab
 callers get the same warning twice. Put the full message (what to use instead,
 removal timeline) in the decorator.
 
-Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=2)` only for a
-deprecated **parameter** or **argument value** on a method that is not itself
+Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=find_stack_level())` only
+for a deprecated **parameter** or **argument value** on a method that is not itself
 deprecated (e.g. `data_template_id` on property data void/unvoid).
+
+## Warnings: stacklevel=find_stack_level(), never a literal
+
+`stacklevel` counts frames from the `warnings.warn` call, and Python shows a
+`DeprecationWarning` by default only when the frame it lands on is in `__main__`. Public
+methods are wrapped by `@validate_call`, so even `stacklevel=2` in a method body lands in
+`pydantic/_internal/_validate_call.py`, and the deprecation is silently hidden from
+callers. Helpers shared across collections are reached at different depths, so no
+literal is right for all of them. `find_stack_level()` (`albert.core.utils`, modeled on
+pandas' helper of the same name) skips every `albert` and `pydantic` frame and returns
+the level of the caller's line.
 
 Pydantic models: a deprecation warning raised during construction (custom
 `__init__` or a class decorator) also fires when Pydantic builds that model from

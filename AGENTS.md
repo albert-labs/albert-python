@@ -383,8 +383,20 @@ class TagCollection(BaseCollection):
 - Deprecate functions, methods, properties, and classes with `@deprecated` from
   `typing_extensions`. It emits the runtime `DeprecationWarning`; do not also call
   `warnings.warn` inside them, or callers see the warning twice.
-- Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=2)` only for deprecated
-  parameters or argument values. Pydantic model caveat: see `OPINIONS.md`.
+- Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=find_stack_level())` only
+  for deprecated parameters or argument values. Pydantic model caveat: see `OPINIONS.md`.
+
+## Warnings
+
+- Every `warnings.warn` call in `src/albert` passes `stacklevel=find_stack_level()` from
+  `albert.core.utils`. Never hardcode `stacklevel`: `@validate_call` and SDK helpers add
+  frames, so a literal number points inside the SDK or pydantic, and Python's default
+  filters then hide `DeprecationWarning` from callers. `tests/unit/meta/test_warning_conventions.py`
+  enforces this.
+- `@deprecated` (typing_extensions) handles its own `stacklevel`; keep using it for deprecated
+  callables and classes.
+- Unit tests for a warning assert `record[0].filename == __file__` so attribution is checked,
+  not only the message.
 
 ## After Every Code Edit
 
