@@ -675,7 +675,9 @@ class AppRowValue(BaseAlbertModel):
     """The value computed by the app for the column. Default is ``""``."""
 
     calculation: str = ""
-    """The calculation backing the value, if any. Default is ``""``."""
+    """The calculation that produced ``value``, as a serialized expression, when the
+    value was computed from one. Pairs each computed value with the calculation behind
+    it; an empty string means the value was not computed from a calculation. Default is ``""``."""
 
 
 class AppRow(BaseAlbertModel):
