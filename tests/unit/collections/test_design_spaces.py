@@ -8,7 +8,7 @@ from albert.collections.design_spaces import _LastKeyCursorPaginator
 from albert.core.pagination import PaginationMode
 from tests.unit.conftest import UNIT_BASE_URL
 
-BASE = "/api/v4.0/design/design-spaces"
+BASE = "/api/v4/design/design-spaces"
 
 # --- _LastKeyCursorPaginator ---
 
