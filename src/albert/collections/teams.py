@@ -158,6 +158,7 @@ class TeamCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             method="POST",
+            retry_safe=True,
             json=payload,
             max_items=max_items,
             deserialize=lambda items: [

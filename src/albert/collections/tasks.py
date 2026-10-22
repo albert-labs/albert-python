@@ -2224,6 +2224,7 @@ class TaskCollection(BaseCollection):
                 max_items=max_items,
                 deserialize=deserialize,
                 method="POST",
+                retry_safe=True,
                 json=payload,
             )
 

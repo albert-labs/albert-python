@@ -654,6 +654,7 @@ class ProjectCollection(BaseCollection):
                 ProjectSearchItem(**item)._bind_collection(self) for item in items
             ],
             method="POST",
+            retry_safe=True,
             json=payload,
         )
 

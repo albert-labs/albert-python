@@ -66,7 +66,7 @@ from albert.collections.worksheets import WorksheetCollection
 from albert.core.async_session import AsyncAlbertSession
 from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import DEFAULT_LOGIN_TIMEOUT, AlbertSSOClient
-from albert.core.session import AlbertSession
+from albert.core.session import DEFAULT_TIMEOUT, AlbertSession
 from albert.utils._auth import default_albert_base_url
 
 
@@ -92,10 +92,10 @@ class Albert:
     retries : int, optional
         Maximum number of retries for failed HTTP requests.
     timeout : float | tuple[float, float], optional
-        Default timeout in seconds applied to every request. Accepts a single
+        Default timeout in seconds applied to every call. Accepts a single
         float (applied to both connect and read) or a ``(connect, read)`` tuple.
-        When ``None`` (the default), requests can block indefinitely. Ignored if
-        `session` is provided.
+        Defaults to ``DEFAULT_TIMEOUT`` (10 s connect, 300 s read). Pass ``None``
+        for no timeout. Ignored if `session` is provided.
     session : AlbertSession, optional
         A fully configured session instance. If provided, `base_url`, `token`, and `auth_manager`
         are all ignored.
@@ -127,7 +127,7 @@ class Albert:
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
         session: AlbertSession | None = None,
     ):
@@ -155,7 +155,7 @@ class Albert:
         *,
         base_url: str | None,
         token: str,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using a static token for authentication."""
@@ -170,7 +170,7 @@ class Albert:
         port: int = 5000,
         tenant_id: str | None = None,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
         login_timeout: int = DEFAULT_LOGIN_TIMEOUT,
     ) -> Albert:
@@ -215,7 +215,7 @@ class Albert:
         client_id: str,
         client_secret: str,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using client credentials authentication."""

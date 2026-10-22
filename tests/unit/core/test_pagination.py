@@ -55,7 +55,7 @@ class _ScriptedSession:
         **kwargs: Any,
     ) -> _JsonResponse:
         self.requests.append(
-            {"method": method, "path": path, "params": params, "json": dict(json or {})}
+            {"method": method, "path": path, "params": params, "json": dict(json or {}), **kwargs}
         )
         return _JsonResponse(self._pages.pop(0))
 
@@ -177,6 +177,25 @@ def test_pages_past_a_full_first_page() -> None:
     assert len(items) == 2000
     assert pag.has_more is False
     assert session.call_count == 3
+
+
+@pytest.mark.parametrize("retry_safe", [True, False])
+def test_post_paginator_marks_pages_retry_safe_only_when_opted_in(retry_safe: bool) -> None:
+    """Test that a POST paginator marks page calls as retry-safe only when opted in."""
+    session = _ScriptedSession([_page([], offset=0, total=0)])
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.OFFSET,
+        path="/api/v3/projects/search",
+        session=session,
+        deserialize=lambda items: items,
+        method="POST",
+        json={"text": "x"},
+        retry_safe=retry_safe,
+    )
+    list(pag)
+
+    assert session.requests[0]["retry_safe"] is retry_safe
 
 
 def test_has_more_false_when_max_items_equals_known_total() -> None:
