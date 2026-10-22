@@ -77,6 +77,8 @@ class ParameterGroupCollection(BaseCollection):
     -------
     create(parameter_group) -> ParameterGroup
         Create a new parameter group.
+    duplicate(id, name=None) -> ParameterGroup
+        Duplicate a group by its ID.
     get_by_id(id) -> ParameterGroup
         Get a single fully populated group by its ID.
     get_by_ids(ids) -> list[ParameterGroup]
@@ -590,6 +592,36 @@ class ParameterGroupCollection(BaseCollection):
             self.base_path,
             json=parameter_group.model_dump(by_alias=True, exclude_none=True, mode="json"),
         )
+        return ParameterGroup(**response.json())
+
+    @validate_call
+    def duplicate(self, *, id: ParameterGroupId, name: str | None = None) -> ParameterGroup:
+        """Duplicate (copy) a parameter group.
+
+        Creates a new parameter group with the same parameters, values, and
+        validation rules as the source group, under a new Parameter Group ID.
+
+        !!! example
+            ```python
+            copy = client.parameter_groups.duplicate(id="PRG9999999", name="Mixing Step v2")
+            copy.id
+            # 'PRG8888888'
+            ```
+
+        Parameters
+        ----------
+        id : ParameterGroupId
+            The ID of the parameter group to duplicate (format ``PRG...``).
+        name : str, optional
+            The name for the new group. When omitted, the copy is named automatically.
+
+        Returns
+        -------
+        ParameterGroup
+            The newly created group.
+        """
+        body = {"name": name} if name is not None else None
+        response = self.session.post(f"{self.base_path}/{id}/duplicate", json=body)
         return ParameterGroup(**response.json())
 
     def get_by_name(self, *, name: str) -> ParameterGroup | None:

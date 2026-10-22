@@ -1,8 +1,10 @@
+from contextlib import suppress
+
 import pytest
 
 from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import BadRequestError
+from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
@@ -131,6 +133,21 @@ def test_dupe_raises_error(client: Albert, seeded_parameter_groups: list[Paramet
     pg.parameters = []
     with pytest.raises(BadRequestError):
         client.parameter_groups.create(parameter_group=pg)
+
+
+def test_duplicate(
+    client: Albert, seeded_parameter_groups: list[ParameterGroup], seed_prefix: str
+):
+    """Test duplicating a parameter group creates a copy with a new ID."""
+    source = seeded_parameter_groups[0]
+    copy = client.parameter_groups.duplicate(id=source.id, name=f"{seed_prefix} - PG Duplicate")
+    try:
+        assert isinstance(copy, ParameterGroup)
+        assert copy.id and copy.id != source.id
+        assert copy.name == f"{seed_prefix} - PG Duplicate"
+    finally:
+        with suppress(NotFoundError):
+            client.parameter_groups.delete(id=copy.id)
 
 
 def test_update(
