@@ -82,7 +82,7 @@ class LocalizationCollection(BaseCollection):
             The localization rows for the entity and its child records.
         """
         response = self.session.get(f"{self.base_path}/{id}")
-        return [Localization(**item) for item in response.json().get("items", [])]
+        return [Localization(**item) for item in response.json().get("Items", [])]
 
     @validate_call
     def update(self, *, id: str, patches: list[LocalizationPatchDatum]) -> None:

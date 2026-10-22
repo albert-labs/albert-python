@@ -114,6 +114,26 @@ def test_localization_reads_scalar_validation() -> None:
     assert rule.operator == "lt"
 
 
+def test_localization_tolerates_row_without_translations() -> None:
+    """Test that a row with no ``localization`` key parses with None translations.
+
+    Recorded live: GET /api/v3/localizations/DAC1031 returns rows without
+    ``localization``, ``hidden``, or ``required`` when nothing is translated.
+    """
+    row = Localization(
+        **{
+            "albertId": "DAC1031",
+            "uniqueId": "DAC",
+            "name": "Efficiency Cleaning",
+            "type": "string",
+            "module": "DAC",
+        }
+    )
+
+    assert row.localization is None
+    assert row.hidden is None
+
+
 def test_localization_tolerates_row_without_unique_id() -> None:
     """Test that a main-entity row missing ``uniqueId`` still parses."""
     row = Localization(
