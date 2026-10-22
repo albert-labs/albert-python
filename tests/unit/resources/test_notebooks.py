@@ -98,6 +98,16 @@ def test_notebook_copy_acl_warns_on_construction():
         NotebookCopyACL(**{"class": "restricted", "fgclist": []})
 
 
+def test_notebook_copy_acl_warning_built_as_nested_field_is_attributed_to_the_caller():
+    """Test that a NotebookCopyACL built inside NotebookCopyInfo warns from the caller's file."""
+    with pytest.warns(DeprecationWarning, match="NotebookCopyACL is deprecated") as record:
+        NotebookCopyInfo(
+            id="NTB123", parent_id="PRO456", acl={"class": "restricted", "fgclist": []}
+        )
+
+    assert record[0].filename == __file__
+
+
 def test_table_block_to_df():
     # create table block
     table = TableBlock(

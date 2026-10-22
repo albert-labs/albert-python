@@ -22,6 +22,7 @@ from albert.core.shared.identifiers import (
     TaskId,
 )
 from albert.core.shared.models.base import AuditFields, BaseResource, EntityLink
+from albert.core.utils import find_stack_level
 from albert.exceptions import AlbertException
 from albert.resources.acls import ACL, ACLContainer
 
@@ -796,7 +797,7 @@ class NotebookCopyACL(BaseResource):
         warnings.warn(
             "NotebookCopyACL is deprecated and will be removed in 2.0; use ACLContainer instead.",
             DeprecationWarning,
-            stacklevel=2,
+            stacklevel=find_stack_level(),
         )
         super().__init__(**data)
 
