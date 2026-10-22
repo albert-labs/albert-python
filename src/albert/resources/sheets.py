@@ -700,6 +700,63 @@ class Design(BaseSessionResource):
         return groups
 
 
+class AppRowValue(BaseAlbertModel):
+    """One computed value of an app row, for a single column.
+
+    App rows compute one value per column of the sheet's Apps section
+    (for example one cost estimate per formulation column). Each
+    [`AppRowValue`][albert.resources.sheets.AppRowValue] pairs the computed
+    ``value`` with the ``calculation`` that produced it.
+    """
+
+    column_id: str = Field(alias="colId")
+    """The ID of the column the value belongs to."""
+
+    id: str | None = Field(default=None)
+    """The ID of the inventory item behind the column, when the column holds one (format ``INV...``). Optional. Default is None."""
+
+    type: CellType | str | None = Field(default=None)
+    """The type of the column. Optional. Default is None."""
+
+    name: str | None = Field(default=None)
+    """The display name of the column. Optional. Default is None."""
+
+    value: str = ""
+    """The value computed by the app for the column. Default is ``""``."""
+
+    calculation: str = ""
+    """The calculation that produced ``value``, as a serialized expression, when the
+    value was computed from one. Pairs each computed value with the calculation behind
+    it; an empty string means the value was not computed from a calculation. Default is ``""``."""
+
+
+class AppRow(BaseAlbertModel):
+    """An application (APP) row in a sheet's Apps section, with its computed values.
+
+    Read app rows with
+    [`get_app_rows`][albert.resources.sheets.Sheet.get_app_rows]; add one with
+    [`add_app_row`][albert.resources.sheets.Sheet.add_app_row].
+    """
+
+    id: str | None = Field(default=None)
+    """The ID of the application the row runs (format ``APP...``). Optional. Default is None."""
+
+    row_id: str = Field(alias="rowId")
+    """The ID of the row."""
+
+    row_unique_id: str | None = Field(default=None, alias="rowUniqueId")
+    """The unique ID of the row within the worksheet. Optional. Default is None."""
+
+    type: CellType | str
+    """The type of the row; ``APP`` for app rows."""
+
+    name: str | None = Field(default=None)
+    """The display name of the row. Optional. Default is None."""
+
+    values: list[AppRowValue] = Field(default_factory=list, alias="Values")
+    """The computed values of the row, one per column."""
+
+
 class SheetFormulationRef(BaseAlbertModel):
     """A reference to a formulation in a sheet"""
 
@@ -760,6 +817,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Add a lookup row.
     add_app_row(app_id, name, ...) -> Row
         Add an application row.
+    get_app_rows() -> list[AppRow]
+        Get the app rows of the Apps section, with their computed values.
     add_parameter_group_row(parameter_group_id, ...) -> Row
         Add a parameter group (PRG) row to Process Design.
     add_task_row(task_id, ...) -> Row
@@ -2443,6 +2502,32 @@ class Sheet(BaseSessionResource):  # noqa:F811
             manufacturer=data.get("manufacturer"),
             config=data.get("config"),
         )
+
+    @validate_call
+    def get_app_rows(self) -> list[AppRow]:
+        """Get the app rows in this sheet's Apps section, with their computed values.
+
+        Each [`AppRow`][albert.resources.sheets.AppRow] carries one
+        [`AppRowValue`][albert.resources.sheets.AppRowValue] per column, pairing the
+        computed ``value`` with the ``calculation`` that produced it. Rows are
+        returned in grid order.
+
+        !!! example
+            ```python
+            for row in sheet.get_app_rows():
+                for value in row.values:
+                    print(row.name, value.name, value.value)
+            ```
+
+        Returns
+        -------
+        list[AppRow]
+            The app rows of the sheet, in grid order.
+        """
+        design_obj = self._get_design(design=DesignType.APPS)
+        response = self.session.get(f"/api/v3/worksheet/{design_obj.id}/apps/grid/new")
+        items = response.json().get("Items") or []
+        return [AppRow(**item) for item in items if item.get("type") == CellType.APP.value]
 
     @validate_call
     def add_parameter_group_row(
