@@ -286,9 +286,11 @@ class Component(BaseResource):
 class FormulationSpec(BaseAlbertModel):
     """The specification for one formulation in a bulk build.
 
-    Pairs a formulation name with the components to place in its column. Used as
-    the input to [`add_formulations`][albert.resources.sheets.Sheet.add_formulations],
-    which builds many formulations at once.
+    Pairs a formulation's identity (name and/or linked inventory item) with the
+    components to place in its column. Used as the input to
+    [`add_formulations`][albert.resources.sheets.Sheet.add_formulations],
+    which builds many formulations at once. At least one of ``name`` or
+    ``inventory_id`` is required.
 
     !!! example
         ```python
@@ -300,11 +302,31 @@ class FormulationSpec(BaseAlbertModel):
         ```
     """
 
-    name: str
-    """The name of the formulation, used as the column header."""
+    name: str | None = None
+    """The name of the formulation, used as the column header.
+
+    Optional when ``inventory_id`` is given and matches an existing column; the
+    column then keeps its current header and only its ingredients are updated.
+    Required when the entry creates a new column.
+    """
+
+    inventory_id: InventoryId | None = Field(default=None)
+    """The Formula inventory item backing this formulation (format ``INV...``).
+
+    Optional. When provided with ``clear=True``, an existing column linked to
+    this inventory item is rebuilt in place even if its header name has
+    changed, and renamed to ``name`` when both are given and differ. When
+    omitted, columns are matched by ``name`` instead.
+    """
 
     components: list[Component]
     """The ingredients and their amounts to place in the formulation."""
+
+    @model_validator(mode="after")
+    def _ensure_identifier(self: FormulationSpec) -> FormulationSpec:
+        if self.name is None and self.inventory_id is None:
+            raise ValueError("FormulationSpec requires at least one of 'name' or 'inventory_id'.")
+        return self
 
 
 class DesignState(BaseResource):
@@ -1246,7 +1268,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         With ``clear=True`` (the default), an entry whose name matches an
         existing column on this sheet updates that column in place: the column
         is emptied and rebuilt from the entry's components, and no new column is
-        added. Re-running a call after a failure is therefore safe. With
+        added. An entry that sets ``inventory_id`` instead matches the column
+        linked to that inventory item, even when its header name has changed,
+        and the column is renamed to the entry's ``name`` when both are given
+        and differ. An entry with only ``inventory_id`` (no name) updates just
+        the matched column's ingredients and keeps its header; such an entry
+        must match an existing column, or the call raises before changing
+        anything. Re-running a call after a failure is therefore safe. With
         ``clear=False``, a new column is added for every entry and existing
         columns are left untouched; duplicate names can then be rejected by the
         platform, so keep names unique within the list and within the sheet. A
@@ -1308,8 +1336,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
             empties and rebuilds that column rather than adding a new one,
             matching
             [`add_formulation`][albert.resources.sheets.Sheet.add_formulation]
-            with ``clear=True``. When False, a new column is added for every
-            entry.
+            with ``clear=True``. Entries that set ``inventory_id`` match by the
+            column's linked inventory item instead of the name. When False, a
+            new column is added for every entry.
 
         Returns
         -------
@@ -1321,27 +1350,60 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         self.grid = None  # plan from the latest sheet state
 
-        # Resolve names against existing columns first so a rejected column
-        # addition cannot leave previously cleared columns empty.
+        # Resolve entries against existing columns first so a rejected column
+        # addition cannot leave previously cleared columns empty. Entries with
+        # an inventory_id match on the column's linked inventory item (identity);
+        # entries without one match on the header name.
         existing_by_name: dict[str, Column] = {}
+        existing_by_inventory: dict[str, Column] = {}
         if clear:
             for column in self.columns:
                 if column.name is not None:
                     existing_by_name.setdefault(column.name, column)
+                if column.inventory_id is not None:
+                    existing_by_inventory.setdefault(column.inventory_id, column)
 
         resolved: list[Column | None] = []
         names_to_create: list[str] = []
+        missing: list[str] = []
         for spec in formulations:
-            existing = existing_by_name.get(spec.name)
+            existing = (
+                existing_by_inventory.get(spec.inventory_id)
+                if spec.inventory_id is not None
+                else existing_by_name.get(spec.name)
+            )
             if existing is None:
-                resolved.append(None)
-                names_to_create.append(spec.name)
+                if spec.name is None:
+                    # Id-only entries can only update a matched column; collect
+                    # all misses and fail before anything is created or cleared.
+                    missing.append(spec.inventory_id)
+                else:
+                    resolved.append(None)
+                    names_to_create.append(spec.name)
             else:
                 resolved.append(existing)
+        if missing:
+            raise ValueError(
+                "No existing column matches inventory_id "
+                f"{', '.join(missing)}. An entry without a name can only update an "
+                "existing column; pass a name to create a new one."
+            )
 
         created = self.add_formulation_columns(formulation_names=names_to_create)
         created_iter = iter(created)
         target_columns = [col if col is not None else next(created_iter) for col in resolved]
+
+        # Identity-matched columns take the entry's name when they differ, so
+        # re-running the same call converges to the requested state. Renamed
+        # last: the write path plans from the pre-rename state.
+        renames = [
+            (col, spec)
+            for col, spec in zip(resolved, formulations, strict=True)
+            if col is not None
+            and spec.inventory_id is not None
+            and spec.name is not None
+            and col.name != spec.name
+        ]
 
         cleared_cells: list[Cell] = []
         for col in resolved:
@@ -1412,6 +1474,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         if total_cells:
             self.update_cells(cells=total_cells, refresh=False)
+
+        if renames:
+            self.rename_columns(
+                columns=[col.model_copy(update={"name": spec.name}) for col, spec in renames]
+            )
+            # The write path may have reloaded the grid, so the objects in
+            # `columns` are not necessarily the ones matched during resolution.
+            new_names = {col.column_id: spec.name for col, spec in renames}
+            for col in columns:
+                if col.column_id in new_names:
+                    col.name = new_names[col.column_id]
 
         # Reads after the call load the latest state, and the next write plans
         # from it too.
