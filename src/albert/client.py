@@ -31,6 +31,7 @@ from albert.collections.inventory import InventoryCollection
 from albert.collections.label_templates import LabelTemplateCollection
 from albert.collections.links import LinksCollection
 from albert.collections.lists import ListsCollection
+from albert.collections.localizations import LocalizationCollection
 from albert.collections.locations import LocationCollection
 from albert.collections.lots import LotCollection
 from albert.collections.notebooks import NotebookCollection
@@ -324,6 +325,10 @@ class Albert:
     @property
     def lists(self) -> ListsCollection:
         return ListsCollection(session=self.session)
+
+    @property
+    def localizations(self) -> LocalizationCollection:
+        return LocalizationCollection(session=self.session)
 
     @property
     def notebooks(self) -> NotebookCollection:

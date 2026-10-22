@@ -173,6 +173,7 @@ nav:
           - Label Templates: collections/label_templates.md
           - Links: collections/links.md
           - Lists: collections/lists.md
+          - Localizations: collections/localizations.md
           - Locations: collections/locations.md
           - Lots: collections/lots.md
           - Notebooks: collections/notebooks.md
@@ -236,6 +237,7 @@ nav:
           - Label Templates: resources/label_templates.md
           - Links: resources/links.md
           - Lists: resources/lists.md
+          - Localizations: resources/localizations.md
           - Locations: resources/locations.md
           - Lots: resources/lots.md
           - Notebooks: resources/notebooks.md
