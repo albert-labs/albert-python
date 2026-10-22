@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.67.0](https://github.com/albert-labs/albert-python/compare/v1.66.0...v1.67.0) (2026-10-22)
+
+
+### Features
+
+* **chats:** kind, automation_id, automation_run_id on ChatSession (AI-2307) ([#809](https://github.com/albert-labs/albert-python/issues/809)) ([28ec658](https://github.com/albert-labs/albert-python/commit/28ec658e3c73c3cd9f5530dc74595d8a1766276a))
+
+
+### Bug Fixes
+
+* **design_spaces:** call the renamed /design/spaces route (AIM-1356) ([#888](https://github.com/albert-labs/albert-python/issues/888)) ([9f507f8](https://github.com/albert-labs/albert-python/commit/9f507f86a32f0391a5163b11125ce03e39b581fe))
+
 ## [1.66.0](https://github.com/albert-labs/albert-python/compare/v1.65.0...v1.66.0) (2026-10-22)
 
 
