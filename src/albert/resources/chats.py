@@ -114,10 +114,13 @@ class ChatFolderType(str, Enum):
 
 
 class PageContext(TypedDict, total=False):
-    """The Albert page a user was viewing when they sent a chat message.
+    """Known keys for the Albert page a user was viewing when they sent a chat message.
 
     Captured so "Ask Albert" can ground its answer in the entity the user was
-    looking at. All keys are optional.
+    looking at. All keys are optional. Additional client context keys (for example
+    ``canvas_id`` or ``quoted_canvas_ids``) are accepted on
+    [`ChatMessage.page_context`][albert.resources.chats.ChatMessage.page_context]
+    and are stored as sent.
 
     Attributes
     ----------
@@ -133,6 +136,10 @@ class PageContext(TypedDict, total=False):
         The type of the parent entity, when applicable.
     section : str
         The section or tab of the page in view.
+    canvas_id : str
+        The canvas Ask Albert was opened from.
+    quoted_canvas_ids : list[str]
+        Canvas ids quoted on this send only (references, not canvas payloads).
     """
 
     url: str
@@ -141,6 +148,8 @@ class PageContext(TypedDict, total=False):
     parent_id: str
     parent_entity: str
     section: str
+    canvas_id: str
+    quoted_canvas_ids: list[str]
 
 
 class ChatSessionRef(BaseAlbertModel):
@@ -289,8 +298,13 @@ class ChatMessage(BaseResource):
     value: list[dict] | None = Field(default=None)
     """api-chat storage/history metadata for the message rows grouped under one message ID (revision records, e.g. ``{ts: <epoch>}``). This is NOT the component payload; the payload is in ``content``. Do not treat ``value`` as a general-purpose extra-data field."""
 
-    page_context: PageContext | None = Field(default=None, alias="pageContext")
-    """The Albert page the user was viewing when they sent the message. Serialized as ``pageContext``."""
+    page_context: dict[str, Any] | None = Field(default=None, alias="pageContext")
+    """The Albert page the user was viewing when they sent the message.
+
+    Known keys are listed on [`PageContext`][albert.resources.chats.PageContext].
+    Additional client context keys are preserved on validate and serialize as sent.
+    Serialized as ``pageContext``.
+    """
 
     attachments: list[ChatMessageAttachment] | None = Field(default=None)
     """Files the user attached to this message, for display in the transcript."""

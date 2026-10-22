@@ -36,6 +36,66 @@ def test_chat_message_page_context_wire_alias_round_trip():
     assert restored.page_context == page_context
 
 
+def test_chat_message_page_context_preserves_undeclared_keys():
+    """Test page_context keeps client context keys such as quoted_canvas_ids on dump and validate."""
+    page_context = {
+        "url": "https://example.com/canvas",
+        "canvas_id": "CVS1",
+        "quoted_canvas_ids": ["CVS1", "CVS2"],
+    }
+    message = ChatMessage(
+        component_type=ChatComponentType.TEXT,
+        user_type=ChatUserType.USER,
+        role=ChatRole.USER,
+        content="Revise this chart",
+        page_context=page_context,
+    )
+
+    dumped = message.model_dump(by_alias=True, exclude_unset=True, mode="json")
+    assert dumped["pageContext"] == page_context
+
+    restored = ChatMessage.model_validate(
+        {
+            "componentType": "text",
+            "userType": "user",
+            "role": "user",
+            "Content": "Revise this chart",
+            "pageContext": page_context,
+        }
+    )
+    assert restored.page_context == page_context
+
+
+def test_chat_message_page_context_declared_keys_only_round_trip():
+    """Test page_context with only documented keys still round-trips."""
+    page_context = {
+        "url": "https://example.com/#notebook",
+        "entity": "notebook",
+        "albert_id": "NTB1",
+    }
+    message = ChatMessage(
+        component_type=ChatComponentType.TEXT,
+        user_type=ChatUserType.USER,
+        role=ChatRole.USER,
+        content="hello",
+        page_context=page_context,
+    )
+
+    dumped = message.model_dump(by_alias=True, exclude_unset=True, mode="json")
+    assert dumped["pageContext"] == page_context
+
+    restored = ChatMessage.model_validate(
+        {
+            "componentType": "text",
+            "userType": "user",
+            "role": "user",
+            "Content": "hello",
+            "pageContext": page_context,
+        }
+    )
+    assert restored.page_context == page_context
+
+
 def test_chat_message_omits_page_context_when_unset():
     """Test page_context is excluded from the payload when not provided."""
     message = ChatMessage(
@@ -45,7 +105,7 @@ def test_chat_message_omits_page_context_when_unset():
         content="hello",
     )
 
-    assert "pageContext" not in message.model_dump(by_alias=True, exclude_none=True)
+    assert "pageContext" not in message.model_dump(by_alias=True, exclude_unset=True)
     assert message.page_context is None
 
 
