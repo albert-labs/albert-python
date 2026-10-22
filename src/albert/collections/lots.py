@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from decimal import Decimal
 from typing import Any, Literal
 
+import requests
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
@@ -1004,6 +1005,20 @@ class LotCollection(BaseCollection):
 
         return self.get_by_id(id=lot.id)
 
+    @staticmethod
+    def _raise_on_partial_update(response: requests.Response) -> None:
+        """Raise AlbertPartialError when a bulk update partially succeeds."""
+        if response.status_code != 206:
+            return
+        # The bulk update partial-success envelope carries UpdatedItems and FailedItems.
+        data = response.json()
+        raise AlbertPartialError(
+            "Lot bulk update partially succeeded: "
+            f"{len(data.get('FailedItems') or [])} item(s) failed.",
+            created_items=data.get("UpdatedItems") or [],
+            failed_items=data.get("FailedItems") or [],
+        )
+
     def _generate_bulk_update_item(
         self, *, existing: Lot, updated: Lot, notes: str
     ) -> dict | None:
@@ -1127,12 +1142,5 @@ class LotCollection(BaseCollection):
             response = self.session.patch(
                 self.base_path, json=items[i : i + _BULK_UPDATE_MAX_ITEMS]
             )
-            if response.status_code == 206:
-                data = response.json()
-                raise AlbertPartialError(
-                    "Lot bulk update partially succeeded: "
-                    f"{len(data.get('FailedItems') or [])} item(s) failed.",
-                    created_items=data.get("UpdatedItems") or [],
-                    failed_items=data.get("FailedItems") or [],
-                )
+            self._raise_on_partial_update(response)
         return self.get_by_ids(ids=ids)
