@@ -27,17 +27,15 @@ from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentActio
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
 
-# Maximum items per bulk update call, from the BulkPatch schema (maxItems 300)
-# in api-lot's Lot.yaml.
+# Maximum items accepted per bulk update call.
 _BULK_UPDATE_MAX_ITEMS = 300
 
-# Maximum IDs per delete call; api-lot rejects more than 5 IDs per call
-# (lib-deletevalidator).
+# Maximum IDs accepted per delete call.
 _DELETE_MAX_IDS = 5
 
-# Attributes the bulk lot route applies (api-lot bulkMove.js), limited to fields
-# the lot diff can emit. update() supports more fields; anything outside this
-# set must go through single-lot update.
+# Attributes bulk update can apply, limited to fields the lot diff can emit.
+# update() supports more fields; anything outside this set must go through
+# single-lot update.
 _BULK_UPDATABLE_ATTRIBUTES = frozenset(
     {
         "storageLocation",
