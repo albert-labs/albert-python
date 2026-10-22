@@ -148,6 +148,19 @@ def test_get_by_ids(client: Albert, seeded_data_templates: list[DataTemplate]):
         assert d.id == seeded_data_templates[i].id
 
 
+def test_duplicate(client: Albert, seeded_data_templates: list[DataTemplate], seed_prefix: str):
+    """Test duplicating a data template creates a copy with a new ID."""
+    source = seeded_data_templates[0]
+    copy = client.data_templates.duplicate(id=source.id, name=f"{seed_prefix} - DT Duplicate")
+    try:
+        assert isinstance(copy, DataTemplate)
+        assert copy.id and copy.id != source.id
+        assert copy.name == f"{seed_prefix} - DT Duplicate"
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=copy.id)
+
+
 def test_update_tags(
     client: Albert, seeded_data_templates: list[DataTemplate], seeded_tags: list[Tag]
 ):

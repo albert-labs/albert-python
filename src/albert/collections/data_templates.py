@@ -106,6 +106,8 @@ class DataTemplateCollection(BaseCollection):
     -------
     create(data_template) -> DataTemplate
         Create a new data template, including its data columns and parameters.
+    duplicate(id, name=None) -> DataTemplate
+        Duplicate a template by its ID.
     get_by_id(id) -> DataTemplate
         Get a single fully populated template by its ID.
     get_by_ids(ids) -> list[DataTemplate]
@@ -204,6 +206,36 @@ class DataTemplateCollection(BaseCollection):
             return dt
         else:
             return self.add_parameters(data_template_id=dt.id, parameters=parameter_values)
+
+    @validate_call
+    def duplicate(self, *, id: DataTemplateId, name: str | None = None) -> DataTemplate:
+        """Duplicate (copy) a data template.
+
+        Creates a new data template with the same data columns, parameters, and
+        settings as the source template, under a new Data Template ID.
+
+        !!! example
+            ```python
+            copy = client.data_templates.duplicate(id="DAT9999999", name="Tensile Test v2")
+            copy.id
+            # 'DAT8888888'
+            ```
+
+        Parameters
+        ----------
+        id : DataTemplateId
+            The ID of the data template to duplicate (format ``DAT...``).
+        name : str, optional
+            The name for the new template. When omitted, the copy is named automatically.
+
+        Returns
+        -------
+        DataTemplate
+            The newly created template.
+        """
+        body = {"name": name} if name is not None else None
+        response = self.session.post(f"{self.base_path}/{id}/duplicate", json=body)
+        return DataTemplate(**response.json())
 
     @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
