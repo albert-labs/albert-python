@@ -1,10 +1,9 @@
 """Unit tests for the user update patch builder.
 
-Allowed under the patch-builder exception in OPINIONS.md: these guard that changes to
-fields the user update cannot apply warn instead of being dropped silently.
+Allowed under the patch-builder exception in OPINIONS.md: these guard that role,
+location, class and witnesser changes are sent in the shapes the users API takes,
+and that values carried along unchanged send nothing.
 """
-
-import warnings
 
 import pytest
 
@@ -22,35 +21,63 @@ def _existing() -> User:
         location=EntityLink(id="LOC1", name="Lab A"),
         roles=[Role(id="ROL1", name="Admin")],
         user_class=UserClass.STANDARD,
+        witnesser=False,
     )
 
 
+def _patches(offline_session, *, updated: User, existing: User | None = None) -> list[dict]:
+    payload = UserCollection(session=offline_session)._generate_patch_payload(
+        existing=existing or _existing(), updated=updated
+    )
+    return payload.model_dump(mode="json", by_alias=True)["data"]
+
+
 @pytest.mark.parametrize(
-    ("field", "value"),
+    ("field", "value", "expected"),
     [
-        ("location", EntityLink(id="LOC2")),
-        ("roles", [Role(id="ROL3", name="Other")]),
-        ("user_class", UserClass.PRIVILEGED),
-        ("witnesser", True),
+        (
+            "roles",
+            [Role(id="ROL3", name="Other")],
+            {"operation": "update", "attribute": "role", "oldValue": "ROL1", "newValue": "ROL3"},
+        ),
+        (
+            "location",
+            EntityLink(id="LOC2"),
+            {
+                "operation": "update",
+                "attribute": "locationId",
+                "oldValue": "LOC1",
+                "newValue": "LOC2",
+            },
+        ),
+        (
+            "user_class",
+            UserClass.PRIVILEGED,
+            {
+                "operation": "update",
+                "attribute": "userClass",
+                "oldValue": "standard",
+                "newValue": "privileged",
+            },
+        ),
+        (
+            "witnesser",
+            True,
+            {"operation": "update", "attribute": "witnesser", "oldValue": False, "newValue": True},
+        ),
     ],
 )
-def test_changed_non_updatable_field_warns_and_applies_other_changes(
-    offline_session, field, value
-):
-    """Test that a field the user update cannot apply is named in a warning and the rest applies."""
+def test_changed_field_is_patched_alongside_other_changes(offline_session, field, value, expected):
+    """Test that each field is sent in the users API's shape, next to the name change."""
     updated = User(id="USR1", name="Ada King", **{field: value})
 
-    with pytest.warns(UserWarning, match=field):
-        payload = UserCollection(session=offline_session)._generate_patch_payload(
-            existing=_existing(), updated=updated
-        )
-
-    assert [(p.operation, p.attribute, p.new_value) for p in payload.data] == [
-        ("update", "name", "Ada King")
+    assert _patches(offline_session, updated=updated) == [
+        {"operation": "update", "attribute": "name", "oldValue": "Ada", "newValue": "Ada King"},
+        expected,
     ]
 
 
-def test_non_updatable_fields_matching_current_values_do_not_warn(offline_session):
+def test_fields_matching_current_values_send_nothing(offline_session):
     """Test that unchanged linked values compare by ID, so only the name update is emitted."""
     updated = User(
         id="USR1",
@@ -58,38 +85,40 @@ def test_non_updatable_fields_matching_current_values_do_not_warn(offline_sessio
         location=EntityLink(id="LOC1"),
         roles=[Role(id="ROL1", name="Administrators")],
         user_class=UserClass.STANDARD,
+        witnesser=False,
     )
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        payload = UserCollection(session=offline_session)._generate_patch_payload(
-            existing=_existing(), updated=updated
-        )
+    assert [p["attribute"] for p in _patches(offline_session, updated=updated)] == ["name"]
 
-    assert [(p.operation, p.attribute, p.new_value) for p in payload.data] == [
-        ("update", "name", "Ada King")
+
+def test_unset_fields_send_nothing(offline_session):
+    """Test that leaving the fields unset emits only the requested change."""
+    updated = User(id="USR1", name="Ada King")
+
+    assert [p["attribute"] for p in _patches(offline_session, updated=updated)] == ["name"]
+
+
+def test_adding_role_and_location_to_user_without_them(offline_session):
+    """Test that a first role is added as a list and a first location by ID."""
+    existing = User(id="USR1", name="Ada")
+    updated = User(
+        id="USR1",
+        name="Ada",
+        roles=[Role(id="ROL1", name="Admin")],
+        location=EntityLink(id="LOC1"),
+    )
+
+    assert _patches(offline_session, updated=updated, existing=existing) == [
+        {"operation": "add", "attribute": "role", "newValue": ["ROL1"]},
+        {"operation": "add", "attribute": "locationId", "newValue": "LOC1"},
     ]
 
 
-def test_unset_non_updatable_fields_do_not_warn(offline_session):
-    """Test that leaving non-updatable fields unset emits only the requested change."""
-    updated = User(id="USR1", name="Ada King")
+def test_clearing_role_and_location_deletes_them(offline_session):
+    """Test that an empty role list and a None location delete the current values."""
+    updated = User(id="USR1", name="Ada", roles=[], location=None)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        payload = UserCollection(session=offline_session)._generate_patch_payload(
-            existing=_existing(), updated=updated
-        )
-
-    assert [(p.operation, p.attribute) for p in payload.data] == [("update", "name")]
-
-
-def test_setting_location_on_user_without_one_warns(offline_session):
-    """Test that adding a location to a user with none warns."""
-    existing = User(id="USR1", name="Ada")
-    updated = User(id="USR1", name="Ada", location=EntityLink(id="LOC1"))
-
-    with pytest.warns(UserWarning, match="location"):
-        UserCollection(session=offline_session)._generate_patch_payload(
-            existing=existing, updated=updated
-        )
+    assert _patches(offline_session, updated=updated) == [
+        {"operation": "delete", "attribute": "role", "oldValue": "ROL1"},
+        {"operation": "delete", "attribute": "locationId", "oldValue": "LOC1"},
+    ]

@@ -9,6 +9,8 @@ from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import UserId
+from albert.core.shared.models.base import BaseResource
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.exceptions import AlbertHTTPError
 from albert.resources.users import User, UserFilterType, UserSearchItem
 
@@ -72,7 +74,6 @@ class UserCollection(BaseCollection):
 
     _api_version = "v3"
     _updatable_attributes = {"name", "status", "email", "metadata"}
-    _non_updatable_attributes = frozenset({"location", "roles", "user_class", "witnesser"})
 
     def __init__(self, *, session: AlbertSession):
         """Initialize a UserCollection.
@@ -403,8 +404,6 @@ class UserCollection(BaseCollection):
 
         Fetch the user (e.g. via [`get_by_id`][albert.collections.users.UserCollection.get_by_id]), modify the updatable
         fields, then pass it here. Only the fields listed in Notes are applied.
-        Changes to ``location``, ``roles``, ``user_class`` or ``witnesser`` are
-        ignored with a warning.
 
         !!! example
             ```python
@@ -425,17 +424,11 @@ class UserCollection(BaseCollection):
         User
             The updated user.
 
-        Warns
-        -----
-        UserWarning
-            If ``location``, ``roles``, ``user_class`` or ``witnesser`` differs from
-            the current value. These fields cannot be changed with this method, so
-            the change is ignored and the other changes are applied.
-
         Notes
         -----
-        The following fields can be updated: ``email``, ``metadata``, ``name``,
-        ``status``.
+        The following fields can be updated: ``email``, ``location``, ``metadata``,
+        ``name``, ``roles``, ``status``, ``user_class``, ``witnesser``. A user has at
+        most one role.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=user.id)
@@ -448,6 +441,68 @@ class UserCollection(BaseCollection):
 
         updated_user = self.get_by_id(id=user.id)
         return updated_user
+
+    def _generate_patch_payload(
+        self,
+        *,
+        existing: BaseResource,
+        updated: BaseResource,
+        generate_metadata_diff: bool = True,
+        stringify_values: bool = False,
+    ) -> PatchPayload:
+        """Add the role, location, class and witnesser patches to the base payload.
+
+        The users API takes these under their own attribute names and value shapes
+        (``role`` and ``locationId`` by ID, ``userClass``, ``witnesser``), so they are
+        diffed here rather than through ``_updatable_attributes``.
+        """
+        payload = super()._generate_patch_payload(
+            existing=existing,
+            updated=updated,
+            generate_metadata_diff=generate_metadata_diff,
+            stringify_values=stringify_values,
+        )
+        fields_set = updated.model_fields_set
+        if "roles" in fields_set:
+            payload.data.extend(
+                _id_patches(
+                    "role",
+                    old_id=_first_id(existing.roles),
+                    new_id=_first_id(updated.roles),
+                    add_as_list=True,
+                )
+            )
+        if "location" in fields_set:
+            payload.data.extend(
+                _id_patches(
+                    "locationId",
+                    old_id=getattr(existing.location, "id", None),
+                    new_id=getattr(updated.location, "id", None),
+                )
+            )
+        if "user_class" in fields_set and updated.user_class != existing.user_class:
+            payload.data.append(
+                PatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute="userClass",
+                    old_value=existing.user_class,
+                    new_value=updated.user_class,
+                )
+            )
+        if (
+            "witnesser" in fields_set
+            and updated.witnesser is not None
+            and updated.witnesser != bool(existing.witnesser)
+        ):
+            payload.data.append(
+                PatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute="witnesser",
+                    old_value=bool(existing.witnesser),
+                    new_value=updated.witnesser,
+                )
+            )
+        return payload
 
     @validate_call
     def delete(self, *, id: UserId) -> None:
@@ -469,3 +524,34 @@ class UserCollection(BaseCollection):
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
+
+
+def _first_id(links: list[Any] | None) -> str | None:
+    """Return the ID of the first linked entity, or None for an empty list."""
+    return getattr(links[0], "id", None) if links else None
+
+
+def _id_patches(
+    attribute: str, *, old_id: str | None, new_id: str | None, add_as_list: bool = False
+) -> list[PatchDatum]:
+    """Build the add, update or delete patch for a field the users API takes by ID."""
+    if old_id == new_id:
+        return []
+    if old_id and new_id:
+        return [
+            PatchDatum(
+                operation=PatchOperation.UPDATE,
+                attribute=attribute,
+                old_value=old_id,
+                new_value=new_id,
+            )
+        ]
+    if old_id:
+        return [PatchDatum(operation=PatchOperation.DELETE, attribute=attribute, old_value=old_id)]
+    return [
+        PatchDatum(
+            operation=PatchOperation.ADD,
+            attribute=attribute,
+            new_value=[new_id] if add_as_list else new_id,
+        )
+    ]
