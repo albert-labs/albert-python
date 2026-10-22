@@ -24,7 +24,7 @@ from albert.core.shared.identifiers import (
     UserId,
 )
 from albert.core.shared.models.patch import PatchOperation
-from albert.core.utils import ensure_list
+from albert.core.utils import ensure_list, find_stack_level
 from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.property_data import (
     BulkPropertyData,
@@ -1044,7 +1044,7 @@ class PropertyDataCollection(BaseCollection):
                 "data_template_id is deprecated and ignored; voiding applies to "
                 "every data template in the interval.",
                 DeprecationWarning,
-                stacklevel=2,
+                stacklevel=find_stack_level(),
             )
         payload = {
             "operation": "void",
@@ -1112,7 +1112,7 @@ class PropertyDataCollection(BaseCollection):
                 "data_template_id is deprecated and ignored; unvoiding applies to "
                 "every data template in the interval.",
                 DeprecationWarning,
-                stacklevel=2,
+                stacklevel=find_stack_level(),
             )
         payload = {
             "operation": "unvoid",
@@ -1875,13 +1875,13 @@ class PropertyDataCollection(BaseCollection):
             warnings.warn(
                 "return_fields is deprecated and ignored; use source_field instead.",
                 DeprecationWarning,
-                stacklevel=2,
+                stacklevel=find_stack_level(),
             )
         if return_facets is not None:
             warnings.warn(
                 "return_facets is deprecated and ignored; use facet_list instead.",
                 DeprecationWarning,
-                stacklevel=2,
+                stacklevel=find_stack_level(),
             )
 
         params = {

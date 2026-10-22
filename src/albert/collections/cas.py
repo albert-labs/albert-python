@@ -13,6 +13,7 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import CasId
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchDatum, PatchPayload
+from albert.core.utils import find_stack_level
 from albert.resources.cas import Cas
 
 
@@ -117,7 +118,7 @@ class CasCollection(BaseCollection):
             "In SDK 2.0, all write operations target the Substance entity exclusively: "
             "CAS entities, reports, and SQL DWH tables backed by CAS will no longer be updated.",
             DeprecationWarning,
-            stacklevel=2,
+            stacklevel=find_stack_level(),
         )
         super().__init__(session=session)
         self.base_path = f"/api/{CasCollection._api_version}/cas"

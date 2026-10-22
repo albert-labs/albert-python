@@ -19,7 +19,7 @@ from albert.core.shared.identifiers import (
     UserId,
 )
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
-from albert.core.utils import ensure_list
+from albert.core.utils import ensure_list, find_stack_level
 from albert.resources.inventory import InventoryCategory
 from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentAction, LotSearchItem
 
@@ -854,7 +854,7 @@ class LotCollection(BaseCollection):
                     "Full Transfer is not allowed for the same storage location; "
                     "the lot was not changed.",
                     UserWarning,
-                    stacklevel=2,
+                    stacklevel=find_stack_level(),
                 )
             else:
                 patch_payload = PatchPayload(
