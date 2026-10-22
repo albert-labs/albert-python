@@ -1277,8 +1277,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         anything. Re-running a call after a failure is therefore safe. With
         ``clear=False``, a new column is added for every entry and existing
         columns are left untouched; duplicate names can then be rejected by the
-        platform, so keep names unique within the list and within the sheet. A
-        sheet holds at most 100 columns.
+        platform, so keep names unique within the list and within the sheet.
+        The platform recommends at most 100 columns per sheet for performance;
+        the limit is not enforced.
 
         Building a formulation this way is what registers a Formula inventory
         item ([`InventoryItem`][albert.resources.inventory.InventoryItem]).
@@ -2057,8 +2058,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         To build a formulation and fill in its components in one step, use
         [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] instead.
 
-        A sheet holds at most 100 columns. Duplicate names can be rejected by
-        the platform, so keep names unique within a sheet.
+        The platform recommends at most 100 columns per sheet for performance;
+        the limit is not enforced. Duplicate names can be rejected by the
+        platform, so keep names unique within a sheet.
 
         !!! warning "Concurrent use"
             Do not run this method concurrently with other writes to the same
