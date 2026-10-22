@@ -543,6 +543,7 @@ class WorkflowCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             method="POST",
+            retry_safe=True,
             json=payload,
             max_items=max_items,
             deserialize=lambda items: [
@@ -638,5 +639,5 @@ class WorkflowCollection(BaseCollection):
             ]
         payload = {k: v for k, v in payload.items() if v is not None}
 
-        response = self.session.post(url=f"{self.base_path}/search", json=payload)
+        response = self.session.post(url=f"{self.base_path}/search", json=payload, retry_safe=True)
         return [FacetItem.model_validate(x) for x in response.json().get("Facets") or []]

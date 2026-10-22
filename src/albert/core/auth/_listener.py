@@ -52,6 +52,16 @@ class RequestHandler(BaseHTTPRequestHandler):
         pass
 
 
+class CallbackServer(HTTPServer):
+    """HTTPServer that records whether `handle_request()` timed out waiting for the callback."""
+
+    token: str | None = None
+    timed_out: bool = False
+
+    def handle_timeout(self) -> None:
+        self.timed_out = True
+
+
 @contextmanager
 def local_http_server(
     *,
@@ -59,14 +69,14 @@ def local_http_server(
     minimum_port: int = 5000,
     maximum_port: int | None = None,
     handler: type[BaseHTTPRequestHandler] = RequestHandler,
-) -> Generator[tuple[HTTPServer, int], None, None]:
+) -> Generator[tuple[CallbackServer, int], None, None]:
     port = _find_open_port(start=minimum_port, stop=maximum_port)
     if port is None:
         raise RuntimeError(
             f"No open port found in range {minimum_port}-{minimum_port + DEFAULT_PORTS_TO_TRY}"
         )
 
-    server = HTTPServer((LOCALHOST, port), handler)
+    server = CallbackServer((LOCALHOST, port), handler)
     server.allow_reuse_address = True
     server.token = None
     server.timeout = timeout

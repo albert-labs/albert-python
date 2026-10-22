@@ -65,8 +65,8 @@ from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
 from albert.core.async_session import AsyncAlbertSession
 from albert.core.auth.credentials import AlbertClientCredentials
-from albert.core.auth.sso import AlbertSSOClient
-from albert.core.session import AlbertSession
+from albert.core.auth.sso import DEFAULT_LOGIN_TIMEOUT, AlbertSSOClient
+from albert.core.session import DEFAULT_TIMEOUT, AlbertSession
 from albert.utils._auth import default_albert_base_url
 
 
@@ -92,10 +92,10 @@ class Albert:
     retries : int, optional
         Maximum number of retries for failed HTTP requests.
     timeout : float | tuple[float, float], optional
-        Default timeout in seconds applied to every request. Accepts a single
+        Default timeout in seconds applied to every call. Accepts a single
         float (applied to both connect and read) or a ``(connect, read)`` tuple.
-        When ``None`` (the default), requests can block indefinitely. Ignored if
-        `session` is provided.
+        Defaults to ``DEFAULT_TIMEOUT`` (10 s connect, 300 s read). Pass ``None``
+        for no timeout. Ignored if `session` is provided.
     session : AlbertSession, optional
         A fully configured session instance. If provided, `base_url`, `token`, and `auth_manager`
         are all ignored.
@@ -127,7 +127,7 @@ class Albert:
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
         session: AlbertSession | None = None,
     ):
@@ -155,7 +155,7 @@ class Albert:
         *,
         base_url: str | None,
         token: str,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using a static token for authentication."""
@@ -170,13 +170,41 @@ class Albert:
         port: int = 5000,
         tenant_id: str | None = None,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
+        login_timeout: int = DEFAULT_LOGIN_TIMEOUT,
     ) -> Albert:
-        """Create an Albert client using interactive OAuth2 SSO login."""
+        """Create an Albert client using interactive OAuth2 SSO login.
+
+        Parameters
+        ----------
+        base_url : str | None
+            The base URL of the Albert API. Defaults to the ``ALBERT_BASE_URL`` environment
+            variable or "https://app.albertinvent.com".
+        email : str
+            The email address used to initiate the SSO login.
+        port : int, optional
+            The starting port for the local redirect server (default is 5000).
+        tenant_id : str | None, optional
+            Tenant ID to scope the SSO login.
+        retries : int | None, optional
+            Maximum number of retries for failed HTTP requests.
+        timeout : float | tuple[float, float] | None, optional
+            Default timeout in seconds applied to every API request made by the client.
+            Does not affect the SSO login; use `login_timeout` for that.
+        headers : Mapping[str, str] | None, optional
+            Extra headers sent with every request.
+        login_timeout : int, optional
+            Seconds to wait for the user to complete the browser login (default is 120).
+
+        Returns
+        -------
+        Albert
+            An authenticated Albert client.
+        """
         resolved_base_url = base_url or default_albert_base_url()
         oauth = AlbertSSOClient(base_url=resolved_base_url, email=email)
-        oauth.authenticate(minimum_port=port, tenant_id=tenant_id)
+        oauth.authenticate(minimum_port=port, tenant_id=tenant_id, timeout=login_timeout)
         return cls(auth_manager=oauth, retries=retries, timeout=timeout, headers=headers)
 
     @classmethod
@@ -187,7 +215,7 @@ class Albert:
         client_id: str,
         client_secret: str,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using client credentials authentication."""
