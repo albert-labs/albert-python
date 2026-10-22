@@ -172,13 +172,17 @@ def test_replace_inventory_on_row(seeded_sheet: Sheet, seeded_inventory: list[In
         cached = {row.row_id: row for row in seeded_sheet.product_design.rows}
         assert cached[new_row.row_id].inventory_id == original.id
 
-        updated_row = new_row.replace_inventory(inventory_item=replacement)
+        updated_row = new_row.replace_inventory(inventory=replacement)
         assert updated_row.inventory_id == replacement.id
         assert updated_row.name == replacement.name
 
         refreshed = {row.row_id: row for row in seeded_sheet.product_design.rows}
         assert refreshed[new_row.row_id].inventory_id == replacement.id
         assert refreshed[new_row.row_id].name == replacement.name
+
+        swapped_back = new_row.replace_inventory(inventory=original.id)
+        assert swapped_back.inventory_id == original.id
+        assert swapped_back.name == original.name
     finally:
         with suppress(NotFoundError):
             seeded_sheet.delete_row(
