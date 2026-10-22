@@ -7,6 +7,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
+from albert.core.utils import find_stack_level
 
 
 class BaseCollection:
@@ -72,7 +73,7 @@ class BaseCollection:
                 f"{', '.join(changed)}, so these changes were ignored. Other changes "
                 "are applied.",
                 UserWarning,
-                stacklevel=4,
+                stacklevel=find_stack_level(),
             )
 
     def _metadata_list_patch_value(self, links: list[EntityLink], *, as_list: bool = False) -> Any:

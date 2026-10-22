@@ -12,6 +12,7 @@ from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import UserId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.core.utils import find_stack_level
 from albert.exceptions import AlbertHTTPError
 from albert.resources.users import User, UserFilterType, UserSearchItem
 
@@ -559,7 +560,7 @@ def _id_patches(
         warnings.warn(
             f"update() cannot remove {field}, so the change was ignored.",
             UserWarning,
-            stacklevel=4,
+            stacklevel=find_stack_level(),
         )
         return []
     if old_id:

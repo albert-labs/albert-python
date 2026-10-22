@@ -23,6 +23,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import AttachmentId, BlockId, DataTemplateId, TaskId
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchOperation
+from albert.core.utils import find_stack_level
 from albert.resources.data_templates import CurveDBMetadata, ImportMode, StorageKeyReference
 from albert.resources.files import FileNamespace
 from albert.resources.property_data import (
@@ -285,7 +286,7 @@ def warn_on_duplicate_task_property_targets(*, properties: list[TaskPropertyCrea
             + "; ".join(duplicates)
             + ". Give each value a distinct visible_trial_number to keep them all.",
             UserWarning,
-            stacklevel=3,
+            stacklevel=find_stack_level(),
         )
 
 
