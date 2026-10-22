@@ -1048,16 +1048,18 @@ def test_image_upload_onto_partially_filled_trial(
 def test_bulk_add_properties_to_inventory(
     client: Albert,
     seeded_inventory: list,
+    seeded_lots: list,
     seeded_data_columns: list,
 ):
-    """Test that several custom properties are registered on one item together."""
-    inv = seeded_inventory[1]
+    """Test that several property attribute values are registered on one lot of an item."""
+    inv = seeded_inventory[0]
+    lot = next(lot for lot in seeded_lots if f"INV{lot.inventory_id}" == inv.id)
     data_columns = [
         InventoryDataColumn(data_column_id=seeded_data_columns[0].id, value="55.5"),
         InventoryDataColumn(data_column_id=seeded_data_columns[1].id, value="66.6"),
     ]
     r = client.property_data.bulk_add_properties_to_inventory(
-        inventory_id=inv.id, properties=data_columns
+        inventory_id=inv.id, lot_id=lot.id, properties=data_columns
     )
     assert len(r) == 2
     assert all(entry.inventory_id == inv.id for entry in r)
@@ -1065,3 +1067,13 @@ def test_bulk_add_properties_to_inventory(
         seeded_data_columns[0].id,
         seeded_data_columns[1].id,
     }
+
+    # Read back: the values must be stored against the given lot of this item.
+    on_item = client.property_data.get_properties_on_inventory(inventory_id=inv.id)
+    stored = {
+        p.data_column.data_column_id: p.data_column.property_data.value
+        for p in on_item.custom_property_data
+        if p.lot and p.lot.id == lot.id
+    }
+    assert stored[seeded_data_columns[0].id] == "55.5"
+    assert stored[seeded_data_columns[1].id] == "66.6"

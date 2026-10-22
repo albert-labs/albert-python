@@ -22,9 +22,10 @@ def _make_response(status_code: int, body) -> requests.Response:
 
 
 def test_custom_bulk_add_payload_maps_each_property() -> None:
-    """Test that each property becomes one add entry carrying its column and value."""
+    """Test that each property becomes one add entry carrying its lot, column, and value."""
     payload = PropertyDataCollection._generate_custom_bulk_add_payload(
         inventory_id="INVA1",
+        lot_id="LOT1",
         properties=[
             InventoryDataColumn(data_column_id="DAC1", value="1.2"),
             InventoryDataColumn(data_column_id="DAC2", value="3.4"),
@@ -34,8 +35,8 @@ def test_custom_bulk_add_payload_maps_each_property() -> None:
     assert payload == {
         "parentId": "INVA1",
         "Data": [
-            {"operation": "add", "DataColumn": [{"id": "DAC1", "value": "1.2"}]},
-            {"operation": "add", "DataColumn": [{"id": "DAC2", "value": "3.4"}]},
+            {"operation": "add", "lotId": "LOT1", "DataColumn": [{"id": "DAC1", "value": "1.2"}]},
+            {"operation": "add", "lotId": "LOT1", "DataColumn": [{"id": "DAC2", "value": "3.4"}]},
         ],
     }
 
@@ -44,6 +45,7 @@ def test_custom_bulk_add_payload_omits_unset_value() -> None:
     """Test that a property without a value sends no value key."""
     payload = PropertyDataCollection._generate_custom_bulk_add_payload(
         inventory_id="INVA1",
+        lot_id="LOT1",
         properties=[InventoryDataColumn(data_column_id="DAC1")],
     )
 
@@ -53,7 +55,7 @@ def test_custom_bulk_add_payload_omits_unset_value() -> None:
 def test_custom_bulk_add_payload_empty_properties() -> None:
     """Test that an empty property list yields an empty Data list."""
     payload = PropertyDataCollection._generate_custom_bulk_add_payload(
-        inventory_id="INVA1", properties=[]
+        inventory_id="INVA1", lot_id="LOT1", properties=[]
     )
 
     assert payload == {"parentId": "INVA1", "Data": []}

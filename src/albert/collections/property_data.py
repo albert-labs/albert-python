@@ -119,8 +119,8 @@ class PropertyDataCollection(BaseCollection):
         Get all property data attached to an inventory item (not Specs/Attributes).
     add_properties_to_inventory(inventory_id, properties) -> list[InventoryPropertyDataCreate]
         Add custom property-data values directly to an inventory item.
-    bulk_add_properties_to_inventory(inventory_id, properties) -> list[InventoryPropertyDataCreate]
-        Add multiple custom property-data values to an inventory item together.
+    bulk_add_properties_to_inventory(inventory_id, lot_id, properties) -> list[InventoryPropertyDataCreate]
+        Add property attribute values for several data columns on one lot of an item.
     update_property_on_inventory(inventory_id, property_data) -> InventoryPropertyData
         Update a property-data value on an inventory item.
     get_task_block_properties(inventory_id, task_id, block_id, lot_id=None) -> TaskPropertyData
@@ -267,14 +267,15 @@ class PropertyDataCollection(BaseCollection):
 
     @staticmethod
     def _generate_custom_bulk_add_payload(
-        *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
+        *, inventory_id: InventoryId, lot_id: LotId, properties: list[InventoryDataColumn]
     ) -> dict:
-        """Assemble the body for registering several custom properties on one item."""
+        """Assemble the body for registering several property values on one lot of an item."""
         return {
             "parentId": inventory_id,
             "Data": [
                 {
                     "operation": "add",
+                    "lotId": lot_id,
                     "DataColumn": [
                         {
                             "id": prop.data_column_id,
@@ -319,20 +320,23 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def bulk_add_properties_to_inventory(
-        self, *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
+        self, *, inventory_id: InventoryId, lot_id: LotId, properties: list[InventoryDataColumn]
     ) -> list[InventoryPropertyDataCreate]:
-        """Add multiple custom property-data values to an inventory item together.
+        """Add property attribute values for several data columns on one lot of an item.
 
-        Same outcome as calling
-        [`add_properties_to_inventory`][albert.collections.property_data.PropertyDataCollection.add_properties_to_inventory]
-        once per property, but all properties are registered together and a
-        failure for one column does not stop the rest.
+        Each entry registers a value for its data column as a property attribute
+        value on the given lot of the inventory item; the value then shows in the
+        item's properties (see
+        [`get_properties_on_inventory`][albert.collections.property_data.PropertyDataCollection.get_properties_on_inventory]).
+        All properties are registered together and a rejection for one column does
+        not stop the rest.
 
         !!! example
             ```python
             from albert.resources.property_data import InventoryDataColumn
             props = client.property_data.bulk_add_properties_to_inventory(
                 inventory_id="INVA9999999",
+                lot_id="LOT9999999",
                 properties=[
                     InventoryDataColumn(data_column_id="DAC9999999", value="1.2"),
                     InventoryDataColumn(data_column_id="DAC9999998", value="3.4"),
@@ -344,6 +348,8 @@ class PropertyDataCollection(BaseCollection):
         ----------
         inventory_id : InventoryId
             The inventory item to add properties to (format ``INV...``).
+        lot_id : LotId
+            The lot of the inventory item the values apply to (format ``LOT...``).
         properties : list[InventoryDataColumn]
             The properties to add. Each pairs a data column with a value.
 
@@ -358,17 +364,24 @@ class PropertyDataCollection(BaseCollection):
             If only some properties were registered. The error carries the
             registered (``created_items``) and rejected (``failed_items``)
             entries.
+        BadRequestError
+            If every property was rejected. Also raised on tenants without the
+            reference attributes model (see Notes).
 
         Notes
         -----
-        Adding is create-only: if the item already has a value for a data
-        column, that column is rejected. To change an existing value, use
-        [`update_property_on_inventory`][albert.collections.property_data.PropertyDataCollection.update_property_on_inventory].
+        Adding is create-only per data column on the given lot: if the lot
+        already has a value for a data column, that column is rejected.
+
+        This method stores property attribute values, which requires the
+        reference attributes model (now generally available). On a tenant without
+        reference attributes enabled, every entry is rejected and the call raises
+        [`BadRequestError`][albert.exceptions.BadRequestError].
         """
         if not properties:
             return []
         payload = self._generate_custom_bulk_add_payload(
-            inventory_id=inventory_id, properties=properties
+            inventory_id=inventory_id, lot_id=lot_id, properties=properties
         )
         response = self.session.post(f"{self.base_path}/custom/bulk", json=payload)
         return self._unpack_custom_bulk_response(response=response, inventory_id=inventory_id)
