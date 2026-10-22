@@ -9959,7 +9959,7 @@ template in the interval.</p>
 </span><span id="__span-0-1044"><a id="__codelineno-0-1044" name="__codelineno-0-1044"></a>            <span class="s2">"data_template_id is deprecated and ignored; voiding applies to "</span>
 </span><span id="__span-0-1045"><a id="__codelineno-0-1045" name="__codelineno-0-1045"></a>            <span class="s2">"every data template in the interval."</span><span class="p">,</span>
 </span><span id="__span-0-1046"><a id="__codelineno-0-1046" name="__codelineno-0-1046"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
-</span><span id="__span-0-1047"><a id="__codelineno-0-1047" name="__codelineno-0-1047"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-0-1047"><a id="__codelineno-0-1047" name="__codelineno-0-1047"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="n">find_stack_level</span><span class="p">(),</span>
 </span><span id="__span-0-1048"><a id="__codelineno-0-1048" name="__codelineno-0-1048"></a>        <span class="p">)</span>
 </span><span id="__span-0-1049"><a id="__codelineno-0-1049" name="__codelineno-0-1049"></a>    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
 </span><span id="__span-0-1050"><a id="__codelineno-0-1050" name="__codelineno-0-1050"></a>        <span class="s2">"operation"</span><span class="p">:</span> <span class="s2">"void"</span><span class="p">,</span>
@@ -10271,7 +10271,7 @@ template in the interval.</p>
 </span><span id="__span-0-1112"><a id="__codelineno-0-1112" name="__codelineno-0-1112"></a>            <span class="s2">"data_template_id is deprecated and ignored; unvoiding applies to "</span>
 </span><span id="__span-0-1113"><a id="__codelineno-0-1113" name="__codelineno-0-1113"></a>            <span class="s2">"every data template in the interval."</span><span class="p">,</span>
 </span><span id="__span-0-1114"><a id="__codelineno-0-1114" name="__codelineno-0-1114"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
-</span><span id="__span-0-1115"><a id="__codelineno-0-1115" name="__codelineno-0-1115"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-0-1115"><a id="__codelineno-0-1115" name="__codelineno-0-1115"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="n">find_stack_level</span><span class="p">(),</span>
 </span><span id="__span-0-1116"><a id="__codelineno-0-1116" name="__codelineno-0-1116"></a>        <span class="p">)</span>
 </span><span id="__span-0-1117"><a id="__codelineno-0-1117" name="__codelineno-0-1117"></a>    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
 </span><span id="__span-0-1118"><a id="__codelineno-0-1118" name="__codelineno-0-1118"></a>        <span class="s2">"operation"</span><span class="p">:</span> <span class="s2">"unvoid"</span><span class="p">,</span>
@@ -13503,13 +13503,13 @@ matches.</p>
 </span><span id="__span-0-1875"><a id="__codelineno-0-1875" name="__codelineno-0-1875"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
 </span><span id="__span-0-1876"><a id="__codelineno-0-1876" name="__codelineno-0-1876"></a>            <span class="s2">"return_fields is deprecated and ignored; use source_field instead."</span><span class="p">,</span>
 </span><span id="__span-0-1877"><a id="__codelineno-0-1877" name="__codelineno-0-1877"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
-</span><span id="__span-0-1878"><a id="__codelineno-0-1878" name="__codelineno-0-1878"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-0-1878"><a id="__codelineno-0-1878" name="__codelineno-0-1878"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="n">find_stack_level</span><span class="p">(),</span>
 </span><span id="__span-0-1879"><a id="__codelineno-0-1879" name="__codelineno-0-1879"></a>        <span class="p">)</span>
 </span><span id="__span-0-1880"><a id="__codelineno-0-1880" name="__codelineno-0-1880"></a>    <span class="k">if</span> <span class="n">return_facets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-1881"><a id="__codelineno-0-1881" name="__codelineno-0-1881"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
 </span><span id="__span-0-1882"><a id="__codelineno-0-1882" name="__codelineno-0-1882"></a>            <span class="s2">"return_facets is deprecated and ignored; use facet_list instead."</span><span class="p">,</span>
 </span><span id="__span-0-1883"><a id="__codelineno-0-1883" name="__codelineno-0-1883"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
-</span><span id="__span-0-1884"><a id="__codelineno-0-1884" name="__codelineno-0-1884"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-0-1884"><a id="__codelineno-0-1884" name="__codelineno-0-1884"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="n">find_stack_level</span><span class="p">(),</span>
 </span><span id="__span-0-1885"><a id="__codelineno-0-1885" name="__codelineno-0-1885"></a>        <span class="p">)</span>
 </span><span id="__span-0-1886"><a id="__codelineno-0-1886" name="__codelineno-0-1886"></a>
 </span><span id="__span-0-1887"><a id="__codelineno-0-1887" name="__codelineno-0-1887"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
