@@ -1,6 +1,10 @@
+import uuid
+from contextlib import suppress
+
 import pytest
 
 from albert import Albert
+from albert.exceptions import AlbertHTTPError
 from albert.resources.inventory import InventoryItem
 from albert.resources.worksheets import Worksheet
 from tests.utils.wait import poll_until
@@ -43,6 +47,30 @@ def test_worksheet_search(
     )
     assert hits, "Expected seeded formula in worksheet search results"
     assert hits[0].id in seeded_ids
+
+
+def test_delete_and_reactivate_sheet(client: Albert, seeded_worksheet: Worksheet):
+    """Test a private sheet can be deleted (archived) and reactivated."""
+    project_id = seeded_worksheet.project_id
+    # Sheet names are capped at 50 characters by the API.
+    sheet_name = f"TEST - del {uuid.uuid4()}"
+    worksheet = client.worksheets.add_sheet(project_id=project_id, sheet_name=sheet_name)
+    sheet = next(s for s in worksheet.sheets if s.name == sheet_name)
+
+    def _listed_sheet_ids() -> list[str]:
+        return [s.id for s in client.worksheets.get_by_project_id(project_id=project_id).sheets]
+
+    try:
+        client.worksheets.delete_sheet(project_id=project_id, sheet_id=sheet.id)
+        remaining = poll_until(_listed_sheet_ids, predicate=lambda ids: sheet.id not in ids)
+        assert sheet.id not in remaining
+
+        client.worksheets.reactivate_sheet(project_id=project_id, sheet_id=sheet.id)
+        restored = poll_until(_listed_sheet_ids, predicate=lambda ids: sheet.id in ids)
+        assert sheet.id in restored
+    finally:
+        with suppress(AlbertHTTPError):
+            client.worksheets.delete_sheet(project_id=project_id, sheet_id=sheet.id)
 
 
 # Need to seed a Sheet Template First

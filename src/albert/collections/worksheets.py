@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from typing import Any
 
+import requests
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
@@ -10,6 +11,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ProjectId, SearchProjectId
 from albert.core.utils import ensure_list
+from albert.exceptions import AlbertPartialError
 from albert.resources.acls import ACLContainer
 from albert.resources.custom_templates import CustomTemplate
 from albert.resources.worksheets import Worksheet, WorksheetSearchItem
@@ -38,7 +40,8 @@ class WorksheetCollection(BaseCollection):
     here rather than through the Inventory collection.
 
     This collection manages Worksheet- and Sheet-level structure (retrieving a
-    Worksheet, adding Sheets, duplicating Sheets, and creating Sheet templates).
+    Worksheet, adding Sheets, duplicating Sheets, deleting Sheets, and creating
+    Sheet templates).
     Editing the contents of a Sheet (columns, rows, cells, and formulations) is
     done through the returned [`Sheet`][albert.resources.sheets.Sheet] objects.
 
@@ -79,6 +82,10 @@ class WorksheetCollection(BaseCollection):
         Copy an existing Sheet into a new Sheet within the same Project.
     create_sheet_template(project_id, source_sheet_name, template_name, ...) -> CustomTemplate
         Save an existing Sheet as a reusable Sheet template.
+    delete_sheet(project_id, sheet_id) -> None
+        Delete (archive) a Sheet from a Worksheet.
+    reactivate_sheet(project_id, sheet_id) -> Worksheet
+        Restore a deleted Sheet back onto a Worksheet.
     """
 
     _api_version = "v3"
@@ -553,3 +560,96 @@ class WorksheetCollection(BaseCollection):
         response_json = response.json()
         ctp_id = response_json.get("ctpId")
         return CustomTemplatesCollection(session=self.session).get_by_id(id=ctp_id)
+
+    @staticmethod
+    def _raise_on_partial_failure(response: requests.Response) -> None:
+        """Raise AlbertPartialError when a partial success reports failed items."""
+        if response.status_code != 206:
+            return
+        data = response.json()
+        # The spec documents a FailedItems array, but the handler currently sends
+        # the raw batch-write result keyed as UnprocessedItems.
+        failed_items = []
+        if isinstance(data, dict):
+            failed_items = data.get("FailedItems") or list(data.get("UnprocessedItems") or [])
+        elif isinstance(data, list):
+            failed_items = data
+        if failed_items:
+            raise AlbertPartialError(
+                f"Operation partially succeeded: {len(failed_items)} item(s) failed. "
+                f"Failures: {failed_items}",
+                failed_items=failed_items,
+            )
+
+    @validate_call
+    def delete_sheet(self, *, project_id: ProjectId, sheet_id: str) -> None:
+        """Delete (archive) a Sheet from a Project's Worksheet.
+
+        Deleting a Sheet archives it: the Sheet and its contents no longer appear
+        on the Worksheet, but nothing is permanently erased. A deleted Sheet can
+        be restored with [`reactivate_sheet`][albert.collections.worksheets.WorksheetCollection.reactivate_sheet].
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            client.worksheets.delete_sheet(project_id="PROA9999999", sheet_id="SHE9999999")
+            ```
+
+        Parameters
+        ----------
+        project_id : ProjectId
+            The ID of the Project whose Worksheet the Sheet belongs to (format ``PRO...``).
+        sheet_id : str
+            The ID of the Sheet to delete.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AlbertPartialError
+            If the Sheet could not be fully deleted.
+        """
+        path = f"{self.base_path}/project/{project_id}/sheets"
+        response = self.session.delete(path, params={"sheetId": sheet_id})
+        self._raise_on_partial_failure(response)
+
+    @validate_call
+    def reactivate_sheet(self, *, project_id: ProjectId, sheet_id: str) -> Worksheet:
+        """Reactivate a deleted Sheet on a Project's Worksheet.
+
+        Restores a Sheet previously deleted with [`delete_sheet`][albert.collections.worksheets.WorksheetCollection.delete_sheet].
+        The Sheet reappears on the Worksheet with its former contents.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            worksheet = client.worksheets.reactivate_sheet(
+                project_id="PROA9999999", sheet_id="SHE9999999"
+            )
+            ```
+
+        Parameters
+        ----------
+        project_id : ProjectId
+            The ID of the Project whose Worksheet the Sheet belongs to (format ``PRO...``).
+        sheet_id : str
+            The ID of the deleted Sheet to restore.
+
+        Returns
+        -------
+        Worksheet
+            The Worksheet, with the Sheet restored.
+
+        Raises
+        ------
+        AlbertPartialError
+            If the Sheet could not be fully reactivated.
+        """
+        path = f"{self.base_path}/project/{project_id}/sheets"
+        response = self.session.patch(path, params={"sheetId": sheet_id})
+        self._raise_on_partial_failure(response)
+        return self.get_by_project_id(project_id=project_id)

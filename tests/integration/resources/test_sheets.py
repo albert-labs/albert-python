@@ -1,8 +1,14 @@
+from contextlib import suppress
+
 import pandas as pd
 import pytest
 
-from albert.exceptions import AlbertException
+from albert import Albert
+from albert.core.shared.models.base import EntityLink
+from albert.exceptions import AlbertException, BadRequestError, NotFoundError
 from albert.resources.inventory import InventoryItem
+from albert.resources.locations import Location
+from albert.resources.projects import Project
 from albert.resources.sheets import (
     Cell,
     CellType,
@@ -312,6 +318,53 @@ def test_add_and_remove_blank_rows(seeded_sheet: Sheet):
         new_row = seeded_sheet.add_blank_row(
             row_name="TEST results Design", design=DesignType.RESULTS
         )
+
+
+def test_rename_row_group(client: Albert, seed_prefix: str):
+    """Test renaming a row group's header row persists the new name."""
+    location = client.locations.create(
+        location=Location(
+            name=f"{seed_prefix} - rename row group",
+            latitude=40.7,
+            longitude=-74.0,
+            address="1 Main St",
+            country="US",
+        )
+    )
+    project = None
+    try:
+        project = client.projects.create(
+            project=Project(
+                description=f"{seed_prefix} - rename row group",
+                locations=[EntityLink(id=location.id)],
+            )
+        )
+        worksheet = client.worksheets.setup_worksheet(project_id=project.id, add_sheet=True)
+        sheet = worksheet.sheets[0]
+        design = sheet.product_design
+
+        children = sheet.add_blank_rows(
+            row_names=[f"{seed_prefix} - group child A", f"{seed_prefix} - group child B"]
+        )
+        group = design.group_rows(
+            name=f"{seed_prefix} - original group",
+            child_row_ids=[r.row_id for r in children],
+        )
+        assert group.name == f"{seed_prefix} - original group"
+
+        header = next(r for r in design.rows if r.row_id == group.row_id)
+        renamed = f"{seed_prefix} - renamed group"
+        assert header.rename(new_name=renamed) is header
+        assert header.name == renamed
+
+        groups = design.get_groups(refresh=True)
+        assert next(g for g in groups if g.row_id == group.row_id).name == renamed
+    finally:
+        if project is not None:
+            with suppress(NotFoundError, BadRequestError):
+                client.projects.delete(id=project.id)
+        with suppress(NotFoundError, BadRequestError):
+            client.locations.delete(id=location.id)
 
 
 ########################## CELLS ##########################
