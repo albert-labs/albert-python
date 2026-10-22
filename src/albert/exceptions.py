@@ -115,6 +115,10 @@ class PreconditionRequiredError(AlbertClientError):
     """HTTP Error due to a 428 Precondition Required response."""
 
 
+class TooManyRequestsError(AlbertClientError):
+    """HTTP Error due to a 429 Too Many Requests response."""
+
+
 class AlbertServerError(AlbertHTTPError):
     """HTTP Error due to a server error response."""
 
@@ -145,6 +149,8 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
             return UnsupportedMediaTypeError
         case 428:
             return PreconditionRequiredError
+        case 429:
+            return TooManyRequestsError
         case 500:
             return InternalServerError
         case 502:

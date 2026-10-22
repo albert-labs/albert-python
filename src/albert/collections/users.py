@@ -203,7 +203,8 @@ class UserCollection(BaseCollection):
         teams : list[str], optional
             Restrict to members of any of these teams.
         locations : list[str], optional
-            Restrict to users at any of these location IDs.
+            Restrict to users at any of these locations, by location name
+            (for example, ``"Albert HQ"``). Location IDs (``LOC...``) are not accepted.
         status : list[Status], optional
             Restrict to users with any of these statuses (e.g. active, inactive).
         user_id : list[UserId], optional
@@ -228,7 +229,12 @@ class UserCollection(BaseCollection):
         custom_fields : dict[str, Any], optional
             Filter by custom field values.
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         source_field : list[str], optional
             Restrict which fields are returned in the response.
         witnesser : list[str], optional
@@ -281,6 +287,7 @@ class UserCollection(BaseCollection):
             max_items=max_items,
             deserialize=deserialize,
             method="POST",
+            retry_safe=True,
             json=payload,
         )
 

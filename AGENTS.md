@@ -159,6 +159,19 @@ Rule of thumb: if you already have an `AlbertPaginator`, return it. Reach for `M
 
 Exception: when a backend caps page size below `DEFAULT_LIMIT` (1000), set `limit` in the search/list payload (or paginator params) to that cap so the first request is valid (see `substance_v4`, `workflows`). Collections still must not expose `limit` as a public method parameter.
 
+## Retries and timeouts
+
+`AlbertSession` (`src/albert/core/session.py`) owns transport resilience: the retry policy, retryable statuses, and the default timeout. Collections never build their own retry or timeout logic.
+
+- **Defaults are defined once in `albert.core.session`**: `DEFAULT_TIMEOUT = (10, 300)` (connect, read) and `RETRYABLE_STATUSES = (403, 429, 500, 502, 503, 504)`. Import them; never redefine them per collection.
+- **Every entry point that constructs a session defaults `timeout=DEFAULT_TIMEOUT`, never `None`.** A forwarded `None` default silently overrides the session default and disables the timeout. `timeout=None` is the caller's explicit opt-out only. Mind the asymmetry with `retries`, where `None` means "use the session default".
+- **Throttled calls (429) are retried for every method** by the `_AlbertRetry` policy and raise `TooManyRequestsError` (subclass of `AlbertClientError`) once retries are exhausted. Other retryable statuses retry idempotent methods only, so mutating calls are never replayed after a 5xx.
+- **Read-only calls issued with POST pass `retry_safe=True`** so transient statuses retry them too: set it on `AlbertPaginator(..., method="POST")` for paged searches and on direct `session.post(...)` calls (e.g. facet lookups). GET-based reads need no flag; idempotent methods already retry.
+- **Never mark mutating calls `retry_safe`.** Replaying a create, update, or delete after a 5xx can duplicate writes.
+- **`retry_safe` state is scoped to a single call** (a `ContextVar` set and reset around the request). Do not persist retry-safety state on the session or thread it through collection state.
+- **`AsyncAlbertSession` has no retry policy or default timeout.** Do not assume sync/async parity when porting transport behavior; flag the gap instead.
+- **Tests** live in `tests/unit/core/`: the `is_retry` matrix (method, status, marker), marker scoping, paginator flag forwarding, and the 429 exception mapping. When adding a session-constructing entry point, assert the default through the wrapper itself, not only through a directly built `AlbertSession`.
+
 ## Testing
 
 - **Read `tests/TESTING.md` before writing or changing any test.** It decides unit vs
@@ -370,8 +383,20 @@ class TagCollection(BaseCollection):
 - Deprecate functions, methods, properties, and classes with `@deprecated` from
   `typing_extensions`. It emits the runtime `DeprecationWarning`; do not also call
   `warnings.warn` inside them, or callers see the warning twice.
-- Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=2)` only for deprecated
-  parameters or argument values. Pydantic model caveat: see `OPINIONS.md`.
+- Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=find_stack_level())` only
+  for deprecated parameters or argument values. Pydantic model caveat: see `OPINIONS.md`.
+
+## Warnings
+
+- Every `warnings.warn` call in `src/albert` passes `stacklevel=find_stack_level()` from
+  `albert.core.utils`. Never hardcode `stacklevel`: `@validate_call` and SDK helpers add
+  frames, so a literal number points inside the SDK or pydantic, and Python's default
+  filters then hide `DeprecationWarning` from callers. `tests/unit/meta/test_warning_conventions.py`
+  enforces this.
+- `@deprecated` (typing_extensions) handles its own `stacklevel`; keep using it for deprecated
+  callables and classes.
+- Unit tests for a warning assert `record[0].filename == __file__` so attribution is checked,
+  not only the message.
 
 ## After Every Code Edit
 

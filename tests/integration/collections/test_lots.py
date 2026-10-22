@@ -360,12 +360,13 @@ def test_transfer_all_same_location_warns(client: Albert, seeded_lot: Lot):
     current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
     assert current_location_id is not None, "Seeded lot must have a storage location"
 
-    with pytest.warns(UserWarning, match="Full Transfer is not allowed"):
+    with pytest.warns(UserWarning, match="Full Transfer is not allowed") as record:
         result = client.lots.transfer(
             lot_id=seeded_lot.id,
             quantity="ALL",
             storage_location_id=current_location_id,
         )
+    assert record[0].filename == __file__
     assert result.id == seeded_lot.id
     assert result.storage_location is not None
     assert result.storage_location.id == current_location_id

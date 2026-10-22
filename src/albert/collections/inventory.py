@@ -8,6 +8,7 @@ from typing_extensions import deprecated
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
+from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
@@ -18,7 +19,7 @@ from albert.core.shared.identifiers import (
     WorksheetId,
 )
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertPartialError
+from albert.exceptions import AlbertPartialError, NotFoundError
 from albert.resources.facet import FacetItem
 from albert.resources.instructions import (
     Instruction,
@@ -58,12 +59,15 @@ _INSTRUCTIONS_PAGE_SIZE = 100
 # Bulk instruction reads accept at most this many formula IDs per call.
 _INSTRUCTIONS_BULK_MAX_IDS = 15
 
+# get_by_ids lists at most this many skipped IDs in its warning.
+_MAX_SKIPPED_IDS_SHOWN = 10
+
 
 class InventoryCollection(BaseCollection):
     """Manage Inventory Items in the Albert platform.
 
     An Inventory Item is a catalog entry for a physical or formulated material
-    tracked in Albert. Every item belongs to one of four categories:
+    tracked in Albert. Every item belongs to one of five categories:
 
     - ``RawMaterials``: purchased substances used as ingredients (e.g. a solvent
       or pigment), typically linked to a manufacturing Company and one or more
@@ -73,6 +77,7 @@ class InventoryCollection(BaseCollection):
     - ``Formulas``: mixtures designed in Albert. A Formula item is created under
       its parent Project by passing ``project_id`` to
       [`create`][albert.collections.inventory.InventoryCollection.create].
+    - ``Reaction``: products of chemical reactions recorded in Albert.
 
     Inventory Items are referenced throughout the platform by their Inventory ID
     (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
@@ -441,7 +446,7 @@ class InventoryCollection(BaseCollection):
         """Get multiple fully populated inventory items by their IDs.
 
         Arbitrarily long ID lists are supported. Items not found are omitted
-        from the result.
+        from the result, and a warning lists the IDs that were skipped.
 
         !!! example
             ```python
@@ -464,8 +469,21 @@ class InventoryCollection(BaseCollection):
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
         inventory = []
         for batch in batches:
-            response = self.session.get(f"{self.base_path}/ids", params={"id": batch})
+            try:
+                response = self.session.get(f"{self.base_path}/ids", params={"id": batch})
+            except NotFoundError:
+                # Missing IDs are dropped unless the whole batch is missing, which is
+                # reported as not found; omit it like any other missing ID.
+                continue
             inventory.extend([InventoryItem(**item) for item in response.json()["Items"]])
+
+        found = {item.id if item.id.startswith("INV") else f"INV{item.id}" for item in inventory}
+        skipped = [item_id for item_id in dict.fromkeys(ids) if item_id not in found]
+        if skipped:
+            shown = ", ".join(skipped[:_MAX_SKIPPED_IDS_SHOWN])
+            more = len(skipped) - _MAX_SKIPPED_IDS_SHOWN
+            suffix = f" (and {more} more)" if more > 0 else ""
+            logger.warning(f"Skipped {len(skipped)} inventory IDs not found: {shown}{suffix}")
         return inventory
 
     @deprecated(
@@ -839,20 +857,22 @@ class InventoryCollection(BaseCollection):
             if composite_search is not None:
                 payload["compositeSearch"] = composite_search
             return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
+                mode=PaginationMode.SEARCH_AFTER,
                 path=f"{self.base_path}/search",
                 session=self.session,
                 max_items=max_items,
                 deserialize=deserialize,
                 method="POST",
+                retry_safe=True,
                 json=payload,
             )
 
         path = (
             f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
         )
+        # llmsearch has no search_after support; it stays on offset pagination.
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.OFFSET if match_all_conditions else PaginationMode.SEARCH_AFTER,
             path=path,
             params=query_params,
             session=self.session,
@@ -903,7 +923,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1151,7 +1171,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1193,7 +1213,12 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional
@@ -1441,7 +1466,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1483,7 +1508,12 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional

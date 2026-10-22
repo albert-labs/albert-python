@@ -89,6 +89,26 @@ envelopes have shipped broken: a newly added service required a different query
 param than the SDK sent and rejected an unsupported one, found only when
 integration tests ran.
 
+## Session defaults — a forwarded None overrides the session default
+
+`AlbertSession` treats `retries=None` as "use the default (3)" but `timeout=None` as
+"no timeout". A wrapper that forwards parameters with a `None` default therefore does
+not inherit the session default; it silently disables it:
+
+```python
+# Wrong: every client built through this entry point has no timeout.
+timeout: float | tuple[float, float] | None = None
+
+# Right: restate the session default; keep None as the caller's explicit opt-out.
+timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT
+```
+
+Why: the session gained a default timeout, but every `Albert()` entry point still
+forwarded `None`, so the default never took effect through the primary client or its
+classmethods. Any new entry point that constructs a session must restate the session
+defaults it forwards, and a unit test must assert the default through the entry point
+itself, not only through a directly constructed `AlbertSession`.
+
 ## Raw payloads — read both `albertId` and `id`
 
 Services differ on which key carries the entity ID in raw (non-model) payloads.
@@ -171,9 +191,20 @@ instantiated. Do not add a manual `warnings.warn(...)` inside a decorated callab
 callers get the same warning twice. Put the full message (what to use instead,
 removal timeline) in the decorator.
 
-Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=2)` only for a
-deprecated **parameter** or **argument value** on a method that is not itself
+Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=find_stack_level())` only
+for a deprecated **parameter** or **argument value** on a method that is not itself
 deprecated (e.g. `data_template_id` on property data void/unvoid).
+
+## Warnings: stacklevel=find_stack_level(), never a literal
+
+`stacklevel` counts frames from the `warnings.warn` call, and Python shows a
+`DeprecationWarning` by default only when the frame it lands on is in `__main__`. Public
+methods are wrapped by `@validate_call`, so even `stacklevel=2` in a method body lands in
+`pydantic/_internal/_validate_call.py`, and the deprecation is silently hidden from
+callers. Helpers shared across collections are reached at different depths, so no
+literal is right for all of them. `find_stack_level()` (`albert.core.utils`, modeled on
+pandas' helper of the same name) skips every `albert` and `pydantic` frame and returns
+the level of the caller's line.
 
 Pydantic models: a deprecation warning raised during construction (custom
 `__init__` or a class decorator) also fires when Pydantic builds that model from

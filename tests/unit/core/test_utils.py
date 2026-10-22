@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import importlib.util
+import inspect
 import json
+import warnings
+from pathlib import Path
+from types import ModuleType
 
 import pytest
 import requests
 
-from albert.core.utils import ensure_list, unpack_bulk_created_items
+from albert.core import utils
+from albert.core.utils import ensure_list, find_stack_level, unpack_bulk_created_items
 from albert.exceptions import AlbertPartialError
 
 
@@ -111,3 +117,75 @@ def test_unpack_bulk_created_items_partial_error_with_no_created_items():
 
     assert exc_info.value.created_items == []
     assert exc_info.value.failed_items == [{"id": "A1", "error": "bad"}]
+
+
+# ---------------------------------------------------------------------------
+# find_stack_level
+# ---------------------------------------------------------------------------
+
+_FAKE_SDK_SOURCE = """
+import warnings
+
+from pydantic import validate_call
+
+from albert.core.utils import find_stack_level
+
+
+def _helper():
+    warnings.warn("ignored change", UserWarning, stacklevel=find_stack_level())
+
+
+@validate_call
+def public_method(*, value: int):
+    _helper()
+
+
+def public_method_hardcoded():
+    _helper_hardcoded()
+
+
+def _helper_hardcoded():
+    warnings.warn("hardcoded", UserWarning, stacklevel=2)
+"""
+
+
+@pytest.fixture
+def fake_sdk(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    """A module that find_stack_level treats as SDK-internal, like ``src/albert``."""
+    package_dir = tmp_path / "fake_sdk"
+    package_dir.mkdir()
+    module_path = package_dir / "collection.py"
+    module_path.write_text(_FAKE_SDK_SOURCE)
+    monkeypatch.setattr(
+        utils, "_INTERNAL_PACKAGE_DIRS", (*utils._INTERNAL_PACKAGE_DIRS, f"{package_dir}/")
+    )
+    spec = importlib.util.spec_from_file_location("fake_sdk_collection", module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_find_stack_level_attributes_a_direct_warning_to_the_calling_line():
+    """Test that a warning raised outside the SDK is attributed to its own line."""
+    with pytest.warns(UserWarning) as record:
+        line = inspect.currentframe().f_lineno + 1
+        warnings.warn("direct", UserWarning, stacklevel=find_stack_level())
+
+    assert (record[0].filename, record[0].lineno) == (__file__, line)
+
+
+def test_find_stack_level_skips_validate_call_and_helper_frames(fake_sdk):
+    """Test that a warning from a helper behind @validate_call is attributed to the caller."""
+    with pytest.warns(UserWarning, match="ignored change") as record:
+        line = inspect.currentframe().f_lineno + 1
+        fake_sdk.public_method(value=1)
+
+    assert (record[0].filename, record[0].lineno) == (__file__, line)
+
+
+def test_hardcoded_stacklevel_is_attributed_to_sdk_internals(fake_sdk):
+    """Test that a hardcoded stacklevel lands inside the SDK, which find_stack_level avoids."""
+    with pytest.warns(UserWarning, match="hardcoded") as record:
+        fake_sdk.public_method_hardcoded()
+
+    assert record[0].filename == fake_sdk.__file__

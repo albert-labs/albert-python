@@ -19,8 +19,8 @@ from albert.core.shared.identifiers import (
     UserId,
 )
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
-from albert.core.utils import ensure_list
 from albert.exceptions import AlbertPartialError
+from albert.core.utils import ensure_list, find_stack_level
 from albert.resources.inventory import InventoryCategory
 from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentAction, LotSearchItem
 
@@ -477,7 +477,12 @@ class LotCollection(BaseCollection):
         storage_location : list[str], optional
             Filter by storage location name(s).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         owner : list[str], optional
             Filter by lot owner display name(s) or UserId(s).
         status : list[str], optional
@@ -548,12 +553,13 @@ class LotCollection(BaseCollection):
             payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.SEARCH_AFTER,
             path=f"{self.base_path}/search",
             session=self.session,
             max_items=max_items,
             deserialize=deserialize,
             method="POST",
+            retry_safe=True,
             json=payload,
         )
 
@@ -914,7 +920,7 @@ class LotCollection(BaseCollection):
                     "Full Transfer is not allowed for the same storage location; "
                     "the lot was not changed.",
                     UserWarning,
-                    stacklevel=2,
+                    stacklevel=find_stack_level(),
                 )
             else:
                 patch_payload = PatchPayload(

@@ -16,6 +16,7 @@ import responses
 from albert.collections.tasks import TaskCollection
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
+from albert.exceptions import AlbertException
 from albert.resources.attachments import AttachmentMetadata
 from albert.resources.data_templates import CurveDataEntityLink, DataColumnValue
 from albert.resources.notes import Note, NoteAttachmentEntityLink
@@ -25,6 +26,7 @@ from albert.resources.tasks import (
     GeneralTask,
     PropertyTask,
     TaskInventoryInformation,
+    TaskState,
 )
 from albert.utils.tasks import (
     build_property_payload,
@@ -37,6 +39,7 @@ from albert.utils.tasks import (
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
     resolve_attachment,
+    resolve_unassigned_task_state,
 )
 from tests.unit.conftest import UNIT_BASE_URL
 
@@ -88,6 +91,43 @@ def test_mirror_project_from_parent_id_accepts_lowercase_prefix():
     result = mirror_project_from_parent_id(payload=payload, parent_id="pro1")
 
     assert result == {"name": "Task", "Project": {"id": "pro1"}}
+
+
+# ---------------------------------------------------------------------------
+# resolve_unassigned_task_state
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_unassigned_task_state_defaults_missing_state_to_unclaimed():
+    """Test that an absent state resolves to Unclaimed."""
+    assert resolve_unassigned_task_state(state=None) is TaskState.UNCLAIMED
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(TaskState.NOT_STARTED, id="not-started"),
+        pytest.param(TaskState.IN_PROGRESS, id="in-progress"),
+    ],
+)
+def test_resolve_unassigned_task_state_rejects_ownership_states(state):
+    """Test that ownership states are rejected without an assignee."""
+    with pytest.raises(AlbertException, match="requires an assignee"):
+        resolve_unassigned_task_state(state=state)
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(TaskState.UNCLAIMED, id="unclaimed"),
+        pytest.param(TaskState.COMPLETED, id="completed"),
+        pytest.param(TaskState.CLOSED, id="closed"),
+        pytest.param(TaskState.CANCELLED, id="cancelled"),
+    ],
+)
+def test_resolve_unassigned_task_state_preserves_allowed_explicit_states(state):
+    """Test that explicit Unclaimed and terminal states pass through unchanged."""
+    assert resolve_unassigned_task_state(state=state) is state
 
 
 def _payload(offline_session, *, existing: GeneralTask, updated: GeneralTask):

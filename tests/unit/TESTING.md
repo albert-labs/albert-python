@@ -194,7 +194,8 @@ in docstrings. Add one when a rule is mechanically checkable and has been broken
 - `pytest.raises(ExcType, match="...")`: the most specific exception type, plus a `match` on the
   message when the message is part of the contract.
 - Floats: `pytest.approx`. Unordered results: compare sets or sort both sides.
-- Warnings: `pytest.warns(DeprecationWarning, match="...")`.
+- Warnings: `pytest.warns(DeprecationWarning, match="...") as record`, then assert
+  `record[0].filename == __file__` so the warning is attributed to the caller.
 
 ### Test data
 

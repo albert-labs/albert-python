@@ -87,7 +87,7 @@ class Interval(BaseAlbertModel):
     """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters. Not auto-filled from an object ``value``."""
 
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
-    """The unit of ``value``, where applicable. If given, the unit must have an ``id``. See Also --------"""
+    """The unit of ``value``, where applicable. If given, the unit must have an ``id``."""
 
     row_id: RowId | None = Field(default=None, alias="rowId", exclude=True)
 
@@ -109,7 +109,7 @@ class IntervalDetail(BaseAlbertModel):
     """The parameter name (e.g. ``"Equipment"``)."""
 
     value: str
-    """The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``). See Also --------"""
+    """The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``)."""
 
 
 class IntervalCombination(BaseAlbertModel):
@@ -133,7 +133,7 @@ class IntervalCombination(BaseAlbertModel):
     """A human-readable representation of the combination, of the form ``"[Parameter Name]: [Parameter Value] [Parameter Unit]"`` for each parameter."""
 
     interval_details: list[IntervalDetail] | None = Field(default=None, alias="intervalDetails")
-    """Per-parameter breakdown of the combination. Each entry has ``name`` (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``). See Also --------"""
+    """Per-parameter breakdown of the combination. Each entry has ``name`` (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``)."""
 
 
 class ParameterSetpoint(BaseAlbertModel):
