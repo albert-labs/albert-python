@@ -114,7 +114,7 @@ class DesignSpaceCollection(BaseCollection):
 
     def __init__(self, *, session: AlbertSession):
         super().__init__(session=session)
-        self.base_path = f"/api/{DesignSpaceCollection._api_version}/design/design-spaces"
+        self.base_path = f"/api/{DesignSpaceCollection._api_version}/design/spaces"
 
     @validate_call
     def create(
