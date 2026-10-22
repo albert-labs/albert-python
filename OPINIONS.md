@@ -89,6 +89,26 @@ envelopes have shipped broken: a newly added service required a different query
 param than the SDK sent and rejected an unsupported one, found only when
 integration tests ran.
 
+## Session defaults — a forwarded None overrides the session default
+
+`AlbertSession` treats `retries=None` as "use the default (3)" but `timeout=None` as
+"no timeout". A wrapper that forwards parameters with a `None` default therefore does
+not inherit the session default; it silently disables it:
+
+```python
+# Wrong: every client built through this entry point has no timeout.
+timeout: float | tuple[float, float] | None = None
+
+# Right: restate the session default; keep None as the caller's explicit opt-out.
+timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT
+```
+
+Why: the session gained a default timeout, but every `Albert()` entry point still
+forwarded `None`, so the default never took effect through the primary client or its
+classmethods. Any new entry point that constructs a session must restate the session
+defaults it forwards, and a unit test must assert the default through the entry point
+itself, not only through a directly constructed `AlbertSession`.
+
 ## Raw payloads — read both `albertId` and `id`
 
 Services differ on which key carries the entity ID in raw (non-model) payloads.
