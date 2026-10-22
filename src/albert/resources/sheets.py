@@ -4086,6 +4086,8 @@ class Row(BaseSessionResource):  # noqa:F811
         Apply a background color to every cell in the row.
     rename(new_name) -> Row
         Rename the row.
+    replace_inventory(inventory) -> Row
+        Replace (swap) the inventory item on the row.
     """
 
     row_id: str = Field(alias="rowId")
@@ -4228,6 +4230,71 @@ class Row(BaseSessionResource):  # noqa:F811
         for group in self.design._groups_cache or []:
             if group.row_id == self.row_id:
                 group.name = new_name
+        return self
+
+    @validate_call
+    def replace_inventory(
+        self,
+        *,
+        inventory: InventoryItem | InventoryId,
+    ) -> Row:
+        """Replace (swap) the inventory item on this ingredient row.
+
+        The row keeps its place on the sheet and stays linked to its cells; only the
+        inventory item it represents changes. The item's display name becomes the row
+        name.
+
+        !!! example
+            ```python
+            row = sheet.rows[0]
+            row.replace_inventory(inventory="INVA9999999")
+            ```
+
+        Parameters
+        ----------
+        inventory : InventoryItem or str
+            The inventory item to place on the row, or its ID (format ``INV...``). The
+            ``INV`` prefix is added to an ID if absent.
+
+        Returns
+        -------
+        Row
+            This row, with its new inventory item.
+
+        Raises
+        ------
+        AlbertException
+            If this row is not an ingredient (``INV``) row.
+        """
+        if self.type != CellType.INVENTORY:
+            row_type = self.type.value if isinstance(self.type, CellType) else self.type
+            raise AlbertException(
+                f"Cannot replace the inventory item on a row of type '{row_type}'. "
+                "Only ingredient (INV) rows support inventory replacement."
+            )
+        if not isinstance(inventory, InventoryItem):
+            from albert.collections.inventory import InventoryCollection
+
+            inventory = InventoryCollection(session=self.session).get_by_id(id=inventory)
+
+        payload = {
+            "data": [
+                {
+                    "operation": "replace",
+                    "attribute": "inventoryId",
+                    "rowId": self.row_id,
+                    "newValue": {"id": inventory.id, "name": inventory.name},
+                }
+            ]
+        }
+        self.session.patch(
+            url=f"/api/v3/worksheet/design/{self.design.id}/rows",
+            json=payload,
+        )
+
+        self.sheet.grid = None  # clear cached grids/rows so the next read reflects the swap
+        self.inventory_id = inventory.id
+        self.name = inventory.name
         return self
 
 
