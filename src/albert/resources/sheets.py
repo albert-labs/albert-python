@@ -689,6 +689,13 @@ class Design(BaseSessionResource):
                 ]
                 groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
 
+        # The row sequence does not carry group names; fill them in from the grid rows.
+        if any(g.name is None for g in groups):
+            name_by_row_id = {r.row_id: r.name for r in self.rows}
+            for g in groups:
+                if g.name is None:
+                    g.name = name_by_row_id.get(g.row_id)
+
         self._groups_cache = groups
         return groups
 
@@ -3980,6 +3987,8 @@ class Row(BaseSessionResource):  # noqa:F811
     -------
     recolor_cells(color) -> tuple[list[Cell], list[Cell]]
         Apply a background color to every cell in the row.
+    rename(new_name) -> Row
+        Rename the row.
     """
 
     row_id: str = Field(alias="rowId")
@@ -4065,6 +4074,64 @@ class Row(BaseSessionResource):  # noqa:F811
             cell_copy.format = {"bgColor": color.value}
             new_cells.append(cell_copy)
         return self.sheet.update_cells(cells=new_cells)
+
+    def rename(self, *, new_name: str) -> Row:
+        """Rename this row.
+
+        Only blank rows, including row group headers, and task rows can be renamed.
+        To rename a row group, rename its header row (the [`Row`][albert.resources.sheets.Row]
+        whose ``row_id`` matches the group's ``row_id``).
+
+        !!! example
+            ```python
+            group = sheet.product_design.get_groups()[0]
+            header = next(r for r in sheet.rows if r.row_id == group.row_id)
+            header.rename(new_name="Solvents")
+            ```
+
+        Parameters
+        ----------
+        new_name : str
+            The new name for the row. Must be a non-empty string of at most 255
+            characters.
+
+        Returns
+        -------
+        Row
+            This row, with its name updated.
+
+        Raises
+        ------
+        AlbertException
+            If the row is not a blank or task row, or if ``new_name`` is empty or
+            longer than 255 characters.
+        """
+        if self.type not in (CellType.BLANK, CellType.TAS):
+            raise AlbertException(
+                "Only blank rows, including row group headers, and task rows can be renamed."
+            )
+        if not new_name:
+            raise AlbertException("new_name must be a non-empty string.")
+        if len(new_name) > 255:
+            raise AlbertException("new_name must be at most 255 characters.")
+
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "name",
+                    "rowIds": [self.row_id],
+                    "newValue": new_name,
+                }
+            ]
+        }
+        self.session.patch(f"/api/v3/worksheet/design/{self.design.id}/rows", json=payload)
+
+        self.name = new_name
+        for group in self.design._groups_cache or []:
+            if group.row_id == self.row_id:
+                group.name = new_name
+        return self
 
 
 # Resolve forward references after all classes are defined

@@ -17,6 +17,7 @@ from albert.resources.sheets import (
     FormulationSpec,
     Row,
     RowConfig,
+    RowGroup,
     Sheet,
 )
 from tests.unit.conftest import UNIT_BASE_URL
@@ -778,6 +779,99 @@ def test_row_config_invalid_value_coerced_to_none():
     design = sheet.designs[0]
     row = Row(rowId="ROW1", type=CellType.APP, design=design, sheet=sheet, config="bogus")
     assert row.config is None
+
+
+@responses.activate
+def test_row_rename_sends_name_update(offline_session):
+    """Test that renaming a blank row sends its new name and updates the row in place."""
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows", status=204)
+    sheet = _process_sheet(offline_session)
+    design = sheet.product_design
+    design._groups_cache = [RowGroup(rowId="ROW5", name="Old name", child_row_ids=["ROW1"])]
+    row = Row(
+        rowId="ROW5", type=CellType.BLANK, design=design, sheet=sheet, session=offline_session
+    )
+
+    renamed = row.rename(new_name="New name")
+
+    assert renamed is row
+    assert row.name == "New name"
+    assert design._groups_cache[0].name == "New name"
+    assert len(responses.calls) == 1
+    assert json.loads(responses.calls[0].request.body) == {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "name",
+                "rowIds": ["ROW5"],
+                "newValue": "New name",
+            }
+        ]
+    }
+
+
+@responses.activate
+def test_row_rename_allows_task_rows(offline_session):
+    """Test that renaming a task row is allowed."""
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES2/rows", status=204)
+    sheet = _process_sheet(offline_session)
+    row = Row(
+        rowId="ROW9",
+        type=CellType.TAS,
+        design=sheet.result_design,
+        sheet=sheet,
+        session=offline_session,
+    )
+
+    row.rename(new_name="Renamed task")
+
+    assert row.name == "Renamed task"
+    assert len(responses.calls) == 1
+
+
+def test_row_rename_rejects_other_row_types(offline_session):
+    """Test that rows that are not blank or task rows cannot be renamed."""
+    sheet = _process_sheet(offline_session)
+    row = Row(
+        rowId="ROW2",
+        type=CellType.INVENTORY,
+        design=sheet.product_design,
+        sheet=sheet,
+        session=offline_session,
+    )
+
+    with pytest.raises(AlbertException, match="Only blank rows"):
+        row.rename(new_name="New name")
+
+
+def test_row_rename_rejects_empty_name(offline_session):
+    """Test that an empty new name is rejected."""
+    sheet = _process_sheet(offline_session)
+    row = Row(
+        rowId="ROW5",
+        type=CellType.BLANK,
+        design=sheet.product_design,
+        sheet=sheet,
+        session=offline_session,
+    )
+
+    with pytest.raises(AlbertException, match="non-empty"):
+        row.rename(new_name="")
+
+
+def test_row_rename_rejects_overlong_name(offline_session):
+    """Test that a new name longer than 255 characters is rejected."""
+    sheet = _process_sheet(offline_session)
+    row = Row(
+        rowId="ROW5",
+        type=CellType.BLANK,
+        design=sheet.product_design,
+        sheet=sheet,
+        session=offline_session,
+    )
+
+    with pytest.raises(AlbertException, match="at most 255"):
+        row.rename(new_name="x" * 256)
 
 
 def _products_sheet(session=None) -> Sheet:
