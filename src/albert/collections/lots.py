@@ -27,13 +27,16 @@ from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentActio
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
 
-# Maximum items accepted in one bulk update.
+# Maximum items accepted in one bulk update; the bulk update schema caps
+# each call at 300 items (maxItems).
 _BULK_UPDATE_MAX_ITEMS = 300
 
-# Maximum IDs accepted per delete call.
+# Maximum IDs accepted per delete call; the delete operation rejects more
+# than 5 IDs.
 _DELETE_MAX_IDS = 5
 
-# Maximum field changes accepted per lot in one bulk update.
+# Maximum field changes accepted per lot in one bulk update; the bulk update
+# schema caps each lot's change list at 4 entries (data maxItems).
 _BULK_UPDATE_MAX_ATTRIBUTES = 4
 
 # Attributes bulk update can apply, limited to fields the lot diff can emit.
