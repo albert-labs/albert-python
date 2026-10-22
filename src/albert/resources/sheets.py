@@ -28,10 +28,10 @@ _MAX_ROWS_PER_CREATE_CALL = 24
 # troubleshooting guide directs smaller sets per call to avoid timeouts.
 _MAX_COLUMNS_PER_CREATE_CALL = 25
 
-# The value-update schema allows 1000 entries per call (worksheet.yaml Values
-# maxItems); the service's maintenance guide sets the operational guardrail at
-# 200 per call to bound per-call formula-usage checks.
-_MAX_CELLS_PER_VALUE_UPDATE = 200
+# The value-update schema allows up to 1000 entries per call (worksheet.yaml
+# Values maxItems). Live verification showed 1000-entry updates succeed reliably
+# with no throughput cliff, so we send full-size batches.
+_MAX_CELLS_PER_VALUE_UPDATE = 1000
 
 # Marks "no baseline supplied" separately from a None baseline (a cell that is
 # genuinely new to the grid) so callers can hand in batch-resolved baselines.
