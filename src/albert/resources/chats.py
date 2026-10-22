@@ -167,6 +167,17 @@ class ChatSessionRef(BaseAlbertModel):
     """The chat session identifier (``SES…``) that receives the completion message."""
 
 
+class ChatSessionKind(str, Enum):
+    """The kind of a [`ChatSession`][albert.resources.chats.ChatSession].
+
+    Regular Ask Albert conversations are ``chat``. Sessions created by an automation run
+    are ``automation`` and carry ``automation_id`` and ``automation_run_id``.
+    """
+
+    CHAT = "chat"
+    AUTOMATION = "automation"
+
+
 class ChatSession(BaseResource):
     """A single "Ask Albert" conversation.
 
@@ -201,6 +212,15 @@ class ChatSession(BaseResource):
 
     last_message_at: str | None = Field(default=None, alias="lastMessageAt")
     """ISO 8601 timestamp of the most recent message in the session. Read from the server. Serialized as ``lastMessageAt``."""
+
+    kind: ChatSessionKind | None = Field(default=None)
+    """Whether this is a regular ``chat`` session or one created by an ``automation`` run."""
+
+    automation_id: str | None = Field(default=None, alias="automationId")
+    """The automation that owns this session, if any. Serialized as ``automationId``."""
+
+    automation_run_id: str | None = Field(default=None, alias="automationRunId")
+    """The automation run that created this session, if any. Serialized as ``automationRunId``."""
 
 
 class ChatMessageAttachment(BaseAlbertModel):
