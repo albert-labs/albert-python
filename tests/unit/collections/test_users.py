@@ -2,8 +2,11 @@
 
 Allowed under the patch-builder exception in OPINIONS.md: these guard that role,
 location, class and witnesser changes are sent in the shapes the users API takes,
-and that values carried along unchanged send nothing.
+that values carried along unchanged send nothing, and that clearing a role or
+location warns instead of building a patch the platform would reject.
 """
+
+import warnings
 
 import pytest
 
@@ -114,11 +117,27 @@ def test_adding_role_and_location_to_user_without_them(offline_session):
     ]
 
 
-def test_clearing_role_and_location_deletes_them(offline_session):
-    """Test that an empty role list and a None location delete the current values."""
+def test_clearing_role_and_location_warns_and_sends_nothing(offline_session):
+    """Test that clearing the role or location warns and no patch is emitted."""
     updated = User(id="USR1", name="Ada", roles=[], location=None)
 
-    assert _patches(offline_session, updated=updated) == [
-        {"operation": "delete", "attribute": "role", "oldValue": "ROL1"},
-        {"operation": "delete", "attribute": "locationId", "oldValue": "LOC1"},
+    with pytest.warns(UserWarning, match="cannot remove") as record:
+        patches = _patches(offline_session, updated=updated)
+
+    assert patches == []
+    assert sorted(str(w.message) for w in record) == [
+        "update() cannot remove location, so the change was ignored.",
+        "update() cannot remove roles, so the change was ignored.",
     ]
+
+
+def test_clearing_absent_role_and_location_sends_nothing(offline_session):
+    """Test that clearing a role or location the user does not have emits nothing."""
+    existing = User(id="USR1", name="Ada")
+    updated = User(id="USR1", name="Ada", roles=[], location=None)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        patches = _patches(offline_session, updated=updated, existing=existing)
+
+    assert patches == []

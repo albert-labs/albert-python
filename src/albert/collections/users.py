@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Iterator
 from typing import Any
 
@@ -428,7 +429,8 @@ class UserCollection(BaseCollection):
         -----
         The following fields can be updated: ``email``, ``location``, ``metadata``,
         ``name``, ``roles``, ``status``, ``user_class``, ``witnesser``. A user has at
-        most one role.
+        most one role. A role or location can be changed but not removed; clearing
+        ``roles`` or ``location`` on a user that has one is ignored with a warning.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=user.id)
@@ -467,6 +469,7 @@ class UserCollection(BaseCollection):
             payload.data.extend(
                 _id_patches(
                     "role",
+                    field="roles",
                     old_id=_first_id(existing.roles),
                     new_id=_first_id(updated.roles),
                     add_as_list=True,
@@ -476,6 +479,7 @@ class UserCollection(BaseCollection):
             payload.data.extend(
                 _id_patches(
                     "locationId",
+                    field="location",
                     old_id=getattr(existing.location, "id", None),
                     new_id=getattr(updated.location, "id", None),
                 )
@@ -532,12 +536,26 @@ def _first_id(links: list[Any] | None) -> str | None:
 
 
 def _id_patches(
-    attribute: str, *, old_id: str | None, new_id: str | None, add_as_list: bool = False
+    attribute: str,
+    *,
+    field: str,
+    old_id: str | None,
+    new_id: str | None,
+    add_as_list: bool = False,
 ) -> list[PatchDatum]:
-    """Build the add, update or delete patch for a field the users API takes by ID."""
+    """Build the add or update patch for a field the users API takes by ID."""
     if old_id == new_id:
         return []
-    if old_id and new_id:
+    if new_id is None:
+        # The platform does not support removing a role or location, so a
+        # cleared value warns and is skipped rather than building a patch for it.
+        warnings.warn(
+            f"update() cannot remove {field}, so the change was ignored.",
+            UserWarning,
+            stacklevel=4,
+        )
+        return []
+    if old_id:
         return [
             PatchDatum(
                 operation=PatchOperation.UPDATE,
@@ -546,8 +564,6 @@ def _id_patches(
                 new_value=new_id,
             )
         ]
-    if old_id:
-        return [PatchDatum(operation=PatchOperation.DELETE, attribute=attribute, old_value=old_id)]
     return [
         PatchDatum(
             operation=PatchOperation.ADD,
