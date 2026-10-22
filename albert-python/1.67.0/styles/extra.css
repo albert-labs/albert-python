@@ -1,0 +1,59 @@
+:root {
+  --md-primary-fg-color: #7D19FE;
+  --md-accent-fg-color: #7D19FE;
+}
+
+.md-typeset a:hover,
+.md-nav__link:hover,
+.md-nav--primary .md-nav__link:hover,
+.md-nav--secondary .md-nav__link:hover {
+  color: #0b62fe;
+}
+
+.logo-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto 4rem auto;
+  aspect-ratio: 6 / 1;
+}
+
+.logo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: auto !important;
+  object-fit: contain;
+}
+
+.only-dark {
+  display: none;
+}
+
+.only-light {
+  display: block;
+}
+
+[data-md-color-scheme="slate"] .only-dark {
+  display: block;
+}
+
+[data-md-color-scheme="slate"] .only-light {
+  display: none;
+}
+
+.lambda-layer-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.lambda-layer-filters select {
+  color: inherit;
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 0.2rem;
+  padding: 0.1rem 0.3rem;
+}
