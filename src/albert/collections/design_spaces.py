@@ -108,7 +108,7 @@ class DesignSpaceCollection(BaseCollection):
         Delete a design space by its ID.
     """
 
-    _api_version = "v4.0"
+    _api_version = "v4"
     _updatable_attributes = {"name", "description"}
     _non_deletable_attributes = {"name"}
 

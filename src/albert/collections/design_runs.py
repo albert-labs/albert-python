@@ -323,7 +323,7 @@ class DesignRunV4Collection(DesignRunCollection):
         The base path for v4 design runs.
     """
 
-    _api_version = "v4.0"
+    _api_version = "v4"
     _validate_suffix = "validation"
 
     def __init__(self, *, session: AlbertSession):

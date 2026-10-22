@@ -18,7 +18,7 @@ VALIDATION = {"valid": True, "violations": []}
 
 ROUTES = [
     (DesignRunCollection, "/api/v3/designruns", "/api/v3/designruns/validate"),
-    (DesignRunV4Collection, "/api/v4.0/design/runs", "/api/v4.0/design/runs/validation"),
+    (DesignRunV4Collection, "/api/v4/design/runs", "/api/v4/design/runs/validation"),
 ]
 
 
