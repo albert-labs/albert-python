@@ -1575,23 +1575,41 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def _create_planned_rows(
         self, *, runs: list[dict], product_rows: list[Row], virtual_order: list[str]
     ) -> tuple[list[Row], dict[str, Row]]:
-        """Create the planned rows run by run and map every row key to its Row.
+        """Create the planned rows block by block and map every row key to its Row.
 
-        Each run shares one anchor row, so it is created with one call (chained
-        in 24-row chunks to preserve order). Returns the product rows in the
-        planned order and the resolution of every row key, including ``__new__``
-        placeholders.
+        A block is a maximal run of new rows in the planned order, created with
+        one call below the row directly above it (chained in 24-row chunks to
+        preserve order). Blocks are emitted in planned order, which is a valid
+        execution order: a block's anchor row always sits above it, so a block
+        anchored at another block's new row is emitted after that block.
+        Returns the product rows in the planned order and the resolution of
+        every row key, including ``__new__`` placeholders.
         """
         key_to_row: dict[str, Row] = {row.row_id: row for row in product_rows}
+        inventory_by_key: dict[str, str] = {}
         for run in runs:
+            inventory_by_key.update(zip(run["keys"], run["inventory_ids"], strict=True))
+
+        i = 0
+        while i < len(virtual_order):
+            key = virtual_order[i]
+            if key not in inventory_by_key:
+                i += 1
+                continue
+            j = i
+            while j < len(virtual_order) and virtual_order[j] in inventory_by_key:
+                j += 1
+            block = virtual_order[i:j]
+            anchor = virtual_order[i - 1] if i > 0 else None
             position = None
-            if run["anchor"] is not None:
-                position = {"reference_id": key_to_row[run["anchor"]].row_id, "position": "below"}
+            if anchor is not None:
+                position = {"reference_id": key_to_row[anchor].row_id, "position": "below"}
             created_rows = self.add_inventory_rows(
-                inventory_ids=run["inventory_ids"], position=position
+                inventory_ids=[inventory_by_key[k] for k in block], position=position
             )
-            for key, row in zip(run["keys"], created_rows, strict=True):
+            for key, row in zip(block, created_rows, strict=True):
                 key_to_row[key] = row
+            i = j
         return [key_to_row[key] for key in virtual_order], key_to_row
 
     @staticmethod
@@ -1654,8 +1672,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     index += 1
                 design._columns[index:index] = columns
         if design._grid is not None:
-            for column in columns:
-                design._grid[column.df_name] = None
+            # Add all new columns in one concat; inserting them one at a time
+            # fragments the DataFrame and gets quadratically slow on wide loads.
+            design._grid = pd.concat(
+                [
+                    design._grid,
+                    pd.DataFrame(
+                        None, index=design._grid.index, columns=[c.df_name for c in columns]
+                    ),
+                ],
+                axis=1,
+            )
         for other_design in self.designs:
             if other_design is not design:
                 other_design._grid = None

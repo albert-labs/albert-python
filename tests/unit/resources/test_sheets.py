@@ -1560,13 +1560,13 @@ def test_add_formulations_enforce_order_creates_runs_in_place(offline_session):
     responses.post(
         f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
         json=[
-            {"rowId": "ROW9", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None}
+            {"rowId": "ROW9", "id": "INVA3", "type": "INV", "name": "Water", "manufacturer": None}
         ],
     )
     responses.post(
         f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
         json=[
-            {"rowId": "ROW10", "id": "INVA3", "type": "INV", "name": "Water", "manufacturer": None}
+            {"rowId": "ROW10", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None}
         ],
     )
     responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
@@ -1600,19 +1600,19 @@ def test_add_formulations_enforce_order_creates_runs_in_place(offline_session):
     ]
     assert len(rows_posts) == 2
     assert json.loads(rows_posts[0].request.body) == [
-        {"type": "INV", "id": "INVA1", "referenceId": "ROW3", "position": "below"}
+        {"type": "INV", "id": "INVA3", "referenceId": "ROW2", "position": "below"}
     ]
     assert json.loads(rows_posts[1].request.body) == [
-        {"type": "INV", "id": "INVA3", "referenceId": "ROW2", "position": "below"}
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW3", "position": "below"}
     ]
 
     patches = [c for c in responses.calls if c.request.method == "PATCH"]
     ingredient_payload = json.loads(patches[0].request.body)
     assert [(entry["Id"]["rowId"], entry["Id"]["colId"]) for entry in ingredient_payload] == [
         ("ROW3", "COL5"),
-        ("ROW9", "COL5"),
+        ("ROW10", "COL5"),
         ("ROW2", "COL6"),
-        ("ROW10", "COL6"),
+        ("ROW9", "COL6"),
     ]
 
     # The cache is dropped when the operation completes, so the next read
@@ -1671,6 +1671,101 @@ def test_add_formulation_enforce_order_batches_new_rows(offline_session):
     assert json.loads(rows_posts[0].request.body) == [
         {"type": "INV", "id": "INVA2", "referenceId": "ROW2", "position": "below"},
         {"type": "INV", "id": "INVA1", "referenceId": "ROW2", "position": "below"},
+    ]
+
+
+@responses.activate
+def test_add_formulations_creates_contiguous_new_rows_in_one_call(offline_session):
+    """Test new rows that are contiguous in the planned order are created in one call."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+        json=[
+            {
+                "name": "FA",
+                "type": "INV",
+                "id": "INVFA",
+                "Formulas": [{"colId": "COL5", "formulaId": "INVFA"}],
+            },
+            {
+                "name": "FB",
+                "type": "INV",
+                "id": "INVFB",
+                "Formulas": [{"colId": "COL6", "formulaId": "INVFB"}],
+            },
+        ],
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [],
+                }
+            ],
+            "Formulas": [],
+        },
+    )
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {"rowId": "ROW10", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None},
+            {
+                "rowId": "ROW11",
+                "id": "INVA2",
+                "type": "INV",
+                "name": "Sugar",
+                "manufacturer": None,
+            },
+            {"rowId": "ROW12", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None},
+        ],
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        enforce_order=True,
+        formulations=[
+            FormulationSpec(
+                name="FA",
+                components=[
+                    Component(inventory_id="INVA1", amount=50.0),
+                    Component(inventory_id="INVA2", amount=50.0),
+                ],
+            ),
+            FormulationSpec(
+                name="FB",
+                components=[
+                    Component(inventory_id="INVA2", amount=60.0),
+                    Component(inventory_id="INVA1", amount=40.0),
+                ],
+            ),
+        ],
+    )
+
+    assert [col.column_id for col in columns] == ["COL5", "COL6"]
+    rows_posts = [
+        c
+        for c in responses.calls
+        if c.request.method == "POST" and c.request.url.endswith("/rows")
+    ]
+    assert len(rows_posts) == 1
+    assert json.loads(rows_posts[0].request.body) == [
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW1", "position": "below"},
+        {"type": "INV", "id": "INVA2", "referenceId": "ROW1", "position": "below"},
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW1", "position": "below"},
+    ]
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    ingredient_payload = json.loads(patches[0].request.body)
+    assert [(entry["Id"]["rowId"], entry["Id"]["colId"]) for entry in ingredient_payload] == [
+        ("ROW10", "COL5"),
+        ("ROW11", "COL5"),
+        ("ROW11", "COL6"),
+        ("ROW12", "COL6"),
     ]
 
 
