@@ -127,11 +127,15 @@ class LocalizationCollection(BaseCollection):
 
         Notes
         -----
+        An empty ``patches`` list is a no-op.
+
         Each patch entry targets a single translation via ``attribute`` (e.g.
         ``"name"``), ``language``, and ``unique_id``. ``operation="add"`` takes only
         ``new_value``; ``operation="update"`` takes ``old_value`` and ``new_value``;
         ``operation="delete"`` takes only ``old_value``.
         """
+        if not patches:
+            return
         self.session.patch(
             f"{self.base_path}/{id}",
             json={
