@@ -18,6 +18,7 @@ from albert.resources.sheets import (
     Row,
     RowConfig,
     RowGroup,
+    RowPosition,
     Sheet,
 )
 from tests.unit.conftest import UNIT_BASE_URL
@@ -781,6 +782,23 @@ def test_row_config_invalid_value_coerced_to_none():
     assert row.config is None
 
 
+def test_move_rows_payload_whole_shape():
+    """Test the row-move payload for multiple rows moved below a reference row."""
+    assert Sheet._move_rows_payload(
+        row_ids=["ROW13", "ROW16"], reference_id="ROW10", position=RowPosition.BELOW
+    ) == {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "sequence",
+                "sourceId": ["ROW13", "ROW16"],
+                "referenceId": "ROW10",
+                "position": "below",
+            }
+        ]
+    }
+
+
 @responses.activate
 def test_row_rename_sends_name_update(offline_session):
     """Test that renaming a blank row sends its new name and updates the row in place."""
@@ -808,6 +826,57 @@ def test_row_rename_sends_name_update(offline_session):
             }
         ]
     }
+
+
+@pytest.mark.parametrize(
+    ("position", "expected"),
+    [(RowPosition.ABOVE, "above"), (RowPosition.BELOW, "below"), ("above", "above")],
+)
+def test_move_rows_payload_position(position, expected):
+    """Test that the row-move payload serializes enum and string positions to wire values."""
+    payload = Sheet._move_rows_payload(row_ids=["ROW2"], reference_id="ROW1", position=position)
+    assert payload["data"][0]["position"] == expected
+
+
+def test_move_rows_rejects_reference_in_moved_rows():
+    """Test that move_rows rejects a reference row that is also being moved."""
+    sheet = Sheet(**_PROCESS_SHEET)
+    with pytest.raises(AlbertException, match="reference_id"):
+        sheet.move_rows(row_ids=["ROW1", "ROW2"], reference_id="ROW2", design_id="DES1")
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    ("method", "kwargs", "url"),
+    [
+        (
+            "delete_row",
+            {"row_id": "ROW1", "design_id": "DES1"},
+            "/api/v3/worksheet/design/DES1/rows",
+        ),
+        (
+            "delete_rows",
+            {"row_ids": ["ROW1"], "design_id": "DES1"},
+            "/api/v3/worksheet/design/DES1/rows",
+        ),
+        ("delete_column", {"column_id": "COL1"}, "/api/v3/worksheet/sheet/SHEET1/columns"),
+        ("delete_columns", {"column_ids": ["COL1"]}, "/api/v3/worksheet/sheet/SHEET1/columns"),
+    ],
+)
+def test_delete_clears_design_level_grid_cache(offline_session, method, kwargs, url):
+    """Test that deletes clear cached design grids even when the sheet grid itself is unset."""
+    sheet = _products_sheet(session=offline_session)
+    design = sheet.product_design
+    design._grid = pd.DataFrame(index=["DES1#ROW1"])
+    design._rows = [_inv_row(sheet, "ROW1", "INV1")]
+    design._columns = [Column(colId="COL1", type=CellType.LKP, sheet=sheet)]
+    responses.delete(f"{UNIT_BASE_URL}{url}", status=204)
+
+    getattr(sheet, method)(**kwargs)
+
+    assert design._grid is None
+    assert design._rows is None
+    assert design._columns is None
 
 
 @responses.activate
@@ -1491,13 +1560,13 @@ def test_add_formulations_enforce_order_creates_runs_in_place(offline_session):
     responses.post(
         f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
         json=[
-            {"rowId": "ROW9", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None}
+            {"rowId": "ROW9", "id": "INVA3", "type": "INV", "name": "Water", "manufacturer": None}
         ],
     )
     responses.post(
         f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
         json=[
-            {"rowId": "ROW10", "id": "INVA3", "type": "INV", "name": "Water", "manufacturer": None}
+            {"rowId": "ROW10", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None}
         ],
     )
     responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
@@ -1531,19 +1600,19 @@ def test_add_formulations_enforce_order_creates_runs_in_place(offline_session):
     ]
     assert len(rows_posts) == 2
     assert json.loads(rows_posts[0].request.body) == [
-        {"type": "INV", "id": "INVA1", "referenceId": "ROW3", "position": "below"}
+        {"type": "INV", "id": "INVA3", "referenceId": "ROW2", "position": "below"}
     ]
     assert json.loads(rows_posts[1].request.body) == [
-        {"type": "INV", "id": "INVA3", "referenceId": "ROW2", "position": "below"}
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW3", "position": "below"}
     ]
 
     patches = [c for c in responses.calls if c.request.method == "PATCH"]
     ingredient_payload = json.loads(patches[0].request.body)
     assert [(entry["Id"]["rowId"], entry["Id"]["colId"]) for entry in ingredient_payload] == [
         ("ROW3", "COL5"),
-        ("ROW9", "COL5"),
+        ("ROW10", "COL5"),
         ("ROW2", "COL6"),
-        ("ROW10", "COL6"),
+        ("ROW9", "COL6"),
     ]
 
     # The cache is dropped when the operation completes, so the next read
@@ -1602,6 +1671,101 @@ def test_add_formulation_enforce_order_batches_new_rows(offline_session):
     assert json.loads(rows_posts[0].request.body) == [
         {"type": "INV", "id": "INVA2", "referenceId": "ROW2", "position": "below"},
         {"type": "INV", "id": "INVA1", "referenceId": "ROW2", "position": "below"},
+    ]
+
+
+@responses.activate
+def test_add_formulations_creates_contiguous_new_rows_in_one_call(offline_session):
+    """Test new rows that are contiguous in the planned order are created in one call."""
+    sheet = _products_sheet(session=offline_session)
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+        json=[
+            {
+                "name": "FA",
+                "type": "INV",
+                "id": "INVFA",
+                "Formulas": [{"colId": "COL5", "formulaId": "INVFA"}],
+            },
+            {
+                "name": "FB",
+                "type": "INV",
+                "id": "INVFB",
+                "Formulas": [{"colId": "COL6", "formulaId": "INVFB"}],
+            },
+        ],
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [],
+                }
+            ],
+            "Formulas": [],
+        },
+    )
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[
+            {"rowId": "ROW10", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None},
+            {
+                "rowId": "ROW11",
+                "id": "INVA2",
+                "type": "INV",
+                "name": "Sugar",
+                "manufacturer": None,
+            },
+            {"rowId": "ROW12", "id": "INVA1", "type": "INV", "name": "Salt", "manufacturer": None},
+        ],
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        enforce_order=True,
+        formulations=[
+            FormulationSpec(
+                name="FA",
+                components=[
+                    Component(inventory_id="INVA1", amount=50.0),
+                    Component(inventory_id="INVA2", amount=50.0),
+                ],
+            ),
+            FormulationSpec(
+                name="FB",
+                components=[
+                    Component(inventory_id="INVA2", amount=60.0),
+                    Component(inventory_id="INVA1", amount=40.0),
+                ],
+            ),
+        ],
+    )
+
+    assert [col.column_id for col in columns] == ["COL5", "COL6"]
+    rows_posts = [
+        c
+        for c in responses.calls
+        if c.request.method == "POST" and c.request.url.endswith("/rows")
+    ]
+    assert len(rows_posts) == 1
+    assert json.loads(rows_posts[0].request.body) == [
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW1", "position": "below"},
+        {"type": "INV", "id": "INVA2", "referenceId": "ROW1", "position": "below"},
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW1", "position": "below"},
+    ]
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    ingredient_payload = json.loads(patches[0].request.body)
+    assert [(entry["Id"]["rowId"], entry["Id"]["colId"]) for entry in ingredient_payload] == [
+        ("ROW10", "COL5"),
+        ("ROW11", "COL5"),
+        ("ROW11", "COL6"),
+        ("ROW12", "COL6"),
     ]
 
 
@@ -1768,7 +1932,7 @@ def test_update_cells_drops_the_cache_for_unknown_rows(offline_session):
 
 @responses.activate
 def test_update_cells_groups_large_writes_into_platform_sized_calls(offline_session):
-    """Test that a write of more than 200 cells is split at the platform guardrail."""
+    """Test that a write of more than 1000 cells is split at the platform guardrail."""
     sheet = _products_sheet(session=offline_session)
     _register_products_grid()
     responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
@@ -1782,13 +1946,13 @@ def test_update_cells_groups_large_writes_into_platform_sized_calls(offline_sess
             type=CellType.INVENTORY,
             design_id="DES1",
         )
-        for i in range(450)
+        for i in range(2050)
     ]
     updated, failed = sheet.update_cells(cells=cells)
 
     patches = [c for c in responses.calls if c.request.method == "PATCH"]
-    assert [len(json.loads(c.request.body)) for c in patches] == [200, 200, 50]
-    assert len(updated) == 450
+    assert [len(json.loads(c.request.body)) for c in patches] == [1000, 1000, 50]
+    assert len(updated) == 2050
     assert failed == []
 
 
