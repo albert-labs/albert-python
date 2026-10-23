@@ -1438,6 +1438,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "to create a new column."
             )
 
+        # A name-only entry and an id-only entry can resolve to the same column
+        # even when names and ids are each unique within the list; rebuilding
+        # that column twice would mix the two entries' components.
+        seen: dict[str, int] = {}
+        for position, col in enumerate(resolved):
+            if col is None:
+                continue  # a new column, created below
+            if col.column_id in seen:
+                raise ValueError(
+                    f"Entries {seen[col.column_id]} and {position} both resolve to column "
+                    f"{col.column_id}; each column can be built by only one entry per call."
+                )
+            seen[col.column_id] = position
+
         created = self.add_formulation_columns(formulation_names=names_to_create)
         created_iter = iter(created)
         target_columns = [col if col is not None else next(created_iter) for col in resolved]
