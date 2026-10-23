@@ -30,6 +30,7 @@ from albert.resources.data_templates import (
 from albert.resources.documents import DocumentState, DocumentVersion
 from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
 from albert.utils._patch import (
+    apply_data_column_hidden,
     build_acl_patch_payload,
     create_data_columns_with_enums,
     create_parameters_with_enums,
@@ -196,11 +197,22 @@ class DataTemplateCollection(BaseCollection):
         # remove them on the initial post
         parameter_values = data_template.parameter_values
         data_template.parameter_values = None
+        requested_columns = list(data_template.data_column_values or [])
         response = self.session.post(
             self.base_path,
             json=data_template.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
         dt = DataTemplate(**response.json())
+        if (
+            apply_data_column_hidden(
+                session=self.session,
+                data_template_url=f"{self.base_path}/{dt.id}",
+                requested=requested_columns,
+                created=list(dt.data_column_values or []),
+            )
+            and not parameter_values
+        ):
+            return self.get_by_id(id=dt.id)
         dt.parameter_values = parameter_values
         if parameter_values is None or len(parameter_values) == 0:
             return dt
