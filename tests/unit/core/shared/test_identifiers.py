@@ -87,9 +87,11 @@ def test_ensure_design_space_id_keeps_the_uuid_case():
 
 def test_ensure_unit_id_keeps_the_uuid_case():
     uuid = "550e8400-e29b-41d4-a716-446655440000"
+    dac_uuid = "dac84400-e29b-41d4-a716-446655440000"
     assert ensure_unit_id(uuid) == uuid
     assert ensure_unit_id(f"UNI{uuid}") == f"UNI{uuid}"
-    assert ensure_unit_id(f"uni{uuid}") == f"uni{uuid}"
+    assert ensure_unit_id(f"uni{uuid}") == f"UNI{uuid}"
+    assert ensure_unit_id(f"UNI{dac_uuid}") == f"UNI{dac_uuid}"
     assert ensure_unit_id("uni42") == "UNI42"
     with pytest.raises(ValueError, match="invalid prefix"):
         ensure_unit_id(f"INV{uuid}")
