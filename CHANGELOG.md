@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.68.0](https://github.com/albert-labs/albert-python/compare/v1.67.0...v1.68.0) (2026-10-23)
+
+
+### Features
+
+* add duplicate methods for parameter groups and data templates ([#891](https://github.com/albert-labs/albert-python/issues/891)) ([3f43a8b](https://github.com/albert-labs/albert-python/commit/3f43a8b15ff7102f800c93568c6fb4f988947031))
+* **custom-templates:** add workflow combination support ([#885](https://github.com/albert-labs/albert-python/issues/885)) ([9c0847e](https://github.com/albert-labs/albert-python/commit/9c0847e37232b64c7bb406e33f3bf66184a29fef))
+* **localizations:** add localizations collection ([#892](https://github.com/albert-labs/albert-python/issues/892)) ([9c7a85f](https://github.com/albert-labs/albert-python/commit/9c7a85f9c751e3d887742c27029a2f29ad421aaf))
+* **sheets:** inventory_id-keyed upserts in add_formulations ([#890](https://github.com/albert-labs/albert-python/issues/890)) ([ff28fb2](https://github.com/albert-labs/albert-python/commit/ff28fb2daab249448aa6a85f85c88576d3fac86a))
+
+
+### Bug Fixes
+
+* apply hidden flag on data template create and column add ([#896](https://github.com/albert-labs/albert-python/issues/896)) ([5c9b3d7](https://github.com/albert-labs/albert-python/commit/5c9b3d741f78eaf5803ae0c81dd630547e149563))
+* **identifiers:** preserve wire-case UUID unit ids (ML-2039) ([#893](https://github.com/albert-labs/albert-python/issues/893)) ([b13e389](https://github.com/albert-labs/albert-python/commit/b13e3894f57666db618f5529a4d72fb8d6e377d7))
+
+
+### Documentation
+
+* remove beta chat API pages from mkdocs nav ([#894](https://github.com/albert-labs/albert-python/issues/894)) ([f1e0348](https://github.com/albert-labs/albert-python/commit/f1e0348422ae6e49e2fe45d2ca9ed1aa19a842d2))
+
 ## [1.67.0](https://github.com/albert-labs/albert-python/compare/v1.66.0...v1.67.0) (2026-10-22)
 
 
