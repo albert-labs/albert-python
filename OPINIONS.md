@@ -19,10 +19,16 @@ explicitly provided participates in the diff.
   - **unset** (`attribute not in model_fields_set`) -> no-op, leave server value.
   - **explicit `None`** -> delete the attribute.
   - **explicit `[]` / `{}`** -> clear to empty (an update, not a delete).
-- Watch for `or []` / `or {}` coercions in special-case attribute loops
+- Watch for `or []` / `or {}` / `or ""` coercions in special-case attribute loops
   (e.g. `inventory_information`, `tags`, `assigned_to`, `project` in tasks). They
   erase the unset-vs-empty distinction before the diff runs — guard with
   `model_fields_set` first.
+- **Gate on `model_fields_set` before any value comparison.** An equality
+  short-circuit like `if existing.name == updated.name: return existing` fails
+  open when `name` is unset (`None != "current value"`), and the fall-through
+  then emits a patch built from `updated.name or ""` — wiping the field. An
+  unset field must produce no patch entry at all. If no set field differs,
+  return the fetched entity without a request.
 - **Nested models need the same rule.** Top-level `update()` may gate on
   `updated.model_fields_set` (e.g. `cas` on `InventoryItem`), but optional fields
   on nested models must also be gated on `child.model_fields_set`. Required nested
@@ -44,7 +50,20 @@ Treating omitted fields as deletions emits bad `delete` ops that the API rejects
 
 Regression tests: `test_update_partial_leaves_omitted_fields_untouched` (lots),
 `test_update_partial_leaves_omitted_special_attrs_untouched` (tasks),
-`tests/utils/test_inventory_patches.py` (inventory CAS patch builder).
+`tests/unit/utils/test_inventory.py` (inventory CAS patch builder).
+
+## Exception handling — catch narrow, keep messages specific
+
+- Never `except Exception` (or bare `except`) in SDK code. Catch `AlbertHTTPError`
+  or the specific subclass the code can genuinely handle. A broad catch masks
+  programming errors and can silently swallow the exact failure the code path
+  exists to fix (e.g. a metadata-parse bug hidden by a fallback that returns
+  defaults).
+- When refactoring control flow, preserve specific error messages. A new loop or
+  fall-through branch must not demote a specific, actionable error (e.g. "No
+  data rows detected in CSV preview") to a generic one (e.g. "Unable to map any
+  data template columns"). Keep per-case guards (`if single_block: raise ...`)
+  so each failure mode keeps its message.
 
 ## Pagination — callers never see offset or limit
 
@@ -55,6 +74,58 @@ Why: exposing raw pagination params leaks backend details, invites misuse, and
 diverges from the SDK's iterator-style API.
 
 Some endpoints reject `limit` above a fixed cap (e.g. workflow search `<= 100`, substance v4 search `<= 20`). Set a module-level page-size constant and pass `limit` in the payload or paginator params to that cap; `AlbertPaginator` still owns `offset` and must not surface `limit` on the public collection method.
+
+## Pagination — choosing the mode for a new endpoint
+
+Decide `PaginationMode` from response-shape evidence, not from what sibling
+methods use: a `total` field in the payload is the OFFSET signature; a `lastKey`
+continuation token is KEY. Check the backend handler or OpenAPI spec before
+shipping a new list/search method. Choosing KEY for an endpoint that never
+returns `lastKey` silently truncates results after the first page.
+
+For a brand-new service, verify the whole envelope (`Items` key, continuation
+key, accepted query params) with a live integration test before merge. Assumed
+envelopes have shipped broken: a newly added service required a different query
+param than the SDK sent and rejected an unsupported one, found only when
+integration tests ran.
+
+## Session defaults — a forwarded None overrides the session default
+
+`AlbertSession` treats `retries=None` as "use the default (3)" but `timeout=None` as
+"no timeout". A wrapper that forwards parameters with a `None` default therefore does
+not inherit the session default; it silently disables it:
+
+```python
+# Wrong: every client built through this entry point has no timeout.
+timeout: float | tuple[float, float] | None = None
+
+# Right: restate the session default; keep None as the caller's explicit opt-out.
+timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT
+```
+
+Why: the session gained a default timeout, but every `Albert()` entry point still
+forwarded `None`, so the default never took effect through the primary client or its
+classmethods. Any new entry point that constructs a session must restate the session
+defaults it forwards, and a unit test must assert the default through the entry point
+itself, not only through a directly constructed `AlbertSession`.
+
+## Raw payloads — read both `albertId` and `id`
+
+Services differ on which key carries the entity ID in raw (non-model) payloads.
+When reading an ID from a dict payload, use
+`record.get("albertId") or record.get("id")`, matching `core/pagination.py` and
+`property_data.py`. Reading only one key makes methods like `unstar` silently
+no-op against services that return the other.
+
+## Field aliases — changing one is a wire change for every consumer
+
+`alias=` controls both validation and serialization; `serialization_alias=`
+controls `model_dump(by_alias=True)` output. Changing either on a shared model
+flips the wire key for every code path that serializes that model, including
+endpoints unrelated to the change at hand. Before editing an alias, grep all
+`model_dump(by_alias=True)` call sites of the model. When one flow needs a
+different key, prefer a version-aware `to_payload_dict()` over a global alias
+edit.
 
 ## Paginators — override _response_items for non-standard response keys
 
@@ -111,12 +182,36 @@ Never expose positional arguments on public collection or resource methods. Priv
   the field already exists in the API response; the SDK was just incomplete.
   Reserve `feat` for new methods, parameters, or other caller-visible capabilities.
 
-## Deprecations — @deprecated does not emit a runtime warning
+## Deprecations — @deprecated already emits the runtime warning
 
 `@deprecated` from `typing_extensions` gives IDE strike-through and static-analysis
-warnings only. It does **not** fire a `DeprecationWarning` at runtime. For class
-deprecations that need a runtime warning at instantiation (e.g. `CasCollection`),
-use `warnings.warn(..., DeprecationWarning, stacklevel=2)` in `__init__` as well.
+warnings **and** fires a `DeprecationWarning` at runtime each time the decorated
+function, method, or property getter is called, or the decorated class is
+instantiated. Do not add a manual `warnings.warn(...)` inside a decorated callable:
+callers get the same warning twice. Put the full message (what to use instead,
+removal timeline) in the decorator.
+
+Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=find_stack_level())` only
+for a deprecated **parameter** or **argument value** on a method that is not itself
+deprecated (e.g. `data_template_id` on property data void/unvoid).
+
+## Warnings: stacklevel=find_stack_level(), never a literal
+
+`stacklevel` counts frames from the `warnings.warn` call, and Python shows a
+`DeprecationWarning` by default only when the frame it lands on is in `__main__`. Public
+methods are wrapped by `@validate_call`, so even `stacklevel=2` in a method body lands in
+`pydantic/_internal/_validate_call.py`, and the deprecation is silently hidden from
+callers. Helpers shared across collections are reached at different depths, so no
+literal is right for all of them. `find_stack_level()` (`albert.core.utils`, modeled on
+pandas' helper of the same name) skips every `albert` and `pydantic` frame and returns
+the level of the caller's line.
+
+Pydantic models: a deprecation warning raised during construction (custom
+`__init__` or a class decorator) also fires when Pydantic builds that model from
+server data, e.g. as a nested field. Callers who never touched the deprecated model
+then see warnings pointing into Pydantic internals. Prefer deprecating the methods
+that accept or return the model, and add a unit test that parsing server data
+emits no warning.
 
 ## Releases — docs vs chore commit type
 
@@ -127,12 +222,37 @@ Why: release-please uses commit types to determine changelog entries. Mislabelin
 doc improvement as `chore` buries it; mislabeling a build change as `docs` creates a
 spurious changelog section.
 
-## Testing — when unit tests are acceptable
+## Releases — fix vs feat commit type
 
-Prefer integration-style tests against the live API. Do not add unit tests that mock
-the API with `FakeAlbertSession`.
+A change that adds a caller-visible capability (a method, parameter, model, or
+option) is `feat`, even when the work is motivated by a bug. `fix` is only for
+correcting existing behavior — including adding a missing field to an existing
+resource model (see the naming rule above).
 
-Exception: pure patch-payload builders and other side-effect-free helpers (e.g.
-`_generate_patch_payload`) may have focused unit tests when they guard non-obvious
-diff behavior — the same helpers documented in the `update()` section above. These
-are the cases where a unit test gives real signal because there is no I/O to fake.
+## Testing — fake the transport, never the server
+
+Integration tests against the live API are the primary mechanism. The SDK is a thin client:
+most bugs are contract mismatches (a payload the API rejects, a field it renames), and only
+a live call can catch those. A mocked API encodes our *assumptions* about the server, so it
+keeps passing exactly when the assumption is wrong.
+
+Unit tests (`tests/unit/`) are for logic the SDK owns, where there is no server behavior to
+assume: patch/diff builders, pagination state, `utils/` transforms, model validators, and
+session/auth plumbing.
+
+- **Patch builders get the full matrix.** They are where a wrong op silently wipes data
+  (see `update()` above), and live tests can only reach a few of the unset / `None` / `[]`
+  combinations.
+- **Fake at the transport, not the session.** `responses` (requests) and `respx` (httpx)
+  let the real `AlbertSession` code run: headers, encoding, error mapping. A hand-rolled
+  `requests.Session` subclass (the retired `FakeAlbertSession`) skips that code and drifts
+  from real response objects.
+- **Assert on what we send and how we react.** "The SDK sends this body" and "a 404 raises
+  `NotFoundError`" are SDK facts. "The API returns this shape" is not; that belongs in an
+  integration test.
+- **Don't unit-test public collection methods.** They are request → response → model; a
+  unit test would only mock the API. Extract any branching logic into a pure helper and
+  test that.
+- **Keep unit tests offline by construction.** `tests/unit/conftest.py` blocks sockets and
+  strips `ALBERT_*` env vars, and CI runs the unit job without credentials, so an
+  accidental live dependency fails immediately instead of passing locally.

@@ -1,7 +1,9 @@
+import warnings
 from collections.abc import Iterator
 from decimal import Decimal
 from typing import Any, Literal
 
+import requests
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
@@ -18,12 +20,43 @@ from albert.core.shared.identifiers import (
     UserId,
 )
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
-from albert.core.utils import ensure_list
+from albert.core.utils import ensure_list, find_stack_level
+from albert.exceptions import AlbertPartialError
 from albert.resources.inventory import InventoryCategory
 from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentAction, LotSearchItem
 
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
+
+# Maximum items accepted in one bulk update; the bulk update schema caps
+# each call at 300 items (maxItems).
+_BULK_UPDATE_MAX_ITEMS = 300
+
+# Maximum IDs accepted per delete call; the delete operation rejects more
+# than 5 IDs.
+_DELETE_MAX_IDS = 5
+
+# Maximum field changes accepted per lot in one bulk update; the bulk update
+# schema caps each lot's change list at 4 entries (data maxItems).
+_BULK_UPDATE_MAX_ATTRIBUTES = 4
+
+# Attributes bulk update can apply, limited to fields the lot diff can emit.
+# update() supports more fields; anything outside this set must go through
+# single-lot update.
+_BULK_UPDATABLE_ATTRIBUTES = frozenset(
+    {
+        "storageLocation",
+        "inventoryOnHand",
+        "status",
+        "expirationDate",
+        "cost",
+    }
+)
+
+# Attributes bulk update can set on a lot where no value exists yet. Setting
+# any other supported field for the first time must go through single-lot
+# update.
+_BULK_ADDABLE_ATTRIBUTES = frozenset({"cost", "storageLocation"})
 
 
 class LotCollection(BaseCollection):
@@ -83,8 +116,12 @@ class LotCollection(BaseCollection):
         Move some or all of a lot's quantity to another storage location.
     update(lot) -> Lot
         Update an existing lot.
+    update_many(lots, notes) -> list[Lot]
+        Update multiple lots, for the subset of fields listed in its Notes.
     delete(id) -> None
         Delete a lot by its ID.
+    delete_many(ids) -> None
+        Delete multiple lots by their IDs.
     """
 
     _api_version = "v3"
@@ -115,6 +152,27 @@ class LotCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{LotCollection._api_version}/lots"
+
+    @staticmethod
+    def _inventory_id_search_variants(
+        inventory_id: InventoryId | list[InventoryId] | None,
+    ) -> list[str] | None:
+        """Return each Inventory ID with and without the ``INV`` prefix.
+
+        Lot search indexes the parent inventory ID without the ``INV`` prefix,
+        so a standard ID alone would match nothing; supplying both forms keeps
+        the filter correct regardless of the stored format.
+        """
+        ids = ensure_list(inventory_id)
+        if ids is None:
+            return None
+        variants: list[str] = []
+        for value in ids:
+            variants.append(value)
+            stripped = value.removeprefix("INV")
+            if stripped != value:
+                variants.append(stripped)
+        return variants
 
     def create(self, *, lots: list[Lot]) -> list[Lot]:
         """Create one or more new lots.
@@ -174,6 +232,11 @@ class LotCollection(BaseCollection):
         callers must still supply mass ``initial_quantity`` and ``inventory_on_hand``;
         litres are not automatically derived from mass or density. See field
         docstrings on [`Lot`][albert.resources.lots.Lot] for the full create matrix.
+
+        ``notes`` and ``workflow_id`` are not saved on create. Assign a workflow
+        after creation via [`update`][albert.collections.lots.LotCollection.update];
+        lot notes are managed through the Notes collection
+        ([`NotesCollection`][albert.collections.notes.NotesCollection]).
 
         If the API reports a partial success (some lots failed to create), a
         warning is logged and only the successfully created lots are returned.
@@ -291,6 +354,37 @@ class LotCollection(BaseCollection):
         self.session.delete(url)
 
     @validate_call
+    def delete_many(self, *, ids: list[LotId]) -> None:
+        """Delete multiple lots by their IDs.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            client.lots.delete_many(ids=["LOTA1", "LOTA2"])
+            ```
+
+        Parameters
+        ----------
+        ids : list[LotId]
+            The Lot IDs to delete (format ``LOT...``).
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        At most five lots can be deleted at a time. If a failure occurs partway
+        through a longer list, earlier deletions are not rolled back and the
+        remaining lots are not attempted.
+        """
+        if not ids:
+            return
+        for i in range(0, len(ids), _DELETE_MAX_IDS):
+            self.session.delete(self.base_path, params={"id": ids[i : i + _DELETE_MAX_IDS]})
+
+    @validate_call
     def search(
         self,
         *,
@@ -317,6 +411,7 @@ class LotCollection(BaseCollection):
         owner: list[str] | None = None,
         status: list[str] | None = None,
         to_expiration_date: str | None = None,
+        from_on_hand: float | None = None,
         is_drop_down: bool | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -383,13 +478,21 @@ class LotCollection(BaseCollection):
         storage_location : list[str], optional
             Filter by storage location name(s).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         owner : list[str], optional
             Filter by lot owner display name(s) or UserId(s).
         status : list[str], optional
             Filter by lot status values.
         to_expiration_date : str, optional
             Only include lots expiring on or before this date (ISO 8601).
+        from_on_hand : float, optional
+            Only include lots with inventory on hand strictly greater than this
+            value. Pass ``0`` to exclude zeroed-out lots.
         is_drop_down : bool, optional
             Apply dropdown sanitization to the search text when True.
         order_by : OrderBy, optional
@@ -414,7 +517,7 @@ class LotCollection(BaseCollection):
             "text": search_text,
             "sortBy": sort_by,
             "isDropDown": is_drop_down,
-            "inventoryId": ensure_list(inventory_id),
+            "inventoryId": self._inventory_id_search_variants(inventory_id),
             "locationId": ensure_list(location_id),
             "storageLocationId": ensure_list(storage_location_id),
             "taskId": ensure_list(task_id),
@@ -423,6 +526,7 @@ class LotCollection(BaseCollection):
             "searchField": ensure_list(search_field),
             "sourceField": ensure_list(source_field),
             "additionalField": ensure_list(additional_field),
+            "fromOnHand": from_on_hand,
         }
 
         post_only_params: dict[str, Any] = {
@@ -450,12 +554,13 @@ class LotCollection(BaseCollection):
             payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.SEARCH_AFTER,
             path=f"{self.base_path}/search",
             session=self.session,
             max_items=max_items,
             deserialize=deserialize,
             method="POST",
+            retry_safe=True,
             json=payload,
         )
 
@@ -571,13 +676,16 @@ class LotCollection(BaseCollection):
                 )
             )
 
-        # costL must be serialized as a formatted decimal string and uses update operation
+        # cost, costL, and initialQuantity are stored as strings by the API and
+        # strict-compared against oldValue, so both values must be decimal strings.
+        # costL only supports the update operation; an unset old value is sent as "0".
         for datum in patch_data.data:
-            if datum.attribute == "costL":
-                datum.operation = PatchOperation.UPDATE
-                if datum.old_value is None:
-                    datum.old_value = "0"
-                else:
+            if datum.attribute in {"cost", "costL", "initialQuantity"}:
+                if datum.attribute == "costL":
+                    datum.operation = PatchOperation.UPDATE
+                    if datum.old_value is None:
+                        datum.old_value = "0"
+                if datum.old_value is not None:
                     datum.old_value = (
                         Lot._format_decimal(datum.old_value)
                         if isinstance(datum.old_value, (int, float))
@@ -776,7 +884,9 @@ class LotCollection(BaseCollection):
             The amount to transfer, or ``"ALL"`` to move the full current
             inventory on hand. A numeric quantity must be greater than zero.
         storage_location_id : StorageLocationId
-            Destination storage location ID (format ``STL...``).
+            Destination storage location ID (format ``STL...``). Must differ
+            from the lot's current storage location when ``quantity`` is
+            ``"ALL"``.
         owner : UserId, optional
             User ID (format ``USR...``) to own the destination lot. Defaults to
             the current user.
@@ -792,13 +902,28 @@ class LotCollection(BaseCollection):
         ValueError
             If a numeric ``quantity`` is not greater than zero, or the current
             user cannot be resolved when ``owner`` is omitted.
+
+        Warns
+        -----
+        UserWarning
+            If ``quantity`` is ``"ALL"`` and ``storage_location_id`` matches the
+            lot's current storage location. Full Transfer is not allowed for the
+            same storage location (matching the Albert UI), so the transfer is
+            skipped and the lot is returned unchanged.
         """
         if quantity == "ALL":
             source_lot = self.get_by_id(id=lot_id)
             current_location_id = (
                 source_lot.storage_location.id if source_lot.storage_location else None
             )
-            if current_location_id != storage_location_id:
+            if current_location_id == storage_location_id:
+                warnings.warn(
+                    "Full Transfer is not allowed for the same storage location; "
+                    "the lot was not changed.",
+                    UserWarning,
+                    stacklevel=find_stack_level(),
+                )
+            else:
                 patch_payload = PatchPayload(
                     data=[
                         PatchDatum(
@@ -873,6 +998,10 @@ class LotCollection(BaseCollection):
         ``workflow_id``.
         ``density``, ``initial_quantity_l``, and ``inventory_on_hand_l`` are
         fixed at creation and cannot be updated.
+
+        Clearing a field (setting it to ``None``) is only supported for
+        ``expiration_date``, ``pack_size``, ``external_barcode_id``, and
+        individual ``metadata`` keys; clearing any other field is rejected.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)
@@ -881,3 +1010,143 @@ class LotCollection(BaseCollection):
             self.session.patch(url, json=patch_data.model_dump(mode="json", by_alias=True))
 
         return self.get_by_id(id=lot.id)
+
+    @staticmethod
+    def _raise_on_partial_update(response: requests.Response) -> None:
+        """Raise AlbertPartialError when a bulk update partially succeeds."""
+        if response.status_code != 206:
+            return
+        # The bulk update partial-success envelope carries UpdatedItems and FailedItems.
+        data = response.json()
+        raise AlbertPartialError(
+            "Lot bulk update partially succeeded: "
+            f"{len(data.get('FailedItems') or [])} item(s) failed.",
+            created_items=data.get("UpdatedItems") or [],
+            failed_items=data.get("FailedItems") or [],
+        )
+
+    def _generate_bulk_update_item(
+        self, *, existing: Lot, updated: Lot, notes: str
+    ) -> dict | None:
+        """Build one entry for a bulk lot update, or None when nothing changed.
+
+        Raises ValueError when the diff carries a change bulk update cannot
+        apply, so those changes are never silently dropped.
+        """
+        patch_data = self._generate_lots_patch_payload(existing=existing, updated=updated)
+        if not patch_data.data:
+            return None
+        unsupported = sorted({d.attribute for d in patch_data.data} - _BULK_UPDATABLE_ATTRIBUTES)
+        if unsupported:
+            raise ValueError(
+                f"Lot {updated.id}: update_many cannot apply changes to "
+                f"{', '.join(unsupported)}; use update() for those fields instead."
+            )
+        for datum in patch_data.data:
+            if datum.operation == PatchOperation.DELETE:
+                raise ValueError(
+                    f"Lot {updated.id}: update_many cannot clear {datum.attribute}; "
+                    "use update() to clear fields instead."
+                )
+            if (
+                datum.operation == PatchOperation.ADD
+                and datum.attribute not in _BULK_ADDABLE_ATTRIBUTES
+            ):
+                raise ValueError(
+                    f"Lot {updated.id}: update_many cannot set {datum.attribute} on a lot "
+                    "that does not already have one; use update() instead."
+                )
+        if len(patch_data.data) > _BULK_UPDATE_MAX_ATTRIBUTES:
+            raise ValueError(
+                f"Lot {updated.id}: update_many accepts at most "
+                f"{_BULK_UPDATE_MAX_ATTRIBUTES} changed fields per lot; "
+                "use update() for larger changes instead."
+            )
+        return {
+            "id": updated.id,
+            "notes": notes,
+            "data": [d.model_dump(mode="json", by_alias=True) for d in patch_data.data],
+        }
+
+    @validate_call
+    def update_many(self, *, lots: list[Lot], notes: str = "Bulk update") -> list[Lot]:
+        """Update multiple lots.
+
+        Each lot is changed to match the given state, and lots submitted without
+        changes are left untouched. Only the fields listed in Notes can be
+        changed this way; anything else raises ValueError rather than being
+        silently dropped.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            lots = client.lots.get_by_ids(ids=["LOTA1", "LOTA2"])
+            for lot in lots:
+                lot.cost = 42.0
+            updated = client.lots.update_many(lots=lots)
+            ```
+
+        Parameters
+        ----------
+        lots : list[Lot]
+            The lots carrying the desired changes. Each ``id`` identifies the lot
+            to update.
+        notes : str, optional
+            A note recorded against each changed lot. Defaults to "Bulk update".
+
+        Returns
+        -------
+        list[Lot]
+            The refreshed lots. Order is not guaranteed to match the input list.
+
+        Raises
+        ------
+        AlbertPartialError
+            If only some changes were applied. The error carries the applied
+            (``created_items``) and rejected (``failed_items``) entries.
+        NotFoundError
+            If a lot ID does not exist.
+        ValueError
+            If a lot carries changes update_many cannot apply: an unsupported
+            field, a cleared field, a first-time ``expiration_date``, or more
+            than four changed fields on one lot. Update those lots one at a
+            time with [`update`][albert.collections.lots.LotCollection.update]
+            instead.
+
+        Notes
+        -----
+        The following fields can be updated: ``cost``, ``expiration_date``,
+        ``inventory_on_hand``, ``status``, ``storage_location``. For any other
+        field, use [`update`][albert.collections.lots.LotCollection.update].
+
+        Unlike [`update`][albert.collections.lots.LotCollection.update], a field
+        cannot be cleared here; setting a field to ``None`` raises ValueError.
+        ``expiration_date`` can only be changed on lots that already have one,
+        and ``status`` can only be changed to active or quarantined (use
+        [`delete_many`][albert.collections.lots.LotCollection.delete_many] to
+        retire lots). One lot can carry at most four field changes.
+
+        If an error occurs partway through, earlier changes are not rolled back.
+        """
+        if not lots:
+            return []
+        ids = [lot.id for lot in lots]
+        existing_by_id = {lot.id: lot for lot in self.get_by_ids(ids=ids)}
+        items = []
+        for lot in lots:
+            existing_lot = existing_by_id.get(lot.id)
+            if existing_lot is None:
+                # Raises NotFoundError, matching update() on an unknown ID.
+                existing_lot = self.get_by_id(id=lot.id)
+            entry = self._generate_bulk_update_item(
+                existing=existing_lot, updated=lot, notes=notes
+            )
+            if entry is not None:
+                items.append(entry)
+        for i in range(0, len(items), _BULK_UPDATE_MAX_ITEMS):
+            response = self.session.patch(
+                self.base_path, json=items[i : i + _BULK_UPDATE_MAX_ITEMS]
+            )
+            self._raise_on_partial_update(response)
+        return self.get_by_ids(ids=ids)

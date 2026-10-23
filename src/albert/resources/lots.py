@@ -192,7 +192,8 @@ class Lot(BaseResource):
     workflow_id: WorkflowId | None = Field(default=None, alias="workflowId")
     """The Albert ID of the workflow associated with this lot (format ``WFL...``).
 
-    Can be set via [`update`][albert.collections.lots.LotCollection.update].
+    Ignored when creating a lot. Can be set via
+    [`update`][albert.collections.lots.LotCollection.update].
     """
 
     workflows: list[LotWorkflowLink] | None = Field(
@@ -228,7 +229,9 @@ class Lot(BaseResource):
     initial_quantity: float | None = Field(default=None, alias="initialQuantity")
     """The quantity the lot started with, in the parent item's units.
 
-    Required when creating a non-task lot (no ``task_id``).
+    For mass items (``parent_unit="mass"``) this is in **kilograms**: 10 kg is
+    ``10`` and 500 g is ``0.5``. Required when creating a non-task lot (no
+    ``task_id``).
     """
 
     cost: NonNegativeFloat | None = Field(default=None)
@@ -241,8 +244,9 @@ class Lot(BaseResource):
     inventory_on_hand: float = Field(alias="inventoryOnHand")
     """The quantity currently in stock, in the parent item's units.
 
-    Required when creating a non-task lot; set to the starting stock (usually the
-    same value as ``initial_quantity``). After creation, change it with
+    For mass items (``parent_unit="mass"``) this is in **kilograms** (10 kg is
+    ``10``, not ``10000``). Required when creating a non-task lot; set to the
+    starting stock (usually the same value as ``initial_quantity``). After creation, change it with
     [`adjust`][albert.collections.lots.LotCollection.adjust] rather than by
     editing directly.
     """
@@ -295,7 +299,12 @@ class Lot(BaseResource):
     """Custom field values for the lot. Allowed keys and values are defined by the Custom Fields configuration."""
 
     notes: str | None = Field(default=None)
-    """Free-text notes on the lot."""
+    """Free-text notes on the lot.
+
+    Not saved when creating a lot; manage lot notes through the Notes collection
+    ([`NotesCollection`][albert.collections.notes.NotesCollection], accessed as
+    ``client.notes``).
+    """
     # because quarantined is an allowed Lot status, we need to extend the normal status
 
     # API-returned fields (read-only)
@@ -331,7 +340,7 @@ class Lot(BaseResource):
 
     parent_category: InventoryCategory | None = Field(
         default=None,
-        alias="parentCategory",
+        alias="parentIdCategory",
         exclude=True,
         frozen=True,
     )

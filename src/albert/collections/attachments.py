@@ -177,6 +177,9 @@ class AttachmentCollection(BaseCollection):
             The created attachment.
         """
         payload = attachment.model_dump(by_alias=True, exclude_unset=True, mode="json")
+        # A namespace is required; send the model default when the caller did
+        # not set one explicitly (``exclude_unset`` would otherwise drop it).
+        payload.setdefault("nameSpace", attachment.namespace)
         response = self.session.post(self.base_path, json=payload)
         return Attachment(**response.json())
 
@@ -259,6 +262,20 @@ class AttachmentCollection(BaseCollection):
         for attribute in self._updatable_metadata_attributes:
             old_value = existing_dump.get(attribute)
             new_value = updated_dump.get(attribute)
+
+            if attribute == "extensions":
+                # The API only supports a whole-value `update` for extensions,
+                # not item-level add/delete ops.
+                if old_value != new_value:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute,
+                            operation=PatchOperation.UPDATE,
+                            old_value=old_value,
+                            new_value=new_value,
+                        )
+                    )
+                continue
 
             if isinstance(old_value, list) or isinstance(new_value, list):
                 # Diff list fields item-by-item using id. The Symbols field requires

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
@@ -16,7 +15,6 @@ from albert.core.shared.identifiers import (
     DataTemplateId,
     InventoryId,
     LotId,
-    ParameterGroupId,
     ParameterId,
     ProjectId,
     PropertyDataId,
@@ -36,6 +34,7 @@ from albert.resources.data_templates import (
 from albert.resources.lots import Lot
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
+from albert.utils.dataframes import OrientTightDataFrame
 
 ########################## Supporting GET Classes ##########################
 
@@ -104,6 +103,12 @@ class PropertyData(BaseAlbertModel):
     value: str | None = Field(default=None)
     """The stored result value. All values are stored as strings in Albert."""
 
+    value_numeric: float | None = Field(default=None, alias="valueNumeric")
+    """The numeric form of the value, when the column is numeric. Serialized as ``valueNumeric``."""
+
+    value_string: str | None = Field(default=None, alias="valueString")
+    """The string form of the value, when the column is string-typed. Serialized as ``valueString``."""
+
     value_type: str | None = Field(default=None, alias="valueType")
     """The type of the value (e.g. numeric, string, image, curve). Serialized as ``valueType``."""
 
@@ -122,7 +127,7 @@ class PropertyData(BaseAlbertModel):
     """Remarks associated with curve data. Serialized as ``curveRemarks``."""
 
     athena: dict[str, Any] | None = Field(default=None)
-    """Backing analytical store metadata for curve data. See Also --------"""
+    """Backing analytical store metadata for curve data."""
 
 
 class PropertyValue(BaseAlbertModel):
@@ -163,7 +168,7 @@ class PropertyValue(BaseAlbertModel):
     """The unique ID of the data column this result captures. Serialized as ``dataColumnUniqueId``."""
 
     hidden: bool | None = Field(default=False)
-    """Whether the result is hidden. See Also --------"""
+    """Whether the result is hidden."""
 
 
 class Trial(BaseAlbertModel):
@@ -186,7 +191,7 @@ class Trial(BaseAlbertModel):
     """Internal trial identifier. Serialized as ``backEndTrialNo``."""
 
     data_columns: list[PropertyValue] = Field(default_factory=list, alias="DataColumns")
-    """The results measured in this trial, one per data column. Serialized as ``DataColumns``. See Also --------"""
+    """The results measured in this trial, one per data column. Serialized as ``DataColumns``."""
 
 
 class DataInterval(BaseAlbertModel):
@@ -207,7 +212,7 @@ class DataInterval(BaseAlbertModel):
     """The replicate measurements recorded for this interval. Serialized as ``Trials``."""
 
     name: str | None = Field(default=None)
-    """An optional display name for the interval. See Also --------"""
+    """An optional display name for the interval."""
 
 
 class TaskData(BaseAlbertModel):
@@ -236,15 +241,12 @@ class TaskData(BaseAlbertModel):
     """The workflow at task completion. Serialized as ``FinalWorkflow``. Carries the interval combinations for the block in its ``combinations`` field, but not the parameter setpoints; use [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] for those."""
 
     @property
-    @deprecated("`finial_workflow` is a misspelling; use `final_workflow` instead.")
+    @deprecated(
+        "`finial_workflow` is a misspelling and will be removed in a future release; "
+        "use `final_workflow` instead."
+    )
     def finial_workflow(self) -> SerializeAsEntityLink[Workflow]:
         """Deprecated misspelling of [`final_workflow`][albert.resources.property_data.TaskData.final_workflow]."""
-        warnings.warn(
-            "`finial_workflow` is a misspelling and will be removed in a future release; "
-            "use `final_workflow` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return self.final_workflow
 
     @finial_workflow.setter
@@ -255,7 +257,7 @@ class TaskData(BaseAlbertModel):
     """The data template whose columns were measured (format ``DAT...``). Serialized as ``Datatemplate``."""
 
     data: list[DataInterval] = Field(default_factory=list, alias="Data")
-    """The interval data recorded, one entry per interval combination. Serialized as ``Data``. See Also --------"""
+    """The interval data recorded, one entry per interval combination. Serialized as ``Data``."""
 
 
 class CustomInventoryDataColumn(BaseAlbertModel):
@@ -278,7 +280,7 @@ class CustomData(BaseAlbertModel):
     """The lot the value applies to, if any. Serialized as ``Lot``."""
 
     data_column: CustomInventoryDataColumn = Field(alias="DataColumn")
-    """The data column and its stored value. Serialized as ``DataColumn``. See Also --------"""
+    """The data column and its stored value. Serialized as ``DataColumn``."""
 
 
 class PropertyDataInventoryInformation(BaseAlbertModel):
@@ -339,7 +341,7 @@ class InventoryPropertyData(BaseResource):
     """Results measured on tasks that roll up to this item. Serialized as ``Task``."""
 
     custom_property_data: list[CustomData] = Field(default_factory=list, alias="NoTask")
-    """Values entered directly on the item, independent of any task. Serialized as ``NoTask``. See Also --------"""
+    """Values entered directly on the item, independent of any task. Serialized as ``NoTask``."""
 
 
 class TaskPropertyData(BaseResource):
@@ -380,15 +382,12 @@ class TaskPropertyData(BaseResource):
     """The workflow at task completion. Serialized as ``FinalWorkflow``. Commonly ``None`` here: the task-scoped read does not return the workflows. Read them from the task's block, or use [`get_task_property_records`][albert.collections.property_data.PropertyDataCollection.get_task_property_records] to get the setpoints already resolved."""
 
     @property
-    @deprecated("`finial_workflow` is a misspelling; use `final_workflow` instead.")
+    @deprecated(
+        "`finial_workflow` is a misspelling and will be removed in a future release; "
+        "use `final_workflow` instead."
+    )
     def finial_workflow(self) -> SerializeAsEntityLink[Workflow] | None:
         """Deprecated misspelling of [`final_workflow`][albert.resources.property_data.TaskPropertyData.final_workflow]."""
-        warnings.warn(
-            "`finial_workflow` is a misspelling and will be removed in a future release; "
-            "use `final_workflow` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return self.final_workflow
 
     @finial_workflow.setter
@@ -404,7 +403,7 @@ class TaskPropertyData(BaseResource):
     """The interval data recorded, one entry per interval combination. Serialized as ``Data``."""
 
     block_id: str | None = Field(alias="blockId", default=None)
-    """The block the data belongs to (format ``BLK...``). Serialized as ``blockId``. See Also --------"""
+    """The block the data belongs to (format ``BLK...``). Serialized as ``blockId``."""
 
 
 class BulkPropertyDataColumn(BaseAlbertModel):
@@ -603,6 +602,66 @@ class TaskPropertyRecord(BaseAlbertModel):
         return pd.DataFrame(rows)
 
 
+class TaskCurveData(BaseAlbertModel):
+    """The curve recorded in one trial of a curve data column on a task.
+
+    Returned by
+    [`get_task_curve_data`][albert.collections.property_data.PropertyDataCollection.get_task_curve_data].
+    Identifies where the curve was recorded (block, inventory item, interval, trial,
+    and data column) and carries the curve points in ``data``.
+
+    !!! example
+        ```python
+        curves = client.property_data.get_task_curve_data(task_id="TASFOR1")
+        curve = curves[0]
+        curve.data_column_name, curve.trial_number
+        # ('Viscosity Curve', 1)
+        curve.data.head()
+        #   Temperature Count
+        # 0           0     6
+        ```
+    """
+
+    task_id: TaskId
+    """The task the curve was recorded on (format ``TAS...``)."""
+
+    block_id: BlockId | None = Field(default=None)
+    """The block the curve belongs to (format ``BLK...``)."""
+
+    data_template_id: DataTemplateId | None = Field(default=None)
+    """The data template that defines the curve column (format ``DAT...``)."""
+
+    inventory_id: InventoryId | None = Field(default=None)
+    """The inventory item the curve was measured on (format ``INV...``)."""
+
+    lot_id: LotId | None = Field(default=None)
+    """The lot the curve was measured on (format ``LOT...``), if any."""
+
+    interval_combination: str | None = Field(default=None)
+    """The interval combination the curve was recorded under (e.g. ``default`` or ``ROW1``)."""
+
+    trial_number: int | None = Field(default=None)
+    """The trial number the curve was recorded in."""
+
+    void: bool = Field(default=False)
+    """Whether the trial or its interval is voided."""
+
+    data_column_id: DataColumnId | None = Field(default=None)
+    """The curve data column (format ``DAC...``)."""
+
+    data_column_name: str | None = Field(default=None)
+    """The curve data column's display name."""
+
+    property_data_id: PropertyDataId | None = Field(default=None)
+    """The stored property data record for the curve (format ``PTD...``)."""
+
+    file_name: str | None = Field(default=None)
+    """The name of the CSV file the curve was uploaded from."""
+
+    data: OrientTightDataFrame
+    """The curve points, one row per point and one column per curve result, named by the uploaded CSV headers. Values are returned as stored (typically strings)."""
+
+
 ########################## Supporting POST Classes ##########################
 
 
@@ -626,7 +685,7 @@ class ImagePropertyValue(BaseAlbertModel):
         ```"""
 
     file_path: str | Path
-    """Local path to the image file to upload. See Also --------"""
+    """Local path to the image file to upload."""
 
 
 class CurvePropertyValue(BaseAlbertModel):
@@ -650,7 +709,7 @@ class CurvePropertyValue(BaseAlbertModel):
     """Import mode for the curve data. Defaults to ``ImportMode.CSV``."""
 
     field_mapping: dict[str, str] | None = None
-    """Optional mapping from CSV headers to curve result identifiers. See Also --------"""
+    """Optional mapping from CSV headers to curve result identifiers."""
 
 
 class ImagePropertyValuePayload(BaseAlbertModel):
@@ -682,7 +741,7 @@ class TaskDataColumn(BaseAlbertModel):
     """The data column (format ``DAC...``). Serialized as ``id``."""
 
     column_sequence: str | None = Field(default=None, alias="columnId")
-    """The column's sequence identifier within the block. Serialized as ``columnId``. See Also --------"""
+    """The column's sequence identifier within the block. Serialized as ``columnId``."""
 
 
 class TaskDataColumnValue(TaskDataColumn):
@@ -730,7 +789,7 @@ class InventoryDataColumn(BaseAlbertModel):
     """The data column to write to (format ``DAC...``). Serialized as ``id``."""
 
     value: str | None = Field(default=None)
-    """The value to store. See Also --------"""
+    """The value to store."""
 
 
 ########################## Task Property POST Classes ##########################
@@ -837,7 +896,7 @@ class TaskPropertyCreate(BaseResource):
             if self.trial_number is not None:
                 self.visible_trial_number = self.trial_number
             else:
-                self.visible_trial_number = "1"
+                self.visible_trial_number = 1
         return self
 
 
@@ -890,7 +949,7 @@ class InventoryPropertyDataCreate(BaseResource):
     """The property to write. At most one column per request. Serialized as ``DataColumn``."""
 
     status: PropertyDataStatus | None = Field(default=None)
-    """The outcome status reported by the API. See Also --------"""
+    """The outcome status reported by the API."""
 
 
 ####### Property Data Search #######
@@ -902,7 +961,8 @@ class WorkflowItem(BaseAlbertModel):
     name: str
     id: ParameterId
     value: str | None = Field(default=None)
-    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
+    parameter_group_id: str | None = Field(default=None, alias="parameterGroupId")
+    """The parameter group or data template ID (format ``PRG...`` or ``DAT...``)."""
     value_numeric: float | None = Field(default=None, alias="valueNumeric")
     unit_name: str | None = Field(default=None, alias="unitName")
     unit_id: UnitId | None = Field(default=None, alias="unitId")
@@ -926,7 +986,9 @@ class PropertyDataSearchItem(BaseAlbertModel):
     Yielded by
     [`search`][albert.collections.property_data.PropertyDataCollection.search]. Flattens
     a single measured result together with the workflow setpoints, data template, and
-    the task/inventory/project it belongs to."""
+    the task/inventory/project it belongs to. Search items may include voided data and
+    carry no void status; see
+    [`search`][albert.collections.property_data.PropertyDataCollection.search]."""
 
     id: PropertyDataId
     """The property data record ID (format ``PTD...``)."""
@@ -965,7 +1027,10 @@ class PropertyDataSearchItem(BaseAlbertModel):
     """The workflow (format ``WFL...``). Serialized as ``workflowId``."""
 
     task_id: TaskId | None = Field(default=None, alias="taskId")
-    """The task the result was measured on, if any (format ``TAS...``). Serialized as ``taskId``. See Also --------"""
+    """The task the result was measured on, if any (format ``TAS...``). Serialized as ``taskId``. """
+
+    void: bool | None = Field(default=None)
+    """Whether the record is voided. ``None`` when the record is not voided or the search index does not carry the flag."""
 
 
 ReturnScope = Literal["task", "block", "none"]

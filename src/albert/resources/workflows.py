@@ -87,7 +87,7 @@ class Interval(BaseAlbertModel):
     """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters. Not auto-filled from an object ``value``."""
 
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
-    """The unit of ``value``, where applicable. If given, the unit must have an ``id``. See Also --------"""
+    """The unit of ``value``, where applicable. If given, the unit must have an ``id``."""
 
     row_id: RowId | None = Field(default=None, alias="rowId", exclude=True)
 
@@ -109,7 +109,7 @@ class IntervalDetail(BaseAlbertModel):
     """The parameter name (e.g. ``"Equipment"``)."""
 
     value: str
-    """The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``). See Also --------"""
+    """The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``)."""
 
 
 class IntervalCombination(BaseAlbertModel):
@@ -133,7 +133,7 @@ class IntervalCombination(BaseAlbertModel):
     """A human-readable representation of the combination, of the form ``"[Parameter Name]: [Parameter Value] [Parameter Unit]"`` for each parameter."""
 
     interval_details: list[IntervalDetail] | None = Field(default=None, alias="intervalDetails")
-    """Per-parameter breakdown of the combination. Each entry has ``name`` (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``). See Also --------"""
+    """Per-parameter breakdown of the combination. Each entry has ``name`` (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``)."""
 
 
 class ParameterSetpoint(BaseAlbertModel):
@@ -157,19 +157,28 @@ class ParameterSetpoint(BaseAlbertModel):
 
     !!! example
         ```python
+        from albert.resources.parameters import ParameterCategory
         from albert.resources.workflows import ParameterSetpoint, Interval
 
         # A single fixed setpoint identified by parameter ID.
-        temp = ParameterSetpoint(parameter_id="PRM9999999", value="25", short_name="Temp")
+        temp = ParameterSetpoint(parameter_id="PRM9999999", value="25")
 
         # The same parameter intervalized across two values.
         temp_varied = ParameterSetpoint(
             parameter_id="PRM9999999",
-            short_name="Temp",
             intervals=[
                 Interval(value="25", unit={"id": "UNI9999999"}),
                 Interval(value="60", unit={"id": "UNI9999999"}),
             ],
+        )
+
+        # A Special parameter (an inventory item) takes the item's id as its value;
+        # short_name is only sent for Special parameters.
+        equipment = ParameterSetpoint(
+            parameter_id="PRM3",
+            category=ParameterCategory.SPECIAL,
+            value={"id": "INV9999999"},
+            short_name="Oven",
         )
         ```"""
 
@@ -192,7 +201,7 @@ class ParameterSetpoint(BaseAlbertModel):
     """The category of the parameter: ``SPECIAL`` for an inventory item (Equipment, Consumable, Template), ``NORMAL`` for everything else."""
 
     short_name: str | None = Field(default=None, alias="shortName")
-    """The short / display name of the parameter. Required if ``value`` is a mapping."""
+    """The short / display name of the parameter. Only sent on create for ``SPECIAL``-category parameters; the platform rejects ``shortName`` on Normal parameters, so the SDK drops it there."""
 
     name: str | None = Field(default=None, exclude=True)
     """The parameter name. Auto-filled from ``parameter`` when one is provided."""
@@ -276,7 +285,7 @@ class ParameterGroupSetpoints(BaseAlbertModel):
         group = ParameterGroupSetpoints(
             id="PRG9999999",
             parameter_setpoints=[
-                ParameterSetpoint(parameter_id="PRM9999999", value="25", short_name="Temp"),
+                ParameterSetpoint(parameter_id="PRM9999999", value="25"),
             ],
         )
         ```"""
@@ -390,28 +399,27 @@ class Workflow(BaseResource):
         # One workflow combining a Data Template's pre-linked parameters with two
         # Parameter Groups. Each grouping is keyed by its DAT... or PRG... id.
         workflow = Workflow(
-            name="Tensile test at 23C, 50% RH",
             parameter_group_setpoints=[
                 # Pre-linked parameters on a Data Template (used just like a PRG here)
                 ParameterGroupSetpoints(
                     id="DAT9999999",
                     parameter_setpoints=[
-                        ParameterSetpoint(parameter_id="PRM9999999", value="23", short_name="Temperature"),
-                        ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
+                        ParameterSetpoint(parameter_id="PRM9999999", value="23"),
+                        ParameterSetpoint(parameter_id="PRM2", value="50"),
                     ],
                 ),
                 # A Parameter Group describing sample prep
                 ParameterGroupSetpoints(
                     id="PRG9999999",
                     parameter_setpoints=[
-                        ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
+                        ParameterSetpoint(parameter_id="PRM3", value="24"),
                     ],
                 ),
                 # A second Parameter Group (e.g. the mixing step)
                 ParameterGroupSetpoints(
                     id="PRG2",
                     parameter_setpoints=[
-                        ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
+                        ParameterSetpoint(parameter_id="PRM4", value="2000"),
                     ],
                 ),
             ],

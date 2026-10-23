@@ -16,6 +16,7 @@ from albert.resources.parameter_groups import (
     EnumValidationValue,
     ParameterGroup,
     ParameterValue,
+    ValueValidation,
 )
 from albert.resources.tags import Tag
 from albert.utils.data_template import ensure_data_column_validation
@@ -188,6 +189,86 @@ def _data_column_calculation_patches(
             colId=initial_data_column_value.sequence,
         )
     return None
+
+
+def _data_column_hidden_patch(
+    initial_data_column_value: DataColumnValue, updated_data_column_value: DataColumnValue
+) -> DTPatchDatum | None:
+    """Generate a Patch for a data column's hidden flag."""
+    if bool(initial_data_column_value.hidden) == bool(updated_data_column_value.hidden):
+        return None
+    return DTPatchDatum(
+        operation="update",
+        attribute="hidden",
+        old_value=bool(initial_data_column_value.hidden),
+        new_value=bool(updated_data_column_value.hidden),
+    )
+
+
+def apply_data_column_hidden(
+    *,
+    session: AlbertSession,
+    data_template_url: str,
+    requested: list[DataColumnValue],
+    created: list[DataColumnValue],
+) -> bool:
+    """Apply requested ``hidden`` flags to freshly created data columns.
+
+    The flag is set with a follow-up per-column update after the columns are created.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The active session.
+    data_template_url : str
+        URL of the parent data template.
+    requested : list[DataColumnValue]
+        The columns as they were requested.
+    created : list[DataColumnValue]
+        The columns as returned by Albert. Matched to ``requested`` by data column ID
+        in order, so repeated IDs pair up one-to-one and extra default columns are
+        ignored.
+
+    Returns
+    -------
+    bool
+        True if any update was sent.
+    """
+    available: dict[str, list[DataColumnValue]] = {}
+    for made in created:
+        if made.data_column_id is not None and made.sequence is not None:
+            available.setdefault(made.data_column_id, []).append(made)
+    patches = []
+    for wanted in requested:
+        wanted_id = wanted.data_column_id or (
+            wanted.data_column.id if wanted.data_column else None
+        )
+        matches = available.get(wanted_id) if wanted_id else None
+        if not matches:
+            continue
+        made = matches.pop(0)
+        if not wanted.hidden:
+            continue
+        patches.append(
+            GeneralPatchDatum(
+                attribute="datacolumn",
+                colId=made.sequence,
+                actions=[
+                    PatchDatum(
+                        operation="update", attribute="hidden", old_value=False, new_value=True
+                    )
+                ],
+            )
+        )
+    if not patches:
+        return False
+    session.patch(
+        data_template_url,
+        json=GeneralPatchPayload(data=patches).model_dump(
+            mode="json", by_alias=True, exclude_none=True
+        ),
+    )
+    return True
 
 
 def data_column_validation_patches(
@@ -363,9 +444,14 @@ def parameter_validation_patch(
 def generate_data_column_patches(
     initial_data_column: list[DataColumnValue] | None,
     updated_data_column: list[DataColumnValue] | None,
+    *,
+    remove_omitted: bool = True,
 ) -> tuple[list[DTPatchDatum], list[DataColumnValue], dict[str, list[dict]]]:
     """Generate patches for a data column.
-    Returns a group of patches as well as the data column values to add/put
+    Returns a group of patches as well as the data column values to add/put.
+
+    When ``remove_omitted`` is False, existing columns missing from
+    ``updated_data_column`` are kept instead of deleted.
     """
     if initial_data_column is None:
         initial_data_column = []
@@ -378,11 +464,15 @@ def generate_data_column_patches(
         for x in updated_data_column
         if x.sequence not in [y.sequence for y in initial_data_column] or not x.sequence
     ]
-    deleted_data_columns = [
-        x
-        for x in initial_data_column
-        if x.sequence not in [y.sequence for y in updated_data_column]
-    ]
+    deleted_data_columns = (
+        [
+            x
+            for x in initial_data_column
+            if x.sequence not in [y.sequence for y in updated_data_column]
+        ]
+        if remove_omitted
+        else []
+    )
     updated_data_columns = [
         x for x in updated_data_column if x.sequence in [y.sequence for y in initial_data_column]
     ]
@@ -409,10 +499,18 @@ def generate_data_column_patches(
             these_actions.append(value_patch)
         if calculation_patch:
             these_actions.append(calculation_patch)
+        enum_options_patches = _data_column_enum_option_patches(initial_dc, updated_dc)
+        if enum_options_patches is not None:
+            enum_patches[updated_dc.sequence] = enum_options_patches
+            if enum_options_patches and not _is_enum_validation(initial_dc.validation):
+                validation_patch = None
         if validation_patch:
             these_actions.append(validation_patch)
         if curve_data_patch:
             these_actions.append(curve_data_patch)
+        hidden_patch = _data_column_hidden_patch(initial_dc, updated_dc)
+        if hidden_patch:
+            these_actions.append(hidden_patch)
         # actions cannot have colId, so we need to remove it
         for action in these_actions:
             action.colId = None
@@ -427,24 +525,30 @@ def generate_data_column_patches(
         unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
         if unit_patch:
             patches.append(unit_patch)
-
-        if (
-            updated_dc.validation is not None
-            and updated_dc.validation != []
-            and updated_dc.validation[0].datatype == DataType.ENUM
-        ):
-            existing_enums = []
-            if (
-                initial_dc.validation is not None
-                and initial_dc.validation != []
-                and initial_dc.validation[0].datatype == DataType.ENUM
-            ):
-                existing_enums = initial_dc.validation[0].value
-            enum_patches[updated_dc.sequence] = generate_enum_patches(
-                existing_enums=existing_enums,
-                updated_enums=updated_dc.validation[0].value,
-            )
     return patches, new_data_columns, enum_patches
+
+
+def _is_enum_validation(validation: list[ValueValidation] | None) -> bool:
+    return bool(validation) and validation[0].datatype == DataType.ENUM
+
+
+def _data_column_enum_option_patches(
+    initial_dc: DataColumnValue, updated_dc: DataColumnValue
+) -> list[dict] | None:
+    """Diff enum options for a column whose updated validation is ENUM, else None.
+
+    Options must go through the enums endpoint, which mints the enum IDs; an inline
+    validation patch stores options without IDs, which breaks translations.
+    """
+    if not _is_enum_validation(updated_dc.validation):
+        return None
+    existing_enums = (
+        initial_dc.validation[0].value if _is_enum_validation(initial_dc.validation) else []
+    )
+    return generate_enum_patches(
+        existing_enums=existing_enums,
+        updated_enums=updated_dc.validation[0].value,
+    )
 
 
 def generate_enum_patches(
@@ -510,8 +614,14 @@ def generate_parameter_patches(
     initial_parameters: list[ParameterValue] | None,
     updated_parameters: list[ParameterValue] | None,
     parameter_attribute_name: str = "parameter",
+    *,
+    remove_omitted: bool = True,
 ) -> tuple[list[PGPatchDatum], list[ParameterValue], dict[str, list[dict]]]:
-    """Generate patches for a parameter."""
+    """Generate patches for a parameter.
+
+    When ``remove_omitted`` is False, existing parameters missing from
+    ``updated_parameters`` are kept instead of deleted.
+    """
     parameter_patches = []
     enum_patches = {}
     if initial_parameters is None:
@@ -543,9 +653,11 @@ def generate_parameter_patches(
             new_parameters.append(p_updated)
 
     updated_matched_sequences = {p_updated.sequence for _, p_updated in updated_param_pairs}
-    deleted_parameters = [
-        p for p in initial_parameters if p.sequence not in updated_matched_sequences
-    ]
+    deleted_parameters = (
+        [p for p in initial_parameters if p.sequence not in updated_matched_sequences]
+        if remove_omitted
+        else []
+    )
 
     if len(deleted_parameters) > 0:
         parameter_patches.append(
@@ -600,29 +712,27 @@ def handle_tags(
     """Handle tags updates."""
     patches = []
 
-    existing_tag_ids = [x.id for x in existing_tags] if existing_tags is not None else []
-    updated_tag_ids = [x.id for x in updated_tags] if updated_tags is not None else []
+    existing_tag_ids = {x.id for x in existing_tags} if existing_tags is not None else set()
+    updated_tag_ids = {x.id for x in updated_tags} if updated_tags is not None else set()
     # Add new tags
-    for tag in updated_tag_ids:
-        if tag not in (existing_tag_ids):
-            patches.append(
-                PatchDatum(
-                    operation="add",
-                    attribute=attribute_name,
-                    newValue=tag,
-                )
+    for tag in updated_tag_ids - existing_tag_ids:
+        patches.append(
+            PatchDatum(
+                operation="add",
+                attribute=attribute_name,
+                newValue=tag,
             )
+        )
 
     # Remove old tags
-    for tag in existing_tag_ids:
-        if tag not in (updated_tag_ids):
-            patches.append(
-                PatchDatum(
-                    operation="delete",
-                    attribute=attribute_name,
-                    oldValue=tag,
-                )
+    for tag in existing_tag_ids - updated_tag_ids:
+        patches.append(
+            PatchDatum(
+                operation="delete",
+                attribute=attribute_name,
+                oldValue=tag,
             )
+        )
 
     return patches
 
@@ -631,7 +741,15 @@ def generate_data_template_patches(
     initial_patches: PatchPayload,
     updated_data_template: DataTemplate,
     existing_data_template: DataTemplate,
+    *,
+    remove_omitted_rows: bool = True,
 ):
+    """Generate the patches for a data template update.
+
+    Data column and parameter lists on ``updated_data_template`` replace the existing
+    rows: listed rows are added or updated, and rows that are not listed are deleted.
+    Pass ``remove_omitted_rows=False`` to keep the rows that are not listed.
+    """
     updated_data_columns = (
         updated_data_template.data_column_values
         if updated_data_template.data_column_values is not None
@@ -647,12 +765,17 @@ def generate_data_template_patches(
     patches, new_data_columns, data_column_enum_patches = generate_data_column_patches(
         initial_data_column=existing_data_template.data_column_values,
         updated_data_column=updated_data_columns,
+        remove_omitted=remove_omitted_rows,
     )
 
-    tag_patches = handle_tags(
-        existing_tags=existing_data_template.tags,
-        updated_tags=updated_data_template.tags,
-        attribute_name="tag",
+    tag_patches = (
+        handle_tags(
+            existing_tags=existing_data_template.tags,
+            updated_tags=updated_data_template.tags,
+            attribute_name="tag",
+        )
+        if "tags" in updated_data_template.model_fields_set
+        else []
     )
     # add the general patches
     general_patches.data.extend(patches)
@@ -662,6 +785,7 @@ def generate_data_template_patches(
         initial_parameters=existing_data_template.parameter_values,
         updated_parameters=updated_parameters,
         parameter_attribute_name="parameters",
+        remove_omitted=remove_omitted_rows,
     )
 
     acl_add_values: list[dict[str, str]] = []
@@ -831,6 +955,12 @@ def create_data_columns_with_enums(
 
     response = session.put(data_columns_base_url, json={"DataColumns": payloads})
     returned = [DataColumnValue(**x) for x in response.json()["DataColumns"]]
+    apply_data_column_hidden(
+        session=session,
+        data_template_url=data_template_url,
+        requested=list(data_columns),
+        created=returned,
+    )
 
     for col in returned:
         enum_values = pending.get(col.data_column_id)
@@ -874,12 +1004,16 @@ def generate_parameter_group_patches(
     parameter_patches, new_parameters, parameter_enum_patches = generate_parameter_patches(
         initial_parameters=existing_parameter_group.parameters,
         updated_parameters=updated_parameter_group.parameters,
-        parameter_attribute_name="parameter",
+        parameter_attribute_name="parameters",
     )
-    tag_patches = handle_tags(
-        existing_tags=existing_parameter_group.tags,
-        updated_tags=updated_parameter_group.tags,
-        attribute_name="tagId",
+    tag_patches = (
+        handle_tags(
+            existing_tags=existing_parameter_group.tags,
+            updated_tags=updated_parameter_group.tags,
+            attribute_name="tagId",
+        )
+        if "tags" in updated_parameter_group.model_fields_set
+        else []
     )
     # add to the general patches
     general_patches.data.extend(parameter_patches)

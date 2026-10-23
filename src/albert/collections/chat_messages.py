@@ -107,29 +107,24 @@ class ChatMessageCollection:
         message : ChatMessage
             The message to create. ``parent_id`` must be set to the target
             [`ChatSession`][albert.resources.chats.ChatSession] ID. ``source_request_id``
-            is auto-generated when not provided.
+            is auto-generated when not provided, and ``sequence`` defaults to
+            ``"000"`` (the first component of the request) when not provided. When
+            adding a component to an existing request, pass both
+            ``source_request_id`` and ``sequence`` explicitly.
 
         Returns
         -------
         ChatMessage
             The created message.
-
-        Notes
-        -----
-        The create response does not currently echo the message ``content``, so the
-        returned object's ``content`` may be ``None``. Use [`get_by_id`][albert.collections.chat_messages.ChatMessageCollection.get_by_id] to read
-        the stored message back in full.
         """
         payload = message.model_dump(by_alias=True, exclude_unset=True, mode="json")
         # parentId is encoded in the URL path, not the request body
         payload.pop("parentId", None)
         payload.setdefault("sourceRequestId", str(uuid.uuid4()))
+        # sequence is required by the API; a new request starts at "000"
+        payload.setdefault("sequence", "000")
         url = f"{self._sessions_base}/{message.parent_id}/messages"
         response = await self._session.post(url, json=payload)
-        # TODO(backend): POST /sessions/{id}/messages response does not include the
-        # Content field, so message.content will be None after create. The create
-        # response should mirror the full message object including Content so callers
-        # don't need a follow-up get_by_id to access the payload they just sent.
         return ChatMessage(**response.json())
 
     @validate_call

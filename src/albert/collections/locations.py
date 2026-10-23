@@ -158,6 +158,7 @@ class LocationCollection(BaseCollection):
 
         Fetch a location (e.g. via [`get_by_id`][albert.collections.locations.LocationCollection.get_by_id]), modify the updatable fields on
         the returned object, then pass it here. The location is matched by its ``id``.
+        If nothing changed, the existing location is returned unmodified.
 
         !!! example
             ```python
@@ -189,6 +190,8 @@ class LocationCollection(BaseCollection):
             updated=location,
             stringify_values=True,
         )
+        if not patch_payload.data:
+            return current_object
         url = f"{self.base_path}/{location.id}"
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=location.id)

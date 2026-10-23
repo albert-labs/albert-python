@@ -71,6 +71,9 @@ class CompanyCollection(BaseCollection):
     """
 
     _updatable_attributes = {"name"}
+    # The companies API rejects a delete op on `name` with a 400: a company cannot
+    # exist without a name, so setting it to None must not emit a delete.
+    _non_deletable_attributes = {"name"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
@@ -423,6 +426,7 @@ class CompanyCollection(BaseCollection):
         The company is identified by its ``id``, which must be set. Only the
         updatable fields listed in Notes are applied. To rename a company by its
         current name rather than by its ID, use [`rename`][albert.collections.companies.CompanyCollection.rename].
+        If nothing changed, the current company is returned unmodified.
 
         !!! example
             ```python
@@ -444,13 +448,16 @@ class CompanyCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``name``.
+        The following fields can be updated: ``name``. The ``name`` cannot be cleared:
+        setting it to ``None`` is ignored because a company cannot exist without a name.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=company.id)
 
         # Generate the PATCH payload
         patch_payload = self._generate_patch_payload(existing=current_object, updated=company)
+        if not patch_payload.data:
+            return current_object
         url = f"{self.base_path}/{company.id}"
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         updated_company = self.get_by_id(id=company.id)

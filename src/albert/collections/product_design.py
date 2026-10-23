@@ -223,6 +223,11 @@ class ProductDesignCollection(BaseCollection):
         formula IDs by text or filters, use
         [`search`][albert.collections.product_design.ProductDesignCollection.search].
 
+        For an ingredient's total amount in a product, including amounts that come
+        from nested sub-formulations, read ``inventories[].value``. ``inventory_list``
+        holds only the formula's direct entries, and ``normalized_cas_list`` is
+        purity-adjusted at the CAS level.
+
         !!! example
             ```python
             unpacked = client.product_design.get_unpacked_products(

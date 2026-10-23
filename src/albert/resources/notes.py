@@ -16,8 +16,14 @@ class NoteAttachmentEntityLink(EntityLinkWithName):
     file_size: int | None = Field(default=None, alias="fileSize")
     """The size of the file in bytes."""
 
+    mime_type: str | None = Field(default=None, alias="mimeType")
+    """The MIME type of the file."""
+
     signed_url: str | None = Field(default=None, alias="signedURL")
     """A temporary signed URL for downloading the file, when available."""
+
+    signed_url_v2: str | None = Field(default=None, alias="signedURLV2")
+    """A temporary signed URL for downloading the file (v2), when available."""
 
 
 class Note(BaseResource):

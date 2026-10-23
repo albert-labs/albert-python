@@ -8,7 +8,7 @@ from typing_extensions import deprecated
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
-from albert.collections.tags import TagCollection
+from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
@@ -19,7 +19,16 @@ from albert.core.shared.identifiers import (
     WorksheetId,
 )
 from albert.core.utils import ensure_list
+from albert.exceptions import AlbertPartialError, NotFoundError
 from albert.resources.facet import FacetItem
+from albert.resources.instructions import (
+    Instruction,
+    InstructionCopyResult,
+    InstructionLayout,
+    InstructionSequence,
+    InstructionSet,
+    SequencePosition,
+)
 from albert.resources.inventory import (
     ALL_MERGE_MODULES,
     InventoryCategory,
@@ -33,23 +42,42 @@ from albert.resources.inventory import (
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.users import User
-from albert.utils.inventory import _build_cas_patch_operations
+from albert.utils.instructions import (
+    _build_instruction_create_payload,
+    _build_instruction_name_patch,
+    _build_instruction_row_sequence_payload,
+    _build_instruction_sequence_move_payload,
+    _resolve_instruction_list_params,
+    _validate_instruction_for_create,
+)
+from albert.utils.inventory import _build_cas_patch_operations, _split_bulk_patch_operations
+from albert.utils.tags import resolve_tags, unique_tags
+
+# Instruction list calls return at most this many instructions per fetch.
+_INSTRUCTIONS_PAGE_SIZE = 100
+
+# Bulk instruction reads accept at most this many formula IDs per call.
+_INSTRUCTIONS_BULK_MAX_IDS = 15
+
+# get_by_ids lists at most this many skipped IDs in its warning.
+_MAX_SKIPPED_IDS_SHOWN = 10
 
 
 class InventoryCollection(BaseCollection):
     """Manage Inventory Items in the Albert platform.
 
     An Inventory Item is a catalog entry for a physical or formulated material
-    tracked in Albert. Every item belongs to one of four categories:
+    tracked in Albert. Every item belongs to one of five categories:
 
     - ``RawMaterials``: purchased substances used as ingredients (e.g. a solvent
       or pigment), typically linked to a manufacturing Company and one or more
       CAS numbers.
     - ``Consumables``: supplies consumed during lab work (e.g. gloves, vials).
     - ``Equipment``: instruments and apparatus.
-    - ``Formulas``: mixtures designed in Albert. Formulas are created through the
-      Worksheet collection ([`WorksheetCollection`][albert.collections.worksheets.WorksheetCollection]),
-      not here; [`create`][albert.collections.inventory.InventoryCollection.create] rejects Formula items.
+    - ``Formulas``: mixtures designed in Albert. A Formula item is created under
+      its parent Project by passing ``project_id`` to
+      [`create`][albert.collections.inventory.InventoryCollection.create].
+    - ``Reaction``: products of chemical reactions recorded in Albert.
 
     Inventory Items are referenced throughout the platform by their Inventory ID
     (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
@@ -85,7 +113,7 @@ class InventoryCollection(BaseCollection):
     Methods
     -------
     create(inventory_item, avoid_duplicates=True) -> InventoryItem
-        Create a new inventory item (raw material, consumable, or equipment).
+        Create a new inventory item (raw material, consumable, equipment, or formula).
     get_by_id(id) -> InventoryItem
         Get a single fully populated item by its ID.
     get_by_ids(ids) -> list[InventoryItem]
@@ -100,6 +128,8 @@ class InventoryCollection(BaseCollection):
         Update multiple items, fetching current state in one batched call.
     delete(id) -> None
         Delete an item by its ID.
+    reactivate(id) -> InventoryItem
+        Reactivate a deleted item by its ID.
     merge(parent_id, child_id, modules=None) -> None
         Merge duplicate item(s) into a single parent item.
     exists(inventory_item) -> bool
@@ -114,6 +144,28 @@ class InventoryCollection(BaseCollection):
         Get facet groups (aggregated filter counts) for a query.
     get_facet_by_name(name, ...) -> list[FacetItem]
         Get a single named facet group for a query.
+    get_instructions(parent_id, created_by, updated_by, max_items) -> Iterator[Instruction]
+        Get a formula's batch instruction steps, filtered to one formula or one author.
+    get_instruction_by_id(parent_id, id) -> Instruction
+        Get a single instruction by its ID.
+    get_instructions_by_parent_ids(parent_ids) -> list[InstructionSet]
+        Get the instructions of several formulas in one call.
+    create_instruction(instruction) -> Instruction
+        Add a batch instruction step to a formula.
+    update_instruction(instruction) -> Instruction
+        Update an existing instruction's text.
+    delete_instruction(parent_id, id) -> None
+        Delete an instruction from a formula.
+    update_instruction_row_sequence(parent_id, instruction_ids, design_row_id) -> InstructionSet
+        Reorder the instructions within one row of a formula.
+    copy_instructions(source_id, target_ids) -> InstructionCopyResult
+        Copy a formula's instructions and their order to other formulas.
+    get_instruction_layout(inventory_id) -> InstructionLayout
+        Get a formula's batch instruction procedure: ingredients, stages, and readings.
+    get_instruction_sequence(inventory_id, exclude_hidden=False) -> InstructionSequence
+        Get the row order of a formula's procedure.
+    update_instruction_sequence(inventory_id, source_id, reference_id, position, version) -> InstructionSequence
+        Move a parameter group row to a new position in the row order.
     """
 
     _api_version = "v3"
@@ -126,6 +178,7 @@ class InventoryCollection(BaseCollection):
         "is_formula_override",
         "metadata",
     }
+    _non_updatable_attributes = frozenset({"symbols"})
 
     def __init__(self, *, session: AlbertSession):
         """Initialize an InventoryCollection.
@@ -137,6 +190,7 @@ class InventoryCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
+        self._instructions_base_path = f"/api/{InventoryCollection._api_version}/instructions"
 
     @validate_call
     def merge(
@@ -272,6 +326,15 @@ class InventoryCollection(BaseCollection):
                 return inv
         return None
 
+    @staticmethod
+    def _dedup_applies_to(*, category: InventoryCategory) -> bool:
+        """Whether name+company duplicate matching applies to a category.
+
+        Formulas are always created as a new item with a unique ID under their
+        Project, so an existing item with the same name is never a duplicate.
+        """
+        return category != InventoryCategory.FORMULAS
+
     def create(
         self,
         *,
@@ -280,9 +343,9 @@ class InventoryCollection(BaseCollection):
     ) -> InventoryItem:
         """Create a new inventory item.
 
-        Use this to add a raw material, consumable, or equipment item to the
-        catalog. Formula items are not supported here; build those through the
-        Worksheet collection.
+        Use this to add a raw material, consumable, equipment, or formula item to
+        the catalog. A Formula item (``category="Formulas"``) represents a mixture
+        designed in a Project and requires ``project_id`` set to that Project's ID.
 
         Any tags or company on the item that do not yet exist in Albert are
         created automatically before the item is registered (see
@@ -309,44 +372,28 @@ class InventoryCollection(BaseCollection):
             The item to create. ``name`` and ``category`` are required. For raw
             materials, set ``company`` to the manufacturing Company and ``cas`` to
             the relevant CAS numbers. Volume items (``unit_category="volume"``)
-            require a positive ``density`` at creation.
+            require a positive ``density`` at creation. Formula items require
+            ``project_id``.
         avoid_duplicates : bool, optional
             When True (default), if an item with the same name and company already
             exists, that existing item is returned instead of creating a duplicate.
-            Set to False to force creation.
+            Set to False to force creation. Not applied to Formula items, which are
+            always created as a new item under their Project.
 
         Returns
         -------
         InventoryItem
             The newly created item, populated with its assigned Inventory ID.
-
-        Raises
-        ------
-        NotImplementedError
-            If ``inventory_item.category`` is ``Formulas``.
         """
-        category = (
-            inventory_item.category
-            if isinstance(inventory_item.category, str)
-            else inventory_item.category.value
-        )
-        if category == InventoryCategory.FORMULAS.value:
-            # This will need to interact with worksheets
-            raise NotImplementedError("Registrations of formulas not yet implemented")
-        tag_collection = TagCollection(session=self.session)
-        if inventory_item.tags is not None and inventory_item.tags != []:
-            all_tags = [
-                tag_collection.get_or_create(tag=t) if t.id is None else t
-                for t in inventory_item.tags
-            ]
-            inventory_item.tags = all_tags
+        if inventory_item.tags:
+            inventory_item.tags = resolve_tags(session=self.session, tags=inventory_item.tags)
         if inventory_item.company and inventory_item.company.id is None:
             company_collection = CompanyCollection(session=self.session)
             inventory_item.company = company_collection.get_or_create(
                 company=inventory_item.company
             )
         # Check to see if there is a match on name + Company already
-        if avoid_duplicates:
+        if avoid_duplicates and self._dedup_applies_to(category=inventory_item.category):
             existing = self.get_match_or_none(inventory_item=inventory_item)
             if isinstance(existing, InventoryItem):
                 logging.warning(
@@ -364,6 +411,12 @@ class InventoryCollection(BaseCollection):
     @validate_call
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
         """Get a single, fully populated inventory item by its ID.
+
+        A formula's batch instructions are not included; read them with
+        [`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]
+        (procedure table) and
+        [`get_instructions`][albert.collections.inventory.InventoryCollection.get_instructions]
+        (instruction steps).
 
         For retrieving many items at once, use [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids]. To find items
         without knowing their IDs, use [`search`][albert.collections.inventory.InventoryCollection.search] or [`get_all`][albert.collections.inventory.InventoryCollection.get_all].
@@ -394,7 +447,7 @@ class InventoryCollection(BaseCollection):
         """Get multiple fully populated inventory items by their IDs.
 
         Arbitrarily long ID lists are supported. Items not found are omitted
-        from the result.
+        from the result, and a warning lists the IDs that were skipped.
 
         !!! example
             ```python
@@ -417,8 +470,21 @@ class InventoryCollection(BaseCollection):
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
         inventory = []
         for batch in batches:
-            response = self.session.get(f"{self.base_path}/ids", params={"id": batch})
+            try:
+                response = self.session.get(f"{self.base_path}/ids", params={"id": batch})
+            except NotFoundError:
+                # Missing IDs are dropped unless the whole batch is missing, which is
+                # reported as not found; omit it like any other missing ID.
+                continue
             inventory.extend([InventoryItem(**item) for item in response.json()["Items"]])
+
+        found = {item.id if item.id.startswith("INV") else f"INV{item.id}" for item in inventory}
+        skipped = [item_id for item_id in dict.fromkeys(ids) if item_id not in found]
+        if skipped:
+            shown = ", ".join(skipped[:_MAX_SKIPPED_IDS_SHOWN])
+            more = len(skipped) - _MAX_SKIPPED_IDS_SHOWN
+            suffix = f" (and {more} more)" if more > 0 else ""
+            logger.warning(f"Skipped {len(skipped)} inventory IDs not found: {shown}{suffix}")
         return inventory
 
     @deprecated(
@@ -561,6 +627,38 @@ class InventoryCollection(BaseCollection):
 
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
+
+    @validate_call
+    def reactivate(self, *, id: InventoryId) -> InventoryItem:
+        """Reactivate a deleted inventory item by its ID.
+
+        Restores an item previously deleted with
+        [`delete`][albert.collections.inventory.InventoryCollection.delete], including
+        a duplicate removed by
+        [`merge`][albert.collections.inventory.InventoryCollection.merge]. The item's
+        lots are restored with it. Data already carried over to the merge parent
+        stays on the parent.
+
+        !!! example
+            ```python
+            item = client.inventory.reactivate(id="INVA9999999")
+            item.status
+            # 'active'
+            ```
+
+        Parameters
+        ----------
+        id : InventoryId
+            The Inventory ID to reactivate (format ``INV...``).
+
+        Returns
+        -------
+        InventoryItem
+            The fully populated reactivated InventoryItem.
+        """
+        url = f"{self.base_path}/{id}/reactivate"
+        self.session.patch(url)
+        return self.get_by_id(id=id)
 
     @validate_call
     def _prepare_parameters(
@@ -760,20 +858,22 @@ class InventoryCollection(BaseCollection):
             if composite_search is not None:
                 payload["compositeSearch"] = composite_search
             return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
+                mode=PaginationMode.SEARCH_AFTER,
                 path=f"{self.base_path}/search",
                 session=self.session,
                 max_items=max_items,
                 deserialize=deserialize,
                 method="POST",
+                retry_safe=True,
                 json=payload,
             )
 
         path = (
             f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
         )
+        # llmsearch has no search_after support; it stays on offset pagination.
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.OFFSET if match_all_conditions else PaginationMode.SEARCH_AFTER,
             path=path,
             params=query_params,
             session=self.session,
@@ -824,7 +924,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1072,7 +1172,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1114,7 +1214,12 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional
@@ -1362,7 +1467,7 @@ class InventoryCollection(BaseCollection):
             Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
             Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
-            or ``Formulas``.
+            ``Formulas``, or ``Reaction``.
         company : Company or list[Company], optional
             Filter by manufacturing Company.
         location : Location or list[Location], optional
@@ -1404,7 +1509,12 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional
@@ -1575,11 +1685,6 @@ class InventoryCollection(BaseCollection):
             Request data for the PATCH operation.
         """
 
-        def _remove_old_value_on_add(patch_dict):
-            if "oldValue" in patch_dict and patch_dict["operation"] == "add":
-                del patch_dict["oldValue"]
-            return patch_dict
-
         _updatable_attributes_special = {"company", "tags", "cas", "acls"}
         payload = self._generate_patch_payload(existing=existing, updated=updated)
         payload = payload.model_dump(mode="json", by_alias=True)
@@ -1642,7 +1747,7 @@ class InventoryCollection(BaseCollection):
 
             elif attribute == "tags":
                 if (old_value is None or old_value == []) and new_value is not None:
-                    for t in new_value:
+                    for t in unique_tags(new_value):
                         payload["data"].append(
                             {
                                 "operation": "add",
@@ -1695,14 +1800,15 @@ class InventoryCollection(BaseCollection):
                         {"operation": "delete", "attribute": "companyId", "entityId": old_value.id}
                     )
                 elif old_value.id != new_value.id:
-                    payload["data"].append(
-                        {
-                            "operation": "update",
-                            "attribute": "companyId",
-                            "oldValue": old_value.id,
-                            "newValue": new_value.id,
-                        }
-                    )
+                    company_update = {
+                        "operation": "update",
+                        "attribute": "companyId",
+                        "oldValue": old_value.id,
+                        "newValue": new_value.id,
+                    }
+                    if getattr(new_value, "name", None):
+                        company_update["name"] = new_value.name
+                    payload["data"].append(company_update)
         return payload
 
     @staticmethod
@@ -1727,7 +1833,8 @@ class InventoryCollection(BaseCollection):
 
         Fetch the item (e.g. with [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]), modify the updatable fields
         on the returned object, then pass it here. Only the fields listed in Notes
-        are applied; changes to other fields are ignored.
+        are applied; changes to other fields are ignored, and a change to
+        ``symbols`` also emits a warning.
 
         !!! example
             ```python
@@ -1748,18 +1855,34 @@ class InventoryCollection(BaseCollection):
         InventoryItem
             The updated item.
 
+        Raises
+        ------
+        AlbertPartialError
+            If a tag or company change only partially succeeds. The error carries
+            the succeeded (``created_items``) and failed (``failed_items``) items.
+
+        Warns
+        -----
+        UserWarning
+            If ``symbols`` differs from the current value. Symbols cannot be
+            changed with this method, so the change is ignored.
+
         Notes
         -----
-        The following fields can be updated: ``alias``, ``description``,
-        ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
-        ``unit_category``.
+        The following fields can be updated: ``acls``, ``alias``, ``company``,
+        ``description``, ``is_formula_override``, ``metadata``, ``name``,
+        ``security_class``, ``tags``, ``unit_category``.
         Note that ``unit_category`` cannot be changed to or from ``volume``,
         and ``density`` is fixed at creation.
         On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``,
         ``cas_category``, ``inventory_function``.
         ``substance_id`` can be set when adding a new CAS entry; it is not
         patchable on existing entries.
+
+        Any tags that do not yet exist in Albert are created automatically.
         """
+        if "tags" in inventory_item.model_fields_set and inventory_item.tags:
+            inventory_item.tags = resolve_tags(session=self.session, tags=inventory_item.tags)
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)
         # Generate the PATCH payload
@@ -1767,12 +1890,46 @@ class InventoryCollection(BaseCollection):
             existing=current_object, updated=inventory_item
         )
 
-        self._apply_inventory_patch_payload(
-            url=f"{self.base_path}/{inventory_item.id}", patch_payload=patch_payload
-        )
+        self._apply_inventory_patch_payloads(patch_payloads=[(inventory_item.id, patch_payload)])
 
         updated_inv = self.get_by_id(id=inventory_item.id)
         return updated_inv
+
+    def _apply_inventory_patch_payloads(self, *, patch_payloads: list[tuple[str, dict]]) -> None:
+        """Apply generated patch payloads for one or more items.
+
+        Tag and company changes are batched across items (up to 300 per call);
+        all other changes are applied per item.
+        """
+        bulk_operations_by_id: dict[str, list[dict]] = {}
+        for inventory_id, patch_payload in patch_payloads:
+            bulk_operations, remaining_operations = _split_bulk_patch_operations(
+                patch_payload["data"]
+            )
+            if bulk_operations:
+                bulk_operations_by_id.setdefault(inventory_id, []).extend(bulk_operations)
+            if remaining_operations:
+                self._apply_inventory_patch_payload(
+                    url=f"{self.base_path}/{inventory_id}",
+                    patch_payload={"data": remaining_operations},
+                )
+        entries = [
+            {"id": inventory_id, "data": operations}
+            for inventory_id, operations in bulk_operations_by_id.items()
+        ]
+        batch_size = 300
+        for i in range(0, len(entries), batch_size):
+            response = self.session.patch(self.base_path, json=entries[i : i + batch_size])
+            if response.status_code == 206:
+                data = response.json()
+                failed_items = data.get("FailedItems") or []
+                if failed_items:
+                    raise AlbertPartialError(
+                        f"Bulk inventory update partially succeeded: "
+                        f"{len(failed_items)} item(s) failed. Failures: {failed_items}",
+                        created_items=data.get("CreatedItems") or [],
+                        failed_items=failed_items,
+                    )
 
     def _apply_inventory_patch_payload(self, *, url: str, patch_payload: dict) -> None:
         # Complex patching does not work for some fields, so I'm going to do this in a loop :(
@@ -1817,26 +1974,549 @@ class InventoryCollection(BaseCollection):
         list[InventoryItem]
             The updated items. Order is not guaranteed to match the input list.
 
+        Raises
+        ------
+        AlbertPartialError
+            If a batched tag or company change only partially succeeds. The error
+            carries the succeeded (``created_items``) and failed (``failed_items``)
+            items.
+
+        Warns
+        -----
+        UserWarning
+            If ``symbols`` differs from the current value on any item. The change
+            is ignored.
+
         Notes
         -----
         The same fields can be updated as with
         [`update`][albert.collections.inventory.InventoryCollection.update].
-        Updates are applied sequentially per item; if an error occurs mid-batch,
-        earlier updates are not rolled back.
+        Tag and company changes are applied together in batches of up to 300
+        items; all other changes are applied per item. If an error occurs
+        mid-batch, earlier updates are not rolled back.
         """
         if not inventory_items:
             return []
         ids = [item.id for item in inventory_items]
         existing_by_id = {item.id: item for item in self.get_by_ids(ids=ids)}
+        patch_payloads = []
         for inventory_item in inventory_items:
+            if "tags" in inventory_item.model_fields_set and inventory_item.tags:
+                inventory_item.tags = resolve_tags(session=self.session, tags=inventory_item.tags)
             current_object = existing_by_id.get(inventory_item.id)
             if current_object is None:
                 # Raises NotFoundError, matching update() on an unknown ID.
                 current_object = self.get_by_id(id=inventory_item.id)
-            patch_payload = self._generate_inventory_patch_payload(
-                existing=current_object, updated=inventory_item
+            patch_payloads.append(
+                (
+                    inventory_item.id,
+                    self._generate_inventory_patch_payload(
+                        existing=current_object, updated=inventory_item
+                    ),
+                )
             )
-            self._apply_inventory_patch_payload(
-                url=f"{self.base_path}/{inventory_item.id}", patch_payload=patch_payload
-            )
+        self._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
         return self.get_by_ids(ids=ids)
+
+    @validate_call
+    def get_instructions(
+        self,
+        *,
+        parent_id: InventoryId | None = None,
+        created_by: str | None = None,
+        updated_by: str | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[Instruction]:
+        """Get a formula's batch instruction steps, filtered to one formula or one author.
+
+        Exactly one filter must be provided: a formula (``parent_id``), a creator
+        (``created_by``), or a last editor (``updated_by``). Results are returned
+        as a lazily paginated iterator; when filtering by formula, instructions
+        come back in display order (formula-level instructions first, then each
+        ingredient row's).
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            for instruction in client.inventory.get_instructions(parent_id="INV123"):
+                print(instruction.id, instruction.name)
+            ```
+
+        Parameters
+        ----------
+        parent_id : InventoryId, optional
+            Only instructions belonging to this formula (format ``INV...``).
+        created_by : str, optional
+            Only instructions created by this user ID.
+        updated_by : str, optional
+            Only instructions last edited by this user ID.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+
+        Returns
+        -------
+        Iterator[Instruction]
+            A lazily paginated iterator of matching instructions.
+
+        Raises
+        ------
+        ValueError
+            If zero or more than one of the filters is provided.
+        """
+        params = _resolve_instruction_list_params(
+            parent_id=parent_id, created_by=created_by, updated_by=updated_by
+        )
+        params["limit"] = _INSTRUCTIONS_PAGE_SIZE
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self._instructions_base_path,
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [Instruction.model_validate(x) for x in items],
+        )
+
+    @validate_call
+    def get_instruction_by_id(self, *, parent_id: InventoryId, id: str) -> Instruction:
+        """Get a single instruction by its ID.
+
+        !!! example
+            ```python
+            instruction = client.inventory.get_instruction_by_id(
+                parent_id="INV123", id="ABI100"
+            )
+            instruction.name
+            # 'Take the pH of the batch'
+            ```
+
+        Parameters
+        ----------
+        parent_id : InventoryId
+            The ID of the formula the instruction belongs to (format ``INV...``).
+        id : str
+            The ID of the instruction to retrieve (format ``ABI...``).
+
+        Returns
+        -------
+        Instruction
+            The fully populated instruction.
+        """
+        response = self.session.get(
+            f"{self._instructions_base_path}/{parent_id}", params={"id": id}
+        )
+        return Instruction(**response.json())
+
+    @validate_call
+    def get_instructions_by_parent_ids(
+        self, *, parent_ids: list[InventoryId]
+    ) -> list[InstructionSet]:
+        """Get the instructions of several formulas in one call.
+
+        Each formula comes back with its instructions in display order and the
+        per-row ordering of those instructions. Formulas without instructions
+        yet are returned empty. At most 15 formulas can be fetched per call.
+
+        !!! example
+            ```python
+            sets = client.inventory.get_instructions_by_parent_ids(
+                parent_ids=["INV123", "INV456"]
+            )
+            for s in sets:
+                print(s.id, len(s.instructions))
+            ```
+
+        Parameters
+        ----------
+        parent_ids : list[InventoryId]
+            The IDs of the formulas to fetch instructions for (format ``INV...``).
+            Maximum 15 per call.
+
+        Returns
+        -------
+        list[InstructionSet]
+            One entry per requested formula, with its instructions and ordering.
+
+        Raises
+        ------
+        ValueError
+            If more than 15 formula IDs are provided.
+        """
+        if not parent_ids or len(parent_ids) > _INSTRUCTIONS_BULK_MAX_IDS:
+            raise ValueError("Provide between 1 and 15 formula IDs.")
+        response = self.session.get(
+            f"{self._instructions_base_path}/ids", params={"id": parent_ids}
+        )
+        return [InstructionSet(**x) for x in response.json()["Items"]]
+
+    @validate_call
+    def create_instruction(self, *, instruction: Instruction) -> Instruction:
+        """Add a batch instruction step (e.g. "Take the pH of the batch") to a formula.
+
+        The instruction's ``parent_id`` selects the formula and is required.
+        A new instruction is appended at the end of its order by default (its
+        row's, or the formula-level one); reorder with
+        [`update_instruction_row_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_row_sequence].
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.instructions import Instruction
+
+            client = Albert()
+            instruction = client.inventory.create_instruction(
+                instruction=Instruction(
+                    name="Take the pH of the batch", parent_id="INV123"
+                )
+            )
+            print(instruction.id)
+            ```
+
+        Parameters
+        ----------
+        instruction : Instruction
+            The instruction to create. Requires ``name`` and ``parent_id``.
+            To pin the instruction to a specific ingredient row, set
+            ``design.design_row_id`` to that row's unique ID (format
+            ``DES...#ROW...``; match rows by name in
+            [`get_instruction_layout`][albert.collections.inventory.InventoryCollection.get_instruction_layout]
+            results and read ``row_unique_id``). Without a row link, the
+            instruction is formula-level.
+
+        Returns
+        -------
+        Instruction
+            The created instruction, populated with its assigned ID.
+
+        Raises
+        ------
+        ValueError
+            If the instruction has no ``name`` or ``parent_id``, or its
+            ``design.product_id`` does not match ``parent_id``.
+        """
+        _validate_instruction_for_create(instruction)
+        response = self.session.post(
+            f"{self._instructions_base_path}/{instruction.parent_id}",
+            json=_build_instruction_create_payload(instruction=instruction),
+        )
+        return Instruction(**response.json())
+
+    @validate_call
+    def update_instruction(self, *, instruction: Instruction) -> Instruction:
+        """Update an instruction's text.
+
+        Fetch an instruction (e.g. via [`get_instruction_by_id`][albert.collections.inventory.InventoryCollection.get_instruction_by_id]),
+        modify its ``name``, then pass it here. The instruction is matched by its
+        ``id`` and ``parent_id``. If nothing changed, the existing instruction is
+        returned unmodified.
+
+        !!! example
+            ```python
+            instruction = client.inventory.get_instruction_by_id(
+                parent_id="INV123", id="ABI100"
+            )
+            instruction.name = "Take the pH of the batch twice"
+            updated = client.inventory.update_instruction(instruction=instruction)
+            ```
+
+        Parameters
+        ----------
+        instruction : Instruction
+            The instruction with updated fields. Must include ``id`` and
+            ``parent_id``.
+
+        Returns
+        -------
+        Instruction
+            The updated instruction.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``. Renames that change only
+        letter casing are rejected. An unset ``name`` (never assigned on the
+        model) is left unchanged rather than cleared.
+        """
+        existing = self.get_instruction_by_id(parent_id=instruction.parent_id, id=instruction.id)
+        payload = _build_instruction_name_patch(existing=existing, updated=instruction)
+        if payload is None:
+            return existing
+        self.session.patch(f"{self._instructions_base_path}/{instruction.parent_id}", json=payload)
+        return self.get_instruction_by_id(parent_id=instruction.parent_id, id=instruction.id)
+
+    @validate_call
+    def delete_instruction(self, *, parent_id: InventoryId, id: str) -> None:
+        """Delete an instruction from a formula.
+
+        !!! example
+            ```python
+            client.inventory.delete_instruction(parent_id="INV123", id="ABI100")
+            ```
+
+        Parameters
+        ----------
+        parent_id : InventoryId
+            The ID of the formula the instruction belongs to (format ``INV...``).
+        id : str
+            The ID of the instruction to delete (format ``ABI...``).
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self._instructions_base_path}/{parent_id}", json={"id": id})
+
+    @validate_call
+    def update_instruction_row_sequence(
+        self,
+        *,
+        parent_id: InventoryId,
+        instruction_ids: list[str],
+        design_row_id: str | None = None,
+    ) -> InstructionSet:
+        """Reorder the instructions within one row of a formula.
+
+        Instructions are ordered independently inside each row they are pinned
+        to, with one extra order for the formula-level (unpinned) instructions.
+        Pass the row's full set of instruction IDs in the desired order; omit
+        ``design_row_id`` to reorder the formula-level instructions. This does
+        not change the order of the rows themselves (see
+        [`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence]).
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            current = client.inventory.get_instructions_by_parent_ids(parent_ids=["INV123"])[0]
+            ids = [i.id for i in current.instructions]
+            updated = client.inventory.update_instruction_row_sequence(
+                parent_id="INV123", instruction_ids=list(reversed(ids))
+            )
+            ```
+
+        Parameters
+        ----------
+        parent_id : InventoryId
+            The ID of the formula whose instructions are reordered (format
+            ``INV...``).
+        instruction_ids : list[str]
+            The IDs of the row's instructions in the desired order (format
+            ``ABI...``). Must contain exactly the instructions currently in the
+            row.
+        design_row_id : str, optional
+            The unique ID of the ingredient row whose instructions are reordered
+            (format ``DES...#ROW...``). When None, the formula-level instructions
+            are reordered.
+
+        Returns
+        -------
+        InstructionSet
+            The formula's instructions with their updated ordering.
+
+        Raises
+        ------
+        ValueError
+            If ``instruction_ids`` is not exactly the row's current set of
+            instruction IDs, or the row has no instructions.
+        """
+        current = self.get_instructions_by_parent_ids(parent_ids=[parent_id])[0]
+        payload = _build_instruction_row_sequence_payload(
+            sequence=current.sequence,
+            design_row_id=design_row_id,
+            instruction_ids=instruction_ids,
+        )
+        self.session.patch(f"{self._instructions_base_path}/{parent_id}/sequence", json=payload)
+        return self.get_instructions_by_parent_ids(parent_ids=[parent_id])[0]
+
+    @validate_call
+    def copy_instructions(
+        self, *, source_id: InventoryId, target_ids: list[InventoryId]
+    ) -> InstructionCopyResult:
+        """Copy a formula's instructions and their order to other formulas.
+
+        Every instruction of the source formula is recreated on each target
+        formula with a fresh ID, keeping the same row pins and order. Formulas
+        that already have instructions are skipped, not overwritten.
+
+        !!! example
+            ```python
+            result = client.inventory.copy_instructions(
+                source_id="INV123", target_ids=["INV456", "INV789"]
+            )
+            print(result.copied, result.skipped)
+            ```
+
+        Parameters
+        ----------
+        source_id : InventoryId
+            The ID of the formula to copy instructions from (format ``INV...``).
+        target_ids : list[InventoryId]
+            The IDs of the formulas to copy instructions to (format ``INV...``).
+
+        Returns
+        -------
+        InstructionCopyResult
+            How many target formulas received the instructions and how many were
+            skipped.
+        """
+        payload = {"sourceId": source_id, "targets": target_ids}
+        response = self.session.post(f"{self._instructions_base_path}/copy", json=payload)
+        return InstructionCopyResult(**response.json())
+
+    @validate_call
+    def get_instruction_layout(self, *, inventory_id: InventoryId) -> InstructionLayout:
+        """Get a formula's batch instruction procedure: ingredients, stages, and readings.
+
+        Returns every row of the formula's procedure in display order:
+        ingredient rows, parameter groups (procedure stages), and parameter
+        rows, each with its values for the relevant Worksheet columns. To get
+        only the row order without the values, use
+        [`get_instruction_sequence`][albert.collections.inventory.InventoryCollection.get_instruction_sequence].
+        See the [`albert.resources.instructions`][albert.resources.instructions]
+        models for how the overall order is determined.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            layout = client.inventory.get_instruction_layout(inventory_id="INV123")
+            for row in layout.rows:
+                print(row.type, row.name)
+            ```
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the formula inventory item (format ``INV...``).
+
+        Returns
+        -------
+        InstructionLayout
+            The formula's procedure table, including the version of the row
+            order.
+        """
+        path = f"{self.base_path}/{inventory_id}/instructions"
+        response = self.session.get(path)
+        return InstructionLayout(**response.json())
+
+    @validate_call
+    def get_instruction_sequence(
+        self, *, inventory_id: InventoryId, exclude_hidden: bool = False
+    ) -> InstructionSequence:
+        """Get the row order of a formula's procedure.
+
+        Lists every row of the formula's procedure in display order, including
+        rows that have no values for the formula yet. If the order has never
+        been customized, it matches the Sheet the formula lives on; see the
+        [`albert.resources.instructions`][albert.resources.instructions] models
+        for how the order is determined. The returned ``version`` is required
+        when reordering rows with
+        [`update_instruction_sequence`][albert.collections.inventory.InventoryCollection.update_instruction_sequence].
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            sequence = client.inventory.get_instruction_sequence(inventory_id="INV123")
+            for row in sequence.rows:
+                print(row.row_id, row.is_hidden)
+            ```
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the formula inventory item (format ``INV...``).
+        exclude_hidden : bool, optional
+            When True, omit rows that are currently hidden on the Worksheet.
+            Default is False.
+
+        Returns
+        -------
+        InstructionSequence
+            The formula's row order, including its ``version``.
+        """
+        path = f"{self.base_path}/{inventory_id}/instructions/sequence"
+        response = self.session.get(path, params={"excludeHiddenItems": exclude_hidden})
+        return InstructionSequence(**response.json())
+
+    @validate_call
+    def update_instruction_sequence(
+        self,
+        *,
+        inventory_id: InventoryId,
+        source_id: str,
+        reference_id: str,
+        position: SequencePosition,
+        version: int,
+    ) -> InstructionSequence:
+        """Move a parameter group row to a new position in the row order.
+
+        Only parameter group rows (the stages of the procedure) can be
+        reordered; ingredient rows always follow the Sheet's Product Design. The
+        row identified by ``source_id`` is placed directly above or below the row
+        identified by ``reference_id``, which can be an ingredient row or another
+        parameter group row.
+
+        Both IDs use the unique row format ``DES...#ROW...``, which users rarely
+        know directly. Find them by matching display names in the formula's
+        procedure table, as in the example below; each row's ``row_unique_id``
+        is the value to pass here.
+
+        The ``version`` guards against conflicting edits: it must match the row
+        order's current version, or the move is rejected and the row order
+        should be re-fetched before retrying. The updated row order (with its
+        new version) is returned, so consecutive moves can chain off each
+        result.
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.instructions import SequencePosition
+
+            client = Albert()
+            layout = client.inventory.get_instruction_layout(inventory_id="INV123")
+            ids_by_name = {row.name: row.row_unique_id for row in layout.rows}
+
+            sequence = client.inventory.get_instruction_sequence(inventory_id="INV123")
+            updated = client.inventory.update_instruction_sequence(
+                inventory_id="INV123",
+                source_id=ids_by_name["Heating"],
+                reference_id=ids_by_name["Premix"],
+                position=SequencePosition.BELOW,
+                version=sequence.version,
+            )
+            print(updated.version)
+            ```
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the formula inventory item (format ``INV...``).
+        source_id : str
+            The unique ID of the parameter group row to move (format ``DES...#ROW...``).
+        reference_id : str
+            The unique ID of the row to place the moved row next to (format
+            ``DES...#ROW...``). Can be an ingredient row or another parameter
+            group row.
+        position : SequencePosition
+            Whether to place the moved row ``above`` or ``below`` the reference row.
+        version : int
+            The row order's current version, as returned by
+            [`get_instruction_sequence`][albert.collections.inventory.InventoryCollection.get_instruction_sequence].
+
+        Returns
+        -------
+        InstructionSequence
+            The updated row order, including its new ``version``.
+
+        Notes
+        -----
+        Reordering is available only when it is enabled for the tenant; otherwise
+        the call is rejected as not applicable.
+        """
+        path = f"{self.base_path}/{inventory_id}/instructions/sequence"
+        payload = _build_instruction_sequence_move_payload(
+            source_id=source_id, reference_id=reference_id, position=position, version=version
+        )
+        self.session.patch(path, json=payload)
+        return self.get_instruction_sequence(inventory_id=inventory_id)

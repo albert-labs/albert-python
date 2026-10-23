@@ -48,7 +48,8 @@ class NotebookCollection(BaseCollection):
 
     A Notebook is an electronic lab notebook (ELN): an ordered document made up
     of content blocks (paragraphs, headers, checklists, tables, images, file
-    attachments, and Ketcher chemical drawings). Each Notebook is attached to a
+    attachments, Ketcher chemical drawings, Microsoft Office documents, and
+    embedded reports). Each Notebook is attached to a
     parent entity, which is a Project, a Task, or a custom template, and is
     referenced by its Notebook ID (format ``NTB...``, e.g. ``"NTB123"``).
 
@@ -85,7 +86,7 @@ class NotebookCollection(BaseCollection):
         Get a single notebook by its ID.
     search(...) -> Iterator[NotebookSearchItem]
         Search notebook block content across projects.
-    list_by_parent_id(parent_id) -> list[Notebook]
+    list_by_parent_id(parent_id, max_items=None) -> list[Notebook]
         List the notebooks attached to a given parent (project or task).
     create(notebook) -> Notebook
         Find or create an (empty) notebook for the given parent.
@@ -143,7 +144,9 @@ class NotebookCollection(BaseCollection):
         return Notebook(**response.json())
 
     @validate_call
-    def list_by_parent_id(self, *, parent_id: ProjectId | TaskId) -> list[Notebook]:
+    def list_by_parent_id(
+        self, *, parent_id: ProjectId | TaskId, max_items: int | None = None
+    ) -> list[Notebook]:
         """List the Notebooks attached to a given parent entity.
 
         !!! example
@@ -161,6 +164,9 @@ class NotebookCollection(BaseCollection):
         parent_id : ProjectId or TaskId
             The ID of the parent entity whose notebooks should be listed
             (a Project ID, format ``PRO...``, or a Task ID, format ``TAS...``).
+        max_items : int, optional
+            Maximum number of notebooks to return. If None (the default), returns
+            every notebook attached to the parent.
 
         Returns
         -------
@@ -170,8 +176,10 @@ class NotebookCollection(BaseCollection):
 
         # search
         response = self.session.get(f"{self.base_path}/{parent_id}/search")
-        # return
-        return [self.get_by_id(id=x["id"]) for x in response.json()["Items"]]
+        items = response.json()["Items"]
+        if max_items is not None:
+            items = items[:max_items]
+        return [self.get_by_id(id=x["id"]) for x in items]
 
     @validate_call
     def search(
@@ -351,7 +359,7 @@ class NotebookCollection(BaseCollection):
         does not change the notebook name (use [`update`][albert.collections.notebooks.NotebookCollection.update] for that).
 
         When writing @-mention chips (``<span data-albertid="..." data-type="...">``
-        spans) into block text, also create the backing mention links — saving the
+        spans) into block text, also create the backing mention links. Saving the
         HTML does not register them, and without a link the chip does not resolve
         in the UI. Create one link per mentioned entity with
         [`create`][albert.collections.links.LinksCollection.create]
@@ -613,6 +621,8 @@ class NotebookCollection(BaseCollection):
         ----------
         notebook_copy_info : NotebookCopyInfo
             Describes the source notebook and the destination parent for the copy.
+            When ``type`` is [`RESTORE_TEMPLATE`][albert.resources.notebooks.NotebookCopyType.RESTORE_TEMPLATE],
+            ``template_id`` must be set to the source custom template (format ``CTP...``).
         type : NotebookCopyType
             The kind of copy to perform (e.g. into a template, task, or project,
             or restoring a template).

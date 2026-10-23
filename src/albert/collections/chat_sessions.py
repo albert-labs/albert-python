@@ -7,7 +7,7 @@ from pydantic import validate_call
 from albert.core.async_session import AsyncAlbertSession
 from albert.core.pagination import AsyncAlbertPaginator
 from albert.core.shared.types import _UNSET, _UnsetType
-from albert.resources.chats import ChatSession
+from albert.resources.chats import ChatSession, ChatSessionKind
 
 
 class ChatSessionCollection:
@@ -38,7 +38,7 @@ class ChatSessionCollection:
             session = await client.chat_sessions.create(
                 session=ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
             )
-            async for s in client.chat_sessions.get_all(name=["titanium"]):
+            async for s in client.chat_sessions.get_all(name=["Titanium dioxide questions"]):
                 print(s.id, s.name)
         ```
 
@@ -60,7 +60,7 @@ class ChatSessionCollection:
         Get a single session by its ID.
     get_by_source_session_id(source_session_id) -> ChatSession
         Get a session by its external source session ID.
-    get_all(name, exact_match, parent_id, max_items) -> AsyncIterator[ChatSession]
+    get_all(name, exact_match, parent_id, kind, automation_id, max_items) -> AsyncIterator[ChatSession]
         Iterate over sessions, with optional filters.
     update(id, name=None, parent_id=...) -> ChatSession
         Rename a session or move it between folders.
@@ -173,8 +173,10 @@ class ChatSessionCollection:
         self,
         *,
         name: list[str] | None = None,
-        exact_match: bool = False,
+        exact_match: bool = True,
         parent_id: str | None = None,
+        kind: ChatSessionKind | None = None,
+        automation_id: str | None = None,
         max_items: int | None = None,
     ) -> AsyncIterator[ChatSession]:
         """Iterate over chat sessions, with optional filters.
@@ -185,10 +187,14 @@ class ChatSessionCollection:
         !!! example
             ```python
             from albert import AsyncAlbert
+            from albert.resources.chats import ChatSessionKind
 
             async with AsyncAlbert() as client:
-                async for session in client.chat_sessions.get_all(name=["titanium"]):
+                async for session in client.chat_sessions.get_all(name=["Titanium dioxide questions"]):
                     print(session.id, session.name)
+
+                async for session in client.chat_sessions.get_all(kind=ChatSessionKind.AUTOMATION):
+                    print(session.id, session.automation_id, session.automation_run_id)
             ```
 
         Parameters
@@ -196,11 +202,16 @@ class ChatSessionCollection:
         name : list[str] | None, optional
             Filter to sessions whose name matches any of the given values.
         exact_match : bool, optional
-            When ``True``, ``name`` must match exactly; otherwise it matches as a
-            substring. Defaults to ``False``.
+            When ``True`` (default), ``name`` matches session names exactly.
+            Fuzzy name matching (``exact_match=False``) is not currently supported
+            by Albert and a ``name`` filter then returns no results.
         parent_id : str | None, optional
             Filter to sessions filed under the given
             [`ChatFolder`][albert.resources.chats.ChatFolder].
+        kind : ChatSessionKind | None, optional
+            Return only sessions of the given kind.
+        automation_id : str | None, optional
+            Return only sessions created by the given automation.
         max_items : int | None, optional
             Maximum number of sessions to yield in total. If ``None``, yields all
             matching sessions.
@@ -213,10 +224,14 @@ class ChatSessionCollection:
         params: dict[str, str | list[str]] = {}
         if name:
             params["name"] = name
-        if exact_match:
-            params["exactMatch"] = "true"
+            if exact_match:
+                params["exactMatch"] = "true"
         if parent_id is not None:
             params["parentId"] = parent_id
+        if kind is not None:
+            params["kind"] = kind.value
+        if automation_id is not None:
+            params["automationId"] = automation_id
 
         return AsyncAlbertPaginator(
             session=self._session,

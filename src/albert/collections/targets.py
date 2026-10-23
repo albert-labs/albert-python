@@ -5,6 +5,10 @@ from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import ProjectId, TargetId
 from albert.resources.targets import Target
 
+# No documented cap on the targets /ids id[] param; 300 matches the documented
+# cap of the peer lots/inventory/workflow collections.
+_IDS_CHUNK_SIZE = 300
+
 
 class TargetCollection(BaseCollection):
     """Manage Targets in the Albert platform (🧪 Beta).
@@ -122,7 +126,8 @@ class TargetCollection(BaseCollection):
         parent_id : ProjectId, optional
             The ID of a parent project to inherit the ACL (access control) policy
             from when the caller does not own the target record. Supply this if a
-            plain lookup is denied for permission reasons.
+            plain lookup is denied for permission reasons. The returned target
+            never includes ``parent_id`` (it is stored but not returned on reads).
 
         Returns
         -------
@@ -137,6 +142,8 @@ class TargetCollection(BaseCollection):
     def get_by_ids(self, *, ids: list[TargetId]) -> list[Target]:
         """Get many targets by their IDs.
 
+        Arbitrarily long ID lists are supported.
+
         !!! example
             ```python
             targets = client.targets.get_by_ids(ids=["TAR1", "TAR2"])
@@ -150,12 +157,16 @@ class TargetCollection(BaseCollection):
         Returns
         -------
         list[Target]
-            The matching targets. Targets not found are omitted.
+            The matching targets. Targets not found are omitted. Order is not
+            guaranteed to match the input list.
         """
         url = f"{self.base_path}/ids"
-        response = self.session.get(url, params={"id": ids})
-        data = response.json()
-        return [Target(**item) for item in data.get("Items", [])]
+        batches = [ids[i : i + _IDS_CHUNK_SIZE] for i in range(0, len(ids), _IDS_CHUNK_SIZE)]
+        return [
+            Target(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json().get("Items", [])
+        ]
 
     def delete(self, *, id: TargetId) -> None:
         """Delete a target by its ID.

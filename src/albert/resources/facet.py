@@ -18,6 +18,9 @@ class FacetValue(BaseAlbertModel):
     count: int
     """The number of results that have this facet value."""
 
+    short_name: str | None = Field(default=None, alias="shortName")
+    """The short name of the facet value. Present on workflow parameter facets where the parameter has a short name."""
+
 
 class FacetItem(BaseAlbertModel):
     """A search facet grouping related filter values."""

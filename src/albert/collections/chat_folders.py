@@ -138,7 +138,7 @@ class ChatFolderCollection:
         self,
         *,
         name: list[str] | None = None,
-        exact_match: bool = False,
+        exact_match: bool = True,
         max_items: int | None = None,
     ) -> AsyncIterator[ChatFolder]:
         """Iterate over chat folders, with optional filters.
@@ -160,8 +160,9 @@ class ChatFolderCollection:
         name : list[str] | None, optional
             Filter to folders whose name matches any of the given values.
         exact_match : bool, optional
-            When ``True``, ``name`` must match exactly; otherwise it matches as a
-            substring. Defaults to ``False``.
+            When ``True`` (default), ``name`` matches folder names exactly.
+            Fuzzy name matching (``exact_match=False``) is not currently supported
+            by Albert and a ``name`` filter then returns no results.
         max_items : int | None, optional
             Maximum number of folders to yield in total. If ``None``, yields all
             matching folders.
@@ -174,8 +175,8 @@ class ChatFolderCollection:
         params: dict[str, str | list[str]] = {}
         if name:
             params["name"] = name
-        if exact_match:
-            params["exactMatch"] = "true"
+            if exact_match:
+                params["exactMatch"] = "true"
 
         return AsyncAlbertPaginator(
             session=self._session,

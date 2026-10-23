@@ -8,6 +8,7 @@ from albert.core.shared.identifiers import InventoryId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import SerializeAsEntityLink
 from albert.resources.companies import Company
+from albert.resources.inventory import InventoryUnitCategory
 from albert.resources.locations import Location
 
 
@@ -49,6 +50,7 @@ class Pricing(BaseResource):
             company=Company(name="Acme Chemicals"),
             location=Location(name="Pittsburgh"),
             price=12.50,
+            price_l=12.50,  # optional, for volume-primary items
         )
         ```"""
 
@@ -73,8 +75,19 @@ class Pricing(BaseResource):
     price: float = Field(ge=0, le=9999999999)
     """The price, expressed per kilogram or per liter (currency/kg or currency/L) depending on the item's unit of measure. Convert to that basis before setting."""
 
+    price_l: float | None = Field(default=None, ge=0, le=9999999999, alias="priceL")
+    """The price per liter (currency/L), stored alongside ``price`` for
+    volume-primary items. ``None`` for items not measured by volume."""
+
     currency: str = Field(default="USD", alias="currency")
     """The currency code for ``price``. Defaults to ``"USD"``."""
+
+    unit_category: InventoryUnitCategory | None = Field(
+        default=None, alias="unitCategory", frozen=True
+    )
+    """The unit category (``mass``, ``volume``, ``length``, ``pressure``, or
+    ``units``) of the parent inventory item, which determines how ``price`` is
+    expressed. Read-only."""
 
     fob: str | None = Field(default=None)
     """The FOB (free-on-board) shipping term for the pricing."""

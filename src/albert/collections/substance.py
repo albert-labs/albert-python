@@ -91,10 +91,13 @@ class SubstanceCollection(BaseCollection):
         region : str, optional
             The region to scope regulatory status to. Defaults to ``"US"``.
         catch_errors : bool, optional
-            How to handle CAS numbers that cannot be resolved. When True, such
-            errors are absorbed and those substances are simply omitted from the
-            result, so fewer substances may be returned than CAS numbers
-            requested. When None (default), the server default applies.
+            How to handle requested substances that are missing hazard data.
+            When True, the request fails if any requested substance is missing
+            hazard data. When False, such errors are absorbed and the affected
+            substances are omitted from the result, so fewer substances may be
+            returned than CAS numbers requested. When None (default), the server
+            default applies. Only governs missing hazard data; it does not
+            affect how unknown CAS numbers are handled.
 
         Returns
         -------
@@ -138,9 +141,11 @@ class SubstanceCollection(BaseCollection):
         region : str, optional
             The region to scope regulatory status to. Defaults to ``"US"``.
         catch_errors : bool, optional
-            How to handle a CAS number that cannot be resolved. When True, the
-            error is absorbed and None is returned instead. When None (default),
-            the server default applies.
+            How to handle a substance that is missing hazard data. When True,
+            the request fails if the substance is missing hazard data. When
+            False, the error is absorbed and None is returned instead. When None
+            (default), the server default applies. Only governs missing hazard
+            data; it does not affect how unknown CAS numbers are handled.
 
         Returns
         -------

@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Iterator
 from typing import Any
 
@@ -9,6 +10,9 @@ from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import UserId
+from albert.core.shared.models.base import BaseResource
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.core.utils import find_stack_level
 from albert.exceptions import AlbertHTTPError
 from albert.resources.users import User, UserFilterType, UserSearchItem
 
@@ -83,6 +87,15 @@ class UserCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{UserCollection._api_version}/users"
+
+    @staticmethod
+    def _normalize_filter_id(value: str, *, type: UserFilterType | None) -> str:
+        """Prefix an ``id`` filter value, keeping an existing USR or ROL prefix."""
+        upper = value.upper()
+        if upper.startswith(("USR", "ROL")):
+            return upper
+        prefix = "ROL" if type == UserFilterType.ROLE else "USR"
+        return f"{prefix}{upper}"
 
     def get_current_user(self) -> User:
         """Get the user account for the currently authenticated session.
@@ -194,7 +207,8 @@ class UserCollection(BaseCollection):
         teams : list[str], optional
             Restrict to members of any of these teams.
         locations : list[str], optional
-            Restrict to users at any of these location IDs.
+            Restrict to users at any of these locations, by location name
+            (for example, ``"Albert HQ"``). Location IDs (``LOC...``) are not accepted.
         status : list[Status], optional
             Restrict to users with any of these statuses (e.g. active, inactive).
         user_id : list[UserId], optional
@@ -219,7 +233,12 @@ class UserCollection(BaseCollection):
         custom_fields : dict[str, Any], optional
             Filter by custom field values.
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         source_field : list[str], optional
             Restrict which fields are returned in the response.
         witnesser : list[str], optional
@@ -272,6 +291,7 @@ class UserCollection(BaseCollection):
             max_items=max_items,
             deserialize=deserialize,
             method="POST",
+            retry_safe=True,
             json=payload,
         )
 
@@ -281,7 +301,7 @@ class UserCollection(BaseCollection):
         *,
         status: Status | None = None,
         type: UserFilterType | None = None,
-        id: list[UserId] | None = None,
+        id: list[str] | None = None,
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[User]:
@@ -306,9 +326,10 @@ class UserCollection(BaseCollection):
         type : UserFilterType, optional
             The attribute that ``id`` filters on. Currently only ``role`` is
             supported.
-        id : list[UserId], optional
+        id : list[str], optional
             The values to filter on for the chosen ``type`` (e.g. role IDs when
-            ``type`` is ``role``).
+            ``type`` is ``role``). Existing ``USR``/``ROL`` prefixes are kept;
+            bare IDs are prefixed to match ``type``.
         start_key : str, optional
             Pagination cursor marking where the next page of results begins.
         max_items : int, optional
@@ -321,6 +342,9 @@ class UserCollection(BaseCollection):
             An iterator of fully populated users. Preserves ``has_more`` / ``total``
             from the underlying list paginator.
         """
+        if id is not None:
+            id = [self._normalize_filter_id(value, type=type) for value in id]
+
         params = {
             "status": status,
             "type": type,
@@ -388,8 +412,7 @@ class UserCollection(BaseCollection):
         """Update an existing user.
 
         Fetch the user (e.g. via [`get_by_id`][albert.collections.users.UserCollection.get_by_id]), modify the updatable
-        fields, then pass it here. Only the fields listed in Notes are applied;
-        changes to other fields are ignored.
+        fields, then pass it here. Only the fields listed in Notes are applied.
 
         !!! example
             ```python
@@ -412,8 +435,10 @@ class UserCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``email``, ``metadata``, ``name``,
-        ``status``.
+        The following fields can be updated: ``email``, ``location``, ``metadata``,
+        ``name``, ``roles``, ``status``, ``user_class``, ``witnesser``. A user has at
+        most one role. A role or location can be changed but not removed; clearing
+        ``roles`` or ``location`` on a user that has one is ignored with a warning.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=user.id)
@@ -426,6 +451,70 @@ class UserCollection(BaseCollection):
 
         updated_user = self.get_by_id(id=user.id)
         return updated_user
+
+    def _generate_patch_payload(
+        self,
+        *,
+        existing: BaseResource,
+        updated: BaseResource,
+        generate_metadata_diff: bool = True,
+        stringify_values: bool = False,
+    ) -> PatchPayload:
+        """Add the role, location, class and witnesser patches to the base payload.
+
+        The users API takes these under their own attribute names and value shapes
+        (``role`` and ``locationId`` by ID, ``userClass``, ``witnesser``), so they are
+        diffed here rather than through ``_updatable_attributes``.
+        """
+        payload = super()._generate_patch_payload(
+            existing=existing,
+            updated=updated,
+            generate_metadata_diff=generate_metadata_diff,
+            stringify_values=stringify_values,
+        )
+        fields_set = updated.model_fields_set
+        if "roles" in fields_set:
+            payload.data.extend(
+                _id_patches(
+                    "role",
+                    field="roles",
+                    old_id=_first_id(existing.roles),
+                    new_id=_first_id(updated.roles),
+                    add_as_list=True,
+                )
+            )
+        if "location" in fields_set:
+            payload.data.extend(
+                _id_patches(
+                    "locationId",
+                    field="location",
+                    old_id=getattr(existing.location, "id", None),
+                    new_id=getattr(updated.location, "id", None),
+                )
+            )
+        if "user_class" in fields_set and updated.user_class != existing.user_class:
+            payload.data.append(
+                PatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute="userClass",
+                    old_value=existing.user_class,
+                    new_value=updated.user_class,
+                )
+            )
+        if (
+            "witnesser" in fields_set
+            and updated.witnesser is not None
+            and updated.witnesser != bool(existing.witnesser)
+        ):
+            payload.data.append(
+                PatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute="witnesser",
+                    old_value=bool(existing.witnesser),
+                    new_value=updated.witnesser,
+                )
+            )
+        return payload
 
     @validate_call
     def delete(self, *, id: UserId) -> None:
@@ -447,3 +536,46 @@ class UserCollection(BaseCollection):
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
+
+
+def _first_id(links: list[Any] | None) -> str | None:
+    """Return the ID of the first linked entity, or None for an empty list."""
+    return getattr(links[0], "id", None) if links else None
+
+
+def _id_patches(
+    attribute: str,
+    *,
+    field: str,
+    old_id: str | None,
+    new_id: str | None,
+    add_as_list: bool = False,
+) -> list[PatchDatum]:
+    """Build the add or update patch for a field the users API takes by ID."""
+    if old_id == new_id:
+        return []
+    if new_id is None:
+        # The platform does not support removing a role or location, so a
+        # cleared value warns and is skipped rather than building a patch for it.
+        warnings.warn(
+            f"update() cannot remove {field}, so the change was ignored.",
+            UserWarning,
+            stacklevel=find_stack_level(),
+        )
+        return []
+    if old_id:
+        return [
+            PatchDatum(
+                operation=PatchOperation.UPDATE,
+                attribute=attribute,
+                old_value=old_id,
+                new_value=new_id,
+            )
+        ]
+    return [
+        PatchDatum(
+            operation=PatchOperation.ADD,
+            attribute=attribute,
+            new_value=[new_id] if add_as_list else new_id,
+        )
+    ]

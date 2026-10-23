@@ -121,10 +121,13 @@ class UnpackedCasInfo(BaseAlbertModel):
 
 
 class UnpackedInventoryListItem(BaseAlbertModel):
-    """A single flattened ingredient entry linking a formula cell to an item.
+    """A single direct ingredient entry linking a formula cell to an item.
 
     Represents one row/column position in the unpacked formula together with the
-    inventory item at that position and its amount."""
+    inventory item at that position and its amount. Entries describe one level of
+    the formula only; an entry whose item is itself a formula is not expanded, so
+    summing entries does not give an ingredient's total amount across nested
+    formulas."""
 
     row_inventory_id: str | None = Field(default=None, alias="rowInventoryId")
     """The Inventory ID of the item on this row."""
@@ -185,16 +188,25 @@ class UnpackedProductDesign(BaseAlbertModel):
     formulation's ingredient tree into two views: a row-level inventory list (the
     direct worksheet ingredients, some of which may be sub-formulations) and a flat
     CAS-level substance list (fully resolved raw materials with combined weight
-    fractions). This object gathers the resolved ingredients, the flattened
-    ingredient list, SDS details, and the CAS-level substance rollup."""
+    fractions). This object gathers the recursively resolved ingredients
+    (``inventories``), the direct ingredient list (``inventory_list``), SDS
+    details, and the CAS-level substance rollup."""
 
     inventories: list[UnpackedInventory] | None = Field(default=None, alias="Inventories")
-    """The resolved ingredients making up the product, each with its SDS and CAS breakdown."""
+    """The fully unpacked ingredients making up the product, each with its SDS and CAS breakdown.
+
+    Nested formulas are resolved recursively, so each entry's ``value`` is that
+    ingredient's total amount in the product across every level. Use this list to
+    answer "how much of ingredient X is in product Y"."""
 
     inventory_list: list[UnpackedInventoryListItem] | None = Field(
         default=None, alias="inventoryList"
     )
-    """The flattened list of ingredient entries by formula position."""
+    """The direct (one-level) ingredient entries by formula position.
+
+    Not recursive: sub-formulations appear as single entries and are not expanded.
+    For an ingredient's total amount across nested formulas, read
+    [`inventories`][albert.resources.product_design.UnpackedProductDesign.inventories]."""
 
     inventory_sds_list: list[UnpackedInventorySDS] | None = Field(
         default=None, alias="inventorySDSList"
@@ -212,7 +224,11 @@ class UnpackedProductDesign(BaseAlbertModel):
     normalized_cas_list: list[NormalizedCAS] | None = Field(
         default=None, alias="normalizedCasList"
     )
-    """The CAS substances with their normalized proportions in the product."""
+    """The CAS substances with their normalized proportions in the product.
+
+    Proportions are adjusted for the purity of each ingredient's CAS constituents,
+    so they can differ from the ingredient amounts in
+    [`inventories`][albert.resources.product_design.UnpackedProductDesign.inventories]."""
 
 
 class ProductDesignSearchInventoryLine(BaseAlbertModel):

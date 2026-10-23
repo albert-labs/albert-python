@@ -6,6 +6,7 @@ import pandas as pd
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.data_templates import DataTemplateCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -23,7 +24,7 @@ from albert.core.shared.identifiers import (
     UserId,
 )
 from albert.core.shared.models.patch import PatchOperation
-from albert.core.utils import ensure_list
+from albert.core.utils import ensure_list, find_stack_level
 from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.property_data import (
     BulkPropertyData,
@@ -37,11 +38,13 @@ from albert.resources.property_data import (
     PropertyDataPatchDatum,
     PropertyDataSearchItem,
     ReturnScope,
+    TaskCurveData,
     TaskPropertyCreate,
     TaskPropertyData,
     TaskPropertyRecord,
 )
 from albert.resources.workflows import Workflow
+from albert.utils import curve_data as curve_data_utils
 from albert.utils import property_data as property_data_utils
 
 
@@ -77,8 +80,16 @@ class PropertyDataCollection(BaseCollection):
       integer trial number.
 
     The void/unvoid methods mirror this hierarchy: void an entire task block, a
-    single interval, or a single trial. Voided data is retained but excluded from
-    results; unvoiding restores it.
+    single interval, or a single trial. Voided data is retained, not deleted, and
+    unvoiding restores it. Task reads
+    ([`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties],
+    [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties],
+    [`get_task_property_records`][albert.collections.property_data.PropertyDataCollection.get_task_property_records])
+    still return voided data and flag it with ``void`` on each interval and trial
+    (or record), so filter on that flag to exclude it.
+    [`search`][albert.collections.property_data.PropertyDataCollection.search] results
+    may include voided data and do not indicate void status; use the task reads when
+    voided data must be excluded.
 
     **Writing results.** Use [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task] for brand-new values,
     [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties] to upsert, and
@@ -123,6 +134,8 @@ class PropertyDataCollection(BaseCollection):
         Get results across all block/inventory combinations of a task.
     get_task_property_records(task_id, with_data_only=True, inventory_id=None, lot_id=None) -> list[TaskPropertyRecord]
         Get a task's results as flat rows, with their parameter setpoints attached.
+    get_task_curve_data(task_id, ...) -> list[TaskCurveData]
+        Get the curve data recorded on a task, one DataFrame per curve.
     check_for_task_data(task_id) -> list[CheckPropertyData]
         Report which block/interval combinations of a task have data.
     check_block_interval_for_data(block_id, task_id, interval_id) -> CheckPropertyData
@@ -137,12 +150,18 @@ class PropertyDataCollection(BaseCollection):
         Overwrite a task block's results from tabular data.
     bulk_delete_task_data(...) -> None
         Delete a task block's results.
-    void_task_data(...) / unvoid_task_data(...) -> None
-        Void/unvoid all results in a task block.
-    void_interval_data(...) / unvoid_interval_data(...) -> None
-        Void/unvoid the results of one interval combination.
-    void_trial_data(...) / unvoid_trial_data(...) -> None
-        Void/unvoid the results of one trial.
+    void_task_data(...) -> None
+        Void all results in a task block.
+    unvoid_task_data(...) -> None
+        Unvoid all results in a task block.
+    void_interval_data(...) -> None
+        Void the results of one interval combination.
+    unvoid_interval_data(...) -> None
+        Unvoid the results of one interval combination.
+    void_trial_data(...) -> None
+        Void the results of one trial.
+    unvoid_trial_data(...) -> None
+        Unvoid the results of one trial.
     search(...) -> Iterator[PropertyDataSearchItem]
         Search recorded property data across the platform.
     """
@@ -283,6 +302,7 @@ class PropertyDataCollection(BaseCollection):
         """
         existing_properties = self.get_properties_on_inventory(inventory_id=inventory_id)
         existing_value = None
+        existing_id = None
         for p in existing_properties.custom_property_data:
             if p.data_column.data_column_id == property_data.data_column_id:
                 existing_value = (
@@ -296,6 +316,11 @@ class PropertyDataCollection(BaseCollection):
                 )
                 existing_id = p.data_column.property_data.id
                 break
+        if existing_id is None:
+            # No property-data record exists for this column, so there is nothing
+            # to patch; add the value instead.
+            self.add_properties_to_inventory(inventory_id=inventory_id, properties=[property_data])
+            return self.get_properties_on_inventory(inventory_id=inventory_id)
         if existing_value is not None:
             payload = [
                 PropertyDataPatchDatum(
@@ -375,6 +400,126 @@ class PropertyDataCollection(BaseCollection):
         response = self.session.get(url=self.base_path, params=params)
         response_json = response.json()
         return TaskPropertyData(**response_json[0])
+
+    @validate_call
+    def get_task_curve_data(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId | None = None,
+        inventory_id: InventoryId | None = None,
+        lot_id: LotId | None = None,
+        data_column_id: DataColumnId | None = None,
+        include_void: bool = False,
+    ) -> list[TaskCurveData]:
+        """Get the curve data recorded on a task, one DataFrame per curve.
+
+        Finds every curve data column that has an uploaded curve and reads its points
+        back. Each curve is returned with the block, inventory item, interval, trial, and
+        data column it was recorded in. Columns are named by the headers of the uploaded
+        CSV, values are returned as stored (typically strings), and rows are ordered by
+        the curve's X axis when the data template defines one.
+
+        Each curve is read with its own request, so narrow the read with ``block_id``,
+        ``inventory_id``, ``lot_id``, or ``data_column_id`` when only some curves are of
+        interest.
+
+        !!! example
+            ```python
+            curves = client.property_data.get_task_curve_data(task_id="TASFOR1")
+            for curve in curves:
+                print(curve.block_id, curve.trial_number, curve.data_column_name)
+                curve.data.to_csv(f"{curve.block_id}_{curve.trial_number}.csv", index=False)
+
+            # One curve column in one block
+            curves = client.property_data.get_task_curve_data(
+                task_id="TASFOR1", block_id="BLK1", data_column_id="DAC9999999"
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task to read curves from (format ``TAS...``).
+        block_id : BlockId, optional
+            Only return curves in this block (format ``BLK...``). Defaults to None
+            (every block).
+        inventory_id : InventoryId, optional
+            Only return curves for this inventory item (format ``INV...``). Defaults to
+            None (every inventory item on the task).
+        lot_id : LotId, optional
+            Only return curves for this lot (format ``LOT...``). Defaults to None
+            (every lot).
+        data_column_id : DataColumnId, optional
+            Only return curves for this curve data column (format ``DAC...``). Defaults
+            to None (every curve column).
+        include_void : bool, optional
+            When True, also return curves from voided trials and intervals. Defaults to
+            False.
+
+        Returns
+        -------
+        list[TaskCurveData]
+            One entry per recorded curve, in block, interval, trial, column order.
+            Empty when the task has no recorded curves matching the filters.
+        """
+        blocks = self.get_all_task_properties(
+            task_id=task_id, with_data_only=True, inventory_id=inventory_id, lot_id=lot_id
+        )
+        curves = curve_data_utils.find_task_curves(
+            blocks=blocks,
+            block_id=block_id,
+            data_column_id=data_column_id,
+            include_void=include_void,
+        )
+        if not curves:
+            return []
+
+        data_templates = DataTemplateCollection(session=self.session)
+        curve_links = {
+            (data_template_id, column.data_column_id): column.curve_data
+            for data_template_id in {block.data_template.id for block, *_ in curves}
+            for column in data_templates.get_by_id(id=data_template_id).data_column_values or []
+        }
+
+        results = []
+        for block, interval, trial, column in curves:
+            property_data = column.property_data
+            table_name, partition_key, file_key = curve_data_utils.curve_query_source(
+                property_data=property_data
+            )
+            data_template_id = block.data_template.id
+            data = curve_data_utils.fetch_curve_dataframe(
+                session=self.session,
+                data_template_id=data_template_id,
+                table_name=table_name,
+                partition_key=partition_key,
+                file_key=file_key,
+                csv_mapping=property_data.csv_mapping,
+                curve_data=curve_links.get((data_template_id, column.id)),
+                source_id=task_id,
+                parent_id=task_id,
+                block_id=block.block_id,
+            )
+            inventory = block.inventory
+            results.append(
+                TaskCurveData(
+                    task_id=task_id,
+                    block_id=block.block_id,
+                    data_template_id=data_template_id,
+                    inventory_id=getattr(inventory, "inventory_id", None),
+                    lot_id=getattr(inventory, "lot_id", None),
+                    interval_combination=interval.interval_combination,
+                    trial_number=trial.trial_number,
+                    void=interval.void or trial.void,
+                    data_column_id=column.id,
+                    data_column_name=column.name,
+                    property_data_id=property_data.id,
+                    file_name=property_data.value,
+                    data=data,
+                )
+            )
+        return results
 
     @validate_call
     def check_for_task_data(self, *, task_id: TaskId) -> list[CheckPropertyData]:
@@ -757,7 +902,7 @@ class PropertyDataCollection(BaseCollection):
     ) -> None:
         """Void all recorded results in a task block for one inventory item.
 
-        Voided data is retained but excluded from results; restore it with
+        Voided data is retained and flagged with ``void`` in task reads; restore it with
         [`unvoid_task_data`][albert.collections.property_data.PropertyDataCollection.unvoid_task_data]. To void a narrower scope, use
         [`void_interval_data`][albert.collections.property_data.PropertyDataCollection.void_interval_data] or [`void_trial_data`][albert.collections.property_data.PropertyDataCollection.void_trial_data].
 
@@ -859,7 +1004,7 @@ class PropertyDataCollection(BaseCollection):
     ) -> None:
         """Void the results of one interval combination in a task block.
 
-        Voided data is retained but excluded from results; restore it with
+        Voided data is retained and flagged with ``void`` in task reads; restore it with
         [`unvoid_interval_data`][albert.collections.property_data.PropertyDataCollection.unvoid_interval_data].
 
         !!! example
@@ -887,12 +1032,20 @@ class PropertyDataCollection(BaseCollection):
         lot_id : LotId, optional
             A specific lot of the inventory item. Defaults to None.
         data_template_id : DataTemplateId, optional
-            Limit voiding to a specific data template. Defaults to None (all).
+            Deprecated and ignored. Voiding always applies to every data
+            template in the interval.
 
         Returns
         -------
         None
         """
+        if data_template_id is not None:
+            warnings.warn(
+                "data_template_id is deprecated and ignored; voiding applies to "
+                "every data template in the interval.",
+                DeprecationWarning,
+                stacklevel=find_stack_level(),
+            )
         payload = {
             "operation": "void",
             "by": "intervalCombination",
@@ -901,7 +1054,6 @@ class PropertyDataCollection(BaseCollection):
             "inventoryId": inventory_id,
             "blockId": block_id,
             "lotId": lot_id,
-            "dataTemplateId": data_template_id,
         }
         payload = {k: v for k, v in payload.items() if v is not None}
         self.session.patch(
@@ -948,12 +1100,20 @@ class PropertyDataCollection(BaseCollection):
         lot_id : LotId, optional
             A specific lot of the inventory item. Defaults to None.
         data_template_id : DataTemplateId, optional
-            Limit unvoiding to a specific data template. Defaults to None (all).
+            Deprecated and ignored. Unvoiding always applies to every data
+            template in the interval.
 
         Returns
         -------
         None
         """
+        if data_template_id is not None:
+            warnings.warn(
+                "data_template_id is deprecated and ignored; unvoiding applies to "
+                "every data template in the interval.",
+                DeprecationWarning,
+                stacklevel=find_stack_level(),
+            )
         payload = {
             "operation": "unvoid",
             "by": "intervalCombination",
@@ -962,7 +1122,6 @@ class PropertyDataCollection(BaseCollection):
             "inventoryId": inventory_id,
             "blockId": block_id,
             "lotId": lot_id,
-            "dataTemplateId": data_template_id,
         }
         payload = {k: v for k, v in payload.items() if v is not None}
         self.session.patch(
@@ -1161,18 +1320,26 @@ class PropertyDataCollection(BaseCollection):
         list[TaskPropertyData]
             The task's results after the add, scoped per ``return_scope``.
 
+        Warns
+        -----
+        UserWarning
+            If two values share the same interval combination, data column and
+            visible trial number, so one overwrites the other.
+
         Notes
         -----
         To add to an existing trial, set ``trial_number`` on the
         ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
         trials one call at a time (loop for many) to avoid unexpected behavior.
+        To add several trials in one call, give each value a distinct
+        ``visible_trial_number``; values without one default to trial 1.
         """
+        property_data_utils.warn_on_duplicate_task_property_targets(properties=properties)
         params = {
             "blockId": block_id,
             "inventoryId": inventory_id,
             "lotId": lot_id,
             "autoCalculate": "true",
-            "history": "true",
         }
         params = {k: v for k, v in params.items() if v is not None}
         payload = (
@@ -1194,10 +1361,31 @@ class PropertyDataCollection(BaseCollection):
             params=params,
         )
         response_json = response.json()
+        # The POST response is not in request order (existing trials are returned
+        # before new trials, and rejected values are dropped), so pair each
+        # response item back to its request property by identity, not position.
+        properties_by_key = {
+            (
+                prop.interval_combination,
+                prop.data_column.data_column_id,
+                prop.data_column.column_sequence,
+                prop.visible_trial_number,
+            ): prop
+            for prop in properties
+        }
         registered_properties: list[TaskPropertyCreate] = []
-        for prop, item in zip(properties, response_json, strict=False):
+        for item in response_json:
             item_data = dict(item)
-            if "DataTemplate" not in item_data and prop.data_template:
+            item_column = item_data.get("DataColumns") or {}
+            prop = properties_by_key.get(
+                (
+                    item_data.get("intervalCombination"),
+                    item_column.get("id"),
+                    item_column.get("columnId"),
+                    item_data.get("visibleTrialNo"),
+                )
+            )
+            if prop is not None and "DataTemplate" not in item_data and prop.data_template:
                 item_data["DataTemplate"] = prop.data_template
             registered_properties.append(TaskPropertyCreate(**item_data))
         existing_data_rows = self.get_task_block_properties(
@@ -1574,6 +1762,8 @@ class PropertyDataCollection(BaseCollection):
         to_created_at: str | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
+        # Record status filters
+        void: bool | None = False,
         # Search field filters
         search_field: list[str] | None = None,
         source_field: list[str] | None = None,
@@ -1590,6 +1780,12 @@ class PropertyDataCollection(BaseCollection):
         returns lightweight search items. The ``result`` parameter accepts a
         compact result-query syntax for filtering by measured value under a
         condition. Results are returned as a lazily paginated iterator.
+
+        Results may include voided data and do not indicate void status. When voided
+        values must be excluded, read the task's results with
+        [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
+        or [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties],
+        whose intervals and trials carry ``void``.
 
         !!! example
             ```python
@@ -1655,6 +1851,10 @@ class PropertyDataCollection(BaseCollection):
             Only include records updated on or after this date (ISO 8601).
         to_updated_at : str, optional
             Only include records updated on or before this date (ISO 8601).
+        void : bool, optional
+            Filter on the record's void status. ``False`` (default) excludes voided
+            data, ``True`` includes only voided data. Pass None to include both
+            voided and non-voided records. Deleted records are always excluded.
         search_field : list[str], optional
             Restrict which fields the text query searches.
         source_field : list[str], optional
@@ -1684,13 +1884,13 @@ class PropertyDataCollection(BaseCollection):
             warnings.warn(
                 "return_fields is deprecated and ignored; use source_field instead.",
                 DeprecationWarning,
-                stacklevel=2,
+                stacklevel=find_stack_level(),
             )
         if return_facets is not None:
             warnings.warn(
                 "return_facets is deprecated and ignored; use facet_list instead.",
                 DeprecationWarning,
-                stacklevel=2,
+                stacklevel=find_stack_level(),
             )
 
         params = {
@@ -1719,13 +1919,14 @@ class PropertyDataCollection(BaseCollection):
             "toCreatedAt": to_created_at,
             "fromUpdatedAt": from_updated_at,
             "toUpdatedAt": to_updated_at,
+            "void": void,
             "searchField": search_field,
             "sourceField": source_field,
             "facetList": facet_list,
         }
 
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.SEARCH_AFTER,
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,

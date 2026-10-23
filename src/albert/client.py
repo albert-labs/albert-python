@@ -22,7 +22,8 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
-from albert.collections.design_runs import DesignRunCollection
+from albert.collections.design_runs import DesignRunCollection, DesignRunV4Collection
+from albert.collections.design_spaces import DesignSpaceCollection
 from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.hazards import HazardsCollection
@@ -30,6 +31,7 @@ from albert.collections.inventory import InventoryCollection
 from albert.collections.label_templates import LabelTemplateCollection
 from albert.collections.links import LinksCollection
 from albert.collections.lists import ListsCollection
+from albert.collections.localizations import LocalizationCollection
 from albert.collections.locations import LocationCollection
 from albert.collections.lots import LotCollection
 from albert.collections.notebooks import NotebookCollection
@@ -37,6 +39,7 @@ from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
 from albert.collections.pdf_generator import PDFGeneratorCollection
+from albert.collections.personalization import PersonalizationCollection
 from albert.collections.pricings import PricingCollection
 from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
@@ -58,12 +61,13 @@ from albert.collections.teams import TeamCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
+from albert.collections.views import ViewCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
 from albert.core.async_session import AsyncAlbertSession
 from albert.core.auth.credentials import AlbertClientCredentials
-from albert.core.auth.sso import AlbertSSOClient
-from albert.core.session import AlbertSession
+from albert.core.auth.sso import DEFAULT_LOGIN_TIMEOUT, AlbertSSOClient
+from albert.core.session import DEFAULT_TIMEOUT, AlbertSession
 from albert.utils._auth import default_albert_base_url
 
 
@@ -89,10 +93,10 @@ class Albert:
     retries : int, optional
         Maximum number of retries for failed HTTP requests.
     timeout : float | tuple[float, float], optional
-        Default timeout in seconds applied to every request. Accepts a single
+        Default timeout in seconds applied to every call. Accepts a single
         float (applied to both connect and read) or a ``(connect, read)`` tuple.
-        When ``None`` (the default), requests can block indefinitely. Ignored if
-        `session` is provided.
+        Defaults to ``DEFAULT_TIMEOUT`` (10 s connect, 300 s read). Pass ``None``
+        for no timeout. Ignored if `session` is provided.
     session : AlbertSession, optional
         A fully configured session instance. If provided, `base_url`, `token`, and `auth_manager`
         are all ignored.
@@ -124,7 +128,7 @@ class Albert:
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
         session: AlbertSession | None = None,
     ):
@@ -152,7 +156,7 @@ class Albert:
         *,
         base_url: str | None,
         token: str,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using a static token for authentication."""
@@ -167,13 +171,41 @@ class Albert:
         port: int = 5000,
         tenant_id: str | None = None,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
+        login_timeout: int = DEFAULT_LOGIN_TIMEOUT,
     ) -> Albert:
-        """Create an Albert client using interactive OAuth2 SSO login."""
+        """Create an Albert client using interactive OAuth2 SSO login.
+
+        Parameters
+        ----------
+        base_url : str | None
+            The base URL of the Albert API. Defaults to the ``ALBERT_BASE_URL`` environment
+            variable or "https://app.albertinvent.com".
+        email : str
+            The email address used to initiate the SSO login.
+        port : int, optional
+            The starting port for the local redirect server (default is 5000).
+        tenant_id : str | None, optional
+            Tenant ID to scope the SSO login.
+        retries : int | None, optional
+            Maximum number of retries for failed HTTP requests.
+        timeout : float | tuple[float, float] | None, optional
+            Default timeout in seconds applied to every API request made by the client.
+            Does not affect the SSO login; use `login_timeout` for that.
+        headers : Mapping[str, str] | None, optional
+            Extra headers sent with every request.
+        login_timeout : int, optional
+            Seconds to wait for the user to complete the browser login (default is 120).
+
+        Returns
+        -------
+        Albert
+            An authenticated Albert client.
+        """
         resolved_base_url = base_url or default_albert_base_url()
         oauth = AlbertSSOClient(base_url=resolved_base_url, email=email)
-        oauth.authenticate(minimum_port=port, tenant_id=tenant_id)
+        oauth.authenticate(minimum_port=port, tenant_id=tenant_id, timeout=login_timeout)
         return cls(auth_manager=oauth, retries=retries, timeout=timeout, headers=headers)
 
     @classmethod
@@ -184,7 +216,7 @@ class Albert:
         client_id: str,
         client_secret: str,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using client credentials authentication."""
@@ -215,6 +247,16 @@ class Albert:
     @property
     def design_runs(self) -> DesignRunCollection:
         return DesignRunCollection(session=self.session)
+
+    @property
+    def design_runs_v4(self) -> DesignRunV4Collection:
+        """Design runs against the v4 design service."""
+        return DesignRunV4Collection(session=self.session)
+
+    @property
+    def design_spaces(self) -> DesignSpaceCollection:
+        """Design spaces on the v4 design service."""
+        return DesignSpaceCollection(session=self.session)
 
     @property
     def tags(self) -> TagCollection:
@@ -269,6 +311,10 @@ class Albert:
         return UserCollection(session=self.session)
 
     @property
+    def views(self) -> ViewCollection:
+        return ViewCollection(session=self.session)
+
+    @property
     def entity_types(self) -> EntityTypeCollection:
         return EntityTypeCollection(session=self.session)
 
@@ -279,6 +325,10 @@ class Albert:
     @property
     def lists(self) -> ListsCollection:
         return ListsCollection(session=self.session)
+
+    @property
+    def localizations(self) -> LocalizationCollection:
+        return LocalizationCollection(session=self.session)
 
     @property
     def notebooks(self) -> NotebookCollection:
@@ -331,6 +381,10 @@ class Albert:
     @property
     def parameters(self) -> ParameterCollection:
         return ParameterCollection(session=self.session)
+
+    @property
+    def personalization(self) -> PersonalizationCollection:
+        return PersonalizationCollection(session=self.session)
 
     @property
     def property_data(self) -> PropertyDataCollection:

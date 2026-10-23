@@ -114,10 +114,13 @@ class ChatFolderType(str, Enum):
 
 
 class PageContext(TypedDict, total=False):
-    """The Albert page a user was viewing when they sent a chat message.
+    """Known keys for the Albert page a user was viewing when they sent a chat message.
 
     Captured so "Ask Albert" can ground its answer in the entity the user was
-    looking at. All keys are optional.
+    looking at. All keys are optional. Additional client context keys (for example
+    ``canvas_id`` or ``quoted_canvas_ids``) are accepted on
+    [`ChatMessage.page_context`][albert.resources.chats.ChatMessage.page_context]
+    and are stored as sent.
 
     Attributes
     ----------
@@ -133,6 +136,10 @@ class PageContext(TypedDict, total=False):
         The type of the parent entity, when applicable.
     section : str
         The section or tab of the page in view.
+    canvas_id : str
+        The canvas Ask Albert was opened from.
+    quoted_canvas_ids : list[str]
+        Canvas ids quoted on this send only (references, not canvas payloads).
     """
 
     url: str
@@ -141,6 +148,8 @@ class PageContext(TypedDict, total=False):
     parent_id: str
     parent_entity: str
     section: str
+    canvas_id: str
+    quoted_canvas_ids: list[str]
 
 
 class ChatSessionRef(BaseAlbertModel):
@@ -156,6 +165,17 @@ class ChatSessionRef(BaseAlbertModel):
 
     chat_session_id: str = Field(alias="chatSessionId")
     """The chat session identifier (``SES…``) that receives the completion message."""
+
+
+class ChatSessionKind(str, Enum):
+    """The kind of a [`ChatSession`][albert.resources.chats.ChatSession].
+
+    Regular Ask Albert conversations are ``chat``. Sessions created by an automation run
+    are ``automation`` and carry ``automation_id`` and ``automation_run_id``.
+    """
+
+    CHAT = "chat"
+    AUTOMATION = "automation"
 
 
 class ChatSession(BaseResource):
@@ -191,7 +211,16 @@ class ChatSession(BaseResource):
     """An external identifier that links this session to a source system. Required. Serialized as ``sourceSessionId``."""
 
     last_message_at: str | None = Field(default=None, alias="lastMessageAt")
-    """ISO 8601 timestamp of the most recent message in the session. Read from the server. Serialized as ``lastMessageAt``. See Also --------"""
+    """ISO 8601 timestamp of the most recent message in the session. Read from the server. Serialized as ``lastMessageAt``."""
+
+    kind: ChatSessionKind | None = Field(default=None)
+    """Whether this is a regular ``chat`` session or one created by an ``automation`` run."""
+
+    automation_id: str | None = Field(default=None, alias="automationId")
+    """The automation that owns this session, if any. Serialized as ``automationId``."""
+
+    automation_run_id: str | None = Field(default=None, alias="automationRunId")
+    """The automation run that created this session, if any. Serialized as ``automationRunId``."""
 
 
 class ChatMessageAttachment(BaseAlbertModel):
@@ -251,7 +280,7 @@ class ChatMessage(BaseResource):
     """Client-generated request trace identifier that groups the components of one turn. Auto-generated on create when not set. Serialized as ``sourceRequestId``."""
 
     sequence: str | None = Field(default=None)
-    """Zero-padded position of this component within the session (e.g. ``"000"``, ``"001"``)."""
+    """Zero-padded position of this component within the session (e.g. ``"000"``, ``"001"``). Required on create; defaults to ``"000"`` when not set."""
 
     component_type: ChatComponentType = Field(alias="componentType")
     """The kind of component this message carries (e.g. text, image, reasoning block). Required. Serialized as ``componentType``."""
@@ -289,8 +318,13 @@ class ChatMessage(BaseResource):
     value: list[dict] | None = Field(default=None)
     """api-chat storage/history metadata for the message rows grouped under one message ID (revision records, e.g. ``{ts: <epoch>}``). This is NOT the component payload; the payload is in ``content``. Do not treat ``value`` as a general-purpose extra-data field."""
 
-    page_context: PageContext | None = Field(default=None, alias="pageContext")
-    """The Albert page the user was viewing when they sent the message. Serialized as ``pageContext``."""
+    page_context: dict[str, Any] | None = Field(default=None, alias="pageContext")
+    """The Albert page the user was viewing when they sent the message.
+
+    Known keys are listed on [`PageContext`][albert.resources.chats.PageContext].
+    Additional client context keys are preserved on validate and serialize as sent.
+    Serialized as ``pageContext``.
+    """
 
     attachments: list[ChatMessageAttachment] | None = Field(default=None)
     """Files the user attached to this message, for display in the transcript."""
@@ -342,7 +376,7 @@ class ChatFolder(BaseResource):
     """Whether this is a top-level (root) or nested (child) folder. Serialized as ``type``."""
 
     parent_id: str | None = Field(default=None, alias="parentId")
-    """The parent folder for a nested folder, if any. Serialized as ``parentId``. See Also --------"""
+    """The parent folder for a nested folder, if any. Serialized as ``parentId``."""
 
 
 class ChatFlagType(str, Enum):
@@ -406,7 +440,7 @@ class ChatFlag(BaseResource):
     """Whether the message is marked as downloaded."""
 
     hallucinated: bool | None = Field(default=None)
-    """Whether the message is flagged as a hallucination. See Also --------"""
+    """Whether the message is flagged as a hallucination."""
 
 
 class ChatFlagsInMessage(BaseAlbertModel):

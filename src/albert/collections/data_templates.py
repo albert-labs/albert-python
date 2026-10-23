@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from itertools import islice
 from typing import Any
 
+import pandas as pd
 from pydantic import Field, validate_call
 
 from albert.collections.base import BaseCollection
@@ -29,17 +30,21 @@ from albert.resources.data_templates import (
 from albert.resources.documents import DocumentState, DocumentVersion
 from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
 from albert.utils._patch import (
+    apply_data_column_hidden,
     build_acl_patch_payload,
     create_data_columns_with_enums,
     create_parameters_with_enums,
     generate_data_template_patches,
 )
+from albert.utils.curve_data import fetch_curve_dataframe
 from albert.utils.data_template import (
     build_curve_example,
     build_image_example,
     ensure_data_column_validation,
     get_target_data_column,
+    validate_data_column_type,
 )
+from albert.utils.tags import resolve_tags
 
 DEFAULT_ADDITIONAL_FIELDS = [
     "acl",
@@ -102,6 +107,8 @@ class DataTemplateCollection(BaseCollection):
     -------
     create(data_template) -> DataTemplate
         Create a new data template, including its data columns and parameters.
+    duplicate(id, name=None) -> DataTemplate
+        Duplicate a template by its ID.
     get_by_id(id) -> DataTemplate
         Get a single fully populated template by its ID.
     get_by_ids(ids) -> list[DataTemplate]
@@ -116,12 +123,14 @@ class DataTemplateCollection(BaseCollection):
         Attach result data columns to an existing template.
     add_parameters(data_template_id, parameters) -> DataTemplate
         Attach condition parameters to an existing template.
-    update(data_template) -> DataTemplate
+    update(data_template, remove_omitted_rows=True) -> DataTemplate
         Update an existing template.
     delete(id) -> None
         Delete a template by its ID.
     set_curve_example(data_template_id, example, ...) -> DataTemplate
         Set the example row for a curve data column (shown on the details page).
+    get_curve_example(data_template_id, ...) -> pd.DataFrame | None
+        Get the example curve of a curve data column as a DataFrame.
     set_image_example(data_template_id, example, ...) -> DataTemplate
         Set the example row for an image data column (shown on the details page).
     get_document_version_history(document_id) -> list[DocumentVersion]
@@ -168,12 +177,15 @@ class DataTemplateCollection(BaseCollection):
             The template to create. ``name`` is required. Populate
             ``data_column_values`` with the results the test captures and
             ``parameter_values`` with the conditions under which it is run.
+            Any tags that do not yet exist in Albert are created automatically.
 
         Returns
         -------
         DataTemplate
             The newly created template, populated with its assigned Data Template ID.
         """
+        if data_template.tags:
+            data_template.tags = resolve_tags(session=self.session, tags=data_template.tags)
         if (
             isinstance(data_template.data_column_values, list)
             and len(data_template.data_column_values) == 0
@@ -185,16 +197,57 @@ class DataTemplateCollection(BaseCollection):
         # remove them on the initial post
         parameter_values = data_template.parameter_values
         data_template.parameter_values = None
+        requested_columns = list(data_template.data_column_values or [])
         response = self.session.post(
             self.base_path,
             json=data_template.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
         dt = DataTemplate(**response.json())
+        if (
+            apply_data_column_hidden(
+                session=self.session,
+                data_template_url=f"{self.base_path}/{dt.id}",
+                requested=requested_columns,
+                created=list(dt.data_column_values or []),
+            )
+            and not parameter_values
+        ):
+            return self.get_by_id(id=dt.id)
         dt.parameter_values = parameter_values
         if parameter_values is None or len(parameter_values) == 0:
             return dt
         else:
             return self.add_parameters(data_template_id=dt.id, parameters=parameter_values)
+
+    @validate_call
+    def duplicate(self, *, id: DataTemplateId, name: str | None = None) -> DataTemplate:
+        """Duplicate (copy) a data template.
+
+        Creates a new data template with the same data columns, parameters, and
+        settings as the source template, under a new Data Template ID.
+
+        !!! example
+            ```python
+            copy = client.data_templates.duplicate(id="DAT9999999", name="Tensile Test v2")
+            copy.id
+            # 'DAT8888888'
+            ```
+
+        Parameters
+        ----------
+        id : DataTemplateId
+            The ID of the data template to duplicate (format ``DAT...``).
+        name : str, optional
+            The name for the new template. When omitted, the copy is named automatically.
+
+        Returns
+        -------
+        DataTemplate
+            The newly created template.
+        """
+        body = {"name": name} if name is not None else None
+        response = self.session.post(f"{self.base_path}/{id}/duplicate", json=body)
+        return DataTemplate(**response.json())
 
     @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
@@ -447,7 +500,12 @@ class DataTemplateCollection(BaseCollection):
         to_updated_at : str, optional
             Only include templates updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         is_drop_down : bool, optional
             When True, apply smart dropdown search behavior.
         sort_by : str, optional
@@ -521,6 +579,7 @@ class DataTemplateCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             method="POST",
+            retry_safe=True,
             json=payload,
             max_items=max_items,
             deserialize=lambda items: [
@@ -528,12 +587,19 @@ class DataTemplateCollection(BaseCollection):
             ],
         )
 
-    def update(self, *, data_template: DataTemplate) -> DataTemplate:
+    def update(
+        self, *, data_template: DataTemplate, remove_omitted_rows: bool = True
+    ) -> DataTemplate:
         """Update an existing data template.
 
         Only the fields listed in Notes are applied. New data columns and parameters
         present on the supplied template (including their enum validations) are
         created as part of this call.
+
+        By default, ``data_column_values`` and ``parameter_values`` replace the
+        template's rows: listed rows are added or updated, and existing rows that are
+        not listed are deleted. Pass ``remove_omitted_rows=False`` to merge instead and
+        keep the rows that are not listed.
 
         !!! example
             ```python
@@ -548,6 +614,11 @@ class DataTemplateCollection(BaseCollection):
             The template to update. Its ``id`` must be set and match the template to
             update. Retrieve it with [`get_by_id`][albert.collections.data_templates.DataTemplateCollection.get_by_id], modify the fields listed in
             Notes, then pass it here.
+        remove_omitted_rows : bool, optional
+            If True (the default), delete the existing data columns and parameters
+            that are not listed in ``data_column_values`` or ``parameter_values``. If
+            False, keep them, so a partial list only adds or updates the rows it
+            names. A list that is left unset (``None``) never removes rows.
 
         Returns
         -------
@@ -556,9 +627,12 @@ class DataTemplateCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``name``, ``description``, and
-        ``metadata`` on the template itself, and per-parameter ``value``, ``unit``,
-        ``required``, and ``validation``.
+        The following fields can be updated: ``name``, ``description``,
+        ``metadata``, and ``tags`` on the template itself, and per-parameter ``value``, ``unit``,
+        ``required``, and ``validation``. Data columns and parameters are removed by
+        leaving them out of the list, unless ``remove_omitted_rows=False``.
+
+        Any tags that do not yet exist in Albert are created automatically.
 
         Warnings
         --------
@@ -566,6 +640,8 @@ class DataTemplateCollection(BaseCollection):
         this method. Use [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example] or [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example] to set
         example values for curve and image data column types.
         """
+        if "tags" in data_template.model_fields_set and data_template.tags:
+            data_template.tags = resolve_tags(session=self.session, tags=data_template.tags)
 
         existing = self.get_by_id(id=data_template.id)
 
@@ -585,6 +661,7 @@ class DataTemplateCollection(BaseCollection):
             initial_patches=base_payload,
             updated_data_template=data_template,
             existing_data_template=existing,
+            remove_omitted_rows=remove_omitted_rows,
         )
 
         if len(new_data_columns) > 0:
@@ -594,21 +671,9 @@ class DataTemplateCollection(BaseCollection):
                 data_template_url=path,
                 data_columns=new_data_columns,
             )
-        existing_columns_by_sequence = {
-            x.sequence: x for x in (existing.data_column_values or []) if x.sequence is not None
-        }
         if len(data_column_enum_patches) > 0:
             for sequence, enum_patches in data_column_enum_patches.items():
                 if len(enum_patches) == 0:
-                    continue
-                existing_column = existing_columns_by_sequence.get(sequence)
-                has_existing_enum_validation = (
-                    existing_column is not None
-                    and existing_column.validation is not None
-                    and len(existing_column.validation) > 0
-                    and existing_column.validation[0].datatype == DataType.ENUM
-                )
-                if not has_existing_enum_validation:
                     continue
                 self.session.put(
                     f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums",
@@ -813,7 +878,12 @@ class DataTemplateCollection(BaseCollection):
         to_updated_at : str, optional
             Only include templates updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values.
+            Filter by custom field (metadata) values. Keys are custom field names.
+            For string-type custom fields, map the name to a list of values, e.g.
+            ``{"batchCode": ["B-100", "B-200"]}``. For list-type custom fields, map
+            the name to a ``{"name": [...]}`` dict of list item names, e.g.
+            ``{"grade": {"name": ["Premium"]}}``. Multiple values on one field match
+            any of them (OR); different fields must all match (AND).
         is_drop_down : bool, optional
             When True, apply smart dropdown search behavior.
         sort_by : str, optional
@@ -952,6 +1022,74 @@ class DataTemplateCollection(BaseCollection):
             json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
         return self.get_by_id(id=data_template_id)
+
+    @validate_call
+    def get_curve_example(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        data_column_id: DataColumnId | None = None,
+        data_column_name: str | None = None,
+    ) -> pd.DataFrame | None:
+        """Get the example curve of a curve data column as a DataFrame.
+
+        Reads back the example set with
+        [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example]
+        (the sample shown on the Data Template details page). Columns are named by the
+        headers of the uploaded CSV, values are returned as stored (typically strings),
+        and rows are ordered by the curve's X axis when one is defined. Identify the
+        column by exactly one of ``data_column_id`` or ``data_column_name``.
+
+        !!! example
+            ```python
+            df = client.data_templates.get_curve_example(
+                data_template_id="DAT9999999", data_column_name="Viscosity Curve"
+            )
+            df.head()
+            #   Shear Rate Viscosity
+            # 0         10       1.2
+            ```
+
+        Parameters
+        ----------
+        data_template_id : DataTemplateId
+            The Data Template ID that owns the column (format ``DAT...``).
+        data_column_id : DataColumnId, optional
+            The curve column's ID. Provide exactly one of ``data_column_id`` or
+            ``data_column_name``.
+        data_column_name : str, optional
+            The curve column's name. Provide exactly one of ``data_column_id`` or
+            ``data_column_name``.
+
+        Returns
+        -------
+        pd.DataFrame | None
+            The example curve points, one row per point. None when the column has no
+            curve example.
+        """
+        data_template = self.get_by_id(id=data_template_id)
+        target_column = get_target_data_column(
+            data_template=data_template,
+            data_template_id=data_template_id,
+            data_column_id=data_column_id,
+            data_column_name=data_column_name,
+        )
+        validate_data_column_type(target_column=target_column)
+        db_metadata = target_column.db_metadata
+        storage_key = target_column.storage_key_reference
+        file_key = storage_key and (storage_key.s3_input or storage_key.rawfile)
+        if not (db_metadata and db_metadata.table_name and db_metadata.partition_key and file_key):
+            return None
+        return fetch_curve_dataframe(
+            session=self.session,
+            data_template_id=data_template_id,
+            table_name=db_metadata.table_name,
+            partition_key=db_metadata.partition_key,
+            file_key=file_key,
+            csv_mapping=target_column.csv_mapping,
+            curve_data=target_column.curve_data,
+            source_id=data_template_id,
+        )
 
     @validate_call
     def set_image_example(

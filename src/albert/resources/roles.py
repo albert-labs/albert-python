@@ -22,8 +22,8 @@ class Role(BaseResource):
     policies: list[Any] | None = Field(default=None, alias="Policies")
     """The policies (permission rules) associated with the role."""
 
-    tenant: str
-    """The ID of the tenant the role belongs to."""
+    tenant: str | None = Field(default=None)
+    """The ID of the tenant the role belongs to. Omitted on role-only (id-filtered) responses."""
 
     visibility: bool | None = Field(default=None)
     """Whether the role is visible in the platform's role listings."""

@@ -17,6 +17,7 @@ _ALBERT_PREFIXES = {
     "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "DesignSpaceId": "DSP",
     "DocumentId": "DOC",
     "EntityTypeId": "ETT",
     "InventoryId": "INV",
@@ -40,6 +41,7 @@ _ALBERT_PREFIXES = {
     "UnitId": "UNI",
     "TeamId": "TEM",
     "UserId": "USR",
+    "ViewId": "VEW",
     "WorksheetId": "WKS",
     "WorkflowId": "WFL",
     # Search Specific Ids
@@ -281,6 +283,15 @@ def ensure_propertydata_id(id: str) -> str:
 PropertyDataId = Annotated[str, AfterValidator(ensure_propertydata_id)]
 
 
+def ensure_design_space_id(id: str) -> str:
+    # Ids are DSP + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
+    _ensure_albert_id(id, "DesignSpaceId")
+    return f"DSP{id[3:]}" if id[:3].upper() == "DSP" else f"DSP{id}"
+
+
+DesignSpaceId = Annotated[str, AfterValidator(ensure_design_space_id)]
+
+
 def ensure_task_id(id: str) -> str:
     return _ensure_albert_id(id, "TaskId")
 
@@ -383,8 +394,32 @@ def ensure_user_id(id: str) -> str:
 UserId = Annotated[str, AfterValidator(ensure_user_id)]
 
 
+def ensure_view_id(id: str) -> str:
+    return _ensure_albert_id(id, "ViewId")
+
+
+ViewId = Annotated[str, AfterValidator(ensure_view_id)]
+
+
+_UNI_NUMERIC_ID_RE = re.compile(r"^uni\d+$", re.IGNORECASE)
+_ALBERT_PREFIX_HEADS = frozenset(_ALBERT_PREFIXES.values())
+
+
 def ensure_unit_id(id: str) -> str:
-    return _ensure_albert_id(id, "UnitId")
+    # Units use UNI + digits or UNI + case-sensitive UUID; only the numeric uni-prefix form is fully uppercased.
+    if not id:
+        raise ValueError("UnitId cannot be empty")
+    prefix = _ALBERT_PREFIXES["UnitId"]
+    if _UNI_NUMERIC_ID_RE.match(id):
+        return id.upper()
+    head = id[:3].upper() if len(id) >= 3 else ""
+    if head == prefix:
+        return prefix + id[3:]
+    if head in _ALBERT_PREFIX_HEADS:
+        raise ValueError(f"UnitId {id} has invalid prefix. Expected: {prefix}")
+    if id.isdigit():
+        return f"{prefix}{id}"
+    return id
 
 
 UnitId = Annotated[str, AfterValidator(ensure_unit_id)]
@@ -405,6 +440,10 @@ RowId = Annotated[str, AfterValidator(ensure_row_id)]
 
 
 def ensure_report_id(id: str) -> str:
+    # Fully qualified ids (``ALB#REP14``) carry a tenant qualifier. Strip it
+    # before prefix normalization, as the report collections do for type ids.
+    if id:
+        id = id.rsplit("#", 1)[-1]
     return _ensure_albert_id(id, "ReportId")
 
 

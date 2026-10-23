@@ -289,6 +289,7 @@ class StorageLocationsCollection(BaseCollection):
 
         Fetch a storage location (e.g. via [`get_by_id`][albert.collections.storage_locations.StorageLocationsCollection.get_by_id]),
         modify its name, then pass it here. The storage location is matched by its ``id``.
+        If nothing changed, the existing storage location is returned unmodified.
 
         !!! example
             ```python
@@ -312,9 +313,12 @@ class StorageLocationsCollection(BaseCollection):
         Only the ``name`` field can be updated.
         """
         path = f"{self.base_path}/{storage_location.id}"
+        existing = self.get_by_id(id=storage_location.id)
         payload = self._generate_patch_payload(
-            existing=self.get_by_id(id=storage_location.id),
+            existing=existing,
             updated=storage_location,
         )
+        if not payload.data:
+            return existing
         self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=storage_location.id)
