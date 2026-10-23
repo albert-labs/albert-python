@@ -401,8 +401,25 @@ def ensure_view_id(id: str) -> str:
 ViewId = Annotated[str, AfterValidator(ensure_view_id)]
 
 
+_UNI_NUMERIC_ID_RE = re.compile(r"^uni\d+$", re.IGNORECASE)
+_ALBERT_PREFIX_HEADS = frozenset(_ALBERT_PREFIXES.values())
+
+
 def ensure_unit_id(id: str) -> str:
-    return _ensure_albert_id(id, "UnitId")
+    # Units use UNI + digits or UNI + case-sensitive UUID; only the numeric uni-prefix form is fully uppercased.
+    if not id:
+        raise ValueError("UnitId cannot be empty")
+    prefix = _ALBERT_PREFIXES["UnitId"]
+    if _UNI_NUMERIC_ID_RE.match(id):
+        return id.upper()
+    head = id[:3].upper() if len(id) >= 3 else ""
+    if head == prefix:
+        return prefix + id[3:]
+    if head in _ALBERT_PREFIX_HEADS:
+        raise ValueError(f"UnitId {id} has invalid prefix. Expected: {prefix}")
+    if id.isdigit():
+        return f"{prefix}{id}"
+    return id
 
 
 UnitId = Annotated[str, AfterValidator(ensure_unit_id)]
