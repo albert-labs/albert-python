@@ -2175,6 +2175,353 @@ def test_add_formulations_clear_reuses_existing_columns(offline_session):
 
 
 @responses.activate
+def test_add_formulations_matches_existing_column_by_inventory_id(offline_session):
+    """Test clear=True with inventory_id rebuilds the linked column and renames it."""
+    sheet = _products_sheet(session=offline_session)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [
+                        {
+                            "colId": "COL1",
+                            "value": "10",
+                            "calculation": "=COL1ROW2",
+                            "id": "INVF0",
+                            "type": "INV",
+                        }
+                    ],
+                },
+                {
+                    "rowId": "ROW2",
+                    "rowUniqueId": "DES1#ROW2",
+                    "name": "Salt",
+                    "type": "INV",
+                    "id": "INVA1",
+                    "Values": [{"colId": "COL1", "value": "10", "id": "INVF0", "type": "INV"}],
+                },
+            ],
+            "Formulas": [{"colId": "COL1", "name": "Old Name", "state": {}}],
+        },
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns", status=204)
+
+    columns = sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                name="Renamed",
+                inventory_id="F0",
+                components=[Component(inventory_id="INVA1", amount=99.0)],
+            )
+        ]
+    )
+
+    # No new column is created: the entry matched COL1 by its linked inventory.
+    assert not [
+        c
+        for c in responses.calls
+        if c.request.method == "POST" and c.request.url.endswith("/columns")
+    ]
+    # The column was renamed to the entry's name.
+    rename_patches = [
+        c
+        for c in responses.calls
+        if c.request.method == "PATCH" and c.request.url.endswith("/columns")
+    ]
+    assert len(rename_patches) == 1
+    assert json.loads(rename_patches[0].request.body) == {
+        "data": [
+            {"operation": "update", "attribute": "name", "colId": "COL1", "newValue": "Renamed"}
+        ]
+    }
+    assert [(col.column_id, col.name) for col in columns] == [("COL1", "Renamed")]
+
+    # The matched column was cleared and rebuilt like a name-matched upsert.
+    value_patches = [
+        json.loads(c.request.body)
+        for c in responses.calls
+        if c.request.method == "PATCH" and c.request.url.endswith("/values")
+    ]
+    assert [
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["operation"])
+        for entry in value_patches[0]
+    ] == [("ROW2", "COL1", "delete")]
+    assert {
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["newValue"])
+        for entry in value_patches[1]
+    } == {("ROW2", "COL1", "99.0")}
+
+
+@responses.activate
+def test_add_formulations_id_only_updates_ingredients_without_renaming(offline_session):
+    """Test an id-only entry rebuilds the matched column and keeps its header."""
+    sheet = _products_sheet(session=offline_session)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [
+                        {
+                            "colId": "COL1",
+                            "value": "10",
+                            "calculation": "=COL1ROW2",
+                            "id": "INVF0",
+                            "type": "INV",
+                        }
+                    ],
+                },
+                {
+                    "rowId": "ROW2",
+                    "rowUniqueId": "DES1#ROW2",
+                    "name": "Salt",
+                    "type": "INV",
+                    "id": "INVA1",
+                    "Values": [{"colId": "COL1", "value": "10", "id": "INVF0", "type": "INV"}],
+                },
+            ],
+            "Formulas": [{"colId": "COL1", "name": "Old Name", "state": {}}],
+        },
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                inventory_id="F0", components=[Component(inventory_id="INVA1", amount=42.0)]
+            )
+        ]
+    )
+
+    assert not [c for c in responses.calls if c.request.method == "POST"]
+    assert not [
+        c
+        for c in responses.calls
+        if c.request.method == "PATCH" and c.request.url.endswith("/columns")
+    ]
+    assert [(col.column_id, col.name) for col in columns] == [("COL1", "Old Name")]
+
+    value_patches = [
+        json.loads(c.request.body)
+        for c in responses.calls
+        if c.request.method == "PATCH" and c.request.url.endswith("/values")
+    ]
+    assert {
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["newValue"])
+        for entry in value_patches[1]
+    } == {("ROW2", "COL1", "42.0")}
+
+
+@responses.activate
+def test_add_formulations_id_only_unmatched_fails_before_writing(offline_session):
+    """Test an id-only entry with no match raises before any column or cell write."""
+    sheet = _products_sheet(session=offline_session)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [],
+                }
+            ],
+            "Formulas": [],
+        },
+    )
+
+    with pytest.raises(ValueError, match="No existing column matches inventory_id INVZZ9"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    name="Fine",
+                    components=[Component(inventory_id="INVA1", amount=1.0)],
+                ),
+                FormulationSpec(
+                    inventory_id="ZZ9",
+                    components=[Component(inventory_id="INVA1", amount=2.0)],
+                ),
+            ]
+        )
+
+    assert not [c for c in responses.calls if c.request.method in ("POST", "PATCH", "DELETE")]
+
+
+def test_formulation_spec_requires_a_name_or_inventory_id():
+    """Test a spec with neither name nor inventory_id is rejected up front."""
+    with pytest.raises(ValidationError):
+        FormulationSpec(components=[Component(inventory_id="INVA1", amount=1.0)])
+
+
+@responses.activate
+def test_add_formulations_unmatched_inventory_id_with_name_fails_before_writing(offline_session):
+    """Test an entry with a name and an unmatched inventory_id raises before any write."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+
+    with pytest.raises(ValueError, match="No existing column matches inventory_id INVZZ9"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    name="NewOne",
+                    inventory_id="ZZ9",
+                    components=[Component(inventory_id="INVA1", amount=5.0)],
+                )
+            ]
+        )
+
+    assert not [c for c in responses.calls if c.request.method in ("POST", "PATCH", "DELETE")]
+
+
+@responses.activate
+def test_add_formulations_ambiguous_inventory_id_fails_before_writing(offline_session):
+    """Test an inventory_id linked to more than one column raises before any write."""
+    sheet = _products_sheet(session=offline_session)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [
+                        {"colId": "COL1", "value": "10", "id": "INVF0", "type": "INV"},
+                        {"colId": "COL2", "value": "20", "id": "INVF0", "type": "INV"},
+                    ],
+                }
+            ],
+            "Formulas": [
+                {"colId": "COL1", "name": "First", "state": {}},
+                {"colId": "COL2", "name": "Second", "state": {}},
+            ],
+        },
+    )
+
+    with pytest.raises(ValueError, match="Ambiguous inventory_id INVF0"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    inventory_id="F0", components=[Component(inventory_id="INVA1", amount=1.0)]
+                )
+            ]
+        )
+
+    assert not [c for c in responses.calls if c.request.method in ("POST", "PATCH", "DELETE")]
+
+
+@responses.activate
+def test_add_formulations_duplicate_inventory_ids_fail_before_writing(offline_session):
+    """Test two entries sharing an inventory_id raise before any write."""
+    sheet = _products_sheet(session=offline_session)
+
+    with pytest.raises(ValueError, match="duplicate inventory_id values: INVF0"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    inventory_id="F0", components=[Component(inventory_id="INVA1", amount=1.0)]
+                ),
+                FormulationSpec(
+                    inventory_id="INVF0",
+                    components=[Component(inventory_id="INVA1", amount=2.0)],
+                ),
+            ]
+        )
+
+    assert not responses.calls
+
+
+@responses.activate
+def test_add_formulations_duplicate_names_fail_before_writing(offline_session):
+    """Test two entries sharing a name raise before any write."""
+    sheet = _products_sheet(session=offline_session)
+
+    with pytest.raises(ValueError, match="duplicate names: Same"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    name="Same", components=[Component(inventory_id="INVA1", amount=1.0)]
+                ),
+                FormulationSpec(
+                    name="Same", components=[Component(inventory_id="INVA2", amount=2.0)]
+                ),
+            ]
+        )
+
+    assert not responses.calls
+
+
+@responses.activate
+def test_add_formulations_entries_resolving_to_same_column_fail_before_writing(offline_session):
+    """Test a name-only and an id-only entry resolving to one column raise pre-write."""
+    sheet = _products_sheet(session=offline_session)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [{"colId": "COL1", "value": "10", "id": "INVF0", "type": "INV"}],
+                }
+            ],
+            "Formulas": [{"colId": "COL1", "name": "Old Name", "state": {}}],
+        },
+    )
+
+    with pytest.raises(ValueError, match="Entries 0 and 1 both resolve to column COL1"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    name="Old Name",
+                    components=[Component(inventory_id="INVA1", amount=1.0)],
+                ),
+                FormulationSpec(
+                    inventory_id="F0",
+                    components=[Component(inventory_id="INVA1", amount=2.0)],
+                ),
+            ]
+        )
+
+    assert not [c for c in responses.calls if c.request.method in ("POST", "PATCH", "DELETE")]
+
+
+@responses.activate
+def test_add_formulations_inventory_id_with_clear_false_fails(offline_session):
+    """Test inventory_id with clear=False raises before any write."""
+    sheet = _products_sheet(session=offline_session)
+
+    with pytest.raises(ValueError, match="inventory_id matching requires clear=True"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    name="NewOne",
+                    inventory_id="F0",
+                    components=[Component(inventory_id="INVA1", amount=1.0)],
+                )
+            ],
+            clear=False,
+        )
+
+    assert not responses.calls
+
+
+@responses.activate
 def test_add_formulations_clear_false_adds_new_columns(offline_session):
     """Test that clear=False adds a new column even when the name already exists."""
     sheet = _products_sheet(session=offline_session)
