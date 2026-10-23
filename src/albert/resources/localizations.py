@@ -70,7 +70,7 @@ class Localization(BaseAlbertModel):
         ```python
         from albert import Albert
         client = Albert()
-        rows = client.localizations.get_by_id(id="DAT1")
+        rows = client.localizations.get_all_by_id(id="DAT1")
         for row in rows:
             print(row.unique_id, row.localization)
         ```

@@ -21,7 +21,7 @@ class LocalizationCollection(BaseCollection):
         ```python
         from albert import Albert
         client = Albert()
-        rows = client.localizations.get_by_id(id="DAT1")
+        rows = client.localizations.get_all_by_id(id="DAT1")
         for row in rows:
             print(row.unique_id, row.localization)
         ```
@@ -38,7 +38,7 @@ class LocalizationCollection(BaseCollection):
 
     Methods
     -------
-    get_by_id(id) -> list[Localization]
+    get_all_by_id(id) -> list[Localization]
         Get all localizations for an entity by its ID.
     update(id, patches) -> None
         Set translations on an entity or its child records.
@@ -58,7 +58,7 @@ class LocalizationCollection(BaseCollection):
         self.base_path = f"/api/{LocalizationCollection._api_version}/localizations"
 
     @validate_call
-    def get_by_id(self, *, id: str) -> list[Localization]:
+    def get_all_by_id(self, *, id: str) -> list[Localization]:
         """Get all localizations for an entity by its ID.
 
         Returns the entity's own translations plus the translations of its
@@ -66,7 +66,7 @@ class LocalizationCollection(BaseCollection):
 
         !!! example
             ```python
-            rows = client.localizations.get_by_id(id="DAT1")
+            rows = client.localizations.get_all_by_id(id="DAT1")
             rows[0].localization
             # {'name': {'de': 'Datenvorlage'}}
             ```

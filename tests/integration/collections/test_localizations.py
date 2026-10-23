@@ -14,10 +14,10 @@ from albert.resources.localizations import (
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
-def test_get_by_id(client: Albert, seeded_data_templates: list[DataTemplate]):
+def test_get_all_by_id(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test reading the localizations of a seeded data template."""
     template = seeded_data_templates[0]
-    rows = client.localizations.get_by_id(id=template.id)
+    rows = client.localizations.get_all_by_id(id=template.id)
 
     assert len(rows) >= 1
     for row in rows:
@@ -45,7 +45,7 @@ def test_update(client: Albert, seed_prefix: str):
                 )
             ],
         )
-        rows = client.localizations.get_by_id(id=dt.id)
+        rows = client.localizations.get_all_by_id(id=dt.id)
         main = next(row for row in rows if row.unique_id == "DAT")
         assert main.localization == {"name": {"de": "Testvorlage"}}
 
@@ -63,7 +63,7 @@ def test_update(client: Albert, seed_prefix: str):
             ],
         )
         main = next(
-            row for row in client.localizations.get_by_id(id=dt.id) if row.unique_id == "DAT"
+            row for row in client.localizations.get_all_by_id(id=dt.id) if row.unique_id == "DAT"
         )
         assert main.localization == {"name": {"de": "Neue Testvorlage"}}
 
@@ -80,7 +80,7 @@ def test_update(client: Albert, seed_prefix: str):
             ],
         )
         main = next(
-            row for row in client.localizations.get_by_id(id=dt.id) if row.unique_id == "DAT"
+            row for row in client.localizations.get_all_by_id(id=dt.id) if row.unique_id == "DAT"
         )
         assert main.localization is None or "de" not in main.localization.get("name", {})
     finally:
