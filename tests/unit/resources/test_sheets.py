@@ -2366,44 +2366,122 @@ def test_formulation_spec_requires_a_name_or_inventory_id():
 
 
 @responses.activate
-def test_add_formulations_unmatched_inventory_id_creates_new_column(offline_session):
-    """Test an inventory_id with no matching column falls through to creation."""
+def test_add_formulations_unmatched_inventory_id_with_name_fails_before_writing(offline_session):
+    """Test an entry with a name and an unmatched inventory_id raises before any write."""
     sheet = _products_sheet(session=offline_session)
     _register_products_grid()
-    responses.post(
-        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
-        json=[
-            {
-                "name": "NewOne",
-                "type": "INV",
-                "id": "INVNEW1",
-                "Formulas": [{"colId": "COL5", "formulaId": "INVNEW1"}],
-            },
-        ],
-    )
-    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
-    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns", status=204)
 
-    columns = sheet.add_formulations(
-        formulations=[
-            FormulationSpec(
-                name="NewOne",
-                inventory_id="ZZ9",
-                components=[Component(inventory_id="INVA1", amount=5.0)],
-            )
-        ]
+    with pytest.raises(ValueError, match="No existing column matches inventory_id INVZZ9"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    name="NewOne",
+                    inventory_id="ZZ9",
+                    components=[Component(inventory_id="INVA1", amount=5.0)],
+                )
+            ]
+        )
+
+    assert not [c for c in responses.calls if c.request.method in ("POST", "PATCH", "DELETE")]
+
+
+@responses.activate
+def test_add_formulations_ambiguous_inventory_id_fails_before_writing(offline_session):
+    """Test an inventory_id linked to more than one column raises before any write."""
+    sheet = _products_sheet(session=offline_session)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW1",
+                    "rowUniqueId": "DES1#ROW1",
+                    "name": "Total",
+                    "type": "TOT",
+                    "Values": [
+                        {"colId": "COL1", "value": "10", "id": "INVF0", "type": "INV"},
+                        {"colId": "COL2", "value": "20", "id": "INVF0", "type": "INV"},
+                    ],
+                }
+            ],
+            "Formulas": [
+                {"colId": "COL1", "name": "First", "state": {}},
+                {"colId": "COL2", "name": "Second", "state": {}},
+            ],
+        },
     )
 
-    posts = [c for c in responses.calls if c.request.method == "POST"]
-    assert len(posts) == 1
-    assert [entry["name"] for entry in json.loads(posts[0].request.body)] == ["NewOne"]
-    assert [col.column_id for col in columns] == ["COL5"]
-    # Nothing matched, so nothing was renamed.
-    assert not [
-        c
-        for c in responses.calls
-        if c.request.method == "PATCH" and c.request.url.endswith("/columns")
-    ]
+    with pytest.raises(ValueError, match="Ambiguous inventory_id INVF0"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    inventory_id="F0", components=[Component(inventory_id="INVA1", amount=1.0)]
+                )
+            ]
+        )
+
+    assert not [c for c in responses.calls if c.request.method in ("POST", "PATCH", "DELETE")]
+
+
+@responses.activate
+def test_add_formulations_duplicate_inventory_ids_fail_before_writing(offline_session):
+    """Test two entries sharing an inventory_id raise before any write."""
+    sheet = _products_sheet(session=offline_session)
+
+    with pytest.raises(ValueError, match="duplicate inventory_id values: INVF0"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    inventory_id="F0", components=[Component(inventory_id="INVA1", amount=1.0)]
+                ),
+                FormulationSpec(
+                    inventory_id="INVF0",
+                    components=[Component(inventory_id="INVA1", amount=2.0)],
+                ),
+            ]
+        )
+
+    assert not responses.calls
+
+
+@responses.activate
+def test_add_formulations_duplicate_names_fail_before_writing(offline_session):
+    """Test two entries sharing a name raise before any write."""
+    sheet = _products_sheet(session=offline_session)
+
+    with pytest.raises(ValueError, match="duplicate names: Same"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    name="Same", components=[Component(inventory_id="INVA1", amount=1.0)]
+                ),
+                FormulationSpec(
+                    name="Same", components=[Component(inventory_id="INVA2", amount=2.0)]
+                ),
+            ]
+        )
+
+    assert not responses.calls
+
+
+@responses.activate
+def test_add_formulations_inventory_id_with_clear_false_fails(offline_session):
+    """Test inventory_id with clear=False raises before any write."""
+    sheet = _products_sheet(session=offline_session)
+
+    with pytest.raises(ValueError, match="inventory_id matching requires clear=True"):
+        sheet.add_formulations(
+            formulations=[
+                FormulationSpec(
+                    name="NewOne",
+                    inventory_id="F0",
+                    components=[Component(inventory_id="INVA1", amount=1.0)],
+                )
+            ],
+            clear=False,
+        )
+
+    assert not responses.calls
 
 
 @responses.activate
