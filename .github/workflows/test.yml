@@ -2,7 +2,7 @@ name: Tests
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   push:
     branches: [main, next]
   workflow_dispatch:
@@ -14,6 +14,8 @@ concurrency:
 jobs:
   unit-tests:
     name: Unit Tests
+    # Adding a label re-triggers the workflow; only the full-integration label is worth a re-run.
+    if: github.event.action != 'labeled' || github.event.label.name == 'ci:full-integration'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -73,14 +75,85 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      - name: Resolve test scope
+        id: scope
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.head_ref }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          mode=full
+          if [ "${EVENT}" = "pull_request" ]; then
+            case ",${LABELS}," in
+              *,ci:full-integration,*) reason="label ci:full-integration" ;;
+              *) reason="" ;;
+            esac
+            case "${HEAD_REF}" in
+              release-please--branches--*) reason="release PR" ;;
+            esac
+            if [ -z "${reason}" ]; then
+              gh pr diff "${PR_NUMBER}" --name-only > /tmp/changed.txt
+              mode=affected
+            fi
+          fi
+          echo "mode=${mode}" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Integration test scope: ${mode}"
+            if [ "${mode}" = "affected" ]; then
+              echo '<details><summary>Changed files</summary>'
+              echo
+              echo '```'
+              cat /tmp/changed.txt
+              echo '```'
+              echo '</details>'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Select tests
+        id: select
+        if: steps.scope.outputs.mode == 'affected'
+        run: |
+          set -o pipefail
+          rc=0
+          uv run python -m pytest tests/integration -p tests.utils.affected \
+            --changed-files /tmp/changed.txt --collect-only -q -p no:cacheprovider \
+            2>&1 | tee /tmp/select.log || rc=$?
+          if [ "${rc}" -ne 0 ] && [ "${rc}" -ne 5 ]; then
+            exit "${rc}"
+          fi
+          count=$(grep -c '::' /tmp/select.log || true)
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+          {
+            grep '^affected-tests:' /tmp/select.log || true
+            echo '<details><summary>Selected tests</summary>'
+            echo
+            echo '```'
+            grep '::' /tmp/select.log || true
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run integration tests
+        if: steps.scope.outputs.mode == 'full' || steps.select.outputs.count != '0'
         env:
           ALBERT_CLIENT_ID_SDK: ${{ secrets.ALBERT_CLIENT_ID_SDK }}
           ALBERT_CLIENT_SECRET_SDK: ${{ secrets.ALBERT_CLIENT_SECRET_SDK }}
           ALBERT_BASE_URL: ${{ secrets.ALBERT_BASE_URL }}
+          MODE: ${{ steps.scope.outputs.mode }}
         run: |
           set -o pipefail
-          uv run pytest tests/integration -n 4 -v --tb=short -r fEsxX --durations=15 2>&1 | tee /tmp/pytest-output.log
+          args=()
+          if [ "${MODE}" = "affected" ]; then
+            args+=(-p tests.utils.affected --changed-files /tmp/changed.txt)
+          fi
+          uv run python -m pytest tests/integration -n 4 -v --tb=short -r fEsxX --durations=15 \
+            "${args[@]}" 2>&1 | tee /tmp/pytest-output.log
+
+      - name: No affected tests
+        if: steps.scope.outputs.mode == 'affected' && steps.select.outputs.count == '0'
+        run: echo "No integration tests are affected by this change." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post failure summary
         if: failure()
