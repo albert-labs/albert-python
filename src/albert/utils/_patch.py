@@ -191,6 +191,86 @@ def _data_column_calculation_patches(
     return None
 
 
+def _data_column_hidden_patch(
+    initial_data_column_value: DataColumnValue, updated_data_column_value: DataColumnValue
+) -> DTPatchDatum | None:
+    """Generate a Patch for a data column's hidden flag."""
+    if bool(initial_data_column_value.hidden) == bool(updated_data_column_value.hidden):
+        return None
+    return DTPatchDatum(
+        operation="update",
+        attribute="hidden",
+        old_value=bool(initial_data_column_value.hidden),
+        new_value=bool(updated_data_column_value.hidden),
+    )
+
+
+def apply_data_column_hidden(
+    *,
+    session: AlbertSession,
+    data_template_url: str,
+    requested: list[DataColumnValue],
+    created: list[DataColumnValue],
+) -> bool:
+    """Apply requested ``hidden`` flags to freshly created data columns.
+
+    The flag is set with a follow-up per-column update after the columns are created.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The active session.
+    data_template_url : str
+        URL of the parent data template.
+    requested : list[DataColumnValue]
+        The columns as they were requested.
+    created : list[DataColumnValue]
+        The columns as returned by Albert. Matched to ``requested`` by data column ID
+        in order, so repeated IDs pair up one-to-one and extra default columns are
+        ignored.
+
+    Returns
+    -------
+    bool
+        True if any update was sent.
+    """
+    available: dict[str, list[DataColumnValue]] = {}
+    for made in created:
+        if made.data_column_id is not None and made.sequence is not None:
+            available.setdefault(made.data_column_id, []).append(made)
+    patches = []
+    for wanted in requested:
+        wanted_id = wanted.data_column_id or (
+            wanted.data_column.id if wanted.data_column else None
+        )
+        matches = available.get(wanted_id) if wanted_id else None
+        if not matches:
+            continue
+        made = matches.pop(0)
+        if not wanted.hidden:
+            continue
+        patches.append(
+            GeneralPatchDatum(
+                attribute="datacolumn",
+                colId=made.sequence,
+                actions=[
+                    PatchDatum(
+                        operation="update", attribute="hidden", old_value=False, new_value=True
+                    )
+                ],
+            )
+        )
+    if not patches:
+        return False
+    session.patch(
+        data_template_url,
+        json=GeneralPatchPayload(data=patches).model_dump(
+            mode="json", by_alias=True, exclude_none=True
+        ),
+    )
+    return True
+
+
 def data_column_validation_patches(
     initial_data_column: DataColumnValue, updated_data_column: DataColumnValue
 ) -> DTPatchDatum | None:
@@ -428,6 +508,9 @@ def generate_data_column_patches(
             these_actions.append(validation_patch)
         if curve_data_patch:
             these_actions.append(curve_data_patch)
+        hidden_patch = _data_column_hidden_patch(initial_dc, updated_dc)
+        if hidden_patch:
+            these_actions.append(hidden_patch)
         # actions cannot have colId, so we need to remove it
         for action in these_actions:
             action.colId = None
@@ -872,6 +955,12 @@ def create_data_columns_with_enums(
 
     response = session.put(data_columns_base_url, json={"DataColumns": payloads})
     returned = [DataColumnValue(**x) for x in response.json()["DataColumns"]]
+    apply_data_column_hidden(
+        session=session,
+        data_template_url=data_template_url,
+        requested=list(data_columns),
+        created=returned,
+    )
 
     for col in returned:
         enum_values = pending.get(col.data_column_id)
