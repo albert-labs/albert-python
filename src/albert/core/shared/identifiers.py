@@ -401,23 +401,22 @@ def ensure_view_id(id: str) -> str:
 ViewId = Annotated[str, AfterValidator(ensure_view_id)]
 
 
-_UUID_UNIT_ID_RE = re.compile(
-    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-)
+_UNI_NUMERIC_ID_RE = re.compile(r"^uni\d+$", re.IGNORECASE)
 
 
 def ensure_unit_id(id: str) -> str:
-    # RET49 and similar wire keys use case-sensitive UUID unitId values; only classic UNI codes are uppercased.
     if not id:
         raise ValueError("UnitId cannot be empty")
     prefix = _ALBERT_PREFIXES["UnitId"]
-    if id.upper().startswith(prefix):
-        return prefix + id[len(prefix) :]
-    if _UUID_UNIT_ID_RE.match(id):
-        return id
+    if _UNI_NUMERIC_ID_RE.match(id):
+        return id.upper()
     if _is_valid_albert_prefix(id):
-        raise ValueError(f"UnitId {id} has invalid prefix. Expected: {prefix}")
-    return f"{prefix}{id.upper()}"
+        if not id.upper().startswith(prefix):
+            raise ValueError(f"UnitId {id} has invalid prefix. Expected: {prefix}")
+        return id
+    if id.isdigit():
+        return f"{prefix}{id}"
+    return id
 
 
 UnitId = Annotated[str, AfterValidator(ensure_unit_id)]
