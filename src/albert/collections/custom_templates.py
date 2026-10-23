@@ -11,9 +11,11 @@ from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import CustomTemplateId
 from albert.core.shared.models.patch import PatchOperation
 from albert.core.utils import ensure_list
+from albert.exceptions import AlbertPartialError
 from albert.resources.acls import ACL
 from albert.resources.custom_templates import (
     CustomTemplate,
+    CustomTemplateData,
     CustomTemplateSearchItem,
     TemplateCategory,
 )
@@ -65,6 +67,8 @@ class CustomTemplatesCollection(BaseCollection):
         Fast, lightweight search returning partial templates.
     get_all(...) -> Iterator[CustomTemplate]
         Iterate over fully populated templates matching optional filters.
+    update(custom_template) -> CustomTemplate
+        Update a template's name, category, metadata, locked state, or data.
     delete(id) -> None
         Delete a template by its ID.
     update_acl(custom_template_id, acl_class=None, acls=None) -> CustomTemplate
@@ -407,6 +411,155 @@ class CustomTemplatesCollection(BaseCollection):
             max_items=max_items,
             deserialize=lambda items: [CustomTemplate(**item) for item in items],
         )
+
+    @validate_call
+    def update(self, *, custom_template: CustomTemplate) -> CustomTemplate:
+        """Update a custom template.
+
+        Only the fields listed in Notes are applied. The data section is
+        replaced in full with the supplied template's data section, so retrieve
+        the template with [`get_by_id`][albert.collections.custom_templates.CustomTemplatesCollection.get_by_id], modify it (for example, enable or
+        disable individual workflow combination cells on a Property Task
+        template), then pass it here.
+
+        !!! example
+            ```python
+            template = client.custom_templates.get_by_id(id="CTP1")
+            template.locked = True
+            updated = client.custom_templates.update(custom_template=template)
+            ```
+
+        Parameters
+        ----------
+        custom_template : CustomTemplate
+            The template to update. Its ``id`` must be set.
+
+        Returns
+        -------
+        CustomTemplate
+            The updated template.
+
+        Raises
+        ------
+        ValueError
+            If the template has no ID.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``, ``category``,
+        ``metadata``, ``locked``, and ``data``. The ``data`` section is replaced
+        in full, including its tags, blocks, workflows, and workflow
+        combination grid.
+        """
+        if not custom_template.id:
+            raise ValueError("CustomTemplate must have an ID to update.")
+        existing = self.get_by_id(id=custom_template.id)
+        patch_data = self._generate_custom_template_patch(
+            existing=existing, updated=custom_template
+        )
+        if not patch_data:
+            return existing
+        response = self.session.patch(
+            url=self.base_path, json=[{"id": existing.id, "data": patch_data}]
+        )
+        if response.status_code == 206:
+            failed = (response.json() or {}).get("FailedItems") or []
+            raise AlbertPartialError(
+                f"Custom template {existing.id} update failed.",
+                failed_items=failed,
+            )
+        return self.get_by_id(id=custom_template.id)
+
+    @staticmethod
+    def _generate_custom_template_patch(
+        *, existing: CustomTemplate, updated: CustomTemplate
+    ) -> list[dict]:
+        """Generate the patch operations that transform one template into another.
+
+        Only fields the caller explicitly set on ``updated`` participate in the
+        diff. An unset field leaves the stored value untouched.
+
+        Parameters
+        ----------
+        existing : CustomTemplate
+            The current template.
+        updated : CustomTemplate
+            The desired template state.
+
+        Returns
+        -------
+        list[dict]
+            The patch operations to apply, empty when nothing set differs.
+        """
+        operations: list[dict] = []
+        fields_set = updated.model_fields_set
+
+        if "name" in fields_set and updated.name != existing.name:
+            operations.append(
+                {
+                    "operation": PatchOperation.UPDATE.value,
+                    "attribute": "name",
+                    "oldValue": existing.name,
+                    "newValue": updated.name,
+                }
+            )
+        if "category" in fields_set and updated.category != existing.category:
+            operations.append(
+                {
+                    "operation": PatchOperation.UPDATE.value,
+                    "attribute": "category",
+                    "oldValue": existing.category.value,
+                    "newValue": updated.category.value,
+                }
+            )
+        if "metadata" in fields_set and updated.metadata != existing.metadata:
+            operations.append(
+                {
+                    "operation": PatchOperation.UPDATE.value,
+                    "attribute": "Metadata",
+                    "oldValue": existing.metadata,
+                    "newValue": updated.metadata,
+                }
+            )
+        if "locked" in fields_set and updated.locked != existing.locked:
+            operations.append(
+                {
+                    "operation": PatchOperation.UPDATE.value,
+                    "attribute": "locked",
+                    "newValue": updated.locked,
+                }
+            )
+        if "data" in fields_set:
+            old_data = CustomTemplatesCollection._serialize_template_data(existing.data)
+            new_data = CustomTemplatesCollection._serialize_template_data(updated.data)
+            if old_data != new_data:
+                operations.append(
+                    {
+                        "operation": PatchOperation.UPDATE.value,
+                        "attribute": "Data",
+                        "oldValue": old_data,
+                        "newValue": new_data,
+                    }
+                )
+        return operations
+
+    @staticmethod
+    def _serialize_template_data(data: CustomTemplateData | None) -> dict:
+        """Serialize a template data section for a Data patch.
+
+        Parameters
+        ----------
+        data : CustomTemplateData or None
+            The data section to serialize.
+
+        Returns
+        -------
+        dict
+            The serialized data section, empty when there is none.
+        """
+        if data is None:
+            return {}
+        return data.model_dump(mode="json", by_alias=True, exclude_none=True)
 
     @validate_call
     def delete(self, *, id: CustomTemplateId) -> None:
