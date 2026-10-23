@@ -24,10 +24,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 DESCRIPTION_RE = re.compile(r"^albert-python (?P<sdk_version>\S+) \|")
 LAYER_NAME_RE = re.compile(r"^albert-python-py(?P<major>\d)(?P<minor>\d+)-(?P<arch>x86_64|arm64)$")
+
+# GetLayerVersionPolicy is called once per layer version from a thread pool, which
+# bursts past the Lambda API rate limit. Adaptive mode adds a client-side rate
+# limiter (shared across the pool's threads) that slows down on throttling, and the
+# larger attempt budget lets transient ThrottlingExceptions resolve instead of
+# failing the build.
+CLIENT_CONFIG = Config(retries={"max_attempts": 10, "mode": "adaptive"})
 
 
 def is_public(policy: dict) -> bool:
@@ -55,7 +63,7 @@ def version_is_public(client, layer_name: str, version: int) -> bool:
 
 
 def list_region(region: str) -> list[dict]:
-    client = boto3.client("lambda", region_name=region)
+    client = boto3.client("lambda", region_name=region, config=CLIENT_CONFIG)
     candidates: list[dict] = []
     # boto3 paginators follow NextMarker until the last page.
     for page in client.get_paginator("list_layers").paginate():
