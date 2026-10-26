@@ -2520,3 +2520,6 @@ class InventoryCollection(BaseCollection):
         )
         self.session.patch(path, json=payload)
         return self.get_instruction_sequence(inventory_id=inventory_id)
+
+
+# throwaway: affected-test selection probe
