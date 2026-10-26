@@ -172,3 +172,6 @@ class AlbertSession(requests.Session):
             return v
 
         return {k: convert(v) for k, v in params.items() if v is not None}
+
+
+# throwaway: affected-test selection probe
