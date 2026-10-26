@@ -160,6 +160,7 @@ nav:
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
           - Design Runs (🧪Beta): collections/design_runs.md
+          - Design Model Configs (🧪Beta): collections/design_model_configs.md
           - Design Spaces (🧪Beta): collections/design_spaces.md
           - Entity Types: collections/entity_types.md
           - Files: collections/files.md
@@ -218,6 +219,8 @@ nav:
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
           - Design: resources/design.md
+          - Design Model Configs (🧪Beta): resources/design_model_configs.md
+          - Design Operands (🧪Beta): resources/design_operands.md
           - Design Spaces (🧪Beta): resources/design_spaces.md
           - Documents: resources/documents.md
           - Entity Types: resources/entity_types.md
