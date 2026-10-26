@@ -340,3 +340,6 @@ class PricingCollection(BaseCollection):
             json=patch_payload.model_dump(mode="json", by_alias=True),
         )
         return self.get_by_id(id=pricing.id)
+
+
+# throwaway: affected-test selection probe
