@@ -49,3 +49,5 @@ for project in client.projects.get_all(max_items=10):
 - Learn core concepts: see [Concepts](concepts.md)
 - Explore Authentication methods: see [Authentication](authentication.md)
 - Explore detailed references: see [Albert](albert.md)
+
+<!-- throwaway: affected-test selection probe -->
