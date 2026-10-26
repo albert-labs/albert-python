@@ -7,6 +7,7 @@ from albert.resources.design_model_configs import (
     CreateDesignModelConfigRequest,
     DesignModelConfig,
     DesignModelConfigApplyResponse,
+    DesignModelConfigCreated,
     DesignModelConfigFeaturePreview,
     DesignModelConfigOperationsRequest,
     DesignModelConfigReferences,
@@ -418,3 +419,32 @@ def test_references_preserve_undeclared_keys():
     references = DesignModelConfigReferences.model_validate({"references": []})
 
     assert references.model_dump() == {"references": []}
+
+
+def test_violation_carries_the_operation_it_came_from():
+    """Test that a finding keeps the position of the operation behind it."""
+    result = DesignModelConfigValidationResponse.model_validate(
+        {
+            "valid": False,
+            "violations": [
+                {"code": "invalid_settings", "message": "m", "opIndex": 1},
+                {"code": "inert_mask_entry", "message": "m"},
+            ],
+        }
+    )
+
+    assert [v.op_index for v in result.violations] == [1, None]
+
+
+def test_created_config_parses_a_variable_not_derived_warning():
+    """Test that a derive warning for an unrepresentable target parses."""
+    created = DesignModelConfigCreated.model_validate(
+        {
+            "id": "DMC123",
+            "warnings": [
+                {"code": "variable_not_derived", "message": "TAR9 has an unsupported type."}
+            ],
+        }
+    )
+
+    assert created.warnings[0].code == "variable_not_derived"

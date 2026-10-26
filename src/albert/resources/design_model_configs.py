@@ -82,6 +82,7 @@ class DesignModelConfigViolationCode(StrEnum):
     DIMENSION_NOT_MODELLED = "dimension_not_modelled"
     INVALID_SETTINGS = "invalid_settings"
     INVALID_CONSTRAINT = "invalid_constraint"
+    VARIABLE_NOT_DERIVED = "variable_not_derived"
 
 
 class FamilySelector(TypedDesignModel):
@@ -214,6 +215,12 @@ class DesignModelConfigViolation(BaseAlbertModel):
 
     components: list[str] | None = Field(default=None)
     """Component paths (``<collection>/<key>``) the finding is attributed to."""
+
+    op_index: int | None = Field(default=None, alias="opIndex")
+    """Position, in the ``operations`` passed to ``apply``, of the operation behind the finding.
+
+    ``None`` when the finding is not tied to an operation.
+    """
 
 
 class DesignModelConfigCreated(DesignModelConfig):
