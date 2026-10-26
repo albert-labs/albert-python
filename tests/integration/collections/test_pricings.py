@@ -37,3 +37,6 @@ def test_update(client: Albert, seeded_pricings: list[Pricing], seeded_locations
     assert updated.description == updated_description
     assert updated.location.id == seeded_locations[1].id
     assert updated.default == 1
+
+
+# throwaway: affected-test selection probe
