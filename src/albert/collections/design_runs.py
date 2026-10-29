@@ -350,8 +350,8 @@ class DesignRunV4Collection(DesignRunCollection):
         Validates a space-filling run configuration without starting a job.
     get_by_id(id) -> DesignRun
         Get a stored design run by its ID.
-    get_all(project_id=None, state=None, method=None, max_items=None) -> Iterator[DesignRun]
-        Get stored design runs.
+    get_all(parent_id, state=None, method=None, max_items=None) -> Iterator[DesignRun]
+        Get all design runs in a project.
     update(design_run) -> DesignRun
         Update the name or description of a design run.
     """
@@ -415,7 +415,9 @@ class DesignRunV4Collection(DesignRunCollection):
         Raises
         ------
         AlbertClientError
-            The run configuration was rejected.
+            The run was rejected (HTTP 422). ``err.response.json()["message"]`` is the
+            list of violations, each with ``code``, ``message`` and optional ``targetId``
+            and ``components``.
         AlbertHTTPError
             Other failures.
         """
@@ -463,7 +465,9 @@ class DesignRunV4Collection(DesignRunCollection):
         Raises
         ------
         AlbertClientError
-            The run configuration was rejected.
+            The run was rejected (HTTP 422). ``err.response.json()["message"]`` is the
+            list of violations, each with ``code``, ``message`` and optional ``targetId``
+            and ``components``.
         AlbertHTTPError
             Other failures.
         """
@@ -506,7 +510,9 @@ class DesignRunV4Collection(DesignRunCollection):
         Raises
         ------
         AlbertClientError
-            Pre-check failures (invalid configuration before validation can run).
+            The run was rejected (HTTP 422). ``err.response.json()["message"]`` is the
+            list of violations, each with ``code``, ``message`` and optional ``targetId``
+            and ``components``.
         AlbertHTTPError
             Other request failures.
         """
@@ -547,7 +553,9 @@ class DesignRunV4Collection(DesignRunCollection):
         Raises
         ------
         AlbertClientError
-            Pre-check failures (invalid configuration before validation can run).
+            The run was rejected (HTTP 422). ``err.response.json()["message"]`` is the
+            list of violations, each with ``code``, ``message`` and optional ``targetId``
+            and ``components``.
         AlbertHTTPError
             Other request failures.
         """
@@ -590,25 +598,25 @@ class DesignRunV4Collection(DesignRunCollection):
     def get_all(
         self,
         *,
-        project_id: ProjectId | None = None,
+        parent_id: ProjectId,
         state: DesignRunState | None = None,
         method: DesignMethod | None = None,
         max_items: int | None = None,
     ) -> Iterator[DesignRun]:
-        """Get stored design runs.
+        """Get all design runs in a project.
 
         Results are returned as a lazily paginated iterator.
 
         !!! example
             ```python
-            for run in client.design_runs_v4.get_all(project_id="PRO123"):
+            for run in client.design_runs_v4.get_all(parent_id="PRO123"):
                 print(run.id, run.name, run.state)
             ```
 
         Parameters
         ----------
-        project_id : ProjectId, optional
-            Limit to runs in this project (format ``PRO...``).
+        parent_id : ProjectId
+            The project (format ``PRO...``) whose runs to list.
         state : DesignRunState, optional
             Limit to runs in this lifecycle state.
         method : DesignMethod, optional
@@ -621,11 +629,11 @@ class DesignRunV4Collection(DesignRunCollection):
         Iterator[DesignRun]
             A lazily paginated iterator over the design runs.
         """
-        params = {
-            key: value
-            for key, value in {"projectId": project_id, "state": state, "method": method}.items()
-            if value is not None
-        }
+        params = {"parentId": parent_id}
+        if state is not None:
+            params["state"] = state
+        if method is not None:
+            params["method"] = method
         return _LastKeyCursorPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,

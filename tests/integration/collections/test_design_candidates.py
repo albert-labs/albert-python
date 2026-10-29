@@ -4,6 +4,7 @@ from albert.client import Albert
 from albert.resources.design_candidate_sets import DesignCandidateSet
 from albert.resources.design_candidates import DesignCandidate
 from albert.resources.design_runs import DesignRun, DesignRunState
+from albert.resources.projects import Project
 
 ignore_in_ten0 = pytest.mark.xfail(
     reason="The v4 design service is not enabled for the TEN0 test tenant.",
@@ -11,17 +12,22 @@ ignore_in_ten0 = pytest.mark.xfail(
 )
 
 
-def _complete_run(client: Albert) -> DesignRun:
-    run = next(client.design_runs_v4.get_all(state=DesignRunState.COMPLETE, max_items=1), None)
+def _complete_run(client: Albert, parent_id: str) -> DesignRun:
+    run = next(
+        client.design_runs_v4.get_all(
+            parent_id=parent_id, state=DesignRunState.COMPLETE, max_items=1
+        ),
+        None,
+    )
     if run is None:
         pytest.skip("No completed design run in this tenant.")
     return run
 
 
 @ignore_in_ten0
-def test_get_run_and_rename_round_trip(client: Albert) -> None:
+def test_get_run_and_rename_round_trip(client: Albert, seeded_projects: list[Project]) -> None:
     """Test reading a stored run and renaming it, then restoring the name."""
-    run = _complete_run(client)
+    run = _complete_run(client, seeded_projects[0].id)
     fetched = client.design_runs_v4.get_by_id(id=run.id)
     assert isinstance(fetched, DesignRun)
     assert fetched.state == DesignRunState.COMPLETE
@@ -38,9 +44,9 @@ def test_get_run_and_rename_round_trip(client: Albert) -> None:
 
 
 @ignore_in_ten0
-def test_get_candidate_set_and_candidates(client: Albert) -> None:
+def test_get_candidate_set_and_candidates(client: Albert, seeded_projects: list[Project]) -> None:
     """Test reading a completed run's candidate set, its candidates, and one by id."""
-    run = _complete_run(client)
+    run = _complete_run(client, seeded_projects[0].id)
 
     candidate_set = client.design_candidate_sets.get_by_id(id=run.result_set_id)
     assert isinstance(candidate_set, DesignCandidateSet)

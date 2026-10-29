@@ -115,13 +115,13 @@ def test_get_all_sends_filters_and_follows_the_last_key_cursor(runs):
 
     listed = list(
         runs.get_all(
-            project_id="PRO456", state=DesignRunState.COMPLETE, method=DesignMethod.GENERATE
+            parent_id="PRO456", state=DesignRunState.COMPLETE, method=DesignMethod.GENERATE
         )
     )
 
     assert [r.id for r in listed] == ["DSR123", "DSR2"]
     assert parse_qs(urlparse(responses.calls[0].request.url).query) == {
-        "projectId": ["PRO456"],
+        "parentId": ["PRO456"],
         "state": ["complete"],
         "method": ["generate"],
     }
@@ -129,13 +129,13 @@ def test_get_all_sends_filters_and_follows_the_last_key_cursor(runs):
 
 
 @responses.activate
-def test_get_all_without_filters_sends_no_params_and_honours_max_items(runs):
-    """Test that unset filters are omitted and max_items caps the iterator."""
+def test_get_all_with_only_parent_id_sends_no_other_filters_and_honours_max_items(runs):
+    """Test that unset state and method are omitted and max_items caps the iterator."""
     responses.get(RUNS, json={"items": [RUN, {**RUN, "id": "DSR2"}], "lastKey": "k1"})
 
-    assert len(list(runs.get_all(max_items=1))) == 1
+    assert len(list(runs.get_all(parent_id="PRO456", max_items=1))) == 1
     assert len(responses.calls) == 1
-    assert "projectId" not in responses.calls[0].request.url
+    assert parse_qs(urlparse(responses.calls[0].request.url).query) == {"parentId": ["PRO456"]}
 
 
 @responses.activate
