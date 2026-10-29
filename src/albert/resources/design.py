@@ -6,7 +6,13 @@ from typing import Literal
 from pydantic import Field, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import SmartDatasetId, TargetId
+from albert.core.shared.identifiers import (
+    DesignModelConfigId,
+    DesignSpaceId,
+    ProjectId,
+    SmartDatasetId,
+    TargetId,
+)
 from albert.resources.chats import ChatSessionRef
 from albert.resources.targets import Criterion
 
@@ -42,6 +48,7 @@ class DesignRunViolationCode(StrEnum):
     JOB_TIMEOUT = "job_timeout"
     RESULT_PERSISTENCE_FAILED = "result_persistence_failed"
     UNKNOWN_REFERENCE = "unknown_reference"
+    REFERENCE_NOT_PUBLISHED = "reference_not_published"
     UNSUPPORTED_OPERAND = "unsupported_operand"
     INVALID_CONSTRAINT = "invalid_constraint"
     FEASIBILITY_INDETERMINATE = "feasibility_indeterminate"
@@ -173,6 +180,17 @@ class OptimizationDesignRunRequest(BaseAlbertModel):
     session: ChatSessionRef | None = None
     """Chat session to notify when the run completes; create-only."""
 
+    parent_id: ProjectId | None = Field(default=None, alias="parentId")
+    """Project that owns the run; v4 only. Omitted, the smart dataset's project is used."""
+
+    design_space_id: DesignSpaceId | None = Field(default=None, alias="designSpaceId")
+    """Published design space to sample from; v4 only. Omitted, a dataset-derived default is used."""
+
+    design_model_config_id: DesignModelConfigId | None = Field(
+        default=None, alias="designModelConfigId"
+    )
+    """Published model config to train with; v4 only. Omitted, a dataset-derived default is used."""
+
 
 class DOERunSettings(BaseAlbertModel):
     """Settings for a space-filling DOE design run.
@@ -215,3 +233,14 @@ class DOEDesignRunRequest(BaseAlbertModel):
 
     session: ChatSessionRef | None = None
     """Chat session to notify when the run completes; create-only."""
+
+    parent_id: ProjectId | None = Field(default=None, alias="parentId")
+    """Project that owns the run; v4 only. Omitted, the smart dataset's project is used."""
+
+    design_space_id: DesignSpaceId | None = Field(default=None, alias="designSpaceId")
+    """Published design space to sample from; v4 only. Omitted, a dataset-derived default is used."""
+
+    design_model_config_id: DesignModelConfigId | None = Field(
+        default=None, alias="designModelConfigId"
+    )
+    """Published model config to train with; v4 only. Omitted, a dataset-derived default is used."""

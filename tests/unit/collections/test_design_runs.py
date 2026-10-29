@@ -161,3 +161,68 @@ def test_update_sends_nothing_when_nothing_changed(runs):
     runs.update(design_run=DesignRun(id="DSR123", name="Clearcoat sweep"))
 
     assert len(responses.calls) == 1
+
+
+@responses.activate
+@pytest.mark.parametrize("method", ["create_optimization", "create_doe"])
+def test_v4_create_returns_a_design_run_and_sends_ownership_fields(runs, method):
+    """Test that v4 create sends parentId and the space/config ids and returns a DesignRun."""
+    responses.post(RUNS, json={**RUN, "state": "queued"}, status=201)
+
+    run = getattr(runs, method)(
+        smart_dataset_id=SDT,
+        parent_id="pro456",
+        design_space_id="DSP1",
+        design_model_config_id="DMC1",
+    )
+
+    assert json.loads(responses.calls[0].request.body) == {
+        "method": "generate" if method == "create_optimization" else "space_filling",
+        "smartDatasetId": SDT,
+        "parentId": "PRO456",
+        "designSpaceId": "DSP1",
+        "designModelConfigId": "DMC1",
+    }
+    assert isinstance(run, DesignRun)
+    assert run.state == DesignRunState.QUEUED
+
+
+@responses.activate
+@pytest.mark.parametrize("method", ["validate_optimization", "validate_doe"])
+def test_v4_validate_sends_ownership_fields(runs, method):
+    """Test that v4 validate sends parentId and the space/config ids."""
+    responses.post(f"{RUNS}/validation", json=VALIDATION)
+
+    result = getattr(runs, method)(
+        smart_dataset_id=SDT, parent_id="PRO456", design_space_id="DSP1"
+    )
+
+    body = json.loads(responses.calls[0].request.body)
+    assert body["parentId"] == "PRO456"
+    assert body["designSpaceId"] == "DSP1"
+    assert "designModelConfigId" not in body
+    assert result.valid is True
+
+
+@responses.activate
+def test_v3_create_still_returns_an_insight_without_ownership_fields(offline_session):
+    """Test that the v3 collection is unchanged: BTInsight back, no new fields sent."""
+    responses.post(f"{UNIT_BASE_URL}/api/v3/designruns", json=INSIGHT)
+
+    result = DesignRunCollection(session=offline_session).create_doe(smart_dataset_id=SDT)
+
+    assert type(result).__name__ == "BTInsight"
+    assert set(json.loads(responses.calls[0].request.body)) == {"method", "smartDatasetId"}
+
+
+def test_reference_not_published_violation_code_parses():
+    """Test that the reference_not_published violation code is a known code."""
+    run = DesignRun(
+        **{
+            **RUN,
+            "state": "error",
+            "violations": [{"code": "reference_not_published", "message": "m"}],
+        }
+    )
+
+    assert run.violations[0].code == "reference_not_published"
