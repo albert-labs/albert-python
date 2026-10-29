@@ -1,11 +1,16 @@
+from collections.abc import Iterator
+
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.design_spaces import _LastKeyCursorPaginator
+from albert.core.pagination import PaginationMode
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import SmartDatasetId, TargetId
+from albert.core.shared.identifiers import DesignRunId, ProjectId, SmartDatasetId, TargetId
 from albert.resources.btinsight import BTInsight
 from albert.resources.chats import ChatSessionRef
 from albert.resources.design import (
+    DesignMethod,
     DesignObjective,
     DesignRunValidationResponse,
     DOEDesignRunRequest,
@@ -13,6 +18,7 @@ from albert.resources.design import (
     OptimizationDesignRunRequest,
     OptimizationRunSettings,
 )
+from albert.resources.design_runs import DesignRun, DesignRunState
 
 
 class DesignRunCollection(BaseCollection):
@@ -305,8 +311,8 @@ class DesignRunV4Collection(DesignRunCollection):
 
     This collection is accessed as ``client.design_runs_v4``. It has the same methods,
     arguments, and return types as
-    [`DesignRunCollection`][albert.collections.design_runs.DesignRunCollection]; only the
-    target service differs.
+    [`DesignRunCollection`][albert.collections.design_runs.DesignRunCollection], plus
+    methods to read stored runs and rename them; only the target service differs.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -321,11 +327,135 @@ class DesignRunV4Collection(DesignRunCollection):
     ----------
     base_path : str
         The base path for v4 design runs.
+
+    Methods
+    -------
+    get_by_id(id) -> DesignRun
+        Get a stored design run by its ID.
+    get_all(project_id=None, state=None, method=None, max_items=None) -> Iterator[DesignRun]
+        Get stored design runs.
+    update(design_run) -> DesignRun
+        Update the name or description of a design run.
     """
 
     _api_version = "v4"
     _validate_suffix = "validation"
+    _updatable_attributes = {"name", "description"}
+    _non_deletable_attributes = {"name"}
 
     def __init__(self, *, session: AlbertSession):
         super().__init__(session=session)
         self.base_path = f"/api/{DesignRunV4Collection._api_version}/design/runs"
+
+    @validate_call
+    def get_by_id(self, *, id: DesignRunId) -> DesignRun:
+        """Get a stored design run by its ID.
+
+        !!! example
+            ```python
+            run = client.design_runs_v4.get_by_id(id="DSR123")
+            run.state
+            # <DesignRunState.COMPLETE: 'complete'>
+            ```
+
+        Parameters
+        ----------
+        id : DesignRunId
+            The design run ID (format ``DSR...``).
+
+        Returns
+        -------
+        DesignRun
+            The run and its status.
+        """
+        response = self.session.get(f"{self.base_path}/{id}")
+        return DesignRun(**response.json())
+
+    @validate_call
+    def get_all(
+        self,
+        *,
+        project_id: ProjectId | None = None,
+        state: DesignRunState | None = None,
+        method: DesignMethod | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[DesignRun]:
+        """Get stored design runs.
+
+        Results are returned as a lazily paginated iterator.
+
+        !!! example
+            ```python
+            for run in client.design_runs_v4.get_all(project_id="PRO123"):
+                print(run.id, run.name, run.state)
+            ```
+
+        Parameters
+        ----------
+        project_id : ProjectId, optional
+            Limit to runs in this project (format ``PRO...``).
+        state : DesignRunState, optional
+            Limit to runs in this lifecycle state.
+        method : DesignMethod, optional
+            Limit to ``generate`` or ``space_filling`` runs.
+        max_items : int, optional
+            Stop after this many runs.
+
+        Returns
+        -------
+        Iterator[DesignRun]
+            A lazily paginated iterator over the design runs.
+        """
+        params = {
+            key: value
+            for key, value in {"projectId": project_id, "state": state, "method": method}.items()
+            if value is not None
+        }
+        return _LastKeyCursorPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [DesignRun(**item) for item in items],
+        )
+
+    @validate_call
+    def update(self, *, design_run: DesignRun) -> DesignRun:
+        """Update the name or description of a design run.
+
+        Retrieve the run with
+        [`get_by_id`][albert.collections.design_runs.DesignRunV4Collection.get_by_id],
+        modify ``name`` and/or ``description``, then pass it here. Only changed fields
+        are applied. This works in every state.
+
+        !!! example
+            ```python
+            run = client.design_runs_v4.get_by_id(id="DSR123")
+            run.name = "Clearcoat sweep, rev B"
+            updated = client.design_runs_v4.update(design_run=run)
+            ```
+
+        Parameters
+        ----------
+        design_run : DesignRun
+            The run carrying the desired changes. Its ``id`` identifies which run to
+            update.
+
+        Returns
+        -------
+        DesignRun
+            The updated design run.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``, ``description``.
+        """
+        existing = self.get_by_id(id=design_run.id)
+        patch_payload = self._generate_patch_payload(
+            existing=existing, updated=design_run
+        ).model_dump(mode="json", by_alias=True)
+        if not patch_payload["data"]:
+            return existing
+        response = self.session.patch(f"{self.base_path}/{design_run.id}", json=patch_payload)
+        return DesignRun(**response.json())

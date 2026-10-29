@@ -22,6 +22,8 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
+from albert.collections.design_candidate_sets import DesignCandidateSetCollection
+from albert.collections.design_candidates import DesignCandidateCollection
 from albert.collections.design_model_configs import DesignModelConfigCollection
 from albert.collections.design_runs import DesignRunCollection, DesignRunV4Collection
 from albert.collections.design_spaces import DesignSpaceCollection
@@ -253,6 +255,16 @@ class Albert:
     def design_runs_v4(self) -> DesignRunV4Collection:
         """Design runs against the v4 design service."""
         return DesignRunV4Collection(session=self.session)
+
+    @property
+    def design_candidate_sets(self) -> DesignCandidateSetCollection:
+        """Design candidate sets on the v4 design service."""
+        return DesignCandidateSetCollection(session=self.session)
+
+    @property
+    def design_candidates(self) -> DesignCandidateCollection:
+        """Design candidates on the v4 design service."""
+        return DesignCandidateCollection(session=self.session)
 
     @property
     def design_model_configs(self) -> DesignModelConfigCollection:

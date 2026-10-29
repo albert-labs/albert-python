@@ -40,6 +40,14 @@ class DesignRunViolationCode(StrEnum):
     OPTIMIZATION_SYSTEM_MISMATCH = "optimization_system_mismatch"
     INTERNAL = "internal"
     JOB_TIMEOUT = "job_timeout"
+    RESULT_PERSISTENCE_FAILED = "result_persistence_failed"
+    UNKNOWN_REFERENCE = "unknown_reference"
+    UNSUPPORTED_OPERAND = "unsupported_operand"
+    INVALID_CONSTRAINT = "invalid_constraint"
+    FEASIBILITY_INDETERMINATE = "feasibility_indeterminate"
+    DIMENSION_NOT_IN_DATASET = "dimension_not_in_dataset"
+    DIMENSION_NOT_MODELLED = "dimension_not_modelled"
+    DUPLICATE_CONSTRAINT_SUBJECT = "duplicate_constraint_subject"
 
 
 class DesignRunViolation(BaseAlbertModel):
@@ -53,6 +61,9 @@ class DesignRunViolation(BaseAlbertModel):
 
     target_id: str | None = Field(default=None, alias="targetId")
     """Target id when the violation is scoped to one performance target."""
+
+    components: list[str] | None = Field(default=None)
+    """The entities (element ids, parameter keys or target ids) the violation points at."""
 
 
 class DesignRunValidationResponse(BaseAlbertModel):
