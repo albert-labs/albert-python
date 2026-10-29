@@ -9,7 +9,7 @@ from albert.collections.inventory import InventoryCategory
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import ensure_inventory_id
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import BadRequestError, NotFoundError
+from albert.exceptions import AlbertPartialError, BadRequestError, NotFoundError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import FieldType, ServiceType
@@ -653,6 +653,98 @@ def test_create_volume_inventory_item(
     finally:
         with suppress(NotFoundError, BadRequestError):
             client.inventory.delete(id=created.id)
+
+
+def test_create_many_inventory_items(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+    seeded_tags: list[Tag],
+    seeded_cas: list[Cas],
+):
+    """Test creating multiple inventory items in one call, including a volume item."""
+    items = [
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Salt {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0],
+            cas=[CasAmount(id=seeded_cas[0].id, min=0.5, max=1.0)],
+            tags=[seeded_tags[0]],
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Gloves {uuid4()}",
+            category=InventoryCategory.CONSUMABLES,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[1],
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Balance {uuid4()}",
+            category=InventoryCategory.EQUIPMENT,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0].name,  # unresolved name resolves to the company
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Solvent {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.VOLUME,
+            density=0.785,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0],
+        ),
+    ]
+    created: list[InventoryItem] = []
+    try:
+        created = client.inventory.create_many(inventory_items=items)
+        assert [item.name for item in created] == [item.name for item in items]
+        assert all(item.id is not None for item in created)
+        assert created[0].cas[0].id == seeded_cas[0].id
+        assert created[0].tags[0].id == seeded_tags[0].id
+        assert created[2].company.id == seeded_companies[0].id
+        assert created[3].unit_category == InventoryUnitCategory.VOLUME
+        assert created[3].density is not None
+        assert created[3].density.value == pytest.approx(0.785)
+    finally:
+        for item in created:
+            with suppress(NotFoundError, BadRequestError):
+                client.inventory.delete(id=item.id)
+
+
+def test_create_many_inventory_items_partial_failure(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+):
+    """Test that a partially failing bulk create raises AlbertPartialError with per-item results."""
+    items = [
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Good {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Bad {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+            tags=[Tag(id="TAG0_DOES_NOT_EXIST", tag=f"{seed_prefix} - bogus")],
+        ),
+    ]
+    with pytest.raises(AlbertPartialError) as exc_info:
+        client.inventory.create_many(inventory_items=items)
+    error = exc_info.value
+    created_id = None
+    try:
+        assert len(error.created_items) == 1
+        assert error.created_items[0]["index"] == 0
+        created_id = error.created_items[0].get("albertId") or error.created_items[0].get("id")
+        assert created_id is not None
+        assert len(error.failed_items) == 1
+        assert error.failed_items[0]["index"] == 1
+        assert error.failed_items[0]["name"] == items[1].name
+    finally:
+        if created_id is not None:
+            with suppress(NotFoundError, BadRequestError):
+                client.inventory.delete(id=created_id)
 
 
 def test_update_rejects_unit_category_change_to_volume(

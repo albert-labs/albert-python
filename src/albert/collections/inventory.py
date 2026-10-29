@@ -8,6 +8,7 @@ from typing_extensions import deprecated
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
+from albert.collections.tags import TagCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -19,7 +20,7 @@ from albert.core.shared.identifiers import (
     WorksheetId,
 )
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertPartialError, NotFoundError
+from albert.exceptions import AlbertPartialError, BadRequestError, NotFoundError
 from albert.resources.facet import FacetItem
 from albert.resources.instructions import (
     Instruction,
@@ -41,6 +42,7 @@ from albert.resources.inventory import (
 )
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
+from albert.resources.tags import Tag
 from albert.resources.users import User
 from albert.utils.instructions import (
     _build_instruction_create_payload,
@@ -50,11 +52,20 @@ from albert.utils.instructions import (
     _resolve_instruction_list_params,
     _validate_instruction_for_create,
 )
-from albert.utils.inventory import _build_cas_patch_operations, _split_bulk_patch_operations
+from albert.utils.inventory import (
+    _build_bulk_create_item_payload,
+    _build_cas_patch_operations,
+    _offset_bulk_result_indices,
+    _split_bulk_patch_operations,
+)
 from albert.utils.tags import resolve_tags, unique_tags
 
 # Instruction list calls return at most this many instructions per fetch.
 _INSTRUCTIONS_PAGE_SIZE = 100
+
+# Bulk create accepts at most this many items per call (BulkInventoryCreate
+# maxItems in the Inventory OpenAPI spec).
+_BULK_CREATE_MAX_ITEMS = 300
 
 # Bulk instruction reads accept at most this many formula IDs per call.
 _INSTRUCTIONS_BULK_MAX_IDS = 15
@@ -114,6 +125,8 @@ class InventoryCollection(BaseCollection):
     -------
     create(inventory_item, avoid_duplicates=True) -> InventoryItem
         Create a new inventory item (raw material, consumable, equipment, or formula).
+    create_many(inventory_items) -> list[InventoryItem]
+        Create multiple raw material, consumable, or equipment items.
     get_by_id(id) -> InventoryItem
         Get a single fully populated item by its ID.
     get_by_ids(ids) -> list[InventoryItem]
@@ -407,6 +420,137 @@ class InventoryCollection(BaseCollection):
 
         # ACL is populated after the create response is sent by the API.
         return self.get_by_id(id=response.json()["albertId"])
+
+    def _resolve_bulk_create_entities(self, *, inventory_items: list[InventoryItem]) -> None:
+        """Resolve tags and companies on every item to saved entities carrying ids.
+
+        Same resolution as [`create`][albert.collections.inventory.InventoryCollection.create],
+        but each unique unresolved tag or company is looked up once across the
+        whole list instead of once per item.
+        """
+        tag_collection = TagCollection(session=self.session)
+        resolved_tags: dict[tuple[str, str], Tag] = {}
+        companies_by_name: dict[str, Company] = {}
+        company_collection = CompanyCollection(session=self.session)
+        for item in inventory_items:
+            if item.tags:
+                resolved_item_tags = []
+                for tag in item.tags:
+                    key = ("id", tag.id) if tag.id else ("name", tag.tag.casefold())
+                    if key not in resolved_tags:
+                        resolved_tags[key] = (
+                            tag if tag.id is not None else tag_collection.get_or_create(tag=tag)
+                        )
+                    resolved_item_tags.append(resolved_tags[key])
+                item.tags = resolved_item_tags
+            company = item.company
+            if company is None or company.id is not None:
+                continue
+            if company.name not in companies_by_name:
+                companies_by_name[company.name] = company_collection.get_or_create(company=company)
+            item.company = companies_by_name[company.name]
+
+    @validate_call
+    def create_many(self, *, inventory_items: list[InventoryItem]) -> list[InventoryItem]:
+        """Create multiple inventory items.
+
+        Supports raw material, consumable, and equipment items. Formula and
+        Reaction items are not supported and fail per item; create them one at a
+        time with [`create`][albert.collections.inventory.InventoryCollection.create].
+        Any tags or companies on the items that do not yet exist in Albert are
+        created automatically, matched once across the whole list rather than
+        once per item.
+
+        !!! example
+            ```python
+            from albert.resources.companies import Company
+            from albert.resources.inventory import InventoryCategory, InventoryItem
+
+            items = [
+                InventoryItem(
+                    name="Titanium Dioxide",
+                    category=InventoryCategory.RAW_MATERIALS,
+                    company=Company(name="Acme Chemicals"),
+                ),
+                InventoryItem(
+                    name="Nitrile Gloves",
+                    category=InventoryCategory.CONSUMABLES,
+                    company=Company(name="Acme Chemicals"),
+                ),
+            ]
+            created = client.inventory.create_many(inventory_items=items)
+            [item.id for item in created]
+            # ['INVA9999999', 'INVC9999998']
+            ```
+
+        Parameters
+        ----------
+        inventory_items : list[InventoryItem]
+            The items to create. Volume items (``unit_category="volume"``)
+            require a positive ``density``, same as
+            [`create`][albert.collections.inventory.InventoryCollection.create].
+
+        Returns
+        -------
+        list[InventoryItem]
+            The created items, fully populated, in the order requested.
+
+        Raises
+        ------
+        AlbertPartialError
+            If only some items could be created. The error carries the succeeded
+            (``created_items``) and failed (``failed_items``) entries; each
+            entry's ``index`` is the item's position in ``inventory_items``. A
+            failed entry with ``needsCleanup`` set may have left a partially
+            created record under its ``id``; delete it before retrying that item.
+
+        Notes
+        -----
+        Items are created in groups of up to 300. Already-created items are not
+        rolled back when other items fail. A call that times out may still have
+        created items, so do not blindly resend a timed-out load; reconcile
+        which items exist first, then resend only the missing ones.
+        """
+        if not inventory_items:
+            return []
+        self._resolve_bulk_create_entities(inventory_items=inventory_items)
+        created_items: list[dict] = []
+        failed_items: list[dict] = []
+        url = f"{self.base_path}/bulk"
+        for start in range(0, len(inventory_items), _BULK_CREATE_MAX_ITEMS):
+            chunk = inventory_items[start : start + _BULK_CREATE_MAX_ITEMS]
+            try:
+                response = self.session.post(
+                    url, json=[_build_bulk_create_item_payload(item) for item in chunk]
+                )
+            except BadRequestError as error:
+                # Bulk create answers 400 when no item of the group could be
+                # created; the body then carries the per-item failures.
+                body = None
+                if error.response is not None:
+                    try:
+                        body = error.response.json()
+                    except ValueError:
+                        body = None
+                if not isinstance(body, dict) or "FailedItems" not in body:
+                    raise
+                chunk_created, chunk_failed = [], body["FailedItems"] or []
+            else:
+                data = response.json()
+                chunk_created = data.get("CreatedItems") or []
+                chunk_failed = data.get("FailedItems") or []
+            created_items.extend(_offset_bulk_result_indices(chunk_created, start))
+            failed_items.extend(_offset_bulk_result_indices(chunk_failed, start))
+        if failed_items:
+            raise AlbertPartialError(
+                f"Bulk inventory create partially succeeded: "
+                f"{len(failed_items)} item(s) failed. Failures: {failed_items}",
+                created_items=created_items,
+                failed_items=failed_items,
+            )
+        created_ids = [entry.get("albertId") or entry.get("id") for entry in created_items]
+        hydrated_by_id = {item.id: item for item in self.get_by_ids(ids=created_ids)}
+        return [hydrated_by_id[id] for id in created_ids if id in hydrated_by_id]
 
     @validate_call
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
