@@ -16,6 +16,7 @@ import pytest
 import responses
 
 from albert.collections.inventory import InventoryCollection
+from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertHTTPError, AlbertPartialError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.cas import Cas
@@ -777,6 +778,23 @@ def test_prepare_parameters_leaves_list_filters_untouched(offline_session) -> No
     params = _collection(offline_session)._prepare_parameters(albert_id=["INVA1", "INVA2"])
 
     assert params["albertId"] == ["INVA1", "INVA2"]
+
+
+# --- _paginate_inventory_search ---
+
+
+def test_paginate_match_all_conditions_uses_cursor_pagination(offline_session) -> None:
+    """Test that match_all_conditions searches paginate with a cursor, not offset."""
+    paginator = _collection(offline_session)._paginate_inventory_search(
+        deserialize=lambda items: items,
+        query_params={"text": "resin", "offset": 0},
+        match_all_conditions=True,
+        max_items=None,
+    )
+
+    assert paginator.mode == PaginationMode.SEARCH_AFTER
+    assert paginator.path == "/api/v3/inventories/llmsearch"
+    assert paginator.params == {"text": "resin", "limit": 1000, "searchAfter": "[]"}
 
 
 # --- _apply_inventory_patch_payload batching ---
