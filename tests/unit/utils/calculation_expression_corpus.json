@@ -72,6 +72,11 @@
       "note": "Weighted harmonic mean over all ingredients."
     },
     {
+      "expression": "sum(ingredient_basis WHERE Function = \"Resin\")",
+      "platform": "accepted",
+      "note": "The per-ingredient result of a linked basis aggregates into a calculated property."
+    },
+    {
       "expression": "sum(wt%",
       "platform": "rejected",
       "stage": "normalize",

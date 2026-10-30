@@ -3026,9 +3026,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         - Variables: ``wt%`` (the ingredient's weight percent), ``parts_mass``
           (the ingredient's amount), ``Function`` (the ingredient's Function
-          tag; usable only in ``WHERE`` filters), and any property attribute of
-          the ingredient in brackets, e.g. ``[Solid %]``. Combine them with
-          ``+ - * /``, parentheses, and numbers, e.g. ``wt% * [Solid %] / 100``.
+          tag; usable only in ``WHERE`` filters), and ``Ingredient_basis`` (the
+          per-ingredient result of a linked basis, usable inside aggregations,
+          e.g. ``sum(ingredient_basis WHERE Function = "Resin")``). Beyond the
+          built-ins, any property attribute of the ingredient works in
+          brackets, by name or ID, e.g. ``[Solid %]`` or ``[ATR66]``; find them
+          through [`AttributeCollection`][albert.collections.attributes.AttributeCollection]
+          (``client.attributes``). Combine variables with ``+ - * /``,
+          parentheses, and numbers, e.g. ``wt% * [Solid %] / 100``.
         - ``sum(expr)`` sums an expression over every ingredient.
         - ``sum(expr WHERE Function = "Core")`` sums over only the ingredients
           whose Function tag matches. ``OR`` adds more values of the same key:
