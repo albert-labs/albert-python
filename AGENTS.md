@@ -345,6 +345,7 @@ class CasCollection(BaseCollection):
     - Wrong: `Workflows are created in batches and re-fetched automatically.`
     - Right: `Created workflows are fully populated.`
 - **Docstrings are the Ask Albert tool-search surface.** Include common user synonyms in the summary line so prompts match (e.g. `Star (pin) a project.`). When a behavior change invalidates a comparative claim in a sibling docstring (`Unlike X, ...`), update that docstring in the same PR; stale comparatives actively misdirect the agent.
+- **Agent consumers read docstrings through a character budget.** Ask Albert keeps only the first 700 characters of a method's guidance prose (the description between the summary line and the first Numpy section) in its tool description; the full docstring is served only when the agent explicitly expands the tool. Front-load the rules a caller must not miss into that window and let long-form reference follow in the same docstring. Keep field docstrings compact too: attribute docstrings travel whole into tool argument schemas.
 - Every collection class docstring must include a `Methods` section listing all public methods:
 
 ```python
