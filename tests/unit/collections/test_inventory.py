@@ -11,6 +11,7 @@ the SDK sends and how it reacts to errors.
 
 import json
 import warnings
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 import responses
@@ -777,6 +778,42 @@ def test_prepare_parameters_leaves_list_filters_untouched(offline_session) -> No
     params = _collection(offline_session)._prepare_parameters(albert_id=["INVA1", "INVA2"])
 
     assert params["albertId"] == ["INVA1", "INVA2"]
+
+
+# --- search pagination ---
+
+
+@responses.activate
+def test_search_match_all_conditions_follows_search_after_cursor(offline_session) -> None:
+    """Test that match_all_conditions searches send searchAfter and follow the cursor."""
+    pages = [
+        {
+            "Items": [{"albertId": "INVA1", "category": "RawMaterials", "unit": "mass"}],
+            "nextSearchAfter": ["2026-01-02", "INVA1"],
+            "prevSearchAfter": None,
+        },
+        {
+            "Items": [{"albertId": "INVA2", "category": "Consumables", "unit": "volume"}],
+            "nextSearchAfter": None,
+            "prevSearchAfter": ["2026-01-02", "INVA1"],
+        },
+    ]
+    served = []
+
+    def serve_page(request):
+        served.append(request)
+        return 200, {}, json.dumps(pages[len(served) - 1])
+
+    responses.add_callback(
+        responses.GET, f"{UNIT_BASE_URL}/api/v3/inventories/llmsearch", callback=serve_page
+    )
+
+    results = list(_collection(offline_session).search(match_all_conditions=True))
+
+    assert [r.id for r in results] == ["INVA1", "INVA2"]
+    queries = [parse_qs(urlparse(call.request.url).query) for call in responses.calls]
+    assert [q["searchAfter"] for q in queries] == [["[]"], [json.dumps(["2026-01-02", "INVA1"])]]
+    assert all("offset" not in q for q in queries)
 
 
 # --- _apply_inventory_patch_payload batching ---
