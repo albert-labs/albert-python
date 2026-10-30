@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "description": "Shared contract corpus for the ingredient expression language: expressions the platform calculation engine accepts or refuses. Consumed by whereClauseCorpus.spec.ts in this package and mirrored into the Albert Python SDK (albert-python tests/unit/utils/calculation_expression_corpus.json), whose client-side validator asserts the same verdicts. When the language changes (new functions, WHERE at ingredient basis, multi-select Function), update this file and the SDK mirror together.",
+  "fields": {
+    "expression": "The raw, display-name expression as a user writes it.",
+    "platform": "accepted | rejected: the platform's end verdict on the expression.",
+    "stage": "For rejected entries: normalize = refused while rewriting/parsing the expression; evaluate = normalization succeeds but the expression cannot compile. Client-side pre-save checks reject both stages.",
+    "rule": "Stable identifier of the rule that rejects the expression, for rejected entries.",
+    "note": "Optional context."
+  },
+  "entries": [
+    { "expression": "wt% * [Solid %] / 100", "platform": "accepted" },
+    { "expression": "parts_mass / [Density]", "platform": "accepted" },
+    { "expression": "sum(wt%)", "platform": "accepted" },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\")",
+      "platform": "accepted",
+      "note": "The canonical WHERE filter form."
+    },
+    {
+      "expression": "sum(wt% where Function = \"Core\")",
+      "platform": "accepted",
+      "note": "The WHERE keyword is case-insensitive."
+    },
+    {
+      "expression": "sum(wt% WHERE Function=\"Core\")",
+      "platform": "accepted",
+      "note": "Whitespace around the equals sign is optional."
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\" OR Function = \"Shell\")",
+      "platform": "accepted",
+      "note": "OR includes several values of the same key."
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\" OR Function = \"Shell\" OR Function = \"Binder\")",
+      "platform": "accepted"
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\" OR Function = \"Core\")",
+      "platform": "accepted",
+      "note": "Duplicate values are de-duplicated."
+    },
+    {
+      "expression": "sum(parts_mass WHERE [Resin Type] = 'Epoxy')",
+      "platform": "accepted",
+      "note": "A text property attribute in brackets can filter instead of Function; single quotes are accepted."
+    },
+    {
+      "expression": "sum(wt% WHERE [ATR66] = \"Resin\")",
+      "platform": "accepted",
+      "note": "An attribute ID can key the filter."
+    },
+    {
+      "expression": "wt% / sum(wt% WHERE Function = \"Resin\") * 100",
+      "platform": "accepted",
+      "note": "Share-of-sum (PHR): a filtered sum as a shared denominator."
+    },
+    {
+      "expression": "sum(wt% * [Solid %] / 100 WHERE Function = \"Resin\")",
+      "platform": "accepted",
+      "note": "The WHERE filter applies after a compound inner expression."
+    },
+    {
+      "expression": "sum(wt%) + sum(parts_mass)",
+      "platform": "accepted",
+      "note": "Sibling aggregations combine freely."
+    },
+    {
+      "expression": "harmonicMean(wt%, [Density])",
+      "platform": "accepted",
+      "note": "Weighted harmonic mean over all ingredients."
+    },
+    {
+      "expression": "sum(ingredient_basis WHERE Function = \"Resin\")",
+      "platform": "accepted",
+      "note": "The per-ingredient result of a linked basis aggregates into a calculated property."
+    },
+    {
+      "expression": "sum(wt%",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "unmatched-parentheses"
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\"",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "unmatched-parentheses"
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\" AND Function = \"Shell\")",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "and-conditions",
+      "note": "An ingredient carries one value per filter key, so AND would match nothing; use OR."
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\" and [Solid %] = \"50\")",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "and-conditions"
+    },
+    {
+      "expression": "sum(wt% WHERE Function = Core)",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "malformed-condition",
+      "note": "Values must be quoted."
+    },
+    {
+      "expression": "sum(wt% WHERE Function)",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "malformed-condition"
+    },
+    {
+      "expression": "sum(wt% WHERE = \"Core\")",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "malformed-condition"
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"\")",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "malformed-condition",
+      "note": "Empty values are rejected."
+    },
+    {
+      "expression": "sum(wt% WHERE wt% > 50)",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "malformed-condition",
+      "note": "Only equality against a quoted value is supported."
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Resin or Binder\")",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "malformed-condition",
+      "note": "Known limitation: an OR word inside a quoted value splits the clause. Write OR between conditions instead."
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\" OR [Resin Type] = \"Epoxy\")",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "mixed-keys",
+      "note": "All OR branches of one WHERE filter must use the same key."
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"Core\" OR Function = \"Shell\" AND Function = \"Binder\")",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "and-conditions"
+    },
+    {
+      "expression": "sum(WHERE Function = \"Core\")",
+      "platform": "rejected",
+      "stage": "evaluate",
+      "rule": "missing-inner-expression",
+      "note": "Normalization succeeds but nothing is left to sum, so compilation fails."
+    },
+    {
+      "expression": "sum(wt% WHERE)",
+      "platform": "rejected",
+      "stage": "evaluate",
+      "rule": "incomplete-where",
+      "note": "A WHERE keyword without a condition fails at compilation."
+    }
+  ]
+}

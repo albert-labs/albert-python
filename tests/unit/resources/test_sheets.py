@@ -1983,6 +1983,49 @@ def test_update_cells_packs_two_changes_per_entry(offline_session):
 
 
 @responses.activate
+def test_update_cells_rejects_malformed_where_before_writing(offline_session):
+    """Test a calculation the platform refuses raises before any write is sent."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW1", "COL1#INVF0"]
+    bad = cell.model_copy(
+        update={"calculation": 'sum(wt% WHERE Function = "Core" AND Function = "Shell")'}
+    )
+    with pytest.raises(ValueError, match="AND conditions in WHERE filters are not supported"):
+        sheet.update_cells(cells=[bad])
+
+    assert [c for c in responses.calls if c.request.method == "PATCH"] == []
+
+
+@responses.activate
+def test_update_cells_writes_well_formed_where_filter(offline_session):
+    """Test a calculation with a valid WHERE filter is written."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW1", "COL1#INVF0"]
+    updated, failed = sheet.update_cells(
+        cells=[
+            cell.model_copy(
+                update={"calculation": 'sum(wt% WHERE Function = "Core" OR Function = "Shell")'}
+            )
+        ]
+    )
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert len(patches) == 1
+    body = json.loads(patches[0].request.body)
+    assert [(d["attribute"], d["newValue"]) for d in body[0]["data"]] == [
+        ("calculation", 'sum(wt% WHERE Function = "Core" OR Function = "Shell")')
+    ]
+    assert len(updated) == 1
+    assert failed == []
+
+
+@responses.activate
 def test_update_cells_splits_non_calculation_changes_into_single_change_entries(offline_session):
     """Test a value+bounds write on a plain cell travels as one change per entry."""
     sheet = _products_sheet(session=offline_session)
