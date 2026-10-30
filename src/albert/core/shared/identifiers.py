@@ -17,6 +17,7 @@ _ALBERT_PREFIXES = {
     "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "DesignModelConfigId": "DMC",
     "DesignSpaceId": "DSP",
     "DocumentId": "DOC",
     "EntityTypeId": "ETT",
@@ -290,6 +291,15 @@ def ensure_design_space_id(id: str) -> str:
 
 
 DesignSpaceId = Annotated[str, AfterValidator(ensure_design_space_id)]
+
+
+def ensure_design_model_config_id(id: str) -> str:
+    # Ids are DMC + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
+    _ensure_albert_id(id, "DesignModelConfigId")
+    return f"DMC{id[3:]}" if id[:3].upper() == "DMC" else f"DMC{id}"
+
+
+DesignModelConfigId = Annotated[str, AfterValidator(ensure_design_model_config_id)]
 
 
 def ensure_task_id(id: str) -> str:
