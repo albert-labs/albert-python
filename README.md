@@ -1,7 +1,7 @@
 # Albert Python SDK
 
 [![PyPI version](https://img.shields.io/pypi/v/albert.svg)](https://pypi.org/project/albert/)
-[![Python versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/)
+[![Python versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://www.python.org/)
 [![Downloads per month](https://img.shields.io/pypi/dm/albert.svg)](https://pypi.org/project/albert/)
 
 Albert Python is the official Albert Software Development Kit (SDK) for Python
