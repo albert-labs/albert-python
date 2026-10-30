@@ -12,6 +12,7 @@ from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.exceptions import AlbertException, AlbertHTTPError
 from albert.resources.inventory import InventoryItem
+from albert.utils.calculations import validate_calculation_expression
 
 # Define forward references
 Row = ForwardRef("Row")
@@ -203,7 +204,46 @@ class Cell(BaseResource):
     """The name of the cell. Optional. Default is None."""
 
     calculation: str = ""
-    """The formula backing the cell, if any (e.g. a total). Default is ``""``."""
+    """The formula backing the cell, if any (e.g. a total). Default is ``""``.
+
+    Two formula styles appear on a Sheet:
+
+    - Totals and row arithmetic reference grid coordinates and start with ``=``,
+      e.g. ``"=COL5ROW12+COL6ROW12"``.
+    - Calculated properties and ingredient bases use the ingredient expression
+      language. Available variables: ``wt%`` (the ingredient's weight percent),
+      ``parts_mass`` (the ingredient's amount), ``Function`` (the ingredient's
+      Function tag; usable only in ``WHERE`` filters), and any property attribute
+      of the ingredient in brackets, e.g. ``[Solid %]``. Combine them with
+      ``+ - * /``, parentheses, and numbers, e.g. ``wt% * [Solid %] / 100``.
+
+    Aggregations over the formula's ingredients:
+
+    - ``sum(expr)`` sums an expression over every ingredient.
+    - ``sum(expr WHERE Function = "Core")`` sums over only the ingredients whose
+      Function tag matches. ``OR`` adds more values of the same key:
+      ``sum(wt% WHERE Function = "Core" OR Function = "Shell")``. ``AND`` is not
+      supported (an ingredient carries one Function value), values must be
+      quoted, and one ``WHERE`` filter reads one key. A text property attribute
+      in brackets can filter instead of ``Function``, e.g.
+      ``sum(parts_mass WHERE [Resin Type] = "Epoxy")``.
+    - ``harmonicMean(weight, attr)`` is the weighted harmonic mean across all
+      ingredients, e.g. ``harmonicMean(wt%, [Density])``.
+
+    Choosing between an ingredient basis and a calculated property: an
+    ingredient basis computes one value per ingredient and is the only form
+    that supports back-solving (entering a target result and letting the
+    platform solve for the ingredient amount). A calculated property computes a
+    single aggregate result per formulation as a read-only output and cannot be
+    back-solved; the platform refuses a back-solve configuration on a
+    calculated property, so when back-solving is needed, model the value as an
+    ingredient basis. Back-solving supports plain per-ingredient expressions
+    and share-of-sum shapes such as ``wt% / sum(wt% WHERE Function = "Resin") *
+    100`` (parts per hundred resin); other aggregations cannot be back-solved.
+
+    Calculations are validated when written with
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells]; a malformed
+    formula raises ``ValueError`` before anything is saved."""
 
     design_id: str
     """The ID of the Design (Sheet section) this cell is in."""
@@ -2932,6 +2972,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         # Handle calculation change
         if cell.calculation != current_cell.calculation:
+            if cell.calculation:
+                validate_calculation_expression(expression=cell.calculation)
             change = self._generate_attribute_change(
                 new_value=cell.calculation,
                 old_value=current_cell.calculation,
@@ -2992,6 +3034,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         attributes (value, calculation, formatting, bounds). Higher-level methods
         such as [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] and [`recolor_cells`][albert.resources.sheets.Column.recolor_cells] call this
         for you; use it directly when editing cells obtained from the grid.
+
+        A changed calculation is validated before anything is written; see the
+        formula rules on [`Cell.calculation`][albert.resources.sheets.Cell.calculation].
 
         Edits of any size are accepted; large edits are split to stay within
         platform limits. If the same sheet is being written elsewhere
