@@ -8,6 +8,37 @@ via `addopts` in `pyproject.toml`). Every rule in this document exists to keep t
 and flake-free under that model. New tests must follow these patterns; a test that passes
 sequentially but races other workers will fail intermittently in CI and is considered broken.
 
+## Which tests run on a PR
+
+A PR runs only the integration tests its change can affect. Pushes to `main`/`next`, manual
+runs, release PRs, and PRs labeled `ci:full-integration` run the whole suite.
+
+A test is selected when any of these holds:
+
+- Its own test file changed.
+- A source module it depends on changed. A test depends on every collection it reaches
+  through `client.<attr>` (or `async_client.<attr>`), either in the test file or in any
+  fixture it uses, plus everything those collection modules import, including resources.
+- It cannot be attributed to any source module. Such a test always runs.
+
+Changes to `src/albert/core/`, `src/albert/collections/base.py`, `src/albert/client.py`,
+`src/albert/exceptions.py`, `tests/integration/conftest.py`, `tests/integration/seeding.py`,
+`tests/integration/utils/`, `tests/utils/`, `pyproject.toml`, or the test workflow select
+everything. The full list lives in `FULL_RUN_TRIGGERS` in `tests/utils/affected.py`.
+
+Nothing is maintained by hand: the attribute-to-collection map is read from
+`src/albert/client.py`, so a new collection is picked up automatically. Reach collections
+through `client.<attr>` as the existing tests do; a test that gets a collection some other
+way may be under-selected.
+
+Preview the selection locally:
+
+```bash
+git diff --name-only origin/main...HEAD > /tmp/changed.txt
+uv run python -m pytest tests/integration -p tests.utils.affected \
+    --changed-files /tmp/changed.txt --collect-only -q
+```
+
 ## How the parallel model works
 
 - Each xdist worker is a separate process with its **own copy of every session-scoped fixture**.
