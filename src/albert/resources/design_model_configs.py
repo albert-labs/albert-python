@@ -280,13 +280,46 @@ class DesignModelConfigResolvedFeatures(BaseAlbertModel):
     """Non-blocking findings. Empty when there are none."""
 
 
+class FeaturePreviewRowIdentifiers(BaseAlbertModel):
+    """The Albert records a featurized row was measured on."""
+
+    model_config = ConfigDict(extra="allow")
+
+    type: Literal["albert_measurement"] = "albert_measurement"
+    """The identifier kind. Preview rows are always single measurements."""
+
+    inventory_id: str = Field(alias="inventoryId")
+    """The formula or inventory item the row was measured on."""
+
+    lot_id: str | None = Field(default=None, alias="lotId")
+    """The lot, when the measurement is on a lot."""
+
+    workflow_interval: str = Field(alias="workflowInterval")
+    """The workflow interval of the measurement."""
+
+    task_id: str | None = Field(default=None, alias="taskId")
+    """The task that recorded the measurement."""
+
+    property_data_id: str = Field(alias="propertyDataId")
+    """The property data record."""
+
+    project_id: str | None = Field(default=None, alias="projectId")
+    """Derived from ``inventory_id`` during the dataset build (temporary). Link records with
+    ``inventory_id`` and ``lot_id`` instead."""
+
+
 class FeaturePreviewRow(BaseAlbertModel):
     """One featurized experiment row."""
 
     model_config = ConfigDict(extra="allow")
 
     experiment_id: str = Field(alias="experimentId")
-    """The experiment's identifier in the dataset."""
+    """The experiment's row key in the dataset. Opaque; use ``identifiers`` to link the row to
+    Albert records."""
+
+    identifiers: FeaturePreviewRowIdentifiers | None = None
+    """The Albert records the row was measured on. ``None`` when the dataset's rows carry no
+    Albert identifiers."""
 
     values: dict[str, float | int | bool | str | None] = Field(default_factory=dict)
     """Stable feature key to value. Missing values (NaN) are ``None``."""
