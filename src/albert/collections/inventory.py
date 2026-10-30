@@ -56,6 +56,7 @@ from albert.utils.inventory import (
     _build_bulk_create_item_payload,
     _build_cas_patch_operations,
     _offset_bulk_result_indices,
+    _split_bulk_create_results,
     _split_bulk_patch_operations,
 )
 from albert.utils.tags import resolve_tags, unique_tags
@@ -536,9 +537,7 @@ class InventoryCollection(BaseCollection):
                     raise
                 chunk_created, chunk_failed = [], body["FailedItems"] or []
             else:
-                data = response.json()
-                chunk_created = data.get("CreatedItems") or []
-                chunk_failed = data.get("FailedItems") or []
+                chunk_created, chunk_failed = _split_bulk_create_results(response.json())
             created_items.extend(_offset_bulk_result_indices(chunk_created, start))
             failed_items.extend(_offset_bulk_result_indices(chunk_failed, start))
         if failed_items:

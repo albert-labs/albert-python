@@ -32,6 +32,7 @@ from albert.utils.inventory import (
     _ensure_unique_cas_amounts,
     _normalize_inventory_function_ids,
     _offset_bulk_result_indices,
+    _split_bulk_create_results,
     _split_bulk_patch_operations,
 )
 
@@ -836,3 +837,34 @@ def test_offset_bulk_result_indices_returns_copies():
 
     assert entries == [{"index": 0, "id": "INVA1"}]
     assert shifted[0] is not entries[0]
+
+
+# ---------------------------------------------------------------------------
+# _split_bulk_create_results
+# ---------------------------------------------------------------------------
+
+
+def test_split_bulk_create_results_separates_flagged_failures():
+    """Test that failed entries are split from created records, order preserved."""
+    results = [
+        {"index": 0, "albertId": "INVA1"},
+        {"index": 1, "name": "Bad", "message": "Failed", "failed": True},
+        {"index": 2, "albertId": "INVA2"},
+    ]
+
+    created, failed = _split_bulk_create_results(results)
+
+    assert created == [{"index": 0, "albertId": "INVA1"}, {"index": 2, "albertId": "INVA2"}]
+    assert failed == [{"index": 1, "name": "Bad", "message": "Failed", "failed": True}]
+
+
+def test_split_bulk_create_results_all_created():
+    """Test that a fully successful result list yields no failures."""
+    results = [{"index": 0, "albertId": "INVA1"}]
+
+    assert _split_bulk_create_results(results) == (results, [])
+
+
+def test_split_bulk_create_results_empty():
+    """Test that an empty result list yields empty created and failed lists."""
+    assert _split_bulk_create_results([]) == ([], [])
