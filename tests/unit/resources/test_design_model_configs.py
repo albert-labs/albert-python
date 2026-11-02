@@ -358,7 +358,19 @@ def test_resolved_features_keep_undeclared_keys():
 _PREVIEW = {
     "numRows": 2,
     "rows": [
-        {"experimentId": "EXP1", "values": {"ingredient/INV001": 0.5, "label/TAG1": None}},
+        {
+            "experimentId": "INV001#LOT1#WFI1#TAS1#PRD1",
+            "identifiers": {
+                "type": "albert_measurement",
+                "inventoryId": "INV001",
+                "lotId": "LOT1",
+                "workflowInterval": "WFI1",
+                "taskId": "TAS1",
+                "propertyDataId": "PRD1",
+                "projectId": "PRO001",
+            },
+            "values": {"ingredient/INV001": 0.5, "label/TAG1": None},
+        },
         {"experimentId": "EXP2", "values": {"ingredient/INV001": 0.4, "label/TAG1": 0.1}},
     ],
     "columnsTruncated": False,
@@ -376,13 +388,26 @@ def test_feature_preview_parses_rows_summary_and_automatic_features():
     preview = DesignModelConfigFeaturePreview.model_validate(_PREVIEW)
 
     assert preview.num_rows == 2
-    assert preview.rows[0].experiment_id == "EXP1"
+    assert preview.rows[0].experiment_id == "INV001#LOT1#WFI1#TAS1#PRD1"
     assert preview.rows[0].values["label/TAG1"] is None
     assert preview.summary[1].nan_count == 1
     assert preview.summary[1].constant is True
     assert preview.automatic_features.count == 2
     assert preview.automatic_features.names == ["mol_wt", "logp"]
     assert preview.columns_truncated is False
+
+
+def test_feature_preview_row_parses_albert_identifiers():
+    """Test that a preview row carries typed Albert identifiers, and None when absent."""
+    preview = DesignModelConfigFeaturePreview.model_validate(_PREVIEW)
+
+    identifiers = preview.rows[0].identifiers
+    assert identifiers is not None
+    assert identifiers.type == "albert_measurement"
+    assert identifiers.inventory_id == "INV001"
+    assert identifiers.lot_id == "LOT1"
+    assert identifiers.property_data_id == "PRD1"
+    assert preview.rows[1].identifiers is None
 
 
 def test_apply_response_parses_every_folded_part():

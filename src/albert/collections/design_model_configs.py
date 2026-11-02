@@ -22,6 +22,7 @@ from albert.resources.design_model_configs import (
     DesignModelConfigState,
     DesignModelConfigValidationRequest,
     DesignModelConfigValidationResponse,
+    PreviewCount,
 )
 
 
@@ -277,7 +278,8 @@ class DesignModelConfigCollection(BaseCollection):
         operations: list[DesignModelConfigOperation],
         validate: bool = False,
         resolve: bool = False,
-        preview_rows: int | None = None,
+        preview_rows: PreviewCount | None = None,
+        preview_max_columns: PreviewCount | None = None,
         dry_run: bool = False,
         smart_dataset_id: SmartDatasetId | None = None,
     ) -> DesignModelConfigApplyResponse:
@@ -343,9 +345,14 @@ class DesignModelConfigCollection(BaseCollection):
             ``validation.valid == False``, not an exception.
         resolve : bool, optional
             Fold the resolved features into the result. Needs ``smart_dataset_id``.
-        preview_rows : int, optional
-            Fold a feature preview of this many dataset rows into the result. The
-            server clamps it to 1..25. Needs ``smart_dataset_id``.
+        preview_rows : int or "all", optional
+            Fold a feature preview of this many dataset rows into the result (``"all"``
+            for every row; 10 when only ``preview_max_columns`` is given). Needs
+            ``smart_dataset_id``.
+        preview_max_columns : int or "all", optional
+            Keyed feature columns whose values the folded preview returns (``"all"`` for
+            every column; 50 when only ``preview_rows`` is given). Needs
+            ``smart_dataset_id``.
         dry_run : bool, optional
             Compute the would-be result without saving it.
         smart_dataset_id : SmartDatasetId, optional
@@ -362,23 +369,30 @@ class DesignModelConfigCollection(BaseCollection):
         ------
         AlbertClientError
             An operation could not apply (the violations are listed), ``resolve`` or
-            ``preview_rows`` was given without ``smart_dataset_id``, or the config is
+            a preview was asked for without ``smart_dataset_id``, or the config is
             published.
         AlbertHTTPError
             Other failures.
         """
+        counts = {"num_rows": preview_rows, "max_columns": preview_max_columns}
+        preview = (
+            DesignModelConfigPreviewRequest(
+                **{k: None if v == "all" else v for k, v in counts.items() if v is not None}
+            )
+            if any(v is not None for v in counts.values())
+            else None
+        )
         body = DesignModelConfigOperationsRequest(
             operations=operations,
             validate_=validate,
             resolve=resolve,
-            preview=(
-                DesignModelConfigPreviewRequest(num_rows=preview_rows)
-                if preview_rows is not None
-                else None
-            ),
+            preview=preview,
             dry_run=dry_run,
             smart_dataset_id=smart_dataset_id,
         ).model_dump(by_alias=True, mode="json", exclude_none=True)
+        if preview is not None:
+            # A null count means "all", so the preview keeps the counts that were set, nulls too.
+            body["preview"] = preview.model_dump(by_alias=True, mode="json", exclude_unset=True)
         response = self.session.post(f"{self.base_path}/{id}/operations", json=body)
         return DesignModelConfigApplyResponse(**response.json())
 
@@ -459,13 +473,19 @@ class DesignModelConfigCollection(BaseCollection):
 
     @validate_call
     def get_feature_values(
-        self, *, id: DesignModelConfigId, smart_dataset_id: SmartDatasetId
+        self,
+        *,
+        id: DesignModelConfigId,
+        smart_dataset_id: SmartDatasetId,
+        num_rows: PreviewCount | None = None,
+        max_columns: PreviewCount | None = None,
     ) -> DesignModelConfigFeaturePreview:
-        """Preview a few dataset rows run through the config's features.
+        """Preview dataset rows run through the config's features.
 
-        The first rows of the dataset are featurized with the config's resolved features;
-        no model is fit. Feature values are limited to the first keyed feature columns
-        (``columns_truncated`` says when), while ``summary`` covers every keyed feature.
+        Every dataset row is featurized with the config's resolved features; no model is
+        fit. ``rows`` carry the first ``num_rows`` rows (``rows_truncated`` says when) and
+        the first ``max_columns`` keyed feature columns (``columns_truncated`` says when),
+        while ``summary`` covers every keyed feature over every row.
         Features without a stable key (for example molecular descriptors) are always
         used and are reported under ``automatic_features``, not as values.
 
@@ -483,14 +503,25 @@ class DesignModelConfigCollection(BaseCollection):
             The design model config ID (format ``DMC...``).
         smart_dataset_id : SmartDatasetId
             Smart dataset (format ``SDT...``) to featurize rows from.
+        num_rows : int or "all", optional
+            Rows to return; ``"all"`` for every row. Defaults to 10 on the server.
+        max_columns : int or "all", optional
+            Keyed feature columns whose values are returned; ``"all"`` for every column.
+            Defaults to 50 on the server.
 
         Returns
         -------
         DesignModelConfigFeaturePreview
             The previewed rows, per-feature summary and automatic features.
         """
+        params = {
+            "smartDatasetId": smart_dataset_id,
+            "numRows": num_rows,
+            "maxColumns": max_columns,
+        }
         response = self.session.get(
-            f"{self.base_path}/{id}/feature-values", params={"smartDatasetId": smart_dataset_id}
+            f"{self.base_path}/{id}/feature-values",
+            params={k: v for k, v in params.items() if v is not None},
         )
         return DesignModelConfigFeaturePreview(**response.json())
 
