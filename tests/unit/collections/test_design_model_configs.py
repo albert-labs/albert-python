@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 import responses
+from pydantic import ValidationError
 
 from albert.collections.design_model_configs import DesignModelConfigCollection
 from albert.exceptions import AlbertClientError
@@ -254,6 +255,58 @@ def test_get_feature_values_sends_the_dataset_as_a_query_param(configs):
 
     assert _query() == {"smartDatasetId": ["SDT1"]}
     assert preview.rows[0].values == {"label/TAG1": 0.2}
+
+
+@responses.activate
+def test_get_feature_values_sends_row_and_column_counts(configs):
+    """Test that num_rows and max_columns go as query params, "all" verbatim."""
+    responses.get(
+        f"{BASE}/DMC123/feature-values",
+        json={
+            "numRows": 30,
+            "totalRows": 30,
+            "rowsTruncated": False,
+            "automaticFeatures": {"count": 0},
+        },
+    )
+
+    preview = configs.get_feature_values(
+        id="DMC123", smart_dataset_id="SDT1", num_rows="all", max_columns=5
+    )
+
+    assert _query() == {"smartDatasetId": ["SDT1"], "numRows": ["all"], "maxColumns": ["5"]}
+    assert preview.total_rows == 30
+    assert preview.rows_truncated is False
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "sent"),
+    [
+        ({"preview_rows": "all"}, {"numRows": None}),
+        ({"preview_max_columns": 5}, {"maxColumns": 5}),
+        ({"preview_rows": 3, "preview_max_columns": "all"}, {"numRows": 3, "maxColumns": None}),
+    ],
+)
+@responses.activate
+def test_apply_sends_preview_counts_with_all_as_null(configs, kwargs, sent):
+    """Test that the folded preview keeps the counts given, "all" as null."""
+    responses.post(f"{BASE}/DMC123/operations", json={"modelConfig": CONFIG})
+
+    configs.apply(
+        id="DMC123",
+        operations=[RemoveComponentOperation(path="outputs/TAR2")],
+        smart_dataset_id="SDT1",
+        **kwargs,
+    )
+
+    assert _body()["preview"] == sent
+
+
+@pytest.mark.parametrize("bad", [0, -1, "some"])
+def test_preview_counts_must_be_positive_or_all(configs, bad):
+    """Test that a zero, negative or unknown count is rejected before any request."""
+    with pytest.raises(ValidationError):
+        configs.get_feature_values(id="DMC123", smart_dataset_id="SDT1", num_rows=bad)
 
 
 @responses.activate

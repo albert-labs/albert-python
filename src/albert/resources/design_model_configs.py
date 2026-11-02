@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, PositiveInt, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
@@ -325,8 +325,12 @@ class FeaturePreviewRow(BaseAlbertModel):
     """Stable feature key to value. Missing values (NaN) are ``None``."""
 
 
+PreviewCount = PositiveInt | Literal["all"]
+"""How many preview rows or columns to return: a positive number, or ``"all"``."""
+
+
 class FeatureSummary(BaseAlbertModel):
-    """A per-feature summary over the previewed rows."""
+    """A per-feature summary over every row of the dataset."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -337,10 +341,10 @@ class FeatureSummary(BaseAlbertModel):
     """Dtype of the featurized column."""
 
     nan_count: int = Field(alias="nanCount")
-    """Previewed rows where the feature is missing."""
+    """Dataset rows where the feature is missing."""
 
     constant: bool
-    """Whether the feature has at most one distinct non-missing value across the rows."""
+    """Whether the feature has at most one distinct non-missing value across the dataset."""
 
 
 class AutomaticFeatures(BaseAlbertModel):
@@ -357,15 +361,21 @@ class AutomaticFeatures(BaseAlbertModel):
 
 
 class DesignModelConfigFeaturePreview(BaseAlbertModel):
-    """The first few dataset rows run through a config's resolved features, with no model fit."""
+    """Dataset rows run through a config's resolved features, with no model fit."""
 
     model_config = ConfigDict(extra="allow")
 
     num_rows: int = Field(alias="numRows")
-    """Rows previewed, after the server clamped the request."""
+    """Rows returned in ``rows``."""
+
+    total_rows: int | None = Field(default=None, alias="totalRows")
+    """Experiment rows in the dataset."""
+
+    rows_truncated: bool = Field(default=False, alias="rowsTruncated")
+    """Whether ``rows`` carry fewer rows than ``total_rows``."""
 
     rows: list[FeaturePreviewRow] = Field(default_factory=list)
-    """The featurized rows. Values are limited to the first keyed feature columns."""
+    """The featurized rows. Values are limited to the requested keyed feature columns."""
 
     columns_truncated: bool = Field(default=False, alias="columnsTruncated")
     """Whether ``rows`` carry fewer features than ``summary``."""
@@ -473,8 +483,11 @@ class DesignModelConfigPreviewRequest(BaseAlbertModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    num_rows: int = Field(alias="numRows")
-    """Rows to preview. The server clamps it to 1..25."""
+    num_rows: PositiveInt | None = Field(default=None, alias="numRows")
+    """Rows to return; ``None`` for every row. Omitted, the server returns 10."""
+
+    max_columns: PositiveInt | None = Field(default=None, alias="maxColumns")
+    """Keyed feature columns whose values are returned; ``None`` for all. Omitted, 50."""
 
 
 class DesignModelConfigOperationsRequest(BaseAlbertModel):
