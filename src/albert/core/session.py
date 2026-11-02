@@ -159,6 +159,47 @@ class AlbertSession(requests.Session):
         finally:
             _retry_safe_request.reset(marker)
 
+    def put_signed_url(
+        self,
+        url: str,
+        *,
+        data,
+        headers: Mapping[str, str],
+        timeout: float | tuple[float, float] | None = None,
+    ) -> requests.Response:
+        """Upload content to a pre-signed storage URL.
+
+        Uses the session's transport (retry policy, proxy configuration, default
+        timeout) but sends no Albert credentials: the signed URL itself carries
+        the authorization. A failed upload raises instead of passing silently.
+
+        Parameters
+        ----------
+        url : str
+            The pre-signed storage URL to upload to.
+        data : IO | bytes
+            The content to upload.
+        headers : Mapping[str, str]
+            Headers required by the signed URL (for example ``Content-Type``).
+        timeout : float | tuple[float, float] | None, optional
+            Per-call timeout. Defaults to the session timeout; pass ``None`` for
+            no timeout.
+
+        Returns
+        -------
+        requests.Response
+            The storage response.
+        """
+        response = super().request(
+            "PUT",
+            url,
+            data=data,
+            headers=dict(headers),
+            timeout=self._timeout if timeout is None else timeout,
+        )
+        response.raise_for_status()
+        return response
+
     def _encode_query_params(self, params: dict) -> dict:
         """Encode and clean up query parameters for the request."""
 
