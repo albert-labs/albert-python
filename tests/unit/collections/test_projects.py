@@ -1,9 +1,9 @@
 """Unit tests for ProjectCollection private helpers.
 
 Allowed under the patch-builder exception in OPINIONS.md: these guard
-non-obvious diff behavior in ``_generate_acl_patch_operations`` and the
-starred-project record matching / duplicate-star detection helpers, with no
-I/O to fake.
+non-obvious diff behavior in ``_generate_acl_patch_operations``,
+``_generate_locations_patch_operations``, and the starred-project record
+matching / duplicate-star detection helpers, with no I/O to fake.
 """
 
 import json
@@ -13,6 +13,7 @@ import requests
 import responses
 
 from albert.collections.projects import ProjectCollection
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.personalization import Personalization, PersonalizationCategory
@@ -170,6 +171,77 @@ def test_none_fgc_on_both_sides_emits_no_op(offline_session) -> None:
     )
 
     assert ops == []
+
+
+def test_unchanged_locations_emit_no_ops() -> None:
+    """Test that identical location ids, regardless of order, produce no operations."""
+    ops = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1"), EntityLink(id="LOC2")],
+        updated=[EntityLink(id="LOC2"), EntityLink(id="LOC1")],
+    )
+
+    assert ops == []
+
+
+def test_both_locations_none_emit_no_ops() -> None:
+    """Test that both location lists being None (unset) produces no operations."""
+    ops = ProjectCollection._generate_locations_patch_operations(existing=None, updated=None)
+
+    assert ops == []
+
+
+def test_new_locations_emit_single_add_op() -> None:
+    """Test that added locations emit one add op with id objects in updated order."""
+    ops = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1")],
+        updated=[EntityLink(id="LOC1"), EntityLink(id="LOC2"), EntityLink(id="LOC3")],
+    )
+
+    assert [op.model_dump(mode="json", by_alias=True) for op in ops] == [
+        {
+            "attribute": "locations",
+            "operation": "add",
+            "newValue": [{"id": "LOC2"}, {"id": "LOC3"}],
+        }
+    ]
+
+
+def test_removed_locations_emit_delete_op_per_id() -> None:
+    """Test that removed locations emit one locationId delete op per id."""
+    ops = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1"), EntityLink(id="LOC2")],
+        updated=[EntityLink(id="LOC1")],
+    )
+
+    assert [op.model_dump(mode="json", by_alias=True) for op in ops] == [
+        {"attribute": "locationId", "operation": "delete", "oldValue": "LOC2"}
+    ]
+
+
+def test_changed_location_emits_add_and_delete() -> None:
+    """Test that swapping one location for another emits an add and a delete op."""
+    ops = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1")],
+        updated=[EntityLink(id="LOC2")],
+    )
+
+    assert [op.model_dump(mode="json", by_alias=True) for op in ops] == [
+        {"attribute": "locations", "operation": "add", "newValue": [{"id": "LOC2"}]},
+        {"attribute": "locationId", "operation": "delete", "oldValue": "LOC1"},
+    ]
+
+
+def test_locations_set_to_none_deletes_all() -> None:
+    """Test that clearing locations with None deletes every existing location."""
+    ops = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1"), EntityLink(id="LOC2")],
+        updated=None,
+    )
+
+    assert [op.model_dump(mode="json", by_alias=True) for op in ops] == [
+        {"attribute": "locationId", "operation": "delete", "oldValue": "LOC1"},
+        {"attribute": "locationId", "operation": "delete", "oldValue": "LOC2"},
+    ]
 
 
 def test_reference_formula_path_in_project() -> None:

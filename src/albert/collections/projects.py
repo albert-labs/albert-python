@@ -17,9 +17,11 @@ from albert.core.shared.identifiers import (
     WorksheetId,
 )
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.core.shared.types import SerializeAsEntityLink
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError, BadRequestError, NotFoundError
 from albert.resources.acls import ACL
+from albert.resources.locations import Location
 from albert.resources.personalization import Personalization, PersonalizationCategory
 from albert.resources.projects import (
     DocumentSearchItem,
@@ -214,10 +216,19 @@ class ProjectCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``description``, ``grid``,
-        ``metadata``, ``state``, ``acl``.
+        ``locations``, ``metadata``, ``state``, ``acl``.
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
+
+        if "locations" in project.model_fields_set:
+            patch_data.data.extend(
+                self._generate_locations_patch_operations(
+                    existing=existing_project.locations,
+                    updated=project.locations,
+                )
+            )
+
         url = f"{self.base_path}/{project.id}"
         patch_payload = patch_data.model_dump(mode="json", by_alias=True)
 
@@ -292,6 +303,42 @@ class ProjectCollection(BaseCollection):
                     }
                 )
 
+        return operations
+
+    @staticmethod
+    def _generate_locations_patch_operations(
+        *,
+        existing: list[SerializeAsEntityLink[Location]] | None,
+        updated: list[SerializeAsEntityLink[Location]] | None,
+    ) -> list[PatchDatum]:
+        """Build PATCH operations for project location membership changes.
+
+        Locations are identity-only (the id is the location), so a change is
+        expressed as additions and removals: added ids go in a single
+        ``locations`` add op, removed ids in one ``locationId`` delete op each.
+        """
+        existing_ids = [location.id for location in existing or []]
+        updated_ids = [location.id for location in updated or []]
+        to_add = [location_id for location_id in updated_ids if location_id not in existing_ids]
+        to_delete = [location_id for location_id in existing_ids if location_id not in updated_ids]
+
+        operations: list[PatchDatum] = []
+        if to_add:
+            operations.append(
+                PatchDatum(
+                    attribute="locations",
+                    operation=PatchOperation.ADD,
+                    new_value=[{"id": location_id} for location_id in to_add],
+                )
+            )
+        for location_id in to_delete:
+            operations.append(
+                PatchDatum(
+                    attribute="locationId",
+                    operation=PatchOperation.DELETE,
+                    old_value=location_id,
+                )
+            )
         return operations
 
     @validate_call
