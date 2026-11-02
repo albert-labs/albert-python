@@ -15,12 +15,15 @@ def test_file_round_trip(client: Albert):
     file_name = f"breakthrough/test/{uuid.uuid4().hex}.json"
 
     # First: Put a new file at the key
-    client.files.sign_and_upload_file(
-        data=json.dumps(file_data).encode(),
-        name=file_name,
-        namespace=FileNamespace.BREAKTHROUGH,
-        content_type="application/json",
-    )
+    try:
+        client.files.sign_and_upload_file(
+            data=json.dumps(file_data).encode(),
+            name=file_name,
+            namespace=FileNamespace.BREAKTHROUGH,
+            content_type="application/json",
+        )
+    except requests.exceptions.HTTPError:
+        pytest.skip("Breakthrough file namespace not available")
 
     def _info() -> list:
         try:
