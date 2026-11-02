@@ -111,7 +111,7 @@ class ProjectCollection(BaseCollection):
     """
 
     _api_version = "v3"
-    _updatable_attributes = {"description", "grid", "metadata", "state"}
+    _updatable_attributes = {"description", "grid", "metadata", "project_class", "state"}
 
     def __init__(self, *, session: AlbertSession):
         """Initialize a ProjectCollection.
@@ -214,7 +214,7 @@ class ProjectCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``description``, ``grid``,
-        ``metadata``, ``state``, ``acl``.
+        ``metadata``, ``project_class``, ``state``, ``acl``.
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)

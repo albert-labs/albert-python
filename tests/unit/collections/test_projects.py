@@ -16,7 +16,7 @@ from albert.collections.projects import ProjectCollection
 from albert.exceptions import BadRequestError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.personalization import Personalization, PersonalizationCategory
-from albert.resources.projects import ReferenceFormulaType
+from albert.resources.projects import Project, ProjectClass, ReferenceFormulaType
 from tests.unit.conftest import UNIT_BASE_URL
 
 
@@ -170,6 +170,25 @@ def test_none_fgc_on_both_sides_emits_no_op(offline_session) -> None:
     )
 
     assert ops == []
+
+
+def test_project_class_change_emits_update_op(offline_session) -> None:
+    """Test that changing project_class emits an update op under the class alias."""
+    existing = Project(description="proj", project_class=ProjectClass.PRIVATE)
+    updated = Project(description="proj", project_class=ProjectClass.SHARED)
+
+    payload = ProjectCollection(session=offline_session)._generate_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True)["data"] == [
+        {
+            "attribute": "class",
+            "operation": "update",
+            "oldValue": "private",
+            "newValue": "shared",
+        }
+    ]
 
 
 def test_reference_formula_path_in_project() -> None:
