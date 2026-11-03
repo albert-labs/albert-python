@@ -6472,7 +6472,7 @@ project to update.</p>
 <details class="note" open>
   <summary>Notes</summary>
   <p>The following fields can be updated: <code>description</code>, <code>grid</code>,
-<code>metadata</code>, <code>state</code>, <code>acl</code>.</p>
+<code>metadata</code>, <code>project_class</code>, <code>state</code>, <code>acl</code>.</p>
 </details>
 
             <details class="mkdocstrings-source">
@@ -6556,7 +6556,7 @@ project to update.</p>
 </span><span id="__span-0-214"><a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">    Notes</span>
 </span><span id="__span-0-215"><a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">    -----</span>
 </span><span id="__span-0-216"><a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">    The following fields can be updated: ``description``, ``grid``,</span>
-</span><span id="__span-0-217"><a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">    ``metadata``, ``state``, ``acl``.</span>
+</span><span id="__span-0-217"><a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">    ``metadata``, ``project_class``, ``state``, ``acl``.</span>
 </span><span id="__span-0-218"><a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">    """</span>
 </span><span id="__span-0-219"><a id="__codelineno-0-219" name="__codelineno-0-219"></a>    <span class="n">existing_project</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span><span id="__span-0-220"><a id="__codelineno-0-220" name="__codelineno-0-220"></a>    <span class="n">patch_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_patch_payload</span><span class="p">(</span><span class="n">existing</span><span class="o">=</span><span class="n">existing_project</span><span class="p">,</span> <span class="n">updated</span><span class="o">=</span><span class="n">project</span><span class="p">)</span>
