@@ -73,13 +73,27 @@ def test_delete_and_reactivate_sheet(client: Albert, seeded_worksheet: Worksheet
             client.worksheets.delete_sheet(project_id=project_id, sheet_id=sheet.id)
 
 
-# Need to seed a Sheet Template First
-# def test_setup_new_sheet_from_template(client: Albert, seeded_worksheet: Worksheet):
-#     existing_number = len(seeded_worksheet.sheets)
-#     updated_worksheet = client.worksheets.setup_new_sheet_from_template(
-#         project_id=seeded_worksheet.project_id,
-#         sheet_template_id=seeded_worksheet.sheets[0].id,
-#         sheet_name="New sheet from template",
-#     )
-#     assert isinstance(updated_worksheet, Worksheet)
-#     assert len(updated_worksheet.sheets) == existing_number + 1
+def test_setup_new_sheet_from_template(client: Albert, seeded_worksheet: Worksheet):
+    project_id = seeded_worksheet.project_id
+    template = client.worksheets.create_sheet_template(
+        project_id=project_id,
+        source_sheet_name=seeded_worksheet.sheets[0].name,
+        template_name=f"TEST - tpl {uuid.uuid4()}",
+    )
+    sheet_name = f"TEST - from tpl {uuid.uuid4()}"
+    sheet_id = None
+    try:
+        worksheet = client.worksheets.setup_new_sheet_from_template(
+            project_id=project_id,
+            sheet_template_id=template.id,
+            sheet_name=sheet_name,
+        )
+        sheet = next(s for s in worksheet.sheets if s.name == sheet_name)
+        sheet_id = sheet.id
+        assert sheet.process_design is not None
+    finally:
+        if sheet_id:
+            with suppress(AlbertHTTPError):
+                client.worksheets.delete_sheet(project_id=project_id, sheet_id=sheet_id)
+        with suppress(AlbertHTTPError):
+            client.custom_templates.delete(id=template.id)
