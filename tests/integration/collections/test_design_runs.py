@@ -3,6 +3,7 @@ import pytest
 from albert.client import Albert
 from albert.resources.btinsight import BTInsight, BTInsightCategory
 from albert.resources.design import DesignObjective, DesignRunValidationResponse
+from albert.resources.design_runs import DesignRun, DesignRunState
 from albert.resources.smart_datasets import SmartDataset
 from albert.resources.targets import Criterion
 
@@ -18,13 +19,12 @@ both_versions = pytest.mark.parametrize("collection_name", ["design_runs", "desi
 
 
 @ignore_in_ten0
-@both_versions
 def test_create_optimization_returns_generate_insight(
-    client: Albert, collection_name: str, seeded_smart_dataset: SmartDataset
+    client: Albert, seeded_smart_dataset: SmartDataset
 ) -> None:
     """Test create_optimization returns a Generate BTInsight with the given name."""
     target_id = seeded_smart_dataset.scope.target_ids[0]
-    insight = getattr(client, collection_name).create_optimization(
+    insight = client.design_runs.create_optimization(
         smart_dataset_id=seeded_smart_dataset.id,
         name="SDK optimization run",
         objectives={target_id: Criterion(operator="gte", value=1.0)},
@@ -36,12 +36,11 @@ def test_create_optimization_returns_generate_insight(
 
 
 @ignore_in_ten0
-@both_versions
 def test_create_doe_returns_smart_doe_insight(
-    client: Albert, collection_name: str, seeded_smart_dataset: SmartDataset
+    client: Albert, seeded_smart_dataset: SmartDataset
 ) -> None:
     """Test create_doe returns a Smart DOE BTInsight with the given name."""
-    insight = getattr(client, collection_name).create_doe(
+    insight = client.design_runs.create_doe(
         smart_dataset_id=seeded_smart_dataset.id,
         name="SDK space-filling run",
     )
@@ -49,6 +48,20 @@ def test_create_doe_returns_smart_doe_insight(
     assert insight.id is not None
     assert insight.category == BTInsightCategory.SMART_DOE
     assert insight.name == "SDK space-filling run"
+
+
+@ignore_in_ten0
+def test_v4_create_returns_queued_design_run(
+    client: Albert, seeded_smart_dataset: SmartDataset
+) -> None:
+    """Test v4 create_doe returns a DesignRun in a non-terminal state."""
+    run = client.design_runs_v4.create_doe(
+        smart_dataset_id=seeded_smart_dataset.id, name="SDK v4 space-filling run"
+    )
+    assert isinstance(run, DesignRun)
+    assert run.id is not None
+    assert run.name == "SDK v4 space-filling run"
+    assert run.state in {DesignRunState.QUEUED, DesignRunState.RUNNING}
 
 
 @ignore_in_ten0

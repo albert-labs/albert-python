@@ -17,7 +17,10 @@ _ALBERT_PREFIXES = {
     "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "DesignCandidateId": "DCN",
+    "DesignCandidateSetId": "DCS",
     "DesignModelConfigId": "DMC",
+    "DesignRunId": "DSR",
     "DesignSpaceId": "DSP",
     "DocumentId": "DOC",
     "EntityTypeId": "ETT",
@@ -300,6 +303,33 @@ def ensure_design_model_config_id(id: str) -> str:
 
 
 DesignModelConfigId = Annotated[str, AfterValidator(ensure_design_model_config_id)]
+
+
+def ensure_design_run_id(id: str) -> str:
+    # Ids are DSR + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
+    _ensure_albert_id(id, "DesignRunId")
+    return f"DSR{id[3:]}" if id[:3].upper() == "DSR" else f"DSR{id}"
+
+
+DesignRunId = Annotated[str, AfterValidator(ensure_design_run_id)]
+
+
+def ensure_design_candidate_set_id(id: str) -> str:
+    # Ids are DCS + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
+    _ensure_albert_id(id, "DesignCandidateSetId")
+    return f"DCS{id[3:]}" if id[:3].upper() == "DCS" else f"DCS{id}"
+
+
+DesignCandidateSetId = Annotated[str, AfterValidator(ensure_design_candidate_set_id)]
+
+
+def ensure_design_candidate_id(id: str) -> str:
+    # Ids are DCN + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
+    _ensure_albert_id(id, "DesignCandidateId")
+    return f"DCN{id[3:]}" if id[:3].upper() == "DCN" else f"DCN{id}"
+
+
+DesignCandidateId = Annotated[str, AfterValidator(ensure_design_candidate_id)]
 
 
 def ensure_task_id(id: str) -> str:
