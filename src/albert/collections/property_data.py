@@ -1763,7 +1763,7 @@ class PropertyDataCollection(BaseCollection):
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
         # Record status filters
-        void: bool | None = False,
+        void: bool | None = None,
         # Search field filters
         search_field: list[str] | None = None,
         source_field: list[str] | None = None,
@@ -1852,9 +1852,11 @@ class PropertyDataCollection(BaseCollection):
         to_updated_at : str, optional
             Only include records updated on or before this date (ISO 8601).
         void : bool, optional
-            Filter on the record's void status. ``False`` (default) excludes voided
-            data, ``True`` includes only voided data. Pass None to include both
-            voided and non-voided records. Deleted records are always excluded.
+            Filter on the record's void status. ``False`` excludes voided data and
+            ``True`` returns only voided data. ``None`` (default) sends no filter, so
+            both are returned. The filter is sent only when set, because platform
+            environments without void-status search reject the parameter with a 400.
+            Deleted records are always excluded.
         search_field : list[str], optional
             Restrict which fields the text query searches.
         source_field : list[str], optional
