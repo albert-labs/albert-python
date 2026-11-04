@@ -246,6 +246,13 @@ def test_add_and_update_property_data_on_inventory(
     assert r[1].data_columns[0].value == "66.6"
 
 
+@pytest.mark.xfail(
+    strict=False,
+    reason=(
+        "ten0 does not return custom property values added to the seeded inventory item; "
+        "backend issue under investigation. Remove once fixed."
+    ),
+)
 def test_update_property_on_inventory_adds_then_updates(
     client: Albert,
     seeded_inventory: list[BaseTask],
