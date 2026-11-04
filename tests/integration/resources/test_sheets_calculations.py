@@ -221,6 +221,21 @@ def _cell_at(sheet: Sheet, *, column_id: str, row_id: str) -> Cell:
     return next(c for c in cells if isinstance(c, Cell) and c.row_id == row_id)
 
 
+def test_get_calculations(calculations_sheet: CalculationsSheet):
+    """Test that a sheet lists its ingredient basis, calculated property and attribute."""
+    attribute_id = calculations_sheet.attribute.id
+
+    calculations = calculations_sheet.sheet.get_calculations()
+
+    assert [(c.attribute_id, c.name) for c in calculations.ingredient_bases] == [
+        (attribute_id, calculations_sheet.ib_name)
+    ]
+    assert [(c.attribute_id, c.name) for c in calculations.calculated_properties] == [
+        (attribute_id, calculations_sheet.cp_name)
+    ]
+    assert [a.id for a in calculations.attributes] == [attribute_id]
+
+
 def test_ingredient_basis_columns_have_no_inventory_id(calculations_sheet: CalculationsSheet):
     """Test that ingredient basis columns are listed, typed, and carry no inventory ID."""
     sheet = calculations_sheet.sheet

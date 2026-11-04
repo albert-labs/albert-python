@@ -126,7 +126,8 @@ class FormulaMetadata(BaseAlbertModel):
     ingredient basis per attribute. Every calculated property shows on the sheet, but
     only the attribute's first one, in sheet order, is saved to the formula's inventory
     and published as the attribute's value, so give a variant that must be saved its own
-    attribute.
+    attribute. To see which ones a sheet shows, use
+    [`get_calculations`][albert.resources.sheets.Sheet.get_calculations].
 
     Expression variables:
 
