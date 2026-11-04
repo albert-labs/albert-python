@@ -25,7 +25,14 @@ from albert.resources.data_templates import DataType
 from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.resources.locations import Location
 from albert.resources.projects import Project
-from albert.resources.sheets import Cell, CellType, Component, FormulationSpec, Sheet
+from albert.resources.sheets import (
+    Cell,
+    CellColor,
+    CellType,
+    Component,
+    FormulationSpec,
+    Sheet,
+)
 from tests.integration.seeding import (
     add_calculated_property_row,
     enable_sheet_calculations,
@@ -291,6 +298,28 @@ def test_update_cells_never_writes_calculated_cells(calculations_sheet: Calculat
     assert _cell_at(sheet, column_id=column_id, row_id=ingredient_row_id).value == "55"
     assert _cell_at(sheet, column_id=column_id, row_id=cp.row_id).value == cp.value
     assert _cell_at(sheet, column_id=basis_column_id, row_id=basis.row_id).value == basis.value
+
+
+def test_recolor_cells_colors_calculated_cells(calculations_sheet: CalculationsSheet):
+    """Test that recoloring a calculated property row and an ingredient basis column colors them."""
+    sheet = calculations_sheet.sheet
+    sheet.grid = None
+    cpr_row = next(r for r in sheet.rows if r.row_id == calculations_sheet.cpr_row_id)
+    basis_column = next(c for c in sheet.columns if c.type == CellType.INGREDIENT_BASIS)
+    ingredient_row_id = _row_id_for(sheet, calculations_sheet.ingredient_ids[0])
+
+    _, row_failed = cpr_row.recolor_cells(CellColor.YELLOW)
+    _, column_failed = basis_column.recolor_cells(CellColor.BLUE)
+
+    assert row_failed == []
+    assert column_failed == []
+    sheet.grid = None
+    cp = _cell_at(
+        sheet, column_id=calculations_sheet.formula_column_id, row_id=calculations_sheet.cpr_row_id
+    )
+    basis = _cell_at(sheet, column_id=basis_column.column_id, row_id=ingredient_row_id)
+    assert cp.format.get("bgColor") == CellColor.YELLOW.value
+    assert basis.format.get("bgColor") == CellColor.BLUE.value
 
 
 def test_reorder_columns_keeps_ingredient_basis_with_formulas(

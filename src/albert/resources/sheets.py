@@ -4354,6 +4354,8 @@ class Column(BaseSessionResource):  # noqa:F811
         """
         new_cells = []
         for c in self.cells:
+            if not isinstance(c, Cell):
+                continue
             cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
             new_cells.append(cell_copy)
         return self.sheet.update_cells(cells=new_cells)
@@ -4456,6 +4458,8 @@ class Row(BaseSessionResource):  # noqa:F811
         """
         new_cells = []
         for c in self.cells:
+            if not isinstance(c, Cell):
+                continue
             cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
             cell_copy.format = {"bgColor": color.value}
             new_cells.append(cell_copy)
