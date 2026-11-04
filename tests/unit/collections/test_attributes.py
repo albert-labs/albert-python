@@ -320,15 +320,24 @@ def test_unset_formula_metadata_emits_no_op(offline_session) -> None:
     assert dumped == {"data": []}
 
 
-@pytest.mark.parametrize("cleared", [None, []], ids=["none", "empty-list"])
-def test_cleared_formula_metadata_emits_root_delete(offline_session, cleared) -> None:
-    """Test that None or [] removes every existing formula with one root delete."""
+def test_empty_formula_metadata_emits_root_delete(offline_session) -> None:
+    """Test that [] removes every existing formula with one root delete."""
     existing = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
-    updated = Attribute(id="ATR1", formula_metadata=cleared)
+    updated = Attribute(id="ATR1", formula_metadata=[])
 
     dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
 
     assert dumped == {"data": [{"operation": "delete", "attribute": "formulaMetadata"}]}
+
+
+def test_none_formula_metadata_leaves_existing_formulas(offline_session) -> None:
+    """Test that an explicit None keeps existing formulas and emits no op."""
+    existing = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
+    updated = Attribute(id="ATR1", formula_metadata=None)
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {"data": []}
 
 
 @pytest.mark.parametrize("cleared", [None, []], ids=["none", "empty-list"])
