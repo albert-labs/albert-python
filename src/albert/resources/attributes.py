@@ -121,8 +121,12 @@ class FormulaMetadata(BaseAlbertModel):
     share of total solids) and is the only kind that supports back-solving: with
     ``request_inverse=True``, editing a basis value on the sheet recalculates that
     ingredient's amount. A *calculated property* computes one value per formula
-    (e.g. total solids or density) and cannot be back-solved. An attribute holds at
-    most one ingredient basis and one calculated property.
+    (e.g. total solids or density) and cannot be back-solved. An attribute can hold
+    several ingredient bases and several calculated properties. A sheet uses one
+    ingredient basis per attribute. Every calculated property shows on the sheet, but
+    only the attribute's first one, in sheet order, is saved to the formula's inventory
+    and published as the attribute's value, so give a variant that must be saved its own
+    attribute.
 
     Expression variables:
 

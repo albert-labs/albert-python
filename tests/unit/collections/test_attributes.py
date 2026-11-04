@@ -8,7 +8,6 @@ whole-list op) and the ``_check_formulas`` field rules, with no I/O to fake.
 assert on the requests the SDK sends.
 """
 
-import re
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -475,6 +474,10 @@ def test_changed_formula_metadata_raises_on_field_rule(offline_session) -> None:
         pytest.param([_ib()], id="one-ib"),
         pytest.param([_cp()], id="one-cp"),
         pytest.param([_ib(request_inverse=True), _cp()], id="ib-back-solve-and-cp"),
+        pytest.param(
+            [_ib(), _ib(display_name="PHR"), _cp(), _cp(display_name="Density")],
+            id="several-ib-and-cp",
+        ),
         pytest.param([_cp(expression="sum(wt% * [Viscosity]) / sum(wt%)")], id="name-reference"),
         pytest.param(
             [_cp(expression='sum(wt% WHERE Function = Core AND Function = "Shell")')],
@@ -487,42 +490,20 @@ def test_check_formulas_accepts(formulas) -> None:
     AttributeCollection._check_formulas(formulas)
 
 
-@pytest.mark.parametrize(
-    ("formulas", "fragment"),
-    [
-        pytest.param(
-            [_ib(), _ib(display_name="PHR")],
-            "more than one INGREDIENT_BASIS (Solids Share, PHR)",
-            id="two-ib",
-        ),
-        pytest.param(
-            [_cp(), _cp(display_name="Density")],
-            "more than one CALCULATED_PROPERTY (Total Solids, Density)",
-            id="two-cp",
-        ),
-        pytest.param(
-            [_cp(request_inverse=True)],
-            "request_inverse=True on CALCULATED_PROPERTY (Total Solids)",
-            id="cp-back-solve",
-        ),
-    ],
-)
-def test_check_formulas_rejects(formulas, fragment) -> None:
-    """Test that formulas breaking a field rule raise with a message naming the rule."""
-    with pytest.raises(ValueError, match=re.escape(fragment)):
-        AttributeCollection._check_formulas(formulas)
-
-
-def test_check_formulas_reports_every_problem_at_once() -> None:
-    """Test that several broken rules are reported together in one error."""
-    formulas = [_cp(request_inverse=True), _cp(display_name="Density")]
+def test_check_formulas_rejects_back_solved_calculated_properties() -> None:
+    """Test that every calculated property with request_inverse=True is named in one error."""
+    formulas = [
+        _ib(),
+        _cp(request_inverse=True),
+        _cp(display_name="Density", request_inverse=True),
+    ]
 
     with pytest.raises(ValueError) as excinfo:
         AttributeCollection._check_formulas(formulas)
 
-    assert str(excinfo.value).startswith(
-        "Invalid formula_metadata: more than one CALCULATED_PROPERTY (Total Solids, Density); "
-        "request_inverse=True on CALCULATED_PROPERTY (Total Solids); "
+    assert str(excinfo.value) == (
+        "Invalid formula_metadata: request_inverse=True on CALCULATED_PROPERTY "
+        "(Total Solids, Density); back-solving needs an INGREDIENT_BASIS."
     )
 
 

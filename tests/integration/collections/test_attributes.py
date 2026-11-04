@@ -252,6 +252,29 @@ def test_attribute_create_with_formulas(
             client.attributes.delete(id=created.id)
 
 
+def test_attribute_create_with_several_formulas_of_each_kind(
+    client: Albert, seeded_attributes: list[Attribute], formula_data_column: DataColumn
+):
+    """Test creating an attribute with two ingredient bases and two calculated properties."""
+    source_id = seeded_attributes[0].id
+    formulas = [
+        _ib(source_id),
+        _ib(
+            source_id,
+            display_name="PHR",
+            expression='wt% / sum(wt% WHERE Function = "Resin") * 100',
+        ),
+        _cp(),
+        _cp(display_name="Weighted Solids", expression=f"sum(wt% * [{source_id}]) / sum(wt%)"),
+    ]
+    created = _create_attribute(client, formula_data_column, formulas)
+    try:
+        assert client.attributes.get_by_id(id=created.id).formula_metadata == formulas
+    finally:
+        with suppress(NotFoundError):
+            client.attributes.delete(id=created.id)
+
+
 def test_attribute_update_appends_formula_and_keeps_existing(
     client: Albert, seeded_attributes: list[Attribute], formula_data_column: DataColumn
 ):

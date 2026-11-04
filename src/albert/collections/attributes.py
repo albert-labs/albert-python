@@ -246,9 +246,10 @@ class AttributeCollection(BaseCollection):
         [`search`][albert.collections.attributes.AttributeCollection.search]. ``WHERE``
         works only inside ``sum(...)``, values are quoted, and several values of one key
         combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
-        ``request_inverse=True``. An attribute holds at most one ingredient basis and one
-        calculated property. Expressions are not checked: a name instead of an ID or a
-        malformed ``WHERE`` saves without error and shows blank or 0 on the sheet.
+        ``request_inverse=True``. Only the first calculated property of an attribute, in
+        sheet order, is saved to the inventory; give a variant that must be saved its own
+        attribute. Expressions are not checked: a name instead of an ID or a malformed
+        ``WHERE`` saves without error and shows blank or 0 on the sheet.
 
         Define the property template once in the attribute catalogue, then assign values to
         inventory items or lots with [`add_values`][albert.collections.attributes.AttributeCollection.add_values].
@@ -305,8 +306,7 @@ class AttributeCollection(BaseCollection):
         Raises
         ------
         ValueError
-            If ``formula_metadata`` has more than one ingredient basis or calculated
-            property, or a calculated property with ``request_inverse=True``.
+            If a calculated property has ``request_inverse=True``.
         """
         if attribute.formula_metadata:
             self._check_formulas(attribute.formula_metadata)
@@ -327,9 +327,10 @@ class AttributeCollection(BaseCollection):
         [`search`][albert.collections.attributes.AttributeCollection.search]. ``WHERE``
         works only inside ``sum(...)``, values are quoted, and several values of one key
         combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
-        ``request_inverse=True``. An attribute holds at most one ingredient basis and one
-        calculated property. Expressions are not checked: a name instead of an ID or a
-        malformed ``WHERE`` saves without error and shows blank or 0 on the sheet. See
+        ``request_inverse=True``. Only the first calculated property of an attribute, in
+        sheet order, is saved to the inventory; give a variant that must be saved its own
+        attribute. Expressions are not checked: a name instead of an ID or a malformed
+        ``WHERE`` saves without error and shows blank or 0 on the sheet. See
         [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata] for the full guide.
 
         Changes apply to the attribute definition. Inventory items that already
@@ -367,9 +368,8 @@ class AttributeCollection(BaseCollection):
         Raises
         ------
         ValueError
-            If the ID is missing, or if changed ``formula_metadata`` has more than one
-            ingredient basis or calculated property, or a calculated property with
-            ``request_inverse=True``.
+            If the ID is missing, or if changed ``formula_metadata`` has a calculated
+            property with ``request_inverse=True``.
 
         Notes
         -----
@@ -811,28 +811,17 @@ class AttributeCollection(BaseCollection):
 
     @staticmethod
     def _check_formulas(formulas: list[FormulaMetadata]) -> None:
-        # Field rules only: expressions are never parsed. Remove once the server
-        # enforces these.
-        problems: list[str] = []
-        for kind in ExpressionType:
-            names = [f.display_name for f in formulas if f.expression_type == kind]
-            if len(names) > 1:
-                problems.append(f"more than one {kind.value} ({', '.join(names)})")
-        if inverse := [
+        # Expressions are never parsed. Only the worksheet's back-solve rule is enforced;
+        # remove once the server enforces it.
+        inverse = [
             f.display_name
             for f in formulas
             if f.expression_type == ExpressionType.CALCULATED_PROPERTY and f.request_inverse
-        ]:
-            problems.append(
-                f"request_inverse=True on CALCULATED_PROPERTY ({', '.join(inverse)}); "
-                "back-solving needs an INGREDIENT_BASIS"
-            )
-        if problems:
+        ]
+        if inverse:
             raise ValueError(
-                "Invalid formula_metadata: "
-                + "; ".join(problems)
-                + ". An attribute holds at most one ingredient basis and one calculated "
-                "property, and only an ingredient basis can be back-solved."
+                "Invalid formula_metadata: request_inverse=True on CALCULATED_PROPERTY "
+                f"({', '.join(inverse)}); back-solving needs an INGREDIENT_BASIS."
             )
 
     @staticmethod
