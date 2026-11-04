@@ -113,7 +113,7 @@ class ProjectCollection(BaseCollection):
     """
 
     _api_version = "v3"
-    _updatable_attributes = {"description", "grid", "metadata", "state"}
+    _updatable_attributes = {"description", "grid", "metadata", "project_class", "state"}
 
     def __init__(self, *, session: AlbertSession):
         """Initialize a ProjectCollection.
@@ -216,7 +216,7 @@ class ProjectCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``description``, ``grid``,
-        ``locations``, ``metadata``, ``state``, ``acl``.
+        ``locations``, ``metadata``, ``project_class``, ``state``, ``acl``.
 
         ``locations`` is replaced as a complete list: set it to the full set of
         locations the project should have. A project keeps at least one location
