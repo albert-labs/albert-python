@@ -1919,8 +1919,8 @@ class PropertyDataCollection(BaseCollection):
             "toCreatedAt": to_created_at,
             "fromUpdatedAt": from_updated_at,
             "toUpdatedAt": to_updated_at,
-            # Left out when None: platform environments that have not rolled out
-            # void-status search reject the parameter with a 400.
+            # Left out when None: the filter is rejected by environments without
+            # void-status search.
             "void": void,
             "searchField": search_field,
             "sourceField": source_field,
