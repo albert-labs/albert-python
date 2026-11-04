@@ -331,7 +331,8 @@ def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workf
     block_id = task.blocks[0].id
     client.tasks.remove_block(task_id=task.id, block_id=block_id)
     updated_task = client.tasks.get_by_id(id=task.id)
-    assert len(updated_task.blocks) == starting_blocks - 1
+    # Removing the task's last block leaves no blocks, which reads back as None.
+    assert len(updated_task.blocks or []) == starting_blocks - 1
     assert block_id not in [x.id for x in (updated_task.blocks or [])]
 
 
