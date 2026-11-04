@@ -35,6 +35,7 @@ from albert.resources.tasks import (
     TaskCategory,
     TaskInventoryInformation,
 )
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
 
@@ -246,6 +247,35 @@ def test_add_and_update_property_data_on_inventory(
     assert r[1].data_columns[0].value == "66.6"
 
 
+def _wait_for_inventory_value(
+    client: Albert, inventory_id: str, column_id: str, value: str
+) -> InventoryPropertyData:
+    """Read the item's properties until ``column_id`` holds ``value``.
+
+    The item's property read can lag a write on some platform environments, so the
+    value an update just set may not be visible on the first read.
+    """
+
+    def _holds_value(props: InventoryPropertyData) -> bool:
+        return any(
+            p.data_column.data_column_id == column_id
+            and p.data_column.property_data.value == value
+            for p in props.custom_property_data
+        )
+
+    result = poll_until(
+        lambda: [client.property_data.get_properties_on_inventory(inventory_id=inventory_id)],
+        predicate=lambda r: _holds_value(r[0]),
+    )
+    props = result[0]
+    assert _holds_value(props), (
+        f"{column_id}={value!r} not visible on {inventory_id}; custom columns: "
+        f"{[(p.data_column.data_column_id, p.data_column.property_data.value) for p in props.custom_property_data]}, "
+        f"task results: {len(props.task_property_data)}"
+    )
+    return props
+
+
 def test_update_property_on_inventory_adds_then_updates(
     client: Albert,
     seeded_inventory: list[BaseTask],
@@ -255,21 +285,25 @@ def test_update_property_on_inventory_adds_then_updates(
     inv = seeded_inventory[0]
     column_id = seeded_data_columns[2].id
 
-    added = client.property_data.update_property_on_inventory(
+    client.property_data.update_property_on_inventory(
         inventory_id=inv.id,
         property_data=InventoryDataColumn(data_column_id=column_id, value="11.1"),
     )
-    match = [p for p in added.custom_property_data if p.data_column.data_column_id == column_id]
-    assert len(match) == 1
-    assert match[0].data_column.property_data.value == "11.1"
+    added = _wait_for_inventory_value(client, inv.id, column_id, "11.1")
+    assert (
+        len([p for p in added.custom_property_data if p.data_column.data_column_id == column_id])
+        == 1
+    )
 
-    updated = client.property_data.update_property_on_inventory(
+    client.property_data.update_property_on_inventory(
         inventory_id=inv.id,
         property_data=InventoryDataColumn(data_column_id=column_id, value="22.2"),
     )
-    match = [p for p in updated.custom_property_data if p.data_column.data_column_id == column_id]
-    assert len(match) == 1
-    assert match[0].data_column.property_data.value == "22.2"
+    updated = _wait_for_inventory_value(client, inv.id, column_id, "22.2")
+    assert (
+        len([p for p in updated.custom_property_data if p.data_column.data_column_id == column_id])
+        == 1
+    )
 
 
 def test_task_property_calculation_evaluation(
