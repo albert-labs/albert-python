@@ -394,3 +394,19 @@ def test_reorder_columns_keeps_ingredient_basis_with_formulas(
         for i, c in enumerate(after)
         if c.type == CellType.INGREDIENT_BASIS
     )
+
+
+def test_formula_exposes_stored_calculated_property_values(
+    client: Albert, calculations_sheet: CalculationsSheet
+):
+    """Test that a formula's stored calculated property values are read with the item."""
+    inventory_id = calculations_sheet.formula_inventory_id
+    stored = client.session.get(f"/api/v3/inventories/{inventory_id}").json()
+    if not stored.get("calculatedProperties"):
+        pytest.skip("stored calculated property values are not available on this tenant")
+
+    item = client.inventory.get_by_id(id=inventory_id)
+
+    value = item.calculated_properties[calculations_sheet.attribute.id]
+    assert value.value == _CP_VALUE
+    assert value.updated_at

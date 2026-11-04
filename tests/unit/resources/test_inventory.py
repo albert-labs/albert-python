@@ -5,6 +5,7 @@ from albert.core.shared.models.base import EntityLink
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.inventory import (
+    CalculatedPropertyValue,
     CasAmount,
     InventoryCategory,
     InventoryDensity,
@@ -295,3 +296,66 @@ def test_inventory_spec_value_casts_numeric_fields_to_str(value, expected):
     assert spec_value.min == expected
     assert spec_value.max == expected
     assert spec_value.reference == expected
+
+
+# --- calculated properties ---
+
+
+def _formula_payload() -> dict:
+    return {
+        "albertId": "INVMO1-001",
+        "name": "F1",
+        "category": "Formulas",
+        "calculatedProperties": {
+            "ATR1": {"value": 42.5, "unit": "%", "updatedAt": "2026-11-04T12:30:45.460Z"},
+            "ATR2": {"value": 3, "updatedAt": "2026-11-04T12:31:00.000Z", "status": "new"},
+        },
+    }
+
+
+def test_inventory_item_parses_calculated_properties_by_attribute_id():
+    """Test that stored calculated property values parse per attribute, ignoring unknown keys."""
+    item = InventoryItem(**_formula_payload())
+
+    assert item.calculated_properties == {
+        "ATR1": CalculatedPropertyValue(
+            value=42.5, unit="%", updated_at="2026-11-04T12:30:45.460Z"
+        ),
+        "ATR2": CalculatedPropertyValue(value=3.0, updated_at="2026-11-04T12:31:00.000Z"),
+    }
+
+
+def test_inventory_item_dump_excludes_calculated_properties():
+    """Test that calculated property values never appear in a serialized item."""
+    dumped = InventoryItem(**_formula_payload()).model_dump(
+        by_alias=True, mode="json", exclude_none=True
+    )
+
+    assert "calculatedProperties" not in dumped
+    assert InventoryItem.model_validate(dumped).calculated_properties is None
+
+
+def test_calculated_property_value_round_trips_wire_format():
+    """Test that a calculated property value keeps its wire keys through a round trip."""
+    wire = {"value": 42.5, "unit": "%", "updatedAt": "2026-11-04T12:30:45.460Z"}
+
+    dumped = CalculatedPropertyValue.model_validate(wire).model_dump(
+        by_alias=True, mode="json", exclude_none=True
+    )
+
+    assert dumped == wire
+
+
+def test_inventory_item_tolerates_calculated_property_entry_without_value():
+    """Test that a stored calculated property entry without a value still parses."""
+    item = InventoryItem.model_validate(
+        {
+            "albertId": "INVMO1-001",
+            "name": "F1",
+            "category": "Formulas",
+            "calculatedProperties": {"ATR1": {"updatedAt": "2026-11-04T10:00:00Z"}},
+        }
+    )
+    assert item.calculated_properties == {
+        "ATR1": CalculatedPropertyValue(updated_at="2026-11-04T10:00:00Z")
+    }
