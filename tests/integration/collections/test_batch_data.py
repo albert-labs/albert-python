@@ -13,6 +13,7 @@ from albert.resources.batch_data import (
     BatchValuePatchDatum,
     BatchValuePatchPayload,
 )
+from albert.resources.sheets import Component
 from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
@@ -279,7 +280,7 @@ def test_resync_task(
 def test_update_process_values(
     client: Albert,
     seed_prefix: str,
-    seeded_products,
+    seeded_inventory,
     seeded_projects,
     seeded_locations,
     seeded_sheet,
@@ -289,14 +290,38 @@ def test_update_process_values(
     """Test process parameter values are written to a batch task's Process Design rows."""
     if seeded_sheet.process_design is None:
         pytest.skip("Seeded sheet has no Process Design section")
+    # A private formula: a formula locks once a batch task uses it, and the seeded
+    # formula already has seeded batch tasks.
+    column = seeded_sheet.add_formulation(
+        formulation_name=f"{seed_prefix} - Process Values Formula",
+        components=[
+            Component(inventory_item=seeded_inventory[0], amount=50),
+            Component(inventory_item=seeded_inventory[1], amount=50),
+        ],
+    )
+    formula = client.inventory.get_by_id(id=column.inventory_id)
     pg_row = seeded_sheet.add_parameter_group_row(parameter_group_id=seeded_parameter_groups[0].id)
     task = None
     try:
+        # A batch grid only includes the process parameters that have a value for its
+        # formula, so set one on the sheet before the task is created.
+        seeded_sheet.grid = None
+        process_cells = [
+            cell.model_copy(update={"value": "250"})
+            for row in seeded_sheet.process_design.rows
+            if row.type == "PRM"
+            for cell in row.cells
+            if cell.column_id == column.column_id
+        ]
+        assert process_cells, "sheet has no process parameter cells for the formula"
+        _, failed = seeded_sheet.update_cells(cells=process_cells)
+        assert failed == []
+
         task = _create_batch_task(
             client,
             seed_prefix=seed_prefix,
             name_suffix="Batch Data Process Values",
-            seeded_products=seeded_products,
+            seeded_products=[formula],
             seeded_projects=seeded_projects,
             seeded_locations=seeded_locations,
             static_user=static_user,
@@ -329,10 +354,8 @@ def test_update_process_values(
         if task is not None:
             with suppress(NotFoundError, BadRequestError):
                 client.tasks.delete(id=task.id)
-        client.session.delete(
-            f"/api/v3/designs/{seeded_sheet.process_design.id}/rows",
-            json=[{"rowId": pg_row.row_id}],
-        )
+        with suppress(NotFoundError, BadRequestError):
+            seeded_sheet.delete_row(row_id=pg_row.row_id, design_id=seeded_sheet.process_design.id)
 
 
 def test_delete_batch_data(
