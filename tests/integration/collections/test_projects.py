@@ -8,6 +8,7 @@ from albert.exceptions import NotFoundError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.attachments import Attachment
 from albert.resources.inventory import InventoryCategory, InventoryItem
+from albert.resources.locations import Location
 from albert.resources.projects import (
     DocumentSearchItem,
     Project,
@@ -130,6 +131,49 @@ def test_update_project(seeded_locations, client: Albert, seed_prefix: str):
         project.grid = "PD"
         updated = client.projects.update(project=project)
         assert updated.id == project.id
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+
+
+def test_update_project_locations(
+    client: Albert,
+    seeded_locations: list[Location],
+    seed_prefix: str,
+):
+    """Test adding, removing, and replacing project locations via update()."""
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - project location updates",
+            locations=[
+                EntityLink(id=seeded_locations[0].id),
+                EntityLink(id=seeded_locations[1].id),
+            ],
+        )
+    )
+    try:
+        fetched = client.projects.get_by_id(id=project.id)
+        fetched.locations = [
+            EntityLink(id=seeded_locations[0].id),
+            EntityLink(id=seeded_locations[1].id),
+            EntityLink(id=seeded_locations[2].id),
+        ]
+        added = client.projects.update(project=fetched)
+        assert {location.id for location in added.locations or []} == {
+            seeded_locations[0].id,
+            seeded_locations[1].id,
+            seeded_locations[2].id,
+        }
+
+        fetched = client.projects.get_by_id(id=project.id)
+        fetched.locations = [EntityLink(id=seeded_locations[0].id)]
+        removed = client.projects.update(project=fetched)
+        assert [location.id for location in removed.locations or []] == [seeded_locations[0].id]
+
+        fetched = client.projects.get_by_id(id=project.id)
+        fetched.locations = [EntityLink(id=seeded_locations[3].id)]
+        replaced = client.projects.update(project=fetched)
+        assert [location.id for location in replaced.locations or []] == [seeded_locations[3].id]
     finally:
         with suppress(NotFoundError):
             client.projects.delete(id=project.id)

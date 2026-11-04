@@ -1,9 +1,9 @@
 """Unit tests for ProjectCollection private helpers.
 
 Allowed under the patch-builder exception in OPINIONS.md: these guard
-non-obvious diff behavior in ``_generate_acl_patch_operations`` and the
-starred-project record matching / duplicate-star detection helpers, with no
-I/O to fake.
+non-obvious diff behavior in ``_generate_acl_patch_operations``,
+``_generate_locations_patch_operations``, and the starred-project record
+matching / duplicate-star detection helpers, with no I/O to fake.
 """
 
 import json
@@ -13,8 +13,10 @@ import requests
 import responses
 
 from albert.collections.projects import ProjectCollection
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError
 from albert.resources.acls import ACL, AccessControlLevel
+from albert.resources.locations import Location
 from albert.resources.personalization import Personalization, PersonalizationCategory
 from albert.resources.projects import Project, ProjectClass, ReferenceFormulaType
 from tests.unit.conftest import UNIT_BASE_URL
@@ -170,6 +172,100 @@ def test_none_fgc_on_both_sides_emits_no_op(offline_session) -> None:
     )
 
     assert ops == []
+
+
+def test_unchanged_locations_emit_no_ops() -> None:
+    """Test that identical location ids, regardless of order, produce no operations."""
+    add_operation, removals = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1"), EntityLink(id="LOC2")],
+        updated=[EntityLink(id="LOC2"), EntityLink(id="LOC1")],
+    )
+
+    assert add_operation is None
+    assert removals == []
+
+
+def test_both_locations_none_emit_no_ops() -> None:
+    """Test that both location lists being None (unset) produces no operations."""
+    add_operation, removals = ProjectCollection._generate_locations_patch_operations(
+        existing=None, updated=None
+    )
+
+    assert add_operation is None
+    assert removals == []
+
+
+def test_new_locations_emit_single_add_op() -> None:
+    """Test that added locations emit one add op with id objects in updated order."""
+    add_operation, removals = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1")],
+        updated=[EntityLink(id="LOC1"), EntityLink(id="LOC2"), EntityLink(id="LOC3")],
+    )
+
+    assert add_operation is not None
+    assert add_operation.model_dump(mode="json", by_alias=True) == {
+        "attribute": "locations",
+        "operation": "add",
+        "newValue": [{"id": "LOC2"}, {"id": "LOC3"}],
+    }
+    assert removals == []
+
+
+def test_removed_locations_are_returned_individually() -> None:
+    """Test that each removed location id is returned on its own."""
+    add_operation, removals = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1"), EntityLink(id="LOC2")],
+        updated=[EntityLink(id="LOC1")],
+    )
+
+    assert add_operation is None
+    assert removals == ["LOC2"]
+
+
+def test_changed_location_emits_add_and_removal() -> None:
+    """Test that swapping one location for another emits an add and a removal."""
+    add_operation, removals = ProjectCollection._generate_locations_patch_operations(
+        existing=[EntityLink(id="LOC1")],
+        updated=[EntityLink(id="LOC2")],
+    )
+
+    assert add_operation is not None
+    assert add_operation.model_dump(mode="json", by_alias=True) == {
+        "attribute": "locations",
+        "operation": "add",
+        "newValue": [{"id": "LOC2"}],
+    }
+    assert removals == ["LOC1"]
+
+
+def test_removing_all_locations_raises() -> None:
+    """Test that a project cannot be left without locations."""
+    with pytest.raises(ValueError, match="keep at least one location"):
+        ProjectCollection._generate_locations_patch_operations(
+            existing=[EntityLink(id="LOC1"), EntityLink(id="LOC2")],
+            updated=None,
+        )
+
+
+def test_location_without_id_raises() -> None:
+    """Test that a location missing its id is rejected."""
+    with pytest.raises(ValueError, match="must have an id"):
+        ProjectCollection._generate_locations_patch_operations(
+            existing=[EntityLink(id="LOC1")],
+            updated=[
+                EntityLink(id="LOC1"),
+                Location(name="No id", latitude=1, longitude=1, address="a"),
+            ],
+        )
+
+
+def test_duplicate_location_ids_raise() -> None:
+    """Test that duplicate location ids are rejected."""
+    with pytest.raises(ValueError, match="Duplicate location ids"):
+        ProjectCollection._generate_locations_patch_operations(
+            existing=[EntityLink(id="LOC1")],
+            updated=[EntityLink(id="LOC1"), EntityLink(id="LOC2"), EntityLink(id="LOC2")],
+        )
 
 
 def test_project_class_change_emits_update_op(offline_session) -> None:
