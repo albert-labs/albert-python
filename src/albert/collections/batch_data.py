@@ -21,6 +21,9 @@ from albert.resources.batch_data import (
     BatchDataProduct,
     BatchDataRowCreated,
     BatchDataType,
+    BatchProcessValue,
+    BatchValueId,
+    BatchValuePatchDatum,
     BatchValuePatchPayload,
     RawCostEntry,
     ReactionBatchData,
@@ -87,6 +90,8 @@ class BatchDataCollection(BaseCollection):
         Get the reaction grid of a reaction batch task. (🧪 Beta)
     update_used_batch_amounts(task_id, patches) -> None
         Record which lots were used for the batch's recorded amounts.
+    update_process_values(task_id, values) -> None
+        Set process parameter values on the batch data grid.
     update_batch_size(task_id, formula_id, new_value, old_value) -> None
         Update the batch size of a batch task and rescale its amounts.
     back_update_from_design(design_id, patches) -> None
@@ -292,6 +297,103 @@ class BatchDataCollection(BaseCollection):
                 for patch in patches
             ],
         )
+
+    @validate_call
+    def update_process_values(self, *, task_id: TaskId, values: list[BatchProcessValue]) -> None:
+        """Set process parameter values on the batch data grid.
+
+        Writes values into the parameter rows of the batch task's Process Design
+        section, one cell per formula column. Each value is written against the
+        cell's current value in the grid, so only cells that change are sent.
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.batch_data import BatchProcessValue
+
+            client = Albert()
+            grid = client.batch_data.get_by_id(id="TAS123")
+            speed = next(row for row in grid.rows or [] if row.type == "PRM")
+            client.batch_data.update_process_values(
+                task_id="TAS123",
+                values=[
+                    BatchProcessValue(row_id=speed.row_id, col_id=cell.col_id, value="500")
+                    for cell in speed.values
+                    if cell.type == "INV"
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Task ID of the batch task to update (format ``TAS...``).
+        values : list[BatchProcessValue]
+            The values to set. Each must target a parameter row and a formula
+            column of this task's grid.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If a value does not target a parameter row and formula column of the grid.
+        """
+        if not values:
+            return
+        grid = self.get_by_id(id=task_id)
+        patches = self._build_process_value_patches(grid=grid, values=values)
+        if not patches:
+            return
+        response = self.session.patch(
+            f"{self.base_path}/{task_id}/values",
+            json=[p.model_dump(exclude_none=True, by_alias=True, mode="json") for p in patches],
+        )
+        self._raise_on_partial_failure(response)
+
+    @staticmethod
+    def _build_process_value_patches(
+        *, grid: BatchData, values: list[BatchProcessValue]
+    ) -> list[BatchValuePatchPayload]:
+        """Build one cell patch per changed value, checked against the current grid.
+
+        A cell the grid reports as not editable has no stored value yet, so it is
+        written with ``add``; a stored cell is written with ``update`` against its
+        current value.
+        """
+        current: dict[tuple[str, str], tuple[str, bool]] = {}
+        for row in grid.rows or []:
+            if row.type != "PRM" or row.row_id is None:
+                continue
+            for cell in row.values:
+                if cell.type == "INV" and cell.col_id is not None:
+                    current[(row.row_id, cell.col_id)] = (cell.value or "", bool(cell.is_editable))
+        patches: list[BatchValuePatchPayload] = []
+        for item in values:
+            key = (item.row_id, item.col_id)
+            if key not in current:
+                raise ValueError(
+                    f"Row {item.row_id!r} / column {item.col_id!r} is not a process "
+                    "parameter cell of this batch task's grid."
+                )
+            old_value, stored = current[key]
+            if old_value == item.value:
+                continue
+            datum = (
+                BatchValuePatchDatum(
+                    attribute="cell", operation="update", old_value=old_value, new_value=item.value
+                )
+                if stored
+                else BatchValuePatchDatum(attribute="cell", operation="add", new_value=item.value)
+            )
+            patches.append(
+                BatchValuePatchPayload(
+                    id=BatchValueId(row_id=item.row_id, col_id=item.col_id), data=[datum]
+                )
+            )
+        return patches
 
     @staticmethod
     def _build_raw_cost_payload(entries: list[RawCostEntry]) -> list[dict[str, Any]]:

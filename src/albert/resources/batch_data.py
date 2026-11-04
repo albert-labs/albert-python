@@ -123,6 +123,30 @@ class BatchValuePatchPayload(BaseAlbertModel):
     a lot id set only here adds a child row that is not linked to the lot."""
 
 
+class BatchProcessValue(BaseAlbertModel):
+    """A process parameter value to set for one formula column of a batch task.
+
+    Targets a parameter (PRM) row of the batch task's Process Design section. Pass
+    these to
+    [`update_process_values`][albert.collections.batch_data.BatchDataCollection.update_process_values].
+
+    !!! example
+        ```python
+        from albert.resources.batch_data import BatchProcessValue
+
+        value = BatchProcessValue(row_id="ROW9", col_id="COL2", value="500")
+        ```"""
+
+    row_id: str = Field(alias="rowId")
+    """The ``row_id`` of the parameter row in the batch data grid."""
+
+    col_id: str = Field(alias="colId")
+    """The ``col_id`` of the formula (product) column in the batch data grid."""
+
+    value: str
+    """The value to set. An empty string clears the cell."""
+
+
 class BatchDataType(str, Enum):
     """The kind of identifier used to look up batch data.
 

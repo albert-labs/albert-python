@@ -336,7 +336,7 @@ class WorksheetCollection(BaseCollection):
         payload = {"name": sheet_name}
         params = {"templateId": sheet_template_id}
         path = f"{self.base_path}/project/{project_id}/sheets"
-        self.session.post(path, json=payload, params=params)
+        self.session.put(path, json=payload, params=params)
         return self.get_by_project_id(project_id=project_id)
 
     @validate_call
