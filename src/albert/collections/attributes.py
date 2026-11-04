@@ -19,6 +19,8 @@ from albert.resources.attributes import (
     AttributeValue,
     AttributeValuesResponse,
     AttributeValuesResponseItem,
+    ExpressionType,
+    FormulaMetadata,
 )
 from albert.resources.parameter_groups import DataType
 from albert.utils._patch import generate_enum_patches
@@ -127,7 +129,7 @@ class AttributeCollection(BaseCollection):
         Remove all reference values from a parent entity.
     """
 
-    _updatable_attributes = {"reference_name", "parameters", "validation"}
+    _updatable_attributes = {"reference_name", "parameters", "validation", "formula_metadata"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
@@ -236,12 +238,59 @@ class AttributeCollection(BaseCollection):
 
     @validate_call
     def create(self, *, attribute: Attribute) -> Attribute:
-        """Create a new inventory reference attribute definition.
+        """Create a new inventory reference attribute definition, with optional worksheet formulas.
+
+        Worksheet formulas (ingredient basis and calculated property, see
+        [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata]): reference
+        attributes by ID (``[ATR123]``), never by name; resolve names with
+        [`search`][albert.collections.attributes.AttributeCollection.search]. ``WHERE``
+        works only inside ``sum(...)``, values are quoted, and several values of one key
+        combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
+        ``request_inverse=True``. An attribute holds at most one ingredient basis and one
+        calculated property. Expressions are not checked: a name instead of an ID or a
+        malformed ``WHERE`` saves without error and shows blank or 0 on the sheet.
 
         Define the property template once in the attribute catalogue, then assign values to
         inventory items or lots with [`add_values`][albert.collections.attributes.AttributeCollection.add_values].
         Uniqueness is enforced on name and on the data column, unit, and parameter
         setpoint combination.
+
+        !!! example
+            ```python
+            from albert.resources.attributes import (
+                Attribute,
+                AttributeCategory,
+                ExpressionType,
+                FormulaMetadata,
+                ValidationItem,
+            )
+            from albert.resources.parameter_groups import DataType
+
+            # Resolve the referenced property's name to its ID (check the hit's name).
+            solids_id = next(client.attributes.search(text="Solid %")).id
+            attribute = client.attributes.create(
+                attribute=Attribute(
+                    datacolumn_id="DAC123",
+                    category=AttributeCategory.PROPERTY,
+                    reference_name="Total Solids",
+                    validation=[ValidationItem(datatype=DataType.NUMBER)],
+                    formula_metadata=[
+                        FormulaMetadata(
+                            display_name="Solids Share",
+                            expression=f"wt% / sum(wt%) * [{solids_id}]",
+                            expression_type=ExpressionType.INGREDIENT_BASIS,
+                            request_inverse=False,
+                        ),
+                        FormulaMetadata(
+                            display_name="Total Solids",
+                            expression="sum(ingredient_basis)",
+                            expression_type=ExpressionType.CALCULATED_PROPERTY,
+                            request_inverse=False,
+                        ),
+                    ],
+                )
+            )
+            ```
 
         Parameters
         ----------
@@ -252,7 +301,15 @@ class AttributeCollection(BaseCollection):
         -------
         Attribute
             The fully populated attribute.
+
+        Raises
+        ------
+        ValueError
+            If ``formula_metadata`` has more than one ingredient basis or calculated
+            property, or a calculated property with ``request_inverse=True``.
         """
+        if attribute.formula_metadata:
+            self._check_formulas(attribute.formula_metadata)
         payload = attribute.model_dump(
             by_alias=True, exclude_unset=True, mode="json", exclude={"id"}
         )
@@ -261,11 +318,41 @@ class AttributeCollection(BaseCollection):
 
     @validate_call
     def update(self, *, attribute: Attribute) -> Attribute:
-        """Update an existing attribute definition.
+        """Update an existing attribute definition, including its worksheet formulas.
+
+        Worksheet formulas (``formula_metadata``, ingredient basis and calculated
+        property) are replaced as a whole: fetch the attribute, edit or append to its
+        list, and pass the full list back. Reference attributes by ID (``[ATR123]``),
+        never by name; resolve names with
+        [`search`][albert.collections.attributes.AttributeCollection.search]. ``WHERE``
+        works only inside ``sum(...)``, values are quoted, and several values of one key
+        combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
+        ``request_inverse=True``. An attribute holds at most one ingredient basis and one
+        calculated property. Expressions are not checked: a name instead of an ID or a
+        malformed ``WHERE`` saves without error and shows blank or 0 on the sheet. See
+        [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata] for the full guide.
 
         Changes apply to the attribute definition. Inventory items that already
         store reference values keep their assignments; worksheet cells that
         previously imported a value are not updated automatically.
+
+        !!! example
+            ```python
+            from albert.resources.attributes import ExpressionType, FormulaMetadata
+
+            # ATR123 has an ingredient basis; add a calculated property that totals it.
+            attribute = client.attributes.get_by_id(id="ATR123")
+            attribute.formula_metadata = [
+                *(attribute.formula_metadata or []),
+                FormulaMetadata(
+                    display_name="Total Solids",
+                    expression="sum(ingredient_basis)",
+                    expression_type=ExpressionType.CALCULATED_PROPERTY,
+                    request_inverse=False,
+                ),
+            ]
+            updated = client.attributes.update(attribute=attribute)
+            ```
 
         Parameters
         ----------
@@ -277,12 +364,20 @@ class AttributeCollection(BaseCollection):
         Attribute
             The fully populated attribute.
 
+        Raises
+        ------
+        ValueError
+            If the ID is missing, or if changed ``formula_metadata`` has more than one
+            ingredient basis or calculated property, or a calculated property with
+            ``request_inverse=True``.
+
         Notes
         -----
         The following fields can be updated: ``reference_name``, ``parameters``,
-        ``validation``. ``reference_name`` must remain unique across definitions.
-        ``unit_id`` can only be set once (when no unit is currently assigned); it
-        cannot be changed afterwards.
+        ``validation``, ``formula_metadata``. ``reference_name`` must remain unique
+        across definitions. ``unit_id`` can only be set once (when no unit is currently
+        assigned); it cannot be changed afterwards. ``formula_metadata``: pass the full
+        list; formulas left out are removed, and ``None`` or ``[]`` removes them all.
         """
         if attribute.id is None:
             raise ValueError("Attribute ID is required for update.")
@@ -290,12 +385,13 @@ class AttributeCollection(BaseCollection):
         existing = self.get_by_id(id=attribute.id)
 
         enum_patches = self._generate_enum_patches(existing=existing, updated=attribute)
-        if enum_patches:
-            self.session.put(f"{self.base_path}/{attribute.id}/enums", json={"data": enum_patches})
-
+        # Built before any write so a rejected formula list leaves the attribute untouched.
         patch_payload = self._generate_attribute_patch_payload(
             existing=existing, updated=attribute, skip_validation=bool(enum_patches)
         )
+        if enum_patches:
+            self.session.put(f"{self.base_path}/{attribute.id}/enums", json={"data": enum_patches})
+
         if len(patch_payload.data) > 0:
             self.session.patch(
                 f"{self.base_path}/{attribute.id}",
@@ -678,6 +774,25 @@ class AttributeCollection(BaseCollection):
                 )
             )
 
+        # Formulas go as one whole-list op: root and per-formula ops cannot be mixed,
+        # and adding a formula needs a root op. Never send old_value; it is rejected.
+        if "formula_metadata" in updated.model_fields_set:
+            old_formulas = self._dump_formulas(existing.formula_metadata)
+            new_formulas = self._dump_formulas(updated.formula_metadata)
+            if new_formulas != old_formulas:
+                if not new_formulas:
+                    data.append(
+                        PatchDatum(attribute="formulaMetadata", operation=PatchOperation.DELETE)
+                    )
+                else:
+                    self._check_formulas(updated.formula_metadata)
+                    op = PatchOperation.UPDATE if old_formulas else PatchOperation.ADD
+                    data.append(
+                        PatchDatum(
+                            attribute="formulaMetadata", operation=op, new_value=new_formulas
+                        )
+                    )
+
         return PatchPayload(data=data)
 
     @staticmethod
@@ -685,6 +800,40 @@ class AttributeCollection(BaseCollection):
         if not params:
             return []
         return [p.model_dump(by_alias=True, mode="json", exclude_none=True) for p in params]
+
+    @staticmethod
+    def _dump_formulas(formulas: list[FormulaMetadata] | None) -> list[dict[str, Any]]:
+        # Display names are trimmed on create but not on update; trim here to match.
+        return [
+            {**f.model_dump(by_alias=True, mode="json"), "displayName": f.display_name.strip()}
+            for f in formulas or []
+        ]
+
+    @staticmethod
+    def _check_formulas(formulas: list[FormulaMetadata]) -> None:
+        # Field rules only: expressions are never parsed. Remove once the server
+        # enforces these.
+        problems: list[str] = []
+        for kind in ExpressionType:
+            names = [f.display_name for f in formulas if f.expression_type == kind]
+            if len(names) > 1:
+                problems.append(f"more than one {kind.value} ({', '.join(names)})")
+        if inverse := [
+            f.display_name
+            for f in formulas
+            if f.expression_type == ExpressionType.CALCULATED_PROPERTY and f.request_inverse
+        ]:
+            problems.append(
+                f"request_inverse=True on CALCULATED_PROPERTY ({', '.join(inverse)}); "
+                "back-solving needs an INGREDIENT_BASIS"
+            )
+        if problems:
+            raise ValueError(
+                "Invalid formula_metadata: "
+                + "; ".join(problems)
+                + ". An attribute holds at most one ingredient basis and one calculated "
+                "property, and only an ingredient basis can be back-solved."
+            )
 
     @staticmethod
     def _generate_enum_patches(*, existing: Attribute, updated: Attribute) -> list[dict]:

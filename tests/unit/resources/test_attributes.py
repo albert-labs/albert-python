@@ -6,6 +6,8 @@ from albert.resources.attributes import (
     AttributeParameterItem,
     AttributeValue,
     AttributeValuesResponseItem,
+    ExpressionType,
+    FormulaMetadata,
     ValidationItem,
 )
 from albert.resources.parameter_groups import DataType
@@ -111,3 +113,67 @@ def test_attribute_parameters_none_when_unset():
     """Test that Attribute.parameters stays None when the caller never sets it."""
     attr = Attribute(reference_name="Viscosity @ 25C")
     assert attr.parameters is None
+
+
+def test_attribute_formula_metadata_wire_round_trip():
+    """Test that formulaMetadata parses into FormulaMetadata and dumps back to the same wire shape."""
+    raw = {
+        "albertId": "ATR1",
+        "formulaMetadata": [
+            {
+                "displayName": "PHR",
+                "expression": 'wt% / sum(wt% WHERE Function = "Resin") * 100',
+                "expressionType": "INGREDIENT_BASIS",
+                "requestInverse": True,
+            },
+            {
+                "displayName": "Density",
+                "expression": "harmonicMean(wt%, [ATR67])",
+                "expressionType": "CALCULATED_PROPERTY",
+                "requestInverse": False,
+            },
+        ],
+    }
+
+    attr = Attribute.model_validate(raw)
+
+    assert attr.formula_metadata == [
+        FormulaMetadata(
+            display_name="PHR",
+            expression='wt% / sum(wt% WHERE Function = "Resin") * 100',
+            expression_type=ExpressionType.INGREDIENT_BASIS,
+            request_inverse=True,
+        ),
+        FormulaMetadata(
+            display_name="Density",
+            expression="harmonicMean(wt%, [ATR67])",
+            expression_type=ExpressionType.CALCULATED_PROPERTY,
+            request_inverse=False,
+        ),
+    ]
+    assert attr.model_dump(by_alias=True, mode="json", exclude_none=True) == raw
+
+
+def test_formula_metadata_parses_unknown_expression_type_as_str():
+    """Test that an expression type the SDK does not know parses instead of raising."""
+    formula = FormulaMetadata.model_validate(
+        {
+            "displayName": "Future",
+            "expression": "sum(wt%)",
+            "expressionType": "SOMETHING_NEW",
+            "requestInverse": False,
+        }
+    )
+    assert formula.expression_type == "SOMETHING_NEW"
+
+
+def test_formula_metadata_keeps_undeclared_keys_on_dump():
+    """Test that keys the SDK does not declare survive a parse and dump."""
+    raw = {
+        "displayName": "Total Solids",
+        "expression": "sum(ingredient_basis)",
+        "expressionType": "CALCULATED_PROPERTY",
+        "requestInverse": False,
+        "futureKey": "kept",
+    }
+    assert FormulaMetadata.model_validate(raw).model_dump(by_alias=True, mode="json") == raw

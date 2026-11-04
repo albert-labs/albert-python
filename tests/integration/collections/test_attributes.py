@@ -1,10 +1,11 @@
 import uuid
+from collections.abc import Iterator
 from contextlib import suppress
 
 import pytest
 
 from albert import Albert
-from albert.exceptions import NotFoundError
+from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.attributes import (
     Attribute,
     AttributeCategory,
@@ -12,6 +13,8 @@ from albert.resources.attributes import (
     AttributeSearchItem,
     AttributeValue,
     AttributeValuesResponse,
+    ExpressionType,
+    FormulaMetadata,
     ValidationItem,
 )
 from albert.resources.data_columns import DataColumn
@@ -180,6 +183,138 @@ def test_attribute_search_by_text(
 
     assert results
     assert attr.id in {item.id for item in results}
+
+
+# --- Formula metadata ---
+
+
+@pytest.fixture
+def formula_data_column(client: Albert) -> Iterator[DataColumn]:
+    """A private data column, so each formula test owns a unique attribute."""
+    data_column = client.data_columns.create(
+        data_column=DataColumn(name=f"TEST - formula {uuid.uuid4()}")
+    )
+    yield data_column
+    with suppress(NotFoundError, BadRequestError):
+        client.data_columns.delete(id=data_column.id)
+
+
+def _ib(source_id: str, **overrides) -> FormulaMetadata:
+    fields = {
+        "display_name": "Solids Share",
+        "expression": f"wt% / sum(wt%) * [{source_id}]",
+        "expression_type": ExpressionType.INGREDIENT_BASIS,
+        "request_inverse": False,
+    }
+    return FormulaMetadata(**{**fields, **overrides})
+
+
+def _cp(**overrides) -> FormulaMetadata:
+    fields = {
+        "display_name": "Total Solids",
+        "expression": "sum(ingredient_basis)",
+        "expression_type": ExpressionType.CALCULATED_PROPERTY,
+        "request_inverse": False,
+    }
+    return FormulaMetadata(**{**fields, **overrides})
+
+
+def _create_attribute(
+    client: Albert, data_column: DataColumn, formulas: list[FormulaMetadata] | None = None
+) -> Attribute:
+    attribute = Attribute(
+        datacolumn_id=data_column.id,
+        category=AttributeCategory.PROPERTY,
+        validation=[ValidationItem(datatype=DataType.NUMBER)],
+    )
+    if formulas is not None:
+        attribute.formula_metadata = formulas
+    return client.attributes.create(attribute=attribute)
+
+
+def test_attribute_create_with_formulas(
+    client: Albert, seeded_attributes: list[Attribute], formula_data_column: DataColumn
+):
+    """Test creating an attribute with an ingredient basis and a calculated property, kept by a name-only update."""
+    formulas = [_ib(seeded_attributes[0].id), _cp()]
+    created = _create_attribute(client, formula_data_column, formulas)
+    try:
+        assert client.attributes.get_by_id(id=created.id).formula_metadata == formulas
+
+        fetched = client.attributes.get_by_id(id=created.id)
+        fetched.reference_name = f"TEST - formula {uuid.uuid4()}"
+        updated = client.attributes.update(attribute=fetched)
+
+        assert updated.reference_name == fetched.reference_name
+        assert updated.formula_metadata == formulas
+    finally:
+        with suppress(NotFoundError):
+            client.attributes.delete(id=created.id)
+
+
+def test_attribute_update_appends_formula_and_keeps_existing(
+    client: Albert, seeded_attributes: list[Attribute], formula_data_column: DataColumn
+):
+    """Test adding a calculated property to an attribute with only an ingredient basis keeps the basis."""
+    basis = _ib(seeded_attributes[0].id)
+    created = _create_attribute(client, formula_data_column, [basis])
+    try:
+        attribute = client.attributes.get_by_id(id=created.id)
+        attribute.formula_metadata = [*(attribute.formula_metadata or []), _cp()]
+
+        updated = client.attributes.update(attribute=attribute)
+
+        assert updated.formula_metadata == [basis, _cp()]
+    finally:
+        with suppress(NotFoundError):
+            client.attributes.delete(id=created.id)
+
+
+def test_attribute_update_renames_removes_and_clears_formulas(
+    client: Albert, seeded_attributes: list[Attribute], formula_data_column: DataColumn
+):
+    """Test renaming one formula, removing one, then clearing all formulas."""
+    basis = _ib(seeded_attributes[0].id)
+    created = _create_attribute(client, formula_data_column, [basis, _cp()])
+    try:
+        renamed = client.attributes.update(
+            attribute=Attribute(
+                id=created.id, formula_metadata=[basis, _cp(display_name="Solids")]
+            )
+        )
+        assert renamed.formula_metadata == [basis, _cp(display_name="Solids")]
+
+        removed = client.attributes.update(
+            attribute=Attribute(id=created.id, formula_metadata=[_cp(display_name="Solids")])
+        )
+        assert removed.formula_metadata == [_cp(display_name="Solids")]
+
+        cleared = client.attributes.update(attribute=Attribute(id=created.id, formula_metadata=[]))
+        assert not cleared.formula_metadata
+    finally:
+        with suppress(NotFoundError):
+            client.attributes.delete(id=created.id)
+
+
+def test_attribute_update_formulas_and_reference_name_together(
+    client: Albert, seeded_attributes: list[Attribute], formula_data_column: DataColumn
+):
+    """Test one update that adds the first formula and changes the reference name."""
+    created = _create_attribute(client, formula_data_column)
+    try:
+        assert not created.formula_metadata
+        new_name = f"TEST - formula {uuid.uuid4()}"
+        basis = _ib(seeded_attributes[0].id)
+
+        updated = client.attributes.update(
+            attribute=Attribute(id=created.id, reference_name=new_name, formula_metadata=[basis])
+        )
+
+        assert updated.reference_name == new_name
+        assert updated.formula_metadata == [basis]
+    finally:
+        with suppress(NotFoundError):
+            client.attributes.delete(id=created.id)
 
 
 # --- Attribute Values ---
