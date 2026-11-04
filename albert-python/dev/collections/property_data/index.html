@@ -12452,7 +12452,7 @@ to None (all intervals in the block).</p>
 </span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    <span class="n">to_created_at</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    <span class="n">from_updated_at</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    <span class="n">to_updated_at</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    <span class="n">void</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    <span class="n">void</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    <span class="n">search_field</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/glossary.html#term-list">list</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>    <span class="n">source_field</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/glossary.html#term-list">list</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    <span class="n">facet_list</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/glossary.html#term-list">list</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -12908,13 +12908,13 @@ data where viscosity is under 200 measured at temperature 25.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Filter on the record's void status. <code>False</code> (default) excludes voided
-data, <code>True</code> includes only voided data. Pass None to include both
-voided and non-voided records. Deleted records are always excluded.</p>
+                <p>Filter on the record's void status. <code>None</code> (default) includes both
+voided and non-voided records, <code>False</code> excludes voided data, and
+<code>True</code> returns only voided data. Deleted records are always excluded.</p>
               </div>
             </td>
             <td>
-                  <code>False</code>
+                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -13247,7 +13247,9 @@ matches.</p>
 <span class="normal"><a href="#__codelineno-0-1932">1932</a></span>
 <span class="normal"><a href="#__codelineno-0-1933">1933</a></span>
 <span class="normal"><a href="#__codelineno-0-1934">1934</a></span>
-<span class="normal"><a href="#__codelineno-0-1935">1935</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1731"><a id="__codelineno-0-1731" name="__codelineno-0-1731"></a><span class="nd">@validate_call</span>
+<span class="normal"><a href="#__codelineno-0-1935">1935</a></span>
+<span class="normal"><a href="#__codelineno-0-1936">1936</a></span>
+<span class="normal"><a href="#__codelineno-0-1937">1937</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1731"><a id="__codelineno-0-1731" name="__codelineno-0-1731"></a><span class="nd">@validate_call</span>
 </span><span id="__span-0-1732"><a id="__codelineno-0-1732" name="__codelineno-0-1732"></a><span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span>
 </span><span id="__span-0-1733"><a id="__codelineno-0-1733" name="__codelineno-0-1733"></a>    <span class="bp">self</span><span class="p">,</span>
 </span><span id="__span-0-1734"><a id="__codelineno-0-1734" name="__codelineno-0-1734"></a>    <span class="o">*</span><span class="p">,</span>
@@ -13282,7 +13284,7 @@ matches.</p>
 </span><span id="__span-0-1763"><a id="__codelineno-0-1763" name="__codelineno-0-1763"></a>    <span class="n">from_updated_at</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-1764"><a id="__codelineno-0-1764" name="__codelineno-0-1764"></a>    <span class="n">to_updated_at</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-1765"><a id="__codelineno-0-1765" name="__codelineno-0-1765"></a>    <span class="c1"># Record status filters</span>
-</span><span id="__span-0-1766"><a id="__codelineno-0-1766" name="__codelineno-0-1766"></a>    <span class="n">void</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-1766"><a id="__codelineno-0-1766" name="__codelineno-0-1766"></a>    <span class="n">void</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-1767"><a id="__codelineno-0-1767" name="__codelineno-0-1767"></a>    <span class="c1"># Search field filters</span>
 </span><span id="__span-0-1768"><a id="__codelineno-0-1768" name="__codelineno-0-1768"></a>    <span class="n">search_field</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-1769"><a id="__codelineno-0-1769" name="__codelineno-0-1769"></a>    <span class="n">source_field</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -13371,9 +13373,9 @@ matches.</p>
 </span><span id="__span-0-1852"><a id="__codelineno-0-1852" name="__codelineno-0-1852"></a><span class="sd">    to_updated_at : str, optional</span>
 </span><span id="__span-0-1853"><a id="__codelineno-0-1853" name="__codelineno-0-1853"></a><span class="sd">        Only include records updated on or before this date (ISO 8601).</span>
 </span><span id="__span-0-1854"><a id="__codelineno-0-1854" name="__codelineno-0-1854"></a><span class="sd">    void : bool, optional</span>
-</span><span id="__span-0-1855"><a id="__codelineno-0-1855" name="__codelineno-0-1855"></a><span class="sd">        Filter on the record's void status. ``False`` (default) excludes voided</span>
-</span><span id="__span-0-1856"><a id="__codelineno-0-1856" name="__codelineno-0-1856"></a><span class="sd">        data, ``True`` includes only voided data. Pass None to include both</span>
-</span><span id="__span-0-1857"><a id="__codelineno-0-1857" name="__codelineno-0-1857"></a><span class="sd">        voided and non-voided records. Deleted records are always excluded.</span>
+</span><span id="__span-0-1855"><a id="__codelineno-0-1855" name="__codelineno-0-1855"></a><span class="sd">        Filter on the record's void status. ``None`` (default) includes both</span>
+</span><span id="__span-0-1856"><a id="__codelineno-0-1856" name="__codelineno-0-1856"></a><span class="sd">        voided and non-voided records, ``False`` excludes voided data, and</span>
+</span><span id="__span-0-1857"><a id="__codelineno-0-1857" name="__codelineno-0-1857"></a><span class="sd">        ``True`` returns only voided data. Deleted records are always excluded.</span>
 </span><span id="__span-0-1858"><a id="__codelineno-0-1858" name="__codelineno-0-1858"></a><span class="sd">    search_field : list[str], optional</span>
 </span><span id="__span-0-1859"><a id="__codelineno-0-1859" name="__codelineno-0-1859"></a><span class="sd">        Restrict which fields the text query searches.</span>
 </span><span id="__span-0-1860"><a id="__codelineno-0-1860" name="__codelineno-0-1860"></a><span class="sd">    source_field : list[str], optional</span>
@@ -13438,20 +13440,22 @@ matches.</p>
 </span><span id="__span-0-1919"><a id="__codelineno-0-1919" name="__codelineno-0-1919"></a>        <span class="s2">"toCreatedAt"</span><span class="p">:</span> <span class="n">to_created_at</span><span class="p">,</span>
 </span><span id="__span-0-1920"><a id="__codelineno-0-1920" name="__codelineno-0-1920"></a>        <span class="s2">"fromUpdatedAt"</span><span class="p">:</span> <span class="n">from_updated_at</span><span class="p">,</span>
 </span><span id="__span-0-1921"><a id="__codelineno-0-1921" name="__codelineno-0-1921"></a>        <span class="s2">"toUpdatedAt"</span><span class="p">:</span> <span class="n">to_updated_at</span><span class="p">,</span>
-</span><span id="__span-0-1922"><a id="__codelineno-0-1922" name="__codelineno-0-1922"></a>        <span class="s2">"void"</span><span class="p">:</span> <span class="n">void</span><span class="p">,</span>
-</span><span id="__span-0-1923"><a id="__codelineno-0-1923" name="__codelineno-0-1923"></a>        <span class="s2">"searchField"</span><span class="p">:</span> <span class="n">search_field</span><span class="p">,</span>
-</span><span id="__span-0-1924"><a id="__codelineno-0-1924" name="__codelineno-0-1924"></a>        <span class="s2">"sourceField"</span><span class="p">:</span> <span class="n">source_field</span><span class="p">,</span>
-</span><span id="__span-0-1925"><a id="__codelineno-0-1925" name="__codelineno-0-1925"></a>        <span class="s2">"facetList"</span><span class="p">:</span> <span class="n">facet_list</span><span class="p">,</span>
-</span><span id="__span-0-1926"><a id="__codelineno-0-1926" name="__codelineno-0-1926"></a>    <span class="p">}</span>
-</span><span id="__span-0-1927"><a id="__codelineno-0-1927" name="__codelineno-0-1927"></a>
-</span><span id="__span-0-1928"><a id="__codelineno-0-1928" name="__codelineno-0-1928"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
-</span><span id="__span-0-1929"><a id="__codelineno-0-1929" name="__codelineno-0-1929"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">SEARCH_AFTER</span><span class="p">,</span>
-</span><span id="__span-0-1930"><a id="__codelineno-0-1930" name="__codelineno-0-1930"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search"</span><span class="p">,</span>
-</span><span id="__span-0-1931"><a id="__codelineno-0-1931" name="__codelineno-0-1931"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
-</span><span id="__span-0-1932"><a id="__codelineno-0-1932" name="__codelineno-0-1932"></a>        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
-</span><span id="__span-0-1933"><a id="__codelineno-0-1933" name="__codelineno-0-1933"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
-</span><span id="__span-0-1934"><a id="__codelineno-0-1934" name="__codelineno-0-1934"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="n">deserialize</span><span class="p">,</span>
-</span><span id="__span-0-1935"><a id="__codelineno-0-1935" name="__codelineno-0-1935"></a>    <span class="p">)</span>
+</span><span id="__span-0-1922"><a id="__codelineno-0-1922" name="__codelineno-0-1922"></a>        <span class="c1"># Left out when None: the filter is rejected by environments without</span>
+</span><span id="__span-0-1923"><a id="__codelineno-0-1923" name="__codelineno-0-1923"></a>        <span class="c1"># void-status search.</span>
+</span><span id="__span-0-1924"><a id="__codelineno-0-1924" name="__codelineno-0-1924"></a>        <span class="s2">"void"</span><span class="p">:</span> <span class="n">void</span><span class="p">,</span>
+</span><span id="__span-0-1925"><a id="__codelineno-0-1925" name="__codelineno-0-1925"></a>        <span class="s2">"searchField"</span><span class="p">:</span> <span class="n">search_field</span><span class="p">,</span>
+</span><span id="__span-0-1926"><a id="__codelineno-0-1926" name="__codelineno-0-1926"></a>        <span class="s2">"sourceField"</span><span class="p">:</span> <span class="n">source_field</span><span class="p">,</span>
+</span><span id="__span-0-1927"><a id="__codelineno-0-1927" name="__codelineno-0-1927"></a>        <span class="s2">"facetList"</span><span class="p">:</span> <span class="n">facet_list</span><span class="p">,</span>
+</span><span id="__span-0-1928"><a id="__codelineno-0-1928" name="__codelineno-0-1928"></a>    <span class="p">}</span>
+</span><span id="__span-0-1929"><a id="__codelineno-0-1929" name="__codelineno-0-1929"></a>
+</span><span id="__span-0-1930"><a id="__codelineno-0-1930" name="__codelineno-0-1930"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
+</span><span id="__span-0-1931"><a id="__codelineno-0-1931" name="__codelineno-0-1931"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">SEARCH_AFTER</span><span class="p">,</span>
+</span><span id="__span-0-1932"><a id="__codelineno-0-1932" name="__codelineno-0-1932"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search"</span><span class="p">,</span>
+</span><span id="__span-0-1933"><a id="__codelineno-0-1933" name="__codelineno-0-1933"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
+</span><span id="__span-0-1934"><a id="__codelineno-0-1934" name="__codelineno-0-1934"></a>        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+</span><span id="__span-0-1935"><a id="__codelineno-0-1935" name="__codelineno-0-1935"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
+</span><span id="__span-0-1936"><a id="__codelineno-0-1936" name="__codelineno-0-1936"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="n">deserialize</span><span class="p">,</span>
+</span><span id="__span-0-1937"><a id="__codelineno-0-1937" name="__codelineno-0-1937"></a>    <span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
