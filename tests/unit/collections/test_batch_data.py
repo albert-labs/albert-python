@@ -8,7 +8,7 @@ import responses
 
 from albert.collections.batch_data import BatchDataCollection
 from albert.exceptions import AlbertPartialError
-from albert.resources.batch_data import RawCostEntry
+from albert.resources.batch_data import BatchData, BatchProcessValue, RawCostEntry
 from tests.unit.conftest import UNIT_BASE_URL
 
 _RESYNC_URL = f"{UNIT_BASE_URL}/api/v3/batchdata/resync"
@@ -134,3 +134,79 @@ def test_resync_sends_set_formula_keys(offline_session):
     body = json.loads(responses.calls[0].request.body)
     assert body["Formula"]["taskId"] == "TAS789"
     assert body["Formula"]["totalUpdatedAt"] == "2024-10-31T00:00:00.000Z"
+
+
+# --- _build_process_value_patches ---
+
+
+def _process_grid() -> BatchData:
+    return BatchData(
+        albertId="TAS1",
+        Rows=[
+            {
+                "rowId": "ROW2",
+                "type": "INV",
+                "Values": [{"colId": "COL2", "type": "INV", "value": "0", "isEditable": True}],
+            },
+            {
+                "rowId": "ROW8",
+                "type": "PRM",
+                "Values": [
+                    {"colId": "COL1", "type": "LKP", "value": "", "isEditable": False},
+                    {"colId": "COL2", "type": "INV", "value": "30", "isEditable": True},
+                    {"colId": "COL3", "type": "INV", "value": "", "isEditable": False},
+                ],
+            },
+        ],
+    )
+
+
+def _patch_json(patches) -> list[dict]:
+    return [p.model_dump(exclude_none=True, by_alias=True, mode="json") for p in patches]
+
+
+def test_build_process_value_patches_updates_stored_and_adds_new_cells():
+    """Test a stored cell is updated against its value and an empty one is added."""
+    patches = BatchDataCollection._build_process_value_patches(
+        grid=_process_grid(),
+        values=[
+            BatchProcessValue(row_id="ROW8", col_id="COL2", value="45"),
+            BatchProcessValue(row_id="ROW8", col_id="COL3", value="500"),
+        ],
+    )
+
+    assert _patch_json(patches) == [
+        {
+            "Id": {"rowId": "ROW8", "colId": "COL2"},
+            "data": [
+                {"attribute": "cell", "operation": "update", "oldValue": "30", "newValue": "45"}
+            ],
+        },
+        {
+            "Id": {"rowId": "ROW8", "colId": "COL3"},
+            "data": [{"attribute": "cell", "operation": "add", "newValue": "500"}],
+        },
+    ]
+
+
+def test_build_process_value_patches_skips_unchanged_cells():
+    """Test a value equal to the current cell sends nothing."""
+    patches = BatchDataCollection._build_process_value_patches(
+        grid=_process_grid(),
+        values=[BatchProcessValue(row_id="ROW8", col_id="COL2", value="30")],
+    )
+
+    assert patches == []
+
+
+@pytest.mark.parametrize(
+    ("row_id", "col_id"),
+    [("ROW2", "COL2"), ("ROW8", "COL1"), ("ROW99", "COL2")],
+)
+def test_build_process_value_patches_rejects_non_process_cells(row_id, col_id):
+    """Test a target outside the parameter rows' formula columns is rejected."""
+    with pytest.raises(ValueError, match="not a process parameter cell"):
+        BatchDataCollection._build_process_value_patches(
+            grid=_process_grid(),
+            values=[BatchProcessValue(row_id=row_id, col_id=col_id, value="1")],
+        )
