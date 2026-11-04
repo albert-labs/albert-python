@@ -2834,7 +2834,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
             inventory_id=data.get("id"),
         )
 
-    def _filter_cells(self, *, cells: list[Cell], response_dict: dict):
+    def _filter_cells(
+        self, *, cells: list[Cell], status_code: int, response_dict: dict | None = None
+    ):
+        # The session raises on 4xx/5xx, so any status other than 206 saved the whole batch.
+        if status_code != 206:
+            return (cells, [])
         failed_keys = set()
         for item in response_dict.get("FailedItems") or []:
             if not isinstance(item, dict):
@@ -3120,38 +3125,24 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         for payload in chunk_payloads
                     ]
                     response = self.session.patch(this_url, json=payload_body)
-                    target_cells = _unique_cells(chunk_cells)
-
-                    if response.status_code == 204:
-                        for c in target_cells:
-                            key = (c.design_id, c.row_id, c.column_id)
-                            if key not in updated_keys:
-                                updated_keys.add(key)
-                                updated.append(c)
-                        if not refresh:
-                            self._apply_cells_to_cached_grids(cells=target_cells)
-                    elif response.status_code == 206:
-                        cell_results = self._filter_cells(
-                            cells=target_cells, response_dict=response.json()
-                        )
-                        for c in cell_results[0]:
-                            key = (c.design_id, c.row_id, c.column_id)
-                            if key not in updated_keys:
-                                updated_keys.add(key)
-                                updated.append(c)
-                        if not refresh:
-                            self._apply_cells_to_cached_grids(cells=cell_results[0])
-                        for c in cell_results[1]:
-                            key = (c.design_id, c.row_id, c.column_id)
-                            if key not in failed_keys:
-                                failed_keys.add(key)
-                                failed.append(c)
-                    else:
-                        for c in target_cells:
-                            key = (c.design_id, c.row_id, c.column_id)
-                            if key not in failed_keys:
-                                failed_keys.add(key)
-                                failed.append(c)
+                    # Only a partial save (206) carries per-cell failures in its body.
+                    cell_results = self._filter_cells(
+                        cells=_unique_cells(chunk_cells),
+                        status_code=response.status_code,
+                        response_dict=response.json() if response.status_code == 206 else None,
+                    )
+                    for c in cell_results[0]:
+                        key = (c.design_id, c.row_id, c.column_id)
+                        if key not in updated_keys:
+                            updated_keys.add(key)
+                            updated.append(c)
+                    if not refresh:
+                        self._apply_cells_to_cached_grids(cells=cell_results[0])
+                    for c in cell_results[1]:
+                        key = (c.design_id, c.row_id, c.column_id)
+                        if key not in failed_keys:
+                            failed_keys.add(key)
+                            failed.append(c)
 
                 batch_index += 1
 
