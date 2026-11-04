@@ -377,8 +377,7 @@ class AttributeCollection(BaseCollection):
         ``validation``, ``formula_metadata``. ``reference_name`` must remain unique
         across definitions. ``unit_id`` can only be set once (when no unit is currently
         assigned); it cannot be changed afterwards. ``formula_metadata``: pass the full
-        list; formulas left out are removed, ``[]`` removes them all, and ``None`` leaves
-        them unchanged.
+        list; formulas left out are removed, and ``None`` or ``[]`` removes them all.
         """
         if attribute.id is None:
             raise ValueError("Attribute ID is required for update.")
@@ -777,8 +776,7 @@ class AttributeCollection(BaseCollection):
 
         # Formulas go as one whole-list op: root and per-formula ops cannot be mixed,
         # and adding a formula needs a root op. Never send old_value; it is rejected.
-        # None leaves formulas unchanged, like the other fields here; only [] clears them.
-        if "formula_metadata" in updated.model_fields_set and updated.formula_metadata is not None:
+        if "formula_metadata" in updated.model_fields_set:
             old_formulas = self._dump_formulas(existing.formula_metadata)
             new_formulas = self._dump_formulas(updated.formula_metadata)
             if new_formulas != old_formulas:
