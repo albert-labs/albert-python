@@ -246,6 +246,14 @@ def test_add_and_update_property_data_on_inventory(
     assert r[1].data_columns[0].value == "66.6"
 
 
+# Remove xfail once inventory property-data reads return custom values for task-linked items.
+@pytest.mark.xfail(
+    strict=False,
+    reason=(
+        "api-propertydata inventory GET omits custom property data (NoTask) when the "
+        "inventory has linked tasks, so added values are not returned."
+    ),
+)
 def test_update_property_on_inventory_adds_then_updates(
     client: Albert,
     seeded_inventory: list[BaseTask],
