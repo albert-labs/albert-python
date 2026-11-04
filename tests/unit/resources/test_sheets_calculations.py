@@ -6,8 +6,18 @@ import pytest
 import responses
 
 from albert.core.shared.models.patch import PatchDatum
-from albert.exceptions import AlbertPartialError
-from albert.resources.sheets import Cell, CellType, Column, ColumnPosition, Sheet
+from albert.exceptions import AlbertException, AlbertPartialError
+from albert.resources.attributes import Attribute, ExpressionType, FormulaMetadata
+from albert.resources.sheets import (
+    Cell,
+    CellType,
+    Column,
+    ColumnPosition,
+    Sheet,
+    _CalculationPlan,
+    _formula_attribute_ids,
+    _formula_reads_function,
+)
 from tests.unit.conftest import UNIT_BASE_URL
 
 
@@ -506,3 +516,327 @@ def test_plan_column_moves_without_children_moves_every_misplaced_column():
     )
 
     assert moves == [("COL3", "COL1", ColumnPosition.LEFT_OF)]
+
+
+# --- _formula_attribute_ids ---
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        pytest.param("wt% * [ATR9] / [ATR10]", ["ATR9", "ATR10"], id="in-order"),
+        pytest.param("[ATR9] + [ATR10] * [ATR9]", ["ATR9", "ATR10"], id="duplicates"),
+        pytest.param('sum(wt% WHERE [ATR66] = "Resin")', ["ATR66"], id="where-key"),
+        pytest.param("wt% * [ ATR9 ]", ["ATR9"], id="padded"),
+        pytest.param("wt% * [Solid %]", ["Solid %"], id="name"),
+        pytest.param("sum(ingredient_basis)", [], id="none"),
+    ],
+)
+def test_formula_attribute_ids(expression, expected):
+    """Test that bracketed references are listed in order without duplicates."""
+    assert _formula_attribute_ids(expression) == expected
+
+
+# --- _formula_reads_function ---
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        pytest.param('sum(wt% WHERE Function = "Resin")', True, id="where-function"),
+        pytest.param('sum(wt% where function = "Resin")', True, id="lowercase"),
+        pytest.param('sum(wt% WHERE function_tag = "Resin")', True, id="function-tag"),
+        pytest.param('sum(wt% WHERE [ATR66] = "Resin")', False, id="where-attribute"),
+        pytest.param("wt% * [ATR9]", False, id="no-where"),
+    ],
+)
+def test_formula_reads_function(expression, expected):
+    """Test that only a filter on the Function column counts as reading it."""
+    assert _formula_reads_function(expression) is expected
+
+
+# --- Sheet._plan_calculation ---
+
+
+def _formula(name: str, expression: str, kind: ExpressionType | str) -> FormulaMetadata:
+    return FormulaMetadata(
+        display_name=name, expression=expression, expression_type=kind, request_inverse=False
+    )
+
+
+def _ib(name: str = "Solids Share", expression: str = "wt% * [ATR9] / 100") -> FormulaMetadata:
+    return _formula(name, expression, ExpressionType.INGREDIENT_BASIS)
+
+
+def _cp(name: str = "Total Solids", expression: str = "sum(ingredient_basis)") -> FormulaMetadata:
+    return _formula(name, expression, ExpressionType.CALCULATED_PROPERTY)
+
+
+def _attribute(*formulas: FormulaMetadata, attribute_id: str = "ATR1") -> Attribute:
+    return Attribute(
+        id=attribute_id, full_name=f"Name of {attribute_id}", formula_metadata=formulas
+    )
+
+
+def _entry(name: str, attribute_id: str = "ATR1", **extra) -> dict:
+    return {
+        "id": attribute_id,
+        "name": name,
+        "label": name,
+        "parentAttributeId": attribute_id,
+        **extra,
+    }
+
+
+def _config(*, attributes=(), bases=(), properties=(), rxn=()) -> dict:
+    return {
+        "sheetId": "SHEET1",
+        "attributes": [{"id": i, "name": i} for i in attributes],
+        "ingredientBasis": list(bases),
+        "calculatedProperty": list(properties),
+        "rxnStaticCols": list(rxn),
+        "rxnChildCols": [],
+    }
+
+
+def _plan(config: dict, attribute: Attribute, name: str) -> _CalculationPlan:
+    return Sheet._plan_calculation(config=config, attribute=attribute, display_name=name)
+
+
+def test_plan_calculation_adds_ingredient_basis_with_its_references():
+    """Test that an ingredient basis is planned with the attributes it references."""
+    basis = _ib(expression="wt% * [ATR9] / [ATR10]")
+
+    plan = _plan(_config(), _attribute(basis), "Solids Share")
+
+    assert plan == _CalculationPlan(basis, None, ["ATR9", "ATR10"], False)
+
+
+def test_plan_calculation_skips_references_the_sheet_already_uses():
+    """Test that referenced attributes already on the sheet are not added again."""
+    basis = _ib(expression="wt% * [ATR9] / [ATR10]")
+
+    plan = _plan(_config(attributes=["ATR9"]), _attribute(basis), "Solids Share")
+
+    assert plan.attribute_ids == ["ATR10"]
+
+
+def test_plan_calculation_changes_nothing_for_an_ingredient_basis_already_on_the_sheet():
+    """Test that adding an ingredient basis the sheet has plans nothing."""
+    config = _config(attributes=["ATR9"], bases=[_entry("Solids Share")])
+
+    plan = _plan(config, _attribute(_ib()), "Solids Share")
+
+    assert plan == _CalculationPlan(None, None, [], False)
+
+
+def test_plan_calculation_rejects_a_second_ingredient_basis_of_an_attribute():
+    """Test that a sheet keeps one ingredient basis per attribute."""
+    config = _config(bases=[_entry("Solids Share")])
+    attribute = _attribute(_ib(), _ib(name="Volume Share"))
+
+    with pytest.raises(AlbertException, match="one ingredient basis per attribute"):
+        _plan(config, attribute, "Volume Share")
+
+
+def test_plan_calculation_brings_the_ingredient_basis_a_calculated_property_reads():
+    """Test that a calculated property reading ingredient_basis brings its attribute's first basis."""
+    basis = _ib(expression="wt% * [ATR9] / 100")
+    prop = _cp(expression="sum(ingredient_basis) / [ATR10]")
+    attribute = _attribute(prop, basis, _ib(name="Volume Share"))
+
+    plan = _plan(_config(), attribute, "Total Solids")
+
+    assert plan == _CalculationPlan(basis, prop, ["ATR9", "ATR10"], False)
+
+
+def test_plan_calculation_uses_the_ingredient_basis_already_on_the_sheet():
+    """Test that a calculated property uses whichever basis of its attribute the sheet has."""
+    prop = _cp()
+    config = _config(bases=[_entry("Volume Share")])
+
+    plan = _plan(config, _attribute(prop, _ib(), _ib(name="Volume Share")), "Total Solids")
+
+    assert plan == _CalculationPlan(None, prop, [], False)
+
+
+def test_plan_calculation_adds_a_calculated_property_without_a_basis():
+    """Test that a calculated property not reading ingredient_basis brings no basis."""
+    prop = _cp(expression="harmonicMean(wt%, [ATR9])")
+
+    plan = _plan(_config(), _attribute(prop, _ib()), "Total Solids")
+
+    assert plan == _CalculationPlan(None, prop, ["ATR9"], False)
+
+
+def test_plan_calculation_rejects_a_calculated_property_whose_attribute_has_no_basis():
+    """Test that a calculated property reading a basis its attribute lacks is refused."""
+    with pytest.raises(AlbertException, match="which has none"):
+        _plan(_config(), _attribute(_cp()), "Total Solids")
+
+
+def test_plan_calculation_changes_nothing_for_a_calculated_property_already_on_the_sheet():
+    """Test that adding a calculated property the sheet has plans nothing."""
+    config = _config(properties=[_entry("Total Solids", rowId="ROW5")])
+
+    plan = _plan(config, _attribute(_cp(), _ib()), "Total Solids")
+
+    assert plan == _CalculationPlan(None, None, [], False)
+
+
+def test_plan_calculation_rejects_a_calculated_property_name_used_by_another_attribute():
+    """Test that two calculated properties on a sheet cannot share a name."""
+    config = _config(properties=[_entry("Total Solids", attribute_id="ATR2")])
+
+    with pytest.raises(AlbertException, match="from attribute ATR2"):
+        _plan(config, _attribute(_cp(), _ib()), "Total Solids")
+
+
+def test_plan_calculation_flags_a_function_filter():
+    """Test that a formula filtering by Function needs a Function column."""
+    prop = _cp(expression='sum(wt% WHERE Function = "Resin")')
+
+    plan = _plan(_config(), _attribute(prop), "Total Solids")
+
+    assert plan.needs_function_column is True
+
+
+def test_plan_calculation_rejects_an_unknown_formula_name():
+    """Test that a display name the attribute does not define is refused."""
+    with pytest.raises(AlbertException, match="no formula named 'Missing'"):
+        _plan(_config(), _attribute(_ib()), "Missing")
+
+
+def test_plan_calculation_rejects_an_unknown_formula_type():
+    """Test that a formula of a type the SDK does not know is refused."""
+    attribute = _attribute(_formula("Future", "wt%", "FUTURE_TYPE"))
+
+    with pytest.raises(AlbertException, match="unknown type"):
+        _plan(_config(), attribute, "Future")
+
+
+@pytest.mark.parametrize(
+    ("used", "expression"),
+    [
+        pytest.param(9, "wt% * [ATR90]", id="reaches-10"),
+        pytest.param(10, "wt% * [ATR0]", id="at-10-reference-already-used"),
+        pytest.param(12, "wt%", id="over-10-adds-none"),
+    ],
+)
+def test_plan_calculation_allows_saves_within_the_cap(used, expression):
+    """Test that the attribute cap only refuses a save that grows past 10."""
+    attributes = [f"ATR{i}" for i in range(used)]
+    basis = _ib(expression=expression)
+
+    plan = _plan(_config(attributes=attributes), _attribute(basis), "Solids Share")
+
+    assert plan.ingredient_basis == basis
+
+
+def test_plan_calculation_rejects_a_save_that_grows_past_the_cap():
+    """Test that adding references past 10 attributes is refused with the new count."""
+    attributes = [f"ATR{i}" for i in range(9)]
+    basis = _ib(expression="wt% * [ATR90] / [ATR91]")
+
+    with pytest.raises(AlbertException, match="would make it 11"):
+        _plan(_config(attributes=attributes), _attribute(basis), "Solids Share")
+
+
+# --- Sheet._calculations_with ---
+
+
+def _referenced(attribute_id: str) -> Attribute:
+    return Attribute(id=attribute_id, full_name=f"Name of {attribute_id}")
+
+
+def test_calculations_with_adds_entries_and_keeps_the_rest():
+    """Test that new entries are added in the panel's shape and existing ones are kept as is."""
+    kept = {"id": "ATR5", "name": "Density", "label": "Density", "category": "kept"}
+    config = _config(bases=[_entry("Old Share", attribute_id="ATR5")], rxn=[{"role": "rxn_mw"}])
+    config["attributes"] = [kept]
+    plan = _CalculationPlan(_ib(), _cp(), ["ATR9"], False)
+
+    body = Sheet._calculations_with(
+        config=config,
+        attribute_id="ATR1",
+        plan=plan,
+        attributes=[_referenced("ATR9")],
+        row_id="ROW5",
+    )
+
+    assert body == {
+        "attributes": [{"id": "ATR9", "name": "Name of ATR9", "label": "Name of ATR9"}, kept],
+        "ingredientBasis": [_entry("Old Share", attribute_id="ATR5"), _entry("Solids Share")],
+        "calculatedProperty": [_entry("Total Solids", rowId="ROW5")],
+        "rxnStaticCols": [{"role": "rxn_mw"}],
+    }
+
+
+def test_calculations_with_adds_only_the_planned_formula():
+    """Test that a plan with only a calculated property leaves the bases untouched."""
+    config = _config(bases=[_entry("Solids Share")])
+    plan = _CalculationPlan(None, _cp(), [], False)
+
+    body = Sheet._calculations_with(
+        config=config, attribute_id="ATR1", plan=plan, attributes=[], row_id="ROW5"
+    )
+
+    assert body["ingredientBasis"] == [_entry("Solids Share")]
+    assert body["calculatedProperty"] == [_entry("Total Solids", rowId="ROW5")]
+
+
+# --- Sheet._calculations_without ---
+
+
+def test_calculations_without_removes_only_the_matching_formula():
+    """Test that only the entry with the same attribute and name is removed."""
+    config = _config(
+        attributes=["ATR9"],
+        bases=[_entry("Solids Share")],
+        properties=[_entry("Total Solids"), _entry("Total Solids", attribute_id="ATR2")],
+        rxn=[{"role": "rxn_mw"}],
+    )
+
+    body = Sheet._calculations_without(
+        config=config, attribute_id="ATR1", display_name="Total Solids"
+    )
+
+    assert body == {
+        "attributes": [{"id": "ATR9", "name": "ATR9"}],
+        "ingredientBasis": [_entry("Solids Share")],
+        "calculatedProperty": [_entry("Total Solids", attribute_id="ATR2")],
+        "rxnStaticCols": [{"role": "rxn_mw"}],
+    }
+
+
+def test_calculations_without_keeps_everything_when_the_formula_is_absent():
+    """Test that removing a formula the sheet lacks leaves the lists unchanged."""
+    config = _config(bases=[_entry("Solids Share")], properties=[_entry("Total Solids")])
+
+    body = Sheet._calculations_without(config=config, attribute_id="ATR1", display_name="Missing")
+
+    assert body["ingredientBasis"] == config["ingredientBasis"]
+    assert body["calculatedProperty"] == config["calculatedProperty"]
+
+
+# --- Sheet._basis_readers ---
+
+
+def test_basis_readers_lists_calculated_properties_on_the_sheet_that_read_the_basis():
+    """Test that only calculated properties on the sheet that read ingredient_basis count."""
+    attribute = _attribute(
+        _ib(),
+        _cp(),
+        _cp(name="Weighted", expression="harmonicMean(wt%, [ATR9])"),
+        _cp(name="Not On Sheet"),
+    )
+    config = _config(properties=[_entry("Total Solids"), _entry("Weighted")])
+
+    assert Sheet._basis_readers(config=config, attribute=attribute) == ["Total Solids"]
+
+
+def test_basis_readers_ignores_another_attributes_calculated_properties():
+    """Test that a calculated property of another attribute never holds the basis."""
+    config = _config(properties=[_entry("Total Solids", attribute_id="ATR2")])
+
+    assert Sheet._basis_readers(config=config, attribute=_attribute(_ib(), _cp())) == []
