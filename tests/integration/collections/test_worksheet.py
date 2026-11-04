@@ -80,7 +80,7 @@ def test_setup_new_sheet_from_template(client: Albert, seeded_worksheet: Workshe
         source_sheet_name=seeded_worksheet.sheets[0].name,
         template_name=f"TEST - tpl {uuid.uuid4()}",
     )
-    sheet_name = f"TEST - from tpl {uuid.uuid4()}"
+    sheet_name = f"TEST - tpl {uuid.uuid4()}"
     sheet_id = None
     try:
         worksheet = client.worksheets.setup_new_sheet_from_template(
