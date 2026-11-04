@@ -291,3 +291,36 @@ def test_update_cells_never_writes_calculated_cells(calculations_sheet: Calculat
     assert _cell_at(sheet, column_id=column_id, row_id=ingredient_row_id).value == "55"
     assert _cell_at(sheet, column_id=column_id, row_id=cp.row_id).value == cp.value
     assert _cell_at(sheet, column_id=basis_column_id, row_id=basis.row_id).value == basis.value
+
+
+def test_reorder_columns_keeps_ingredient_basis_with_formulas(
+    calculations_sheet: CalculationsSheet,
+):
+    """Test reordering formulation columns on a sheet with ingredient basis columns."""
+    sheet = calculations_sheet.sheet
+    sheet.grid = None
+    columns = sheet.columns
+    formula_ids = [c.column_id for c in columns if c.type == CellType.INVENTORY]
+    basis_ids = [c.column_id for c in columns if c.type == CellType.INGREDIENT_BASIS]
+    others = [
+        c.column_id
+        for c in columns
+        if c.column_id not in formula_ids and c.column_id not in basis_ids
+    ]
+    requested = [*others, *reversed(formula_ids)]
+
+    # Every column listed, ingredient basis columns at the end, as from sheet.columns.
+    sheet.reorder_columns(column_ids=[*requested, *basis_ids])
+
+    sheet.grid = None
+    after = sheet.columns
+    assert [c.column_id for c in after if c.type != CellType.INGREDIENT_BASIS] == requested
+    assert sorted(c.column_id for c in after if c.type == CellType.INGREDIENT_BASIS) == sorted(
+        basis_ids
+    )
+    # Each ingredient basis column still follows a formulation column.
+    assert all(
+        after[i - 1].type == CellType.INVENTORY
+        for i, c in enumerate(after)
+        if c.type == CellType.INGREDIENT_BASIS
+    )

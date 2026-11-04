@@ -5,7 +5,7 @@ import json
 import pytest
 import responses
 
-from albert.resources.sheets import Cell, CellType, Column, Sheet
+from albert.resources.sheets import Cell, CellType, Column, ColumnPosition, Sheet
 from tests.unit.conftest import UNIT_BASE_URL
 
 
@@ -296,3 +296,84 @@ def test_last_top_level_column_id_returns_last_column_without_ingredient_basis()
 def test_last_top_level_column_id_returns_none_without_columns():
     """Test that a sheet without columns has no anchor column."""
     assert Sheet._last_top_level_column_id(columns=[]) is None
+
+
+# --- Sheet._plan_column_moves ---
+
+
+def _replay(order: list[str], moves: list[tuple[str, str, ColumnPosition]]) -> list[str]:
+    """Apply top-level moves the way the sheet does: source goes beside the reference."""
+    order = list(order)
+    for source_id, reference_id, position in moves:
+        order.remove(source_id)
+        offset = 1 if position == ColumnPosition.RIGHT_OF else 0
+        order.insert(order.index(reference_id) + offset, source_id)
+    return order
+
+
+_CURRENT = ["COL1", "COL5", "COL7", "COL6", "COL8", "COL9"]
+_CHILDREN = {"COL7", "COL8"}
+
+
+def test_plan_column_moves_moves_only_top_level_columns():
+    """Test that moves never use an ingredient basis column as source or reference."""
+    moves = Sheet._plan_column_moves(
+        current_ids=_CURRENT,
+        column_ids=["COL1", "COL6", "COL8", "COL9", "COL5", "COL7"],
+        child_ids=_CHILDREN,
+    )
+
+    assert moves == [
+        ("COL6", "COL5", ColumnPosition.LEFT_OF),
+        ("COL9", "COL5", ColumnPosition.LEFT_OF),
+    ]
+
+
+def test_plan_column_moves_replay_reaches_requested_order():
+    """Test that replaying the planned moves yields the requested top-level order."""
+    moves = Sheet._plan_column_moves(
+        current_ids=_CURRENT,
+        column_ids=["COL9", "COL6", "COL8", "COL1", "COL5", "COL7"],
+        child_ids=_CHILDREN,
+    )
+
+    assert _replay(["COL1", "COL5", "COL6", "COL9"], moves) == ["COL9", "COL6", "COL1", "COL5"]
+
+
+def test_plan_column_moves_ignores_where_ingredient_basis_columns_are_listed():
+    """Test that listing, omitting, or misplacing ingredient basis columns plans the same moves."""
+    listed = Sheet._plan_column_moves(
+        current_ids=_CURRENT,
+        column_ids=["COL1", "COL6", "COL8", "COL5", "COL7", "COL9"],
+        child_ids=_CHILDREN,
+    )
+    misplaced = Sheet._plan_column_moves(
+        current_ids=_CURRENT,
+        column_ids=["COL7", "COL1", "COL6", "COL5", "COL9", "COL8"],
+        child_ids=_CHILDREN,
+    )
+    omitted = Sheet._plan_column_moves(
+        current_ids=_CURRENT, column_ids=["COL1", "COL6", "COL5", "COL9"], child_ids=_CHILDREN
+    )
+
+    assert listed == misplaced == omitted == [("COL6", "COL5", ColumnPosition.LEFT_OF)]
+
+
+def test_plan_column_moves_returns_no_moves_when_top_level_order_matches():
+    """Test that an order differing only in ingredient basis positions plans no moves."""
+    moves = Sheet._plan_column_moves(
+        current_ids=_CURRENT,
+        column_ids=["COL8", "COL1", "COL5", "COL6", "COL9", "COL7"],
+        child_ids=_CHILDREN,
+    )
+
+    assert moves == []
+
+
+def test_plan_column_moves_without_children_moves_every_misplaced_column():
+    """Test that a sheet without ingredient basis columns reorders as before."""
+    moves = Sheet._plan_column_moves(
+        current_ids=["COL1", "COL2", "COL3"], column_ids=["COL3", "COL1", "COL2"], child_ids=set()
+    )
+
+    assert moves == [("COL3", "COL1", ColumnPosition.LEFT_OF)]

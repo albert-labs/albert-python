@@ -3514,12 +3514,37 @@ class Sheet(BaseSessionResource):  # noqa:F811
         }
         self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
 
+    @staticmethod
+    def _plan_column_moves(
+        *, current_ids: list[str], column_ids: list[str], child_ids: set[str]
+    ) -> list[tuple[str, str, ColumnPosition]]:
+        """The ``(source_id, reference_id, position)`` moves that reach ``column_ids``.
+
+        Ingredient basis columns (``child_ids``) move with their formula column and
+        cannot be a source or reference of a top-level move, so they are dropped from
+        both orders.
+        """
+        order = [col_id for col_id in current_ids if col_id not in child_ids]
+        target = [col_id for col_id in column_ids if col_id not in child_ids]
+        moves: list[tuple[str, str, ColumnPosition]] = []
+        for i, target_id in enumerate(target):
+            j = order.index(target_id)
+            if j == i:
+                continue
+            position = ColumnPosition.LEFT_OF if j > i else ColumnPosition.RIGHT_OF
+            moves.append((target_id, order[i], position))
+            order.pop(j)
+            order.insert(i, target_id)
+        return moves
+
     @validate_call
     def reorder_columns(self, *, column_ids: list[str]) -> None:
         """Reorder all columns on this sheet from left to right.
 
         Provide every column ID on the sheet exactly once, in the desired display
         order. The first ID is placed at the left edge; the last at the right.
+        Ingredient basis columns always stay with their formulation column: they may
+        be listed or left out, and where they are listed is ignored.
 
         !!! example
             ```python
@@ -3532,7 +3557,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ----------
         column_ids : list[str]
             Column IDs in the desired left-to-right order. Must include every column
-            on the sheet exactly once.
+            on the sheet exactly once; ingredient basis columns are optional.
 
         Returns
         -------
@@ -3542,44 +3567,36 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ------
         AlbertException
             If ``column_ids`` is empty, contains duplicates or unknown IDs, or omits
-            any column on the sheet.
+            any column on the sheet other than an ingredient basis column.
         """
         if not column_ids:
             raise AlbertException("column_ids must include at least one column ID.")
 
-        current_ids = [col.column_id for col in self.columns]
-        current_set = set(current_ids)
+        columns = self.columns
+        current_ids = [col.column_id for col in columns]
+        child_ids = {col.column_id for col in columns if col.type == CellType.INGREDIENT_BASIS}
         if len(column_ids) != len(set(column_ids)):
             raise AlbertException("column_ids must not contain duplicates.")
 
-        unknown = set(column_ids) - current_set
+        unknown = set(column_ids) - set(current_ids)
         if unknown:
             raise AlbertException(f"Unknown column ID(s): {', '.join(sorted(unknown))}")
 
-        missing = current_set - set(column_ids)
+        missing = set(current_ids) - child_ids - set(column_ids)
         if missing:
             raise AlbertException(
                 "column_ids must include every column on the sheet; "
                 f"missing: {', '.join(sorted(missing))}"
             )
 
-        if column_ids == current_ids:
+        moves = self._plan_column_moves(
+            current_ids=current_ids, column_ids=column_ids, child_ids=child_ids
+        )
+        if not moves:
             return
 
-        order = list(current_ids)
-        for i, target_id in enumerate(column_ids):
-            j = order.index(target_id)
-            if j == i:
-                continue
-            reference_id = order[i]
-            position = ColumnPosition.LEFT_OF if j > i else ColumnPosition.RIGHT_OF
-            self._move_column(
-                source_id=target_id,
-                reference_id=reference_id,
-                position=position,
-            )
-            order.pop(j)
-            order.insert(i, target_id)
+        for source_id, reference_id, position in moves:
+            self._move_column(source_id=source_id, reference_id=reference_id, position=position)
 
         self.grid = None
 
