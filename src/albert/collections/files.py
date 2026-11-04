@@ -1,8 +1,6 @@
 import json
 from typing import IO
 
-import requests
-
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.resources.files import (
@@ -296,4 +294,4 @@ class FileCollection(BaseCollection):
             generic=generic,
             category=category,
         )
-        requests.put(upload_url, data=data, headers={"Content-Type": content_type})
+        self.session.put_signed_url(upload_url, data=data, headers={"Content-Type": content_type})

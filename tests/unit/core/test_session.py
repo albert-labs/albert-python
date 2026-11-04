@@ -487,6 +487,119 @@ def test_zero_retries_is_respected_not_treated_as_falsy_default():
     assert retry.total == 0
 
 
+# --- put_signed_url ---------------------------------------------------------------
+
+
+@responses.activate
+def test_put_signed_url_sends_no_authorization_header():
+    """Test that signed-URL uploads never carry the session's bearer token."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="secret-token")
+    responses.put("https://storage.example/signed", status=200)
+
+    session.put_signed_url(
+        "https://storage.example/signed", data=b"payload", headers={"Content-Type": "text/csv"}
+    )
+
+    assert "Authorization" not in responses.calls[0].request.headers
+
+
+@responses.activate
+def test_put_signed_url_sends_supplied_headers():
+    """Test that caller-supplied headers reach the storage request."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    responses.put("https://storage.example/signed", status=200)
+
+    session.put_signed_url(
+        "https://storage.example/signed", data=b"payload", headers={"Content-Type": "text/csv"}
+    )
+
+    assert responses.calls[0].request.headers["Content-Type"] == "text/csv"
+
+
+@responses.activate
+def test_put_signed_url_raises_on_error_status():
+    """Test that a non-2xx storage response raises instead of passing silently."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    responses.put("https://storage.example/signed", status=403)
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        session.put_signed_url(
+            "https://storage.example/signed", data=b"payload", headers={"Content-Type": "text/csv"}
+        )
+
+
+def test_put_signed_url_applies_session_timeout(monkeypatch: pytest.MonkeyPatch):
+    """Test that the session default timeout applies to signed-URL uploads."""
+    captured = {}
+
+    def fake_send(self, request, **kwargs):
+        captured.update(kwargs)
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b""
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    session.put_signed_url(
+        "https://storage.example/signed", data=b"payload", headers={"Content-Type": "text/csv"}
+    )
+
+    assert captured["timeout"] == DEFAULT_TIMEOUT
+
+
+def test_put_signed_url_per_call_timeout_overrides_session_default(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test that a per-call timeout takes precedence over the session default."""
+    captured = {}
+
+    def fake_send(self, request, **kwargs):
+        captured.update(kwargs)
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b""
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t", timeout=7.5)
+
+    session.put_signed_url(
+        "https://storage.example/signed",
+        data=b"payload",
+        headers={"Content-Type": "text/csv"},
+        timeout=2,
+    )
+
+    assert captured["timeout"] == 2
+
+
+def test_put_signed_url_uses_session_proxy_configuration(monkeypatch: pytest.MonkeyPatch):
+    """Test that proxies configured on the session apply to signed-URL uploads."""
+    captured = {}
+
+    def fake_send(self, request, **kwargs):
+        captured.update(kwargs)
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b""
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    session.proxies = {"https": "http://proxy.example:8080"}
+
+    session.put_signed_url(
+        "https://storage.example/signed", data=b"payload", headers={"Content-Type": "text/csv"}
+    )
+
+    assert captured["proxies"] == {"https": "http://proxy.example:8080"}
+
+
 # --- extra headers --------------------------------------------------------------
 
 
