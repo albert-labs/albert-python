@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.69.0](https://github.com/albert-labs/albert-python/compare/v1.68.0...v1.69.0) (2026-11-04)
+
+
+### Features
+
+* **projects:** support updating project locations via update() ([#915](https://github.com/albert-labs/albert-python/issues/915)) ([2f11714](https://github.com/albert-labs/albert-python/commit/2f117141867d7927adae32194968ecdd026d1984))
+* **projects:** support updating project_class via update() ([#914](https://github.com/albert-labs/albert-python/issues/914)) ([71aa3d9](https://github.com/albert-labs/albert-python/commit/71aa3d94e12f87d281f9d1037f5a350ef9667cdf))
+* **worksheets:** create template sheets with the current endpoint ([#916](https://github.com/albert-labs/albert-python/issues/916)) ([5085233](https://github.com/albert-labs/albert-python/commit/5085233fc182c6aa734219c51e93de34927df33b))
+
+
+### Bug Fixes
+
+* **property_data:** include voided records in search by default ([#917](https://github.com/albert-labs/albert-python/issues/917)) ([e3393c2](https://github.com/albert-labs/albert-python/commit/e3393c2e7a585275a2484ccbd1f57b5aa5f3798a))
+
 ## [1.68.0](https://github.com/albert-labs/albert-python/compare/v1.67.0...v1.68.0) (2026-10-23)
 
 
