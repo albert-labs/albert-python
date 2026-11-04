@@ -217,17 +217,22 @@ class ProjectCollection(BaseCollection):
         -----
         The following fields can be updated: ``description``, ``grid``,
         ``locations``, ``metadata``, ``state``, ``acl``.
+
+        ``locations`` is replaced as a complete list: set it to the full set of
+        locations the project should have. A project keeps at least one location
+        and can hold at most 20.
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
 
+        location_removals: list[str] = []
         if "locations" in project.model_fields_set:
-            patch_data.data.extend(
-                self._generate_locations_patch_operations(
-                    existing=existing_project.locations,
-                    updated=project.locations,
-                )
+            add_operation, location_removals = self._generate_locations_patch_operations(
+                existing=existing_project.locations,
+                updated=project.locations,
             )
+            if add_operation is not None:
+                patch_data.data.append(add_operation)
 
         url = f"{self.base_path}/{project.id}"
         patch_payload = patch_data.model_dump(mode="json", by_alias=True)
@@ -242,10 +247,20 @@ class ProjectCollection(BaseCollection):
         if patch_payload["data"]:
             self.session.patch(url, json=patch_payload)
 
+        for location_id in location_removals:
+            removal = PatchDatum(
+                attribute="locationId",
+                operation=PatchOperation.DELETE,
+                old_value=location_id,
+            )
+            self.session.patch(
+                url, json={"data": [removal.model_dump(mode="json", by_alias=True)]}
+            )
+
         if acl_operations:
             self.session.patch(f"{url}/acl", json={"data": acl_operations})
 
-        if not patch_payload["data"] and not acl_operations:
+        if not patch_payload["data"] and not acl_operations and not location_removals:
             return existing_project
 
         return self.get_by_id(id=project.id)
@@ -310,36 +325,36 @@ class ProjectCollection(BaseCollection):
         *,
         existing: list[SerializeAsEntityLink[Location]] | None,
         updated: list[SerializeAsEntityLink[Location]] | None,
-    ) -> list[PatchDatum]:
-        """Build PATCH operations for project location membership changes.
+    ) -> tuple[PatchDatum | None, list[str]]:
+        """Build the location addition and the location ids to remove.
 
         Locations are identity-only (the id is the location), so a change is
-        expressed as additions and removals: added ids go in a single
-        ``locations`` add op, removed ids in one ``locationId`` delete op each.
+        expressed as additions and removals. Added ids go in a single
+        ``locations`` add operation; each removed id is returned for its own
+        removal, since locations are removed one id at a time.
         """
         existing_ids = [location.id for location in existing or []]
         updated_ids = [location.id for location in updated or []]
+        if any(location_id is None for location_id in updated_ids):
+            raise ValueError("Every location must have an id before it can be added to a project.")
+        if len(set(updated_ids)) != len(updated_ids):
+            raise ValueError("Duplicate location ids are not allowed.")
+        if existing_ids and not updated_ids:
+            raise ValueError("A project must keep at least one location.")
+
         to_add = [location_id for location_id in updated_ids if location_id not in existing_ids]
         to_delete = [location_id for location_id in existing_ids if location_id not in updated_ids]
 
-        operations: list[PatchDatum] = []
-        if to_add:
-            operations.append(
-                PatchDatum(
-                    attribute="locations",
-                    operation=PatchOperation.ADD,
-                    new_value=[{"id": location_id} for location_id in to_add],
-                )
+        add_operation = (
+            PatchDatum(
+                attribute="locations",
+                operation=PatchOperation.ADD,
+                new_value=[{"id": location_id} for location_id in to_add],
             )
-        for location_id in to_delete:
-            operations.append(
-                PatchDatum(
-                    attribute="locationId",
-                    operation=PatchOperation.DELETE,
-                    old_value=location_id,
-                )
-            )
-        return operations
+            if to_add
+            else None
+        )
+        return add_operation, to_delete
 
     @validate_call
     def delete(self, *, id: ProjectId) -> None:
