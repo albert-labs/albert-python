@@ -3309,6 +3309,56 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#albert.resources.batch_data.BatchProcessValue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BatchProcessValue
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BatchProcessValue">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.batch_data.BatchProcessValue.row_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        row_id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.batch_data.BatchProcessValue.col_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        col_id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.batch_data.BatchProcessValue.value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        value
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.batch_data.BatchDataType" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7263,6 +7313,56 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#albert.resources.batch_data.BatchProcessValue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BatchProcessValue
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BatchProcessValue">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.batch_data.BatchProcessValue.row_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        row_id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.batch_data.BatchProcessValue.col_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        col_id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.batch_data.BatchProcessValue.value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        value
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.batch_data.BatchDataType" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -9669,6 +9769,163 @@ blank even when the lot is linked.</p>
         <p>Not used to link a lot. Set <code>lot_id</code> on the
 <a class="autorefs autorefs-internal" href="#albert.resources.batch_data.BatchValuePatchDatum"><code>BatchValuePatchDatum</code></a> instead:
 a lot id set only here adds a child row that is not linked to the lot.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="albert.resources.batch_data.BatchProcessValue" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">BatchProcessValue</span>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="albert.core.base.BaseAlbertModel">BaseAlbertModel</span></code></p>
+
+        <p>A process parameter value to set for one formula column of a batch task.</p>
+<p>Targets a parameter (PRM) row of the batch task's Process Design section. Pass
+these to
+<a class="autorefs autorefs-internal" href="../../collections/batch_data/#albert.collections.batch_data.BatchDataCollection.update_process_values"><code>update_process_values</code></a>.</p>
+<div class="admonition example">
+<p class="admonition-title">Example</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.batch_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">BatchProcessValue</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">value</span> <span class="o">=</span> <span class="n">BatchProcessValue</span><span class="p">(</span><span class="n">row_id</span><span class="o">=</span><span class="s2">"ROW9"</span><span class="p">,</span> <span class="n">col_id</span><span class="o">=</span><span class="s2">"COL2"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">"500"</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+
+      <details><summary>Show JSON schema:</summary>
+        <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A process parameter value to set for one formula column of a batch task.\n\nTargets a parameter (PRM) row of the batch task's Process Design section. Pass\nthese to\n[`update_process_values`][albert.collections.batch_data.BatchDataCollection.update_process_values].\n\n!!! example\n    ```python\n    from albert.resources.batch_data import BatchProcessValue\n\n    value = BatchProcessValue(row_id=\"ROW9\", col_id=\"COL2\", value=\"500\")\n    ```"</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">"rowId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ``row_id`` of the parameter row in the batch data grid."</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Rowid"</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">"colId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ``col_id`` of the formula (product) column in the batch data grid."</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Colid"</span><span class="p">,</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="nt">"value"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The value to set. An empty string clears the cell."</span><span class="p">,</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Value"</span><span class="p">,</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">  </span><span class="nt">"required"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="s2">"rowId"</span><span class="p">,</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">    </span><span class="s2">"colId"</span><span class="p">,</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="s2">"value"</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">  </span><span class="p">],</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">  </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"BatchProcessValue"</span><span class="p">,</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="p">}</span>
+</span></code></pre></div>
+      </details>
+    
+
+        <p>Fields:</p>
+        <ul>
+            <li>
+              <code><a class="autorefs autorefs-internal" href="#albert.resources.batch_data.BatchProcessValue.row_id">row_id</a></code>
+                (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
+            </li>
+            <li>
+              <code><a class="autorefs autorefs-internal" href="#albert.resources.batch_data.BatchProcessValue.col_id">col_id</a></code>
+                (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
+            </li>
+            <li>
+              <code><a class="autorefs autorefs-internal" href="#albert.resources.batch_data.BatchProcessValue.value">value</a></code>
+                (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
+            </li>
+        </ul>
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.batch_data.BatchProcessValue.row_id" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">row_id</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">row_id</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The <code>row_id</code> of the parameter row in the batch data grid.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.batch_data.BatchProcessValue.col_id" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">col_id</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">col_id</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The <code>col_id</code> of the formula (product) column in the batch data grid.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.batch_data.BatchProcessValue.value" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">value</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">value</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The value to set. An empty string clears the cell.</p>
 
     </div>
 
