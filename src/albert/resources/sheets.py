@@ -2998,23 +2998,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return {"Id": {"rowId": cell.row_id, "colId": cell.column_id}, "data": data}
 
     @staticmethod
-    def _split_calculated_cells(*, cells: list[Cell]) -> tuple[list[Cell], list[Cell]]:
-        """Split cells into ``(writable, calculated)``, keeping the given order.
+    def _writes_calculated_value(*, cell: Cell, changes: list[PatchDatum]) -> bool:
+        """Whether ``changes`` would overwrite a value the worksheet computes.
 
-        A cell in a calculated property row or an ingredient basis column is calculated:
-        the worksheet computes its value.
+        Cells in a calculated property row or an ingredient basis column hold computed
+        values; only their formatting may be written.
         """
-        writable: list[Cell] = []
-        calculated: list[Cell] = []
-        for cell in cells:
-            if (
-                cell.row_type == CellType.CALCULATED_PROPERTY
-                or cell.type == CellType.INGREDIENT_BASIS
-            ):
-                calculated.append(cell)
-            else:
-                writable.append(cell)
-        return writable, calculated
+        calculated = (
+            cell.row_type == CellType.CALCULATED_PROPERTY or cell.type == CellType.INGREDIENT_BASIS
+        )
+        return calculated and any(change.attribute != "cellFormat" for change in changes)
 
     def _compare_cell_attributes(self, *, cell: Cell, existing_cell: Cell, attribute: str):
         """Compares a given attribute of two cells, trying both string and float comparison."""
@@ -3050,11 +3043,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
         concurrently, some edits can fail and come back in ``failed``; read the
         sheet again and retry those.
 
-        Cells in a calculated property row or an ingredient basis column are never
-        written, not even their formatting: the worksheet computes those values, so a
-        written value would be overwritten the next time the sheet calculates and
-        would leave the copies stored with the formula out of date. These cells come
-        back unchanged in ``failed``; the other cells are written as usual.
+        The worksheet computes the values in a calculated property row and an
+        ingredient basis column, so a value, calculation or bound written there would be
+        overwritten the next time the sheet calculates and would leave the copies stored
+        with the formula out of date. Such cells are not written and come back unchanged
+        in ``failed``; formatting changes on them, and all other cells, are written as
+        usual.
 
         !!! example
             ```python
@@ -3086,8 +3080,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         tuple[list[Cell], list[Cell]]
             A ``(updated, failed)`` pair: the cells that were successfully updated
-            and the cells that failed to update, including calculated cells, which
-            are never written.
+            and the cells that failed to update, including calculated cells whose
+            value, calculation or bounds were changed, which are not written.
         """
 
         request_path_dict: dict[str, list[Cell]] = {}
@@ -3095,12 +3089,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
         failed: list[Cell] = []
         updated_keys: set[tuple[str, str, str]] = set()
         failed_keys: set[tuple[str, str, str]] = set()
-        cells, calculated = self._split_calculated_cells(cells=cells)
-        for c in calculated:
-            key = (c.design_id, c.row_id, c.column_id)
-            if key not in failed_keys:
-                failed_keys.add(key)
-                failed.append(c)
         # sort by design ID
         for c in cells:
             if c.design_id not in request_path_dict:
@@ -3118,6 +3106,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     cell=cell, current_cell=current_cells.get((cell.row_id, cell.column_id))
                 )
                 if change_dict is None:
+                    continue
+                if self._writes_calculated_value(cell=cell, changes=change_dict["data"]):
+                    key = (cell.design_id, cell.row_id, cell.column_id)
+                    if key not in failed_keys:
+                        failed_keys.add(key)
+                        failed.append(cell)
                     continue
 
                 # The value-update schema allows at most 2 data changes per
@@ -4341,10 +4335,6 @@ class Column(BaseSessionResource):  # noqa:F811
     def recolor_cells(self, color: CellColor):
         """Apply a background color to every cell in this column.
 
-        Cells in a calculated property row or an ingredient basis column are not
-        recolored and come back in ``failed`` (see
-        [`update_cells`][albert.resources.sheets.Sheet.update_cells]).
-
         !!! example
             ```python
             from albert.resources.sheets import CellColor
@@ -4446,10 +4436,6 @@ class Row(BaseSessionResource):  # noqa:F811
 
     def recolor_cells(self, color: CellColor):
         """Apply a background color to every cell in this row.
-
-        Cells in a calculated property row or an ingredient basis column are not
-        recolored and come back in ``failed`` (see
-        [`update_cells`][albert.resources.sheets.Sheet.update_cells]).
 
         !!! example
             ```python

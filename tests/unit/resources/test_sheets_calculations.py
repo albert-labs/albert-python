@@ -5,6 +5,7 @@ import json
 import pytest
 import responses
 
+from albert.core.shared.models.patch import PatchDatum
 from albert.resources.sheets import Cell, CellType, Column, ColumnPosition, Sheet
 from tests.unit.conftest import UNIT_BASE_URL
 
@@ -159,75 +160,74 @@ def test_ingredient_basis_column_cells_have_no_inventory_id(offline_session):
     ]
 
 
-# --- Sheet._split_calculated_cells ---
+# --- Sheet._writes_calculated_value ---
 
 
 def _cell(*, column_id: str, row_id: str, cell_type: str, row_type: str | None) -> Cell:
     return Cell(colId=column_id, rowId=row_id, type=cell_type, row_type=row_type, design_id="DES1")
 
 
-@pytest.mark.parametrize(
-    "cell",
-    [
-        pytest.param(
-            _cell(column_id="COL5", row_id="ROW12", cell_type="INV", row_type="INV"),
-            id="ingredient-amount",
-        ),
-        pytest.param(
-            _cell(column_id="COL5", row_id="ROW1", cell_type="INV", row_type="TOT"),
-            id="total",
-        ),
-        pytest.param(
-            _cell(column_id="COL5", row_id="ROW15", cell_type="INV", row_type="BLK"),
-            id="group-header",
-        ),
-        pytest.param(
-            _cell(column_id="COL5", row_id="ROW2", cell_type="INV", row_type=None),
-            id="built-without-row-type",
-        ),
-    ],
-)
-def test_split_calculated_cells_keeps_ordinary_cells_writable(cell):
-    """Test that cells outside calculated rows and columns stay writable."""
-    assert Sheet._split_calculated_cells(cells=[cell]) == ([cell], [])
+def _changes(*attributes: str) -> list[PatchDatum]:
+    return [
+        PatchDatum(operation="update", attribute=attribute, new_value="1")
+        for attribute in attributes
+    ]
 
 
-@pytest.mark.parametrize(
-    "cell",
-    [
-        pytest.param(
-            _cell(column_id="COL5", row_id="ROW14", cell_type="INV", row_type="CPR"),
-            id="calculated-property-row",
-        ),
-        pytest.param(
-            _cell(column_id="COL7", row_id="ROW12", cell_type="IBS", row_type="INV"),
-            id="ingredient-basis-column",
-        ),
-        pytest.param(
-            _cell(column_id="COL7", row_id="ROW1", cell_type="IBS", row_type="TOT"),
-            id="ingredient-basis-total",
-        ),
-        pytest.param(
-            _cell(column_id="COL7", row_id="ROW14", cell_type="IBS", row_type="CPR"),
-            id="both",
-        ),
-    ],
-)
-def test_split_calculated_cells_sets_aside_calculated_cells(cell):
-    """Test that cells in a calculated property row or ingredient basis column are set aside."""
-    assert Sheet._split_calculated_cells(cells=[cell]) == ([], [cell])
+_ORDINARY_CELLS = [
+    pytest.param(
+        _cell(column_id="COL5", row_id="ROW12", cell_type="INV", row_type="INV"),
+        id="ingredient-amount",
+    ),
+    pytest.param(
+        _cell(column_id="COL5", row_id="ROW1", cell_type="INV", row_type="TOT"), id="total"
+    ),
+    pytest.param(
+        _cell(column_id="COL5", row_id="ROW15", cell_type="INV", row_type="BLK"),
+        id="group-header",
+    ),
+    pytest.param(
+        _cell(column_id="COL5", row_id="ROW2", cell_type="INV", row_type=None),
+        id="built-without-row-type",
+    ),
+]
+
+_CALCULATED_CELLS = [
+    pytest.param(
+        _cell(column_id="COL5", row_id="ROW14", cell_type="INV", row_type="CPR"),
+        id="calculated-property-row",
+    ),
+    pytest.param(
+        _cell(column_id="COL7", row_id="ROW12", cell_type="IBS", row_type="INV"),
+        id="ingredient-basis-column",
+    ),
+    pytest.param(
+        _cell(column_id="COL7", row_id="ROW1", cell_type="IBS", row_type="TOT"),
+        id="ingredient-basis-total",
+    ),
+    pytest.param(
+        _cell(column_id="COL7", row_id="ROW14", cell_type="IBS", row_type="CPR"), id="both"
+    ),
+]
 
 
-def test_split_calculated_cells_keeps_order_in_a_mixed_batch():
-    """Test that a mixed batch splits into both groups, each in the given order."""
-    amount = _cell(column_id="COL5", row_id="ROW12", cell_type="INV", row_type="INV")
-    cp = _cell(column_id="COL6", row_id="ROW14", cell_type="INV", row_type="CPR")
-    total = _cell(column_id="COL5", row_id="ROW1", cell_type="INV", row_type="TOT")
-    basis = _cell(column_id="COL7", row_id="ROW12", cell_type="IBS", row_type="INV")
+@pytest.mark.parametrize("cell", _ORDINARY_CELLS)
+def test_writes_calculated_value_allows_any_change_to_ordinary_cells(cell):
+    """Test that value and calculation changes to cells outside calculated rows and columns pass."""
+    assert not Sheet._writes_calculated_value(cell=cell, changes=_changes("cell", "calculation"))
 
-    result = Sheet._split_calculated_cells(cells=[cp, amount, basis, total])
 
-    assert result == ([amount, total], [cp, basis])
+@pytest.mark.parametrize("cell", _CALCULATED_CELLS)
+@pytest.mark.parametrize("attribute", ["cell", "calculation", "minValue", "maxValue"])
+def test_writes_calculated_value_blocks_value_changes_to_calculated_cells(cell, attribute):
+    """Test that a value, calculation or bound change to a calculated cell is blocked."""
+    assert Sheet._writes_calculated_value(cell=cell, changes=_changes("cellFormat", attribute))
+
+
+@pytest.mark.parametrize("cell", _CALCULATED_CELLS)
+def test_writes_calculated_value_allows_formatting_calculated_cells(cell):
+    """Test that a formatting-only change to a calculated cell is allowed."""
+    assert not Sheet._writes_calculated_value(cell=cell, changes=_changes("cellFormat"))
 
 
 # --- Sheet.update_cells ---
@@ -269,6 +269,27 @@ def test_update_cells_with_only_calculated_cells_sends_nothing(offline_session):
     assert updated == []
     assert [(c.row_id, c.column_id) for c in failed] == [("ROW14", "COL5")]
     assert [c.request.method for c in responses.calls] == ["GET"]
+
+
+@responses.activate
+def test_update_cells_writes_formatting_on_calculated_cells(offline_session):
+    """Test that recoloring calculated cells sends their formatting and reports them updated."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    grid = sheet.product_design.grid
+    yellow = {"bgColor": "#FFFF00"}
+    cp = grid.at["DES1#ROW14", "COL5#INVMO1-001"].model_copy(update={"format": yellow})
+    basis = grid.at["DES1#ROW12", "COL7#Solids Share"].model_copy(update={"format": yellow})
+
+    updated, failed = sheet.update_cells(refresh=False, cells=[cp, basis])
+
+    assert (updated, failed) == ([cp, basis], [])
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert [
+        (entry["Id"]["rowId"], entry["Id"]["colId"], [d["attribute"] for d in entry["data"]])
+        for entry in json.loads(patches[0].request.body)
+    ] == [("ROW14", "COL5", ["cellFormat"]), ("ROW12", "COL7", ["cellFormat"])]
 
 
 # --- Sheet._last_top_level_column_id ---
