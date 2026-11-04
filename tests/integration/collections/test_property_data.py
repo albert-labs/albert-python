@@ -268,11 +268,17 @@ def _wait_for_inventory_value(
         predicate=lambda r: _holds_value(r[0]),
     )
     props = result[0]
-    assert _holds_value(props), (
-        f"{column_id}={value!r} not visible on {inventory_id}; custom columns: "
-        f"{[(p.data_column.data_column_id, p.data_column.property_data.value) for p in props.custom_property_data]}, "
-        f"task results: {len(props.task_property_data)}"
-    )
+    if not _holds_value(props):
+        raw = client.session.get(
+            client.property_data.base_path, params={"entity": "inventory", "id": [inventory_id]}
+        ).json()
+        item = raw[0] if isinstance(raw, list) and raw else raw
+        shape = {k: (len(v) if isinstance(v, list) else type(v).__name__) for k, v in item.items()}
+        pytest.fail(
+            f"{column_id}={value!r} not visible on {inventory_id}; custom columns: "
+            f"{[(p.data_column.data_column_id, p.data_column.property_data.value) for p in props.custom_property_data]}; "
+            f"raw response shape: {shape}; raw: {str(raw)[:1500]}"
+        )
     return props
 
 
