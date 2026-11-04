@@ -29,6 +29,23 @@ def _seeded_batch_task(seeded_tasks: list[BaseTask]) -> BatchTask:
     return [t for t in seeded_tasks if isinstance(t, BatchTask)][0]
 
 
+def _wait_for_grid(client: Albert, task_id: str, timeout: float = 120.0) -> BatchData | None:
+    """Wait for the batch task's grid, which is built asynchronously after task creation.
+
+    Returns None when the grid is still not fully built after ``timeout`` seconds.
+    """
+
+    def _fetch() -> list[BatchData]:
+        with suppress(NotFoundError):
+            grid = client.batch_data.get_by_id(id=task_id)
+            if grid.rows and grid.product and any(v.type == "INV" for v in grid.rows[0].values):
+                return [grid]
+        return []
+
+    grids = poll_until(_fetch, timeout=timeout)
+    return grids[0] if grids else None
+
+
 def _create_batch_task(
     client: Albert,
     *,
@@ -62,22 +79,30 @@ def _create_batch_task(
 
 def _ensure_batch_data(client: Albert, task_id: str) -> None:
     """Initialize the batch data grid when task creation did not already do it."""
-    with suppress(NotFoundError):
-        grid = client.batch_data.get_by_id(id=task_id)
-        if grid.product:
-            return
+    if _wait_for_grid(client, task_id, timeout=30.0):
+        return
     with suppress(BadRequestError):
         # Batch data creation is not idempotent ("already exist").
         client.batch_data.create_batch_data(task_id=task_id)
 
 
-def test_get_by_id(client: Albert, seeded_tasks: list[BaseTask]):
+@pytest.fixture(scope="module")
+def batch_grid(client: Albert, seeded_tasks: list[BaseTask]) -> BatchData:
+    """The seeded batch task's grid, once its asynchronous build has finished."""
+    task = _seeded_batch_task(seeded_tasks)
+    grid = _wait_for_grid(client, task.id)
+    if grid is None:
+        pytest.fail(f"batch data grid for {task.id} was not built within 120s")
+    return grid
+
+
+def test_get_by_id(client: Albert, seeded_tasks: list[BaseTask], batch_grid: BatchData):
     batch_task = [t for t in seeded_tasks if isinstance(t, BatchTask)][0]
     batch_data = client.batch_data.get_by_id(id=batch_task.id)
     assert batch_data.id == batch_task.id
 
 
-def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
+def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask], batch_grid: BatchData):
     batch_task = [t for t in seeded_tasks if isinstance(t, BatchTask)][0]
 
     existing_batch_data = client.batch_data.get_by_id(id=batch_task.id)
@@ -122,7 +147,7 @@ def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
     assert found
 
 
-def test_get_lookup_column(client: Albert, seeded_tasks: list[BaseTask]):
+def test_get_lookup_column(client: Albert, seeded_tasks: list[BaseTask], batch_grid: BatchData):
     """Get the lookup column data of the seeded batch task."""
     batch_task = _seeded_batch_task(seeded_tasks)
 
@@ -132,7 +157,7 @@ def test_get_lookup_column(client: Albert, seeded_tasks: list[BaseTask]):
     assert lookup.id == batch_task.id
 
 
-def test_get_by_lot_id(client: Albert, seeded_tasks: list[BaseTask]):
+def test_get_by_lot_id(client: Albert, seeded_tasks: list[BaseTask], batch_grid: BatchData):
     """List the batch data usages of a lot of the seeded batch task's formula."""
     batch_task = _seeded_batch_task(seeded_tasks)
     grid = client.batch_data.get_by_id(id=batch_task.id)

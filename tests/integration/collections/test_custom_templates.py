@@ -176,21 +176,31 @@ def test_custom_template_update_workflow_combination(client: Albert, seed_prefix
                 client.custom_templates.delete(id=template.id)
 
 
-def test_custom_template_update_name_and_locked(
-    client: Albert,
-    seeded_custom_templates: list[CustomTemplate],
-):
+def test_custom_template_update_name_and_locked(client: Albert, seed_prefix: str):
     """Test updating a template's name and locked flag."""
-    seeded_template = seeded_custom_templates[0]
-    fetched = client.custom_templates.get_by_id(id=seeded_template.id)
-    new_name = f"{fetched.name}-updated"
+    name = f"{seed_prefix}-rename"
+    created: list[CustomTemplate] = []
+    try:
+        created = client.custom_templates.create(
+            custom_template=CustomTemplate(
+                name=name,
+                category=TemplateCategory.GENERAL,
+                data=GeneralData(name=name),
+            )
+        )
+        fetched = client.custom_templates.get_by_id(id=created[0].id)
+        new_name = f"{name}-updated"
 
-    fetched.name = new_name
-    fetched.locked = True
-    updated = client.custom_templates.update(custom_template=fetched)
+        fetched.name = new_name
+        fetched.locked = True
+        updated = client.custom_templates.update(custom_template=fetched)
 
-    assert updated.name == new_name
-    assert updated.locked is True
+        assert updated.name == new_name
+        assert updated.locked is True
+    finally:
+        for template in created:
+            with suppress(NotFoundError):
+                client.custom_templates.delete(id=template.id)
 
 
 def test_custom_template_create_resolves_and_deduplicates_tags(client: Albert, seed_prefix: str):
