@@ -359,3 +359,25 @@ def test_inventory_item_tolerates_calculated_property_entry_without_value():
     assert item.calculated_properties == {
         "ATR1": CalculatedPropertyValue(updated_at="2026-11-04T10:00:00Z")
     }
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        ("12.5", 12.5),
+        ("#DIV/0!", "#DIV/0!"),
+        ("", ""),
+    ],
+)
+def test_inventory_item_tolerates_non_numeric_calculated_property_value(stored, expected):
+    """Test that a stored calculated property value that is not a number still parses."""
+    item = InventoryItem.model_validate(
+        {
+            "albertId": "INVMO1-001",
+            "name": "F1",
+            "category": "Formulas",
+            "calculatedProperties": {"ATR1": {"value": stored}},
+        }
+    )
+
+    assert item.calculated_properties == {"ATR1": CalculatedPropertyValue(value=expected)}

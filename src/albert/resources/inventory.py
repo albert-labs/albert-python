@@ -310,8 +310,8 @@ class CalculatedPropertyValue(BaseAlbertModel):
     Read-only.
     """
 
-    value: float | None = None
-    """The calculated value. None if the stored entry has no value."""
+    value: float | str | None = Field(default=None, union_mode="left_to_right")
+    """The calculated value. A stored value that is not a number (e.g. ``#DIV/0!``) is kept as text. None if the stored entry has no value."""
 
     unit: str | None = None
     """The display unit of the value (e.g. ``%``), when it has one."""
