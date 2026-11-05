@@ -2773,6 +2773,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         items = response.json().get("Items") or []
         return [AppRow(**item) for item in items if item.get("type") == CellType.APP.value]
 
+    @validate_call
     def get_calculations(self) -> SheetCalculations:
         """Get the ingredient bases and calculated properties on this sheet.
 
