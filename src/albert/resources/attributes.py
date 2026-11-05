@@ -171,11 +171,11 @@ class FormulaMetadata(BaseAlbertModel):
     not exist, or a malformed ``WHERE`` saves without error and shows blank values, 0
     or an error on the sheet. Double-check every ``[ATR...]`` ID.
 
-    Saving a formula on the attribute does not change any sheet, and the SDK cannot add
-    one to a sheet. Add it to a sheet with the worksheet's Manage Worksheet option: a
-    calculated property then shows as a row named after its ``display_name`` in the
-    sheet's Calculated Properties section, and an ingredient basis as a column under
-    each formulation column.
+    Saving a formula on the attribute does not change any sheet. Add it to a sheet with
+    [`add_calculation`][albert.resources.sheets.Sheet.add_calculation] or the
+    worksheet's Manage Worksheet option: a calculated property then shows as a row
+    named after its ``display_name`` in the sheet's Calculated Properties section, and
+    an ingredient basis as a column under each formulation column.
 
     Values are computed on the worksheet, not when the formula is saved. To estimate a
     value for another composition, evaluate the expression over the sheet's ingredient
