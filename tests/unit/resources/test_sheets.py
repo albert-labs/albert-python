@@ -868,6 +868,92 @@ def test_parse_row_groups_returns_empty_for_empty_sequence():
     assert Design._parse_row_groups(sequence=[]) == []
 
 
+# --- Sheet._position_at_end_of_section ---
+
+_NESTED_SEQUENCE = [
+    {
+        "rowId": "ROW7",
+        "ChildRows": [
+            {"rowId": "ROW2"},
+            {"rowId": "ROW6", "ChildRows": [{"rowId": "ROW3"}, {"rowId": "ROW4"}]},
+        ],
+    },
+    {"rowId": "ROW8", "ChildRows": [{"rowId": "ROW5"}]},
+    {"rowId": "ROW9"},
+    {"rowId": "ROW1"},
+]
+
+
+@pytest.mark.parametrize(
+    ("section_id", "reference_id"),
+    [
+        pytest.param("ROW8", "ROW5", id="last-child-is-a-row"),
+        pytest.param("ROW6", "ROW4", id="nested-section"),
+        pytest.param("ROW7", "ROW6", id="last-child-is-a-nested-section"),
+    ],
+)
+def test_position_at_end_of_section_places_below_last_direct_child(section_id, reference_id):
+    """Test that rows for a section go below its last direct child."""
+    position = Sheet._position_at_end_of_section(sequence=_NESTED_SEQUENCE, section_id=section_id)
+
+    assert position == {"reference_id": reference_id, "position": "below"}
+
+
+@pytest.mark.parametrize(
+    "section_id",
+    [
+        pytest.param("ROW9", id="ungrouped-row"),
+        pytest.param("ROW3", id="row-inside-a-section"),
+        pytest.param("ROW99", id="unknown-row"),
+    ],
+)
+def test_position_at_end_of_section_rejects_a_row_that_is_not_a_section(section_id):
+    """Test that a row ID that is not a section with rows is refused."""
+    with pytest.raises(AlbertException, match="is not a section with rows"):
+        Sheet._position_at_end_of_section(sequence=_NESTED_SEQUENCE, section_id=section_id)
+
+
+@responses.activate
+def test_add_inventory_rows_to_section_places_rows_below_its_last_child(offline_session):
+    """Test that rows added to a section are sent below the section's last direct child."""
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows/sequence", json=_NESTED_SEQUENCE
+    )
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[{"rowId": "ROW10", "id": "INVA1", "type": "INV", "name": "Water"}],
+    )
+    sheet = _process_sheet(offline_session)
+
+    sheet.add_inventory_rows(inventory_ids=["INVA1"], section_id="ROW7")
+
+    assert json.loads(responses.calls[1].request.body) == [
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW6", "position": "below"}
+    ]
+
+
+def test_add_inventory_row_rejects_position_with_section_id():
+    """Test that add_inventory_row refuses a position combined with a section."""
+    sheet = Sheet(**_PROCESS_SHEET)
+    with pytest.raises(AlbertException, match="either position or section_id"):
+        sheet.add_inventory_row(
+            inventory_id="INVA1",
+            position={"reference_id": "ROW2", "position": "below"},
+            section_id="ROW7",
+        )
+
+
+def test_add_inventory_rows_rejects_position_with_section_id():
+    """Test that add_inventory_rows refuses a position combined with a section."""
+    sheet = Sheet(**_PROCESS_SHEET)
+    with pytest.raises(AlbertException, match="either position or section_id"):
+        sheet.add_inventory_rows(
+            inventory_ids=["INVA1"],
+            position={"reference_id": "ROW2", "position": "below"},
+            section_id="ROW7",
+        )
+
+
 def test_move_rows_payload_whole_shape():
     """Test the row-move payload for multiple rows moved below a reference row."""
     assert Sheet._move_rows_payload(

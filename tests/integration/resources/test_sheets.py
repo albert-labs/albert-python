@@ -418,4 +418,79 @@ def test_rename_row_group(client: Albert, seed_prefix: str):
             client.locations.delete(id=location.id)
 
 
+def test_add_inventory_rows_to_sections(
+    client: Albert, seed_prefix: str, seeded_inventory: list[InventoryItem]
+):
+    """Test adding ingredient rows to nested sections, then building a formulation on them."""
+    location = client.locations.create(
+        location=Location(
+            name=f"{seed_prefix} - rows in sections",
+            latitude=40.7,
+            longitude=-74.0,
+            address="1 Main St",
+            country="US",
+        )
+    )
+    project = None
+    try:
+        project = client.projects.create(
+            project=Project(
+                description=f"{seed_prefix} - rows in sections",
+                locations=[EntityLink(id=location.id)],
+            )
+        )
+        worksheet = client.worksheets.setup_worksheet(project_id=project.id, add_sheet=True)
+        sheet = worksheet.sheets[0]
+        design = sheet.product_design
+
+        # Outer section: [first, Inner section: [second, third]]; loose stays ungrouped.
+        first, second, third, loose = sheet.add_blank_rows(
+            row_names=[f"{seed_prefix} - {name}" for name in ("first", "second", "third", "loose")]
+        )
+        inner = design.group_rows(
+            name=f"{seed_prefix} - inner", child_row_ids=[second.row_id, third.row_id]
+        )
+        outer = design.group_rows(
+            name=f"{seed_prefix} - outer", child_row_ids=[first.row_id, inner.row_id]
+        )
+
+        inner_rows = sheet.add_inventory_rows(
+            inventory_ids=[seeded_inventory[0].id, seeded_inventory[1].id],
+            section_id=inner.row_id,
+        )
+        outer_row = sheet.add_inventory_row(
+            inventory_id=seeded_inventory[2].id, section_id=outer.row_id
+        )
+
+        groups = {g.row_id: g.child_row_ids for g in design.get_groups(refresh=True)}
+        assert groups == {
+            outer.row_id: [first.row_id, inner.row_id, outer_row.row_id],
+            inner.row_id: [second.row_id, third.row_id, *(row.row_id for row in inner_rows)],
+        }
+
+        with pytest.raises(AlbertException, match="is not a section with rows"):
+            sheet.add_inventory_row(inventory_id=seeded_inventory[0].id, section_id=loose.row_id)
+
+        sheet.add_formulation(
+            formulation_name=f"{seed_prefix} - formulation in sections",
+            components=[
+                Component(inventory_item=seeded_inventory[2], amount=50.0),
+                Component(inventory_item=seeded_inventory[0], amount=20.0),
+                Component(inventory_item=seeded_inventory[1], amount=30.0),
+            ],
+        )
+
+        # The formulation reuses the rows in their sections instead of adding new ones.
+        sheet.grid = None
+        inventory_row_ids = [row.row_id for row in design.rows if row.type == CellType.INVENTORY]
+        assert inventory_row_ids == [*(row.row_id for row in inner_rows), outer_row.row_id]
+        assert {g.row_id: g.child_row_ids for g in design.get_groups()} == groups
+    finally:
+        if project is not None:
+            with suppress(NotFoundError, BadRequestError):
+                client.projects.delete(id=project.id)
+        with suppress(NotFoundError, BadRequestError):
+            client.locations.delete(id=location.id)
+
+
 ########################## CELLS ##########################
