@@ -232,12 +232,20 @@ def test_update_partial_leaves_omitted_special_attrs_untouched(
 
 
 def test_allocate_inventory_task_lot(
-    client: Albert, seed_prefix: str, seeded_projects, seeded_inventory, seeded_lots
+    client: Albert,
+    seed_prefix: str,
+    seeded_projects,
+    seeded_inventory,
+    seeded_lots,
+    seeded_locations,
+    seeded_workflows,
+    seeded_data_templates,
 ):
     """Test that allocating the task's own inventory sets its quantity used."""
     task = client.tasks.create(
         task=PropertyTask(
             name=f"{seed_prefix} - Allocate Inventory",
+            category=TaskCategory.PROPERTY,
             inventory_information=[
                 TaskInventoryInformation(
                     inventory_id=seeded_inventory[0].id,
@@ -245,6 +253,13 @@ def test_allocate_inventory_task_lot(
                 )
             ],
             parent_id=seeded_projects[0].id,
+            location=seeded_locations[0],
+            blocks=[
+                Block(
+                    workflow=[seeded_workflows[0]],
+                    data_template=[seeded_data_templates[0]],
+                )
+            ],
         )
     )
     try:
