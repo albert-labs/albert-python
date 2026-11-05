@@ -281,13 +281,14 @@ def test_update_cells_never_writes_calculated_cells(calculations_sheet: Calculat
     cp = _cell_at(sheet, column_id=column_id, row_id=calculations_sheet.cpr_row_id)
     basis = _cell_at(sheet, column_id=basis_column_id, row_id=ingredient_row_id)
 
-    updated, failed = sheet.update_cells(
-        cells=[
-            amount.model_copy(update={"value": "55"}),
-            cp.model_copy(update={"value": "99"}),
-            basis.model_copy(update={"value": "99"}),
-        ]
-    )
+    with pytest.warns(UserWarning, match="retrying will not write them"):
+        updated, failed = sheet.update_cells(
+            cells=[
+                amount.model_copy(update={"value": "55"}),
+                cp.model_copy(update={"value": "99"}),
+                basis.model_copy(update={"value": "99"}),
+            ]
+        )
 
     assert [(c.row_id, c.column_id) for c in updated] == [(ingredient_row_id, column_id)]
     assert [(c.row_id, c.column_id) for c in failed] == [
@@ -298,6 +299,46 @@ def test_update_cells_never_writes_calculated_cells(calculations_sheet: Calculat
     assert _cell_at(sheet, column_id=column_id, row_id=ingredient_row_id).value == "55"
     assert _cell_at(sheet, column_id=column_id, row_id=cp.row_id).value == cp.value
     assert _cell_at(sheet, column_id=basis_column_id, row_id=basis.row_id).value == basis.value
+
+
+def test_update_cells_never_writes_hand_built_calculated_cells(
+    calculations_sheet: CalculationsSheet,
+):
+    """Test that calculated cells built without the sheet's types are still not written."""
+    sheet = calculations_sheet.sheet
+    sheet.grid = None
+    design_id = sheet.product_design.id
+    column_id = calculations_sheet.formula_column_id
+    ingredient_row_id = _row_id_for(sheet, calculations_sheet.ingredient_ids[0])
+    basis_column_id = next(
+        c.column_id for c in sheet.columns if c.type == CellType.INGREDIENT_BASIS
+    )
+    stored_cp = _cell_at(sheet, column_id=column_id, row_id=calculations_sheet.cpr_row_id)
+    stored_basis = _cell_at(sheet, column_id=basis_column_id, row_id=ingredient_row_id)
+    cp = Cell(
+        colId=column_id,
+        rowId=calculations_sheet.cpr_row_id,
+        type=CellType.INVENTORY,
+        design_id=design_id,
+        value="99",
+    )
+    basis = Cell(
+        colId=basis_column_id,
+        rowId=ingredient_row_id,
+        type=CellType.INVENTORY,
+        design_id=design_id,
+        value="99",
+    )
+
+    with pytest.warns(UserWarning, match="retrying will not write them"):
+        updated, failed = sheet.update_cells(cells=[cp, basis])
+
+    assert (updated, failed) == ([], [cp, basis])
+    sheet.grid = None
+    assert _cell_at(sheet, column_id=column_id, row_id=cp.row_id).value == stored_cp.value
+    assert (
+        _cell_at(sheet, column_id=basis_column_id, row_id=basis.row_id).value == stored_basis.value
+    )
 
 
 def test_recolor_cells_colors_calculated_cells(calculations_sheet: CalculationsSheet):

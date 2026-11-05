@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from enum import Enum
 from typing import Any, ForwardRef, Literal, TypedDict, Union
 
@@ -10,7 +11,8 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId, TaskId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
-from albert.exceptions import AlbertException, AlbertHTTPError
+from albert.core.utils import find_stack_level
+from albert.exceptions import AlbertException, AlbertHTTPError, AlbertPartialError
 from albert.resources.inventory import InventoryItem
 
 # Define forward references
@@ -1100,14 +1102,27 @@ class Sheet(BaseSessionResource):  # noqa:F811
             new_dicts.append(this_dict)
         return new_dicts
 
+    def _write_cells_or_raise(self, *, cells: list[Cell]) -> None:
+        """Write ``cells`` without a reload, raising when any of them is not written."""
+        _, failed = self.update_cells(cells=cells, refresh=False)
+        if failed:
+            self.grid = None
+            raise AlbertPartialError(
+                f"{len(failed)} cell(s) could not be written to sheet {self.id}.",
+                failed_items=[{"rowId": c.row_id, "colId": c.column_id} for c in failed],
+            )
+
     def _clear_formulation_from_column(self, *, column: Column) -> list[Cell]:
-        """Blank the column's ingredient cells and return their prior state."""
+        """Blank the column's ingredient cells and return their prior state.
+
+        Calculated property rows are left alone: the sheet computes them.
+        """
         original_cells = [
             cell
             for cell in column.cells
             if isinstance(cell, Cell)
             and cell.type == CellType.INVENTORY
-            and cell.row_type != CellType.TOTAL
+            and cell.row_type not in (CellType.TOTAL, CellType.CALCULATED_PROPERTY)
         ]
         cleared_cells = [
             cell.model_copy(update={"value": "", "calculation": ""}) for cell in original_cells
@@ -1193,6 +1208,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The formulation column that was created or updated.
+
+        Raises
+        ------
+        AlbertPartialError
+            If some ingredient amounts or Total cells could not be written. When
+            ingredient amounts fail, a reused column is restored to its previous
+            contents; read the sheet again and retry.
         """
 
         self.grid = None  # plan from the latest sheet state
@@ -1249,7 +1271,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Send ingredient cells first, then Total cells in a separate call.
         if ingredient_cells:
             try:
-                self.update_cells(cells=ingredient_cells, refresh=False)
+                self._write_cells_or_raise(cells=ingredient_cells)
             except AlbertException:
                 # A failed write must not leave the cleared column blank.
                 if cleared_cells:
@@ -1258,7 +1280,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 raise
 
         if total_cells:
-            self.update_cells(cells=total_cells, refresh=False)
+            self._write_cells_or_raise(cells=total_cells)
 
         # Reads after the call load the latest state, and the next write plans
         # from it too.
@@ -1373,6 +1395,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         list[Column]
             The formulation columns created or updated, in the order requested.
+
+        Raises
+        ------
+        AlbertPartialError
+            If some ingredient amounts or Total cells could not be written. When
+            ingredient amounts fail, reused columns are restored to their previous
+            contents; read the sheet again and retry.
         """
         if not formulations:
             return []
@@ -1541,7 +1570,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Send ingredient cells first, then Total cells in a separate call.
         if ingredient_cells:
             try:
-                self.update_cells(cells=ingredient_cells, refresh=False)
+                self._write_cells_or_raise(cells=ingredient_cells)
             except AlbertException:
                 # A failed write must not leave the cleared columns blank.
                 if cleared_cells:
@@ -1550,7 +1579,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 raise
 
         if total_cells:
-            self.update_cells(cells=total_cells, refresh=False)
+            self._write_cells_or_raise(cells=total_cells)
 
         if renames:
             self.rename_columns(
@@ -1608,6 +1637,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The updated formulation column.
+
+        Raises
+        ------
+        AlbertPartialError
+            If some component amounts could not be written. The column may be
+            incomplete; read the sheet again and retry.
         """
         self.grid = None  # plan from the latest sheet state
         col = self.get_column(
@@ -1646,7 +1681,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
 
         column = self.get_column(column_id=col_id)
-        self.update_cells(cells=all_cells, refresh=False)
+        self._write_cells_or_raise(cells=all_cells)
         self.grid = None
         return column
 
@@ -2997,15 +3032,36 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         return {"Id": {"rowId": cell.row_id, "colId": cell.column_id}, "data": data}
 
+    def _calculated_ids(self, *, design_id: str) -> tuple[set[str], set[str]]:
+        """Return the IDs of a design's calculated property rows and ingredient basis columns."""
+        design = next((d for d in self.designs if d.id == design_id), None)
+        if design is None:
+            return set(), set()
+        return (
+            {row.row_id for row in design.rows if row.type == CellType.CALCULATED_PROPERTY},
+            {col.column_id for col in design.columns if col.type == CellType.INGREDIENT_BASIS},
+        )
+
     @staticmethod
-    def _writes_calculated_value(*, cell: Cell, changes: list[PatchDatum]) -> bool:
+    def _writes_calculated_value(
+        *,
+        cell: Cell,
+        changes: list[PatchDatum],
+        calculated_row_ids: set[str],
+        basis_column_ids: set[str],
+    ) -> bool:
         """Whether ``changes`` would overwrite a value the worksheet computes.
 
         Cells in a calculated property row or an ingredient basis column hold computed
-        values; only their formatting may be written.
+        values; only their formatting may be written. The sheet's own row and column
+        types decide, so a cell built without them, or typed differently, is still
+        caught. The cell's types are a fallback for rows and columns not on the sheet.
         """
         calculated = (
-            cell.row_type == CellType.CALCULATED_PROPERTY or cell.type == CellType.INGREDIENT_BASIS
+            cell.row_id in calculated_row_ids
+            or cell.column_id in basis_column_ids
+            or cell.row_type == CellType.CALCULATED_PROPERTY
+            or cell.type == CellType.INGREDIENT_BASIS
         )
         return calculated and any(change.attribute != "cellFormat" for change in changes)
 
@@ -3047,8 +3103,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ingredient basis column, so a value, calculation or bound written there would be
         overwritten the next time the sheet calculates and would leave the copies stored
         with the formula out of date. Such cells are not written and come back unchanged
-        in ``failed``; formatting changes on them, and all other cells, are written as
-        usual.
+        in ``failed``, and a ``UserWarning`` says how many; unlike cells that fail from
+        concurrent writes, retrying will not write them. Formatting changes on them, and
+        all other cells, are written as usual.
 
         !!! example
             ```python
@@ -3089,6 +3146,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         failed: list[Cell] = []
         updated_keys: set[tuple[str, str, str]] = set()
         failed_keys: set[tuple[str, str, str]] = set()
+        refused = 0
         # sort by design ID
         for c in cells:
             if c.design_id not in request_path_dict:
@@ -3100,6 +3158,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             # Diff every cell against one snapshot of this design's grid rather
             # than rescanning the grid per cell.
             current_cells = self._grid_cells_by_coordinate(design_id=design_id)
+            calculated_row_ids, basis_column_ids = self._calculated_ids(design_id=design_id)
             payload_entries: list[tuple[CellChangePayload, Cell]] = []
             for cell in cell_list:
                 change_dict = self._get_cell_changes(
@@ -3107,11 +3166,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 )
                 if change_dict is None:
                     continue
-                if self._writes_calculated_value(cell=cell, changes=change_dict["data"]):
+                if self._writes_calculated_value(
+                    cell=cell,
+                    changes=change_dict["data"],
+                    calculated_row_ids=calculated_row_ids,
+                    basis_column_ids=basis_column_ids,
+                ):
                     key = (cell.design_id, cell.row_id, cell.column_id)
                     if key not in failed_keys:
                         failed_keys.add(key)
                         failed.append(cell)
+                        refused += 1
                     continue
 
                 # The value-update schema allows at most 2 data changes per
@@ -3202,6 +3267,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         if refresh:
             self.grid = None
+        if refused:
+            warnings.warn(
+                f"{refused} cell(s) in calculated property rows or ingredient basis columns "
+                "were not written because the sheet computes their values. They are returned "
+                "in `failed`; retrying will not write them.",
+                UserWarning,
+                stacklevel=find_stack_level(),
+            )
         return (updated, failed)
 
     def _add_column(

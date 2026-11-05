@@ -6,6 +6,7 @@ import pytest
 import responses
 
 from albert.core.shared.models.patch import PatchDatum
+from albert.exceptions import AlbertPartialError
 from albert.resources.sheets import Cell, CellType, Column, ColumnPosition, Sheet
 from tests.unit.conftest import UNIT_BASE_URL
 
@@ -211,23 +212,51 @@ _CALCULATED_CELLS = [
 ]
 
 
+def _writes(cell: Cell, changes: list[PatchDatum], rows=(), columns=()) -> bool:
+    return Sheet._writes_calculated_value(
+        cell=cell, changes=changes, calculated_row_ids=set(rows), basis_column_ids=set(columns)
+    )
+
+
 @pytest.mark.parametrize("cell", _ORDINARY_CELLS)
 def test_writes_calculated_value_allows_any_change_to_ordinary_cells(cell):
     """Test that value and calculation changes to cells outside calculated rows and columns pass."""
-    assert not Sheet._writes_calculated_value(cell=cell, changes=_changes("cell", "calculation"))
+    assert not _writes(cell, _changes("cell", "calculation"), rows={"ROW14"}, columns={"COL7"})
 
 
 @pytest.mark.parametrize("cell", _CALCULATED_CELLS)
 @pytest.mark.parametrize("attribute", ["cell", "calculation", "minValue", "maxValue"])
 def test_writes_calculated_value_blocks_value_changes_to_calculated_cells(cell, attribute):
     """Test that a value, calculation or bound change to a calculated cell is blocked."""
-    assert Sheet._writes_calculated_value(cell=cell, changes=_changes("cellFormat", attribute))
+    assert _writes(cell, _changes("cellFormat", attribute))
 
 
 @pytest.mark.parametrize("cell", _CALCULATED_CELLS)
 def test_writes_calculated_value_allows_formatting_calculated_cells(cell):
     """Test that a formatting-only change to a calculated cell is allowed."""
-    assert not Sheet._writes_calculated_value(cell=cell, changes=_changes("cellFormat"))
+    assert not _writes(cell, _changes("cellFormat"))
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        pytest.param(
+            _cell(column_id="COL5", row_id="ROW14", cell_type="INV", row_type=None),
+            id="calculated-property-row-without-row-type",
+        ),
+        pytest.param(
+            _cell(column_id="COL7", row_id="ROW12", cell_type="INV", row_type="INV"),
+            id="ingredient-basis-column-typed-as-inventory",
+        ),
+        pytest.param(
+            _cell(column_id="COL7", row_id="ROW12", cell_type="INV", row_type=None),
+            id="ingredient-basis-column-untyped",
+        ),
+    ],
+)
+def test_writes_calculated_value_trusts_the_sheet_over_the_cell(cell):
+    """Test that the sheet's row and column types block a value change the cell's own types hide."""
+    assert _writes(cell, _changes("cell"), rows={"ROW14"}, columns={"COL7"})
 
 
 # --- Sheet.update_cells ---
@@ -244,7 +273,8 @@ def test_update_cells_never_sends_calculated_cells(offline_session):
     cp = grid.at["DES1#ROW14", "COL5#INVMO1-001"].model_copy(update={"value": "99"})
     basis = grid.at["DES1#ROW12", "COL7#Solids Share"].model_copy(update={"value": "99"})
 
-    updated, failed = sheet.update_cells(refresh=False, cells=[cp, amount, basis])
+    with pytest.warns(UserWarning, match="2 cell"):
+        updated, failed = sheet.update_cells(refresh=False, cells=[cp, amount, basis])
 
     assert (updated, failed) == ([amount], [cp, basis])
     patches = [c for c in responses.calls if c.request.method == "PATCH"]
@@ -264,11 +294,41 @@ def test_update_cells_with_only_calculated_cells_sends_nothing(offline_session):
     _register_calculations_grid()
     cp = sheet.product_design.grid.at["DES1#ROW14", "COL5#INVMO1-001"]
 
-    updated, failed = sheet.update_cells(cells=[cp.model_copy(update={"value": "99"})])
+    with pytest.warns(UserWarning, match="1 cell"):
+        updated, failed = sheet.update_cells(cells=[cp.model_copy(update={"value": "99"})])
 
     assert updated == []
     assert [(c.row_id, c.column_id) for c in failed] == [("ROW14", "COL5")]
     assert [c.request.method for c in responses.calls] == ["GET"]
+
+
+@responses.activate
+def test_update_cells_refuses_calculated_cells_built_without_sheet_types(offline_session):
+    """Test that calculated cells built by hand, untyped or typed as inventory, are not sent."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+    cp = Cell(colId="COL5", rowId="ROW14", type="INV", design_id="DES1", value="99")
+    basis = Cell(colId="COL7", rowId="ROW12", type="INV", design_id="DES1", value="99")
+
+    with pytest.warns(UserWarning, match="retrying will not write them") as record:
+        updated, failed = sheet.update_cells(cells=[cp, basis])
+
+    assert (updated, failed) == ([], [cp, basis])
+    assert [c.request.method for c in responses.calls] == ["GET"]
+    assert record[0].filename == __file__
+
+
+@responses.activate
+def test_update_cells_without_calculated_cells_does_not_warn(offline_session, recwarn):
+    """Test that a write touching no calculated cells emits no warning."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    amount = sheet.product_design.grid.at["DES1#ROW12", "COL5#INVMO1-001"]
+
+    sheet.update_cells(refresh=False, cells=[amount.model_copy(update={"value": "65"})])
+
+    assert [w for w in recwarn if issubclass(w.category, UserWarning)] == []
 
 
 @responses.activate
@@ -290,6 +350,54 @@ def test_update_cells_writes_formatting_on_calculated_cells(offline_session):
         (entry["Id"]["rowId"], entry["Id"]["colId"], [d["attribute"] for d in entry["data"]])
         for entry in json.loads(patches[0].request.body)
     ] == [("ROW14", "COL5", ["cellFormat"]), ("ROW12", "COL7", ["cellFormat"])]
+
+
+# --- Sheet._clear_formulation_from_column / Sheet._write_cells_or_raise ---
+
+
+@responses.activate
+def test_clear_formulation_leaves_calculated_property_rows_alone(offline_session, monkeypatch):
+    """Test that clearing a formulation column skips calculated property and Total rows."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+    column = sheet.get_column(column_id="COL5")
+    writes: list[list[Cell]] = []
+    monkeypatch.setattr(
+        Sheet, "update_cells", lambda self, *, cells, **_: (writes.append(cells), (cells, []))[1]
+    )
+
+    cleared = sheet._clear_formulation_from_column(column=column)
+
+    assert [c.row_id for c in cleared] == ["ROW15", "ROW12"]
+    assert [[(c.row_id, c.value) for c in cells] for cells in writes] == [
+        [("ROW15", ""), ("ROW12", "")]
+    ]
+
+
+def test_write_cells_or_raise_raises_with_the_cells_not_written(monkeypatch):
+    """Test that cells reported as failed raise a partial error naming them."""
+    sheet = _products_sheet()
+    written = _cell(column_id="COL5", row_id="ROW12", cell_type="INV", row_type="INV")
+    refused = _cell(column_id="COL5", row_id="ROW14", cell_type="INV", row_type="CPR")
+    monkeypatch.setattr(Sheet, "update_cells", lambda self, **_: ([written], [refused]))
+
+    with pytest.raises(AlbertPartialError) as error:
+        sheet._write_cells_or_raise(cells=[written, refused])
+
+    assert error.value.failed_items == [{"rowId": "ROW14", "colId": "COL5"}]
+
+
+def test_write_cells_or_raise_returns_when_every_cell_is_written(monkeypatch):
+    """Test that a write with no failed cells returns quietly."""
+    sheet = _products_sheet()
+    cell = _cell(column_id="COL5", row_id="ROW12", cell_type="INV", row_type="INV")
+    calls: list[dict] = []
+    monkeypatch.setattr(
+        Sheet, "update_cells", lambda self, **kwargs: (calls.append(kwargs), ([cell], []))[1]
+    )
+
+    assert sheet._write_cells_or_raise(cells=[cell]) is None
+    assert calls == [{"cells": [cell], "refresh": False}]
 
 
 # --- Sheet._last_top_level_column_id ---
