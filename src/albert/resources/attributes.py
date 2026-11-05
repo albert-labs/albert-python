@@ -139,7 +139,11 @@ class FormulaMetadata(BaseAlbertModel):
     - ``ingredient_basis``: the ingredient's value from this attribute's ingredient
       basis. Calculated properties only, and the attribute must also have an
       ingredient basis.
-    - ``Function``: the ingredient's Function tag, only inside ``WHERE``.
+    - ``Function``: the ingredient's value in the sheet's Function column, only inside
+      ``WHERE``. Values are the tenant's inventory function names; list them with
+      [`get_all`][albert.collections.lists.ListsCollection.get_all] and
+      ``list_type="inventoryFunction"``. A value no ingredient has matches nothing and
+      gives a blank result.
 
     Combine them with ``+ - * /``, parentheses and numbers, and aggregate with:
 
@@ -166,6 +170,12 @@ class FormulaMetadata(BaseAlbertModel):
     not exist, or a malformed ``WHERE`` saves without error and shows blank values, 0
     or an error on the sheet. Double-check every ``[ATR...]`` ID.
 
+    Saving a formula on the attribute does not change any sheet, and the SDK cannot add
+    one to a sheet. Add it to a sheet with the worksheet's Manage Worksheet option: a
+    calculated property then shows as a row named after its ``display_name`` in the
+    sheet's Calculated Properties section, and an ingredient basis as a column under
+    each formulation column.
+
     Values are computed on the worksheet, not when the formula is saved. To estimate a
     value for another composition, evaluate the expression over the sheet's ingredient
     values: an ingredient missing a referenced value has a blank basis (not 0) and is
@@ -174,6 +184,9 @@ class FormulaMetadata(BaseAlbertModel):
     also published as the attribute's value on the formula, so the attribute's
     validation (e.g. a 0 to 100 range) must allow it; otherwise it shows on the sheet
     but is not published.
+
+    Fields also accept their camelCase names (``displayName``, ``expressionType``,
+    ``requestInverse``), which are the names the schema shows.
     """
 
     # Keep keys this model does not declare, so replacing the whole list on update
