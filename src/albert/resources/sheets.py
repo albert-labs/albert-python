@@ -3057,6 +3057,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         types decide, so a cell built without them, or typed differently, is still
         caught. The cell's types are a fallback for rows and columns not on the sheet.
         """
+        # Client-side stopgap: the platform does not yet refuse these writes on unlocked
+        # formulas. Remove once it does (FS-3142).
         calculated = (
             cell.row_id in calculated_row_ids
             or cell.column_id in basis_column_ids
