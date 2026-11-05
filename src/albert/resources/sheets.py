@@ -3162,8 +3162,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         does. Removing an ingredient basis removes its columns. Removing a calculated
         property removes its row, and the Calculated Properties group once it is empty.
         Values already saved to formulas stay, and so do the property columns and
-        attributes the formula brought. Removing a formula the sheet does not have
-        changes nothing.
+        attributes the formula brought. A removed calculated property's last value stays
+        in each formula's
+        [`calculated_properties`][albert.resources.inventory.InventoryItem.calculated_properties]
+        and in its value for the attribute
+        ([`get_values`][albert.collections.attributes.AttributeCollection.get_values]),
+        so both still return a value for a calculated property no longer on the sheet.
+        Removing a formula the sheet does not have changes nothing.
 
         !!! example
             ```python
