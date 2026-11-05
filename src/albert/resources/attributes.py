@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import AttributeId, DataColumnId, ParameterId, UnitId
@@ -103,6 +103,111 @@ class AttributeParameterItem(BaseAlbertModel):
     """Unit ID for the setpoint."""
 
 
+class ExpressionType(str, Enum):
+    """Kind of worksheet calculation a [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata] defines.
+
+    ``INGREDIENT_BASIS``: one value per ingredient, shown next to each ingredient's amount.
+    ``CALCULATED_PROPERTY``: one value per formula, shown in a calculated property row.
+    """
+
+    INGREDIENT_BASIS = "INGREDIENT_BASIS"
+    CALCULATED_PROPERTY = "CALCULATED_PROPERTY"
+
+
+class FormulaMetadata(BaseAlbertModel):
+    """A worksheet calculation on an attribute: an ingredient basis or a calculated property.
+
+    An *ingredient basis* computes one value per ingredient (e.g. each ingredient's
+    share of total solids) and is the only kind that supports back-solving: with
+    ``request_inverse=True``, editing a basis value on the sheet recalculates that
+    ingredient's amount. A *calculated property* computes one value per formula
+    (e.g. total solids or density) and cannot be back-solved. An attribute can hold
+    several ingredient bases and several calculated properties. A sheet uses one
+    ingredient basis per attribute. Every calculated property shows on the sheet, but
+    only the attribute's first one, in sheet order, is saved to the formula's inventory
+    and published as the attribute's value, so give a variant that must be saved its own
+    attribute.
+
+    Expression variables:
+
+    - ``wt%``: the ingredient's weight percent, currently a whole number (40 means
+      40%). Ratios such as ``wt% / sum(wt%)`` give the same result on any scale.
+    - ``parts_mass``: the ingredient's amount.
+    - ``[ATR123]``: the ingredient's value for another attribute, always by attribute
+      ID. A name such as ``[Solid %]`` reads as 0. Resolve names to IDs with
+      [`search`][albert.collections.attributes.AttributeCollection.search].
+    - ``ingredient_basis``: the ingredient's value from this attribute's ingredient
+      basis. Calculated properties only, and the attribute must also have an
+      ingredient basis.
+    - ``Function``: the ingredient's value in the sheet's Function column, only inside
+      ``WHERE``. Values are the tenant's inventory function names; list them with
+      [`get_all`][albert.collections.lists.ListsCollection.get_all] and
+      ``list_type="inventoryFunction"``. A value no ingredient has matches nothing and
+      gives a blank result.
+
+    Combine them with ``+ - * /``, parentheses and numbers, and aggregate with:
+
+    - ``sum(x)``: total over all ingredients.
+    - ``sum(x WHERE Function = "Core")``: total over matching ingredients. ``WHERE``
+      works only inside ``sum(...)``, values are quoted, and several values of one key
+      combine with ``OR`` (``Function = "Core" OR Function = "Shell"``); ``AND`` and
+      mixed keys are not supported. A text attribute can filter instead of
+      ``Function`` (``[ATR123] = "Epoxy"``).
+    - ``harmonicMean(weight, [ATR123])``: weighted harmonic mean (e.g. density).
+
+    Typical expressions:
+
+    - Weighted average (calculated property): ``sum(wt% * [ATR45]) / sum(wt%)``.
+    - Share per ingredient (ingredient basis): ``wt% / sum(wt%) * [ATR45]``, totalled by
+      a calculated property ``sum(ingredient_basis)``.
+    - Parts per hundred resin (ingredient basis):
+      ``wt% / sum(wt% WHERE Function = "Resin") * 100``.
+    - Density (calculated property): ``harmonicMean(wt%, [ATR67])``.
+    - Ratio (calculated property):
+      ``sum(wt% WHERE Function = "Core") / sum(wt% WHERE Function = "Shell")``.
+
+    Expressions are not checked when saved: a name instead of an ID, an ID that does
+    not exist, or a malformed ``WHERE`` saves without error and shows blank values, 0
+    or an error on the sheet. Double-check every ``[ATR...]`` ID.
+
+    Saving a formula on the attribute does not change any sheet, and the SDK cannot add
+    one to a sheet. Add it to a sheet with the worksheet's Manage Worksheet option: a
+    calculated property then shows as a row named after its ``display_name`` in the
+    sheet's Calculated Properties section, and an ingredient basis as a column under
+    each formulation column.
+
+    Values are computed on the worksheet, not when the formula is saved. To estimate a
+    value for another composition, evaluate the expression over the sheet's ingredient
+    values: an ingredient missing a referenced value has a blank basis (not 0) and is
+    left out of a calculated property, a ``WHERE`` that matches nothing gives a blank
+    result, and division by zero is an error. A saved calculated property value is
+    also published as the attribute's value on the formula, so the attribute's
+    validation (e.g. a 0 to 100 range) must allow it; otherwise it shows on the sheet
+    but is not published.
+
+    Fields also accept their camelCase names (``displayName``, ``expressionType``,
+    ``requestInverse``), which are the names the schema shows.
+    """
+
+    # Keep keys this model does not declare, so replacing the whole list on update
+    # does not drop them.
+    model_config = ConfigDict(extra="allow")
+
+    display_name: str = Field(alias="displayName")
+    """Name shown on the worksheet. Unique within the attribute."""
+
+    expression: str
+    """Formula text, e.g. ``sum(wt% * [ATR45]) / sum(wt%)``. Reference attributes by ID, never by name."""
+
+    expression_type: ExpressionType | str = Field(
+        alias="expressionType", union_mode="left_to_right"
+    )
+    """``INGREDIENT_BASIS`` (one value per ingredient) or ``CALCULATED_PROPERTY`` (one value per formula). Unknown values parse as plain strings."""
+
+    request_inverse: bool = Field(alias="requestInverse")
+    """Allow back-solving an ingredient's amount from an edited basis value. Must be ``False`` on a calculated property."""
+
+
 class Attribute(BaseResource):
     """An inventory reference attribute definition.
 
@@ -152,6 +257,9 @@ class Attribute(BaseResource):
 
     parameters: list[AttributeParameterItem] | None = None
     """Parameter setpoints that define measurement conditions for this attribute."""
+
+    formula_metadata: list[FormulaMetadata] | None = Field(None, alias="formulaMetadata")
+    """Ingredient basis and calculated property formulas for worksheets. Updates replace the whole list."""
 
     @field_validator("parameters", mode="before")
     @classmethod
