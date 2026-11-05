@@ -348,11 +348,17 @@ class RowConfig(BaseAlbertModel):
 
 
 class RowGroup(BaseAlbertModel):
-    """A named group of rows within a Design."""
+    """A named group of rows (a section) within a Design."""
 
     row_id: str = Field(alias="rowId")
+    """The ID of the group's header row."""
+
     name: str | None = Field(default=None)
+    """The name of the group, shown on its header row. Optional. Default is None."""
+
     child_row_ids: list[str] = Field(default_factory=list)
+    """The IDs of the rows directly inside the group, in sheet order. A section nested
+    inside this one is listed by its header row ID."""
 
 
 class Design(BaseSessionResource):
@@ -608,7 +614,13 @@ class Design(BaseSessionResource):
         reference_id: str | None = None,
         position: str = "above",
     ) -> RowGroup:
-        """Create a row group within this design.
+        """Create a row group (section) within this design.
+
+        This always creates a new section with its own header row. To add rows to an
+        existing section, use
+        [`add_inventory_rows`][albert.resources.sheets.Sheet.add_inventory_rows] with
+        ``section_id``, or [`move_rows`][albert.resources.sheets.Sheet.move_rows]
+        next to a row inside it.
 
         !!! example
             ```python
@@ -668,7 +680,10 @@ class Design(BaseSessionResource):
         return group
 
     def get_groups(self, *, refresh: bool = False) -> list[RowGroup]:
-        """Get all row groups in this design.
+        """Get all row groups (sections, headers) in this design.
+
+        Sections nested inside other sections are included. Groups come in sheet
+        order, each before the sections nested inside it.
 
         !!! example
             ```python
@@ -701,19 +716,7 @@ class Design(BaseSessionResource):
             self._groups_cache = []
             return []
 
-        groups: list[RowGroup] = []
-        for item in seq:
-            rid = item.get("rowId") or item.get("id")
-            child_dicts = (
-                item.get("children") or item.get("childRows") or item.get("ChildRows") or []
-            )
-            if rid and child_dicts:
-                child_ids = [
-                    (c.get("rowId") or c.get("id"))
-                    for c in child_dicts
-                    if isinstance(c, dict) and (c.get("rowId") or c.get("id"))
-                ]
-                groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
+        groups = self._parse_row_groups(sequence=seq)
 
         # The row sequence does not carry group names; fill them in from the grid rows.
         if any(g.name is None for g in groups):
@@ -723,6 +726,39 @@ class Design(BaseSessionResource):
                     g.name = name_by_row_id.get(g.row_id)
 
         self._groups_cache = groups
+        return groups
+
+    @staticmethod
+    def _parse_row_groups(*, sequence: list) -> list[RowGroup]:
+        """Every row group in a design's row sequence, nested groups included.
+
+        Groups come in sheet order, each before the groups nested inside it. A
+        group listed more than once (the sequence can repeat one after a grouping
+        the sheet applied only in part) is kept at its first occurrence.
+        """
+        groups: list[RowGroup] = []
+        seen: set[str] = set()
+
+        def walk(items: list) -> None:
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                rid = item.get("rowId") or item.get("id")
+                child_dicts = (
+                    item.get("children") or item.get("childRows") or item.get("ChildRows") or []
+                )
+                if not rid or not child_dicts or rid in seen:
+                    continue
+                seen.add(rid)
+                child_ids = [
+                    (c.get("rowId") or c.get("id"))
+                    for c in child_dicts
+                    if isinstance(c, dict) and (c.get("rowId") or c.get("id"))
+                ]
+                groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
+                walk(child_dicts)
+
+        walk(sequence)
         return groups
 
 
@@ -832,9 +868,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
     add_formulation_columns(formulation_names, ...) -> list[Column]
         Add one or more empty formulation columns.
     add_inventory_row(inventory_id, ...) -> Row
-        Add an ingredient (inventory) row.
+        Add an ingredient (inventory) row, optionally into a section.
     add_inventory_rows(inventory_ids, ...) -> list[Row]
-        Add multiple ingredient (inventory) rows in one call.
+        Add multiple ingredient (inventory) rows in one call, optionally into a section.
     add_blank_row(row_name, ...) -> Row
         Add a blank row.
     add_blank_rows(row_names, ...) -> list[Row]
@@ -988,6 +1024,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 design._grid = None  # Assuming Design has a grid property
                 design._rows = None
                 design._columns = None
+                design._groups_cache = None
         else:
             raise NotImplementedError("grid is a read-only property")
 
@@ -1922,6 +1959,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 ordered = [row.row_unique_id for row in design._rows]
                 remaining = [label for label in grid.index if label not in set(ordered)]
                 design._grid = grid.reindex(index=[*ordered, *remaining])
+        # Rows placed next to a row inside a section join that section.
+        design._groups_cache = None
         self._grid = None
 
     def _apply_cells_to_cached_grids(self, *, cells: list[Cell]) -> None:
@@ -2356,15 +2395,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
         *,
         inventory_id: str,
         position: dict | None = None,
+        section_id: str | None = None,
     ):
-        """Add an ingredient (inventory) row to the Product Design.
+        """Add an ingredient (inventory, raw material) row to the Product Design.
 
         The row represents an inventory item that can then carry amounts in each
         formulation column. The ``INV`` prefix is added to ``inventory_id`` if absent.
+        Pass ``section_id`` to add the row at the end of an existing section (row
+        group), for example to fill a grouped template.
 
         !!! example
             ```python
             row = sheet.add_inventory_row(inventory_id="INVA9999999")
+
+            groups = sheet.product_design.get_groups()
+            pigments = next(g for g in groups if g.name == "Pigments")
+            row = sheet.add_inventory_row(inventory_id="INVA9999998", section_id=pigments.row_id)
             ```
 
         Parameters
@@ -2374,12 +2420,27 @@ class Sheet(BaseSessionResource):  # noqa:F811
         position : dict, optional
             Where to insert the row, as a dict with ``reference_id`` (a row ID) and
             ``position`` (``"above"`` or ``"below"``). Defaults to above ``"ROW1"``.
+            Cannot be combined with ``section_id``.
+        section_id : str, optional
+            The header row ID of an existing section to add the row to (the ``row_id``
+            of a [`RowGroup`][albert.resources.sheets.RowGroup] from
+            [`get_groups`][albert.resources.sheets.Design.get_groups]). The row goes at
+            the end of the section, after any section nested inside it. The section
+            must contain at least one row. Cannot be combined with ``position``.
 
         Returns
         -------
         Row
             The created inventory row.
+
+        Raises
+        ------
+        AlbertException
+            If both ``position`` and ``section_id`` are given, or if ``section_id`` is
+            not a section with rows in the Product Design.
         """
+        if section_id is not None:
+            position = self._section_position(position=position, section_id=section_id)
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
         design_id = self.product_design.id
@@ -2406,11 +2467,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
             name=row_dict["name"],
             manufacturer=row_dict["manufacturer"],
         )
-        self._register_new_rows(
-            rows=[new_row],
-            reference_id=position["reference_id"],
-            position=position["position"],
-        )
+        if section_id is None:
+            self._register_new_rows(
+                rows=[new_row],
+                reference_id=position["reference_id"],
+                position=position["position"],
+            )
+        else:
+            # The anchor can be a nested section's header, whose rows sit between it
+            # and the new row; the cached row order cannot place that, so drop it.
+            self.grid = None
         return new_row
 
     @validate_call
@@ -2419,13 +2485,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         *,
         inventory_ids: list[str],
         position: dict | None = None,
+        section_id: str | None = None,
     ) -> list[Row]:
-        """Add multiple ingredient (inventory) rows to the Product Design.
+        """Add multiple ingredient (inventory, raw material) rows to the Product Design.
 
         The rows represent inventory items that can then carry amounts in each
         formulation column. The ``INV`` prefix is added to each ``inventory_id``
         if absent. All rows in the list are placed relative to the same
-        reference row.
+        reference row, or together at the end of the section given by
+        ``section_id``.
+
+        To build a formulation in a grouped template, add each ingredient to its
+        section first, then call
+        [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] with the
+        default ``enforce_order=False``, which reuses those rows.
 
         !!! warning "Concurrent use"
             Do not run this method concurrently with other writes to the same
@@ -2439,6 +2512,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
         !!! example
             ```python
             rows = sheet.add_inventory_rows(inventory_ids=["INVA9999999", "INVA9999998"])
+
+            groups = sheet.product_design.get_groups()
+            fillers = next(g for g in groups if g.name == "Fillers")
+            rows = sheet.add_inventory_rows(
+                inventory_ids=["INVA9999997", "INVA9999996"], section_id=fillers.row_id
+            )
             ```
 
         Parameters
@@ -2448,15 +2527,30 @@ class Sheet(BaseSessionResource):  # noqa:F811
         position : dict, optional
             Where to insert the rows, as a dict with ``reference_id`` (a row ID)
             and ``position`` (``"above"`` or ``"below"``). Defaults to above
-            ``"ROW1"``.
+            ``"ROW1"``. Cannot be combined with ``section_id``.
+        section_id : str, optional
+            The header row ID of an existing section to add the rows to (the
+            ``row_id`` of a [`RowGroup`][albert.resources.sheets.RowGroup] from
+            [`get_groups`][albert.resources.sheets.Design.get_groups]). The rows go
+            at the end of the section, after any section nested inside it. The
+            section must contain at least one row. Cannot be combined with
+            ``position``.
 
         Returns
         -------
         list[Row]
             The created inventory rows, in the order requested.
+
+        Raises
+        ------
+        AlbertException
+            If both ``position`` and ``section_id`` are given, or if ``section_id`` is
+            not a section with rows in the Product Design.
         """
         if not inventory_ids:
             return []
+        if section_id is not None:
+            position = self._section_position(position=position, section_id=section_id)
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
         design = self.product_design
@@ -2499,14 +2593,45 @@ class Sheet(BaseSessionResource):  # noqa:F811
             if chunk_rows and position["position"] == RowPosition.BELOW.value:
                 reference_id = chunk_rows[-1].row_id
 
-        # Rows arrived in an order the cached row list does not reflect; fold
-        # them into the cached Product Design state at the reference position.
-        self._register_new_rows(
-            rows=rows,
-            reference_id=position["reference_id"],
-            position=position["position"],
-        )
+        if section_id is None:
+            # Rows arrived in an order the cached row list does not reflect; fold
+            # them into the cached Product Design state at the reference position.
+            self._register_new_rows(
+                rows=rows,
+                reference_id=position["reference_id"],
+                position=position["position"],
+            )
+        else:
+            # The anchor can be a nested section's header, whose rows sit between it
+            # and the new rows; the cached row order cannot place that, so drop it.
+            self.grid = None
         return rows
+
+    def _section_position(self, *, position: dict | None, section_id: str) -> dict:
+        """The insert position that puts new rows at the end of a Product Design section."""
+        if position is not None:
+            raise AlbertException("Pass either position or section_id, not both.")
+        response = self.session.get(
+            f"/api/v3/worksheet/design/{self.product_design.id}/rows/sequence"
+        )
+        return self._position_at_end_of_section(sequence=response.json(), section_id=section_id)
+
+    @staticmethod
+    def _position_at_end_of_section(*, sequence: list, section_id: str) -> dict:
+        """Place rows below a section's last direct child, from the design's row sequence.
+
+        A new row lands at the level of the row it is placed against, so placing it
+        below the last direct child keeps it inside the section, and after a section
+        nested at the end (the last child is then that section's header).
+        """
+        groups = Design._parse_row_groups(sequence=sequence)
+        group = next((g for g in groups if g.row_id == section_id), None)
+        if group is None:
+            raise AlbertException(
+                f"{section_id} is not a section with rows in the Product Design. Pass the "
+                "row_id of a group from get_groups(); a section must contain at least one row."
+            )
+        return {"reference_id": group.child_row_ids[-1], "position": RowPosition.BELOW.value}
 
     @validate_call
     def add_lookup_row(
@@ -3927,7 +4052,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         """Move (reorder) one or more rows within a Design section of this sheet.
 
         The rows keep their given relative order and are placed together above
-        or below the reference row.
+        or below the reference row. Moving rows next to a row inside a section
+        (row group) moves them into that section.
 
         !!! example
             ```python
