@@ -13,6 +13,8 @@ identical to the fetched object.
 from albert.core.shared.models.patch import PatchOperation
 from albert.resources.custom_fields import (
     CustomField,
+    CustomFieldAPI,
+    CustomFieldApiMethod,
     EntityCategory,
     FieldType,
     ServiceType,
@@ -158,6 +160,81 @@ def test_searchable_uses_update_not_add_when_newly_set():
     op = payload.data[0]
     assert op.attribute == "search"
     assert op.operation == PatchOperation.UPDATE
+
+
+# ---------------------------------------------------------------------------
+# api attribute
+# ---------------------------------------------------------------------------
+
+
+def _api(endpoint: str = "/api/v3/lists") -> CustomFieldAPI:
+    return CustomFieldAPI(
+        endpoint=endpoint,
+        method=CustomFieldApiMethod.GET,
+        query_params_field=["listType"],
+    )
+
+
+def test_api_unchanged_emits_no_op():
+    """Test that an unchanged api attribute emits no patch operation."""
+    existing = _custom_field(api=_api())
+    updated = _custom_field(api=_api())
+
+    payload = _generate_custom_field_patch_payload(
+        existing=existing, updated=updated, updatable_attributes={"api"}
+    )
+
+    assert payload.data == []
+
+
+def test_api_newly_set_emits_add_op():
+    """Test that an api attribute set from None to a value emits an ADD op."""
+    existing = _custom_field(api=None)
+    updated = _custom_field(api=_api())
+
+    payload = _generate_custom_field_patch_payload(
+        existing=existing, updated=updated, updatable_attributes={"api"}
+    )
+
+    assert len(payload.data) == 1
+    op = payload.data[0]
+    assert op.attribute == "api"
+    assert op.operation == PatchOperation.ADD
+    assert op.new_value == _api()
+    assert op.old_value is None
+
+
+def test_api_cleared_emits_delete_op():
+    """Test that an api attribute set from a value to None emits a DELETE op."""
+    existing = _custom_field(api=_api())
+    updated = _custom_field(api=None)
+
+    payload = _generate_custom_field_patch_payload(
+        existing=existing, updated=updated, updatable_attributes={"api"}
+    )
+
+    assert len(payload.data) == 1
+    op = payload.data[0]
+    assert op.attribute == "api"
+    assert op.operation == PatchOperation.DELETE
+    assert op.old_value == _api()
+
+
+def test_api_changed_emits_update_op_with_old_value():
+    """Test that a changed api attribute emits an UPDATE op carrying the old value."""
+    existing = _custom_field(api=_api())
+    updated = _custom_field(api=_api(endpoint="/api/v3/params"))
+
+    payload = _generate_custom_field_patch_payload(
+        existing=existing, updated=updated, updatable_attributes={"api"}
+    )
+
+    assert len(payload.data) == 1
+    op = payload.data[0]
+    assert op.attribute == "api"
+    assert op.operation == PatchOperation.UPDATE
+    assert op.old_value == _api()
+    assert op.new_value == _api(endpoint="/api/v3/params")
 
 
 # ---------------------------------------------------------------------------
