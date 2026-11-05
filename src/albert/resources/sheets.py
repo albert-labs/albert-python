@@ -348,11 +348,17 @@ class RowConfig(BaseAlbertModel):
 
 
 class RowGroup(BaseAlbertModel):
-    """A named group of rows within a Design."""
+    """A named group of rows (a section) within a Design."""
 
     row_id: str = Field(alias="rowId")
+    """The ID of the group's header row."""
+
     name: str | None = Field(default=None)
+    """The name of the group, shown on its header row. Optional. Default is None."""
+
     child_row_ids: list[str] = Field(default_factory=list)
+    """The IDs of the rows directly inside the group, in sheet order. A section nested
+    inside this one is listed by its header row ID."""
 
 
 class Design(BaseSessionResource):
@@ -668,7 +674,10 @@ class Design(BaseSessionResource):
         return group
 
     def get_groups(self, *, refresh: bool = False) -> list[RowGroup]:
-        """Get all row groups in this design.
+        """Get all row groups (sections, headers) in this design.
+
+        Sections nested inside other sections are included. Groups come in sheet
+        order, each before the sections nested inside it.
 
         !!! example
             ```python
@@ -701,19 +710,7 @@ class Design(BaseSessionResource):
             self._groups_cache = []
             return []
 
-        groups: list[RowGroup] = []
-        for item in seq:
-            rid = item.get("rowId") or item.get("id")
-            child_dicts = (
-                item.get("children") or item.get("childRows") or item.get("ChildRows") or []
-            )
-            if rid and child_dicts:
-                child_ids = [
-                    (c.get("rowId") or c.get("id"))
-                    for c in child_dicts
-                    if isinstance(c, dict) and (c.get("rowId") or c.get("id"))
-                ]
-                groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
+        groups = self._parse_row_groups(sequence=seq)
 
         # The row sequence does not carry group names; fill them in from the grid rows.
         if any(g.name is None for g in groups):
@@ -723,6 +720,39 @@ class Design(BaseSessionResource):
                     g.name = name_by_row_id.get(g.row_id)
 
         self._groups_cache = groups
+        return groups
+
+    @staticmethod
+    def _parse_row_groups(*, sequence: list) -> list[RowGroup]:
+        """Every row group in a design's row sequence, nested groups included.
+
+        Groups come in sheet order, each before the groups nested inside it. A
+        group listed more than once (the sequence can repeat one after a grouping
+        the sheet applied only in part) is kept at its first occurrence.
+        """
+        groups: list[RowGroup] = []
+        seen: set[str] = set()
+
+        def walk(items: list) -> None:
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                rid = item.get("rowId") or item.get("id")
+                child_dicts = (
+                    item.get("children") or item.get("childRows") or item.get("ChildRows") or []
+                )
+                if not rid or not child_dicts or rid in seen:
+                    continue
+                seen.add(rid)
+                child_ids = [
+                    (c.get("rowId") or c.get("id"))
+                    for c in child_dicts
+                    if isinstance(c, dict) and (c.get("rowId") or c.get("id"))
+                ]
+                groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
+                walk(child_dicts)
+
+        walk(sequence)
         return groups
 
 

@@ -807,6 +807,67 @@ def test_row_config_invalid_value_coerced_to_none():
     assert row.config is None
 
 
+# --- Design._parse_row_groups ---
+
+
+def test_parse_row_groups_reads_top_level_groups():
+    """Test that grouped rows become groups and ungrouped rows do not."""
+    sequence = [
+        {"rowId": "ROW5", "ChildRows": [{"rowId": "ROW2"}, {"rowId": "ROW3"}]},
+        {"rowId": "ROW4"},
+        {"rowId": "ROW1"},
+    ]
+
+    groups = Design._parse_row_groups(sequence=sequence)
+
+    assert groups == [RowGroup(rowId="ROW5", child_row_ids=["ROW2", "ROW3"])]
+
+
+def test_parse_row_groups_includes_nested_groups_in_sheet_order():
+    """Test that a group nested inside another follows its parent, listed by header in it."""
+    sequence = [
+        {
+            "rowId": "ROW7",
+            "ChildRows": [
+                {"rowId": "ROW2"},
+                {"rowId": "ROW6", "ChildRows": [{"rowId": "ROW3"}, {"rowId": "ROW4"}]},
+            ],
+        },
+        {"rowId": "ROW8", "ChildRows": [{"rowId": "ROW5"}]},
+        {"rowId": "ROW1"},
+    ]
+
+    groups = Design._parse_row_groups(sequence=sequence)
+
+    assert groups == [
+        RowGroup(rowId="ROW7", child_row_ids=["ROW2", "ROW6"]),
+        RowGroup(rowId="ROW6", child_row_ids=["ROW3", "ROW4"]),
+        RowGroup(rowId="ROW8", child_row_ids=["ROW5"]),
+    ]
+
+
+def test_parse_row_groups_keeps_a_repeated_group_once():
+    """Test that a group listed twice in the sequence is returned once, at its first place."""
+    inner = {"rowId": "ROW6", "ChildRows": [{"rowId": "ROW3"}, {"rowId": "ROW4"}]}
+    sequence = [
+        inner,
+        {"rowId": "ROW7", "ChildRows": [{"rowId": "ROW2"}, inner]},
+        {"rowId": "ROW1"},
+    ]
+
+    groups = Design._parse_row_groups(sequence=sequence)
+
+    assert groups == [
+        RowGroup(rowId="ROW6", child_row_ids=["ROW3", "ROW4"]),
+        RowGroup(rowId="ROW7", child_row_ids=["ROW2", "ROW6"]),
+    ]
+
+
+def test_parse_row_groups_returns_empty_for_empty_sequence():
+    """Test that an empty row sequence has no groups."""
+    assert Design._parse_row_groups(sequence=[]) == []
+
+
 def test_move_rows_payload_whole_shape():
     """Test the row-move payload for multiple rows moved below a reference row."""
     assert Sheet._move_rows_payload(
