@@ -309,6 +309,7 @@ def test_filter_cells_marks_only_failed_items_as_failed():
     ]
     updated, failed = sheet._filter_cells(
         cells=cells,
+        status_code=206,
         response_dict={
             "error": "Some values are not updated properly. Try again!",
             "FailedItems": [
@@ -333,6 +334,7 @@ def test_filter_cells_ignores_updated_items_column_records():
     ]
     updated, failed = sheet._filter_cells(
         cells=cells,
+        status_code=206,
         response_dict={
             "error": "Some values are not updated properly. Try again!",
             "UpdatedItems": [
@@ -359,6 +361,29 @@ def test_filter_cells_ignores_updated_items_column_records():
     )
     assert [cell.column_id for cell in updated] == ["COL5"]
     assert [cell.column_id for cell in failed] == ["COL6", "COL7"]
+
+
+@pytest.mark.parametrize(
+    ("status_code", "response_dict"),
+    [
+        (204, None),
+        (200, {"Items": [{"rowId": "ROW1", "colId": "COL1", "value": "52"}]}),
+        (206, {"FailedInventories": [{"id": "INV1", "msg": "Not updated"}]}),
+    ],
+    ids=["no-content", "ok-with-body", "partial-inventory-only"],
+)
+def test_filter_cells_treats_saves_without_failed_items_as_updated(status_code, response_dict):
+    """Test that a successful save with no failed cells reports every cell as updated."""
+    sheet = _empty_sheet()
+    cells = [
+        Cell(colId="COL1", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL2", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+    ]
+    updated, failed = sheet._filter_cells(
+        cells=cells, status_code=status_code, response_dict=response_dict
+    )
+    assert updated == cells
+    assert failed == []
 
 
 @responses.activate
