@@ -44,6 +44,8 @@ class LocationCollection(BaseCollection):
         Create a new location.
     get_by_id(id) -> Location
         Get a single location by its Albert ID.
+    get_by_name(name, exact_match=True) -> Location | None
+        Get a single location by name, or None if not found.
     get_all(...) -> Iterator[Location]
         Iterate over locations, optionally filtered by name or country.
     update(location) -> Location
@@ -152,6 +154,37 @@ class LocationCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return Location(**response.json())
+
+    def get_by_name(self, *, name: str, exact_match: bool = True) -> Location | None:
+        """Get a single Location by name.
+
+        Returns the first match, or None if no location matches. To check only for
+        existence, use [`exists`][albert.collections.locations.LocationCollection.exists]; to look up or create in one step, use
+        [`get_or_create`][albert.collections.locations.LocationCollection.get_or_create].
+
+        !!! example
+            ```python
+            location = client.locations.get_by_name(name="Boston Lab")
+            location.id if location else "not found"
+            # 'LOC123'
+            ```
+
+        Parameters
+        ----------
+        name : str
+            The location name to look up.
+        exact_match : bool, optional
+            When True (default), requires an exact name match. When False, matches
+            on a substring of the name.
+
+        Returns
+        -------
+        Location or None
+            The matching [`Location`][albert.resources.locations.Location], or None if
+            no location matches.
+        """
+        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
+        return next(found, None)
 
     def update(self, *, location: Location) -> Location:
         """Update an existing Location.
