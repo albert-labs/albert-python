@@ -22,6 +22,8 @@ from albert.resources.tasks import (
     GeneralTask,
     PropertyTask,
     TaskCategory,
+    TaskInventoryInformation,
+    TaskLotAllocation,
     TaskSearchItem,
 )
 from albert.resources.worker_jobs import WorkerJob
@@ -227,6 +229,61 @@ def test_update_partial_leaves_omitted_special_attrs_untouched(
     refetched = client.tasks.get_by_id(id=task.id)
     assert refetched.name == new_name
     assert tag.id in {t.id for t in (refetched.tags or [])}
+
+
+def test_allocate_inventory_task_lot(
+    client: Albert, seed_prefix: str, seeded_projects, seeded_inventory, seeded_lots
+):
+    """Test that allocating the task's own inventory sets its quantity used."""
+    task = client.tasks.create(
+        task=PropertyTask(
+            name=f"{seed_prefix} - Allocate Inventory",
+            inventory_information=[
+                TaskInventoryInformation(
+                    inventory_id=seeded_inventory[0].id,
+                    lot_id=seeded_lots[0].id,
+                )
+            ],
+            parent_id=seeded_projects[0].id,
+        )
+    )
+    try:
+        updated = client.tasks.allocate_inventory(
+            task_id=task.id,
+            allocations=[
+                TaskLotAllocation(
+                    inventory_id=seeded_inventory[0].id,
+                    lot_id=seeded_lots[0].id,
+                    quantity=0.5,
+                )
+            ],
+        )
+        target = next(
+            info
+            for info in updated.inventory_information
+            if info.inventory_id == seeded_inventory[0].id
+        )
+        assert target.quantity_used == 0.5
+
+        # Restore to zero so the shared lot is left as found.
+        restored = client.tasks.allocate_inventory(
+            task_id=task.id,
+            allocations=[
+                TaskLotAllocation(
+                    inventory_id=seeded_inventory[0].id,
+                    lot_id=seeded_lots[0].id,
+                    quantity=0,
+                )
+            ],
+        )
+        target = next(
+            info
+            for info in restored.inventory_information
+            if info.inventory_id == seeded_inventory[0].id
+        )
+        assert target.quantity_used == 0
+    finally:
+        client.tasks.delete(id=task.id)
 
 
 def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):

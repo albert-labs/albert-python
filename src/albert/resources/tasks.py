@@ -9,9 +9,16 @@ from typing_extensions import deprecated
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
-from albert.core.shared.identifiers import InventoryId, LotId, TaskId
+from albert.core.shared.identifiers import (
+    BlockId,
+    InventoryId,
+    LotId,
+    RowId,
+    TaskId,
+    WorkflowId,
+)
 from albert.core.shared.models.base import EntityLinkWithName
-from albert.core.shared.models.patch import PatchPayload
+from albert.core.shared.models.patch import PatchDatum, PatchPayload
 from albert.core.shared.types import (
     MetadataItem,
     SerializeAsEntityLink,
@@ -734,6 +741,121 @@ class TaskPatchPayload(PatchPayload):
 
     id: str
     """The id of the Task to be updated."""
+
+
+class AllocatedLot(BaseAlbertModel):
+    """One lot and the quantity drawn from it within an allocation.
+
+    Pass inside [`TaskParameterAllocation`][albert.resources.tasks.TaskParameterAllocation]
+    to record consumption of a special parameter's inventory item from one or
+    more lots. Used with
+    [`allocate_inventory`][albert.collections.tasks.TaskCollection.allocate_inventory].
+
+    !!! example
+        ```python
+        from albert.resources.tasks import AllocatedLot
+
+        lot = AllocatedLot(lot_id="LOT9999999", quantity=1.5)
+        ```
+    """
+
+    lot_id: LotId = Field(alias="id")
+    """The lot consumed (format ``LOT...``). Serialized as ``id``."""
+
+    quantity: float
+    """The amount drawn from this lot."""
+
+
+class TaskLotAllocation(BaseAlbertModel):
+    """An allocation against the task's own inventory.
+
+    Sets the absolute quantity of one inventory item + lot pair consumed by the
+    task. Pass a list of these (optionally mixed with
+    [`TaskParameterAllocation`][albert.resources.tasks.TaskParameterAllocation]) to
+    [`allocate_inventory`][albert.collections.tasks.TaskCollection.allocate_inventory].
+
+    !!! example
+        ```python
+        from albert.resources.tasks import TaskLotAllocation
+
+        allocation = TaskLotAllocation(
+            inventory_id="INVB9999999", lot_id="LOT9999999", quantity=0.5
+        )
+        ```
+    """
+
+    inventory_id: InventoryId
+    """The inventory item consumed (format ``INV...``). Must be one of the task's inventory items."""
+
+    lot_id: LotId
+    """The lot consumed (format ``LOT...``). Must be a lot of ``inventory_id`` listed on the task."""
+
+    quantity: float
+    """The total quantity of the item + lot pair consumed. An absolute value, not a delta."""
+
+    occurrence: int | None = Field(default=None)
+    """Which row to target when the same inventory item and lot appear on the task more than once (the 1-based occurrence suffix of the task's inventory tuple)."""
+
+
+class TaskParameterAllocation(BaseAlbertModel):
+    """An allocation against an inventory-linked special parameter on a block's workflow.
+
+    Records consumption of the inventory item selected on an Equipment,
+    Consumables, or Templates parameter row. The target row is resolved from
+    the block's workflow by
+    [`allocate_inventory`][albert.collections.tasks.TaskCollection.allocate_inventory]:
+    for an intervalized parameter, the matching interval row; otherwise the
+    parameter's own row.
+
+    !!! example
+        ```python
+        from albert.resources.tasks import AllocatedLot, TaskParameterAllocation
+
+        allocation = TaskParameterAllocation(
+            inventory_id="INVC9999999",
+            lots=[AllocatedLot(lot_id="LOT9999999", quantity=1.5)],
+            parameter="Light Source",
+        )
+        ```
+    """
+
+    inventory_id: InventoryId
+    """The inventory item consumed (format ``INV...``). Must be selected on a special parameter of the block's workflow."""
+
+    lots: list[AllocatedLot] = Field(min_length=1)
+    """The lot(s) the consumed quantity is drawn from."""
+
+    parameter: str | None = Field(default=None)
+    """The special parameter's name or short name (e.g. ``"Light Source"``). Required when the same item is selected on more than one parameter row of the workflow."""
+
+    row_id: RowId | None = Field(default=None)
+    """The workflow row to allocate against (format ``ROW...``). Overrides automatic resolution."""
+
+
+class QuantityUsedEntry(BaseAlbertModel):
+    """Internal wire shape for one special-parameter allocation entry."""
+
+    row_id: RowId = Field(alias="rowId")
+    """The resolved workflow row being allocated against. Serialized as ``rowId``."""
+
+    workflow_id: WorkflowId = Field(alias="workflowId")
+    """The block's current workflow (format ``WFL...``). Serialized as ``workflowId``."""
+
+    inventory_id: InventoryId = Field(alias="invId")
+    """The inventory item consumed (format ``INV...``). Serialized as ``invId``."""
+
+    block_id: BlockId = Field(alias="blockId")
+    """The block holding the parameter row (format ``BLK...``). Serialized as ``blockId``."""
+
+    lots: list[AllocatedLot] = Field(alias="lot")
+    """The lots and quantities consumed. Serialized as ``lot``."""
+
+
+class QuantityUsedPatchDatum(PatchDatum):
+    """Internal wire shape for a task-level (inventory tuple) allocation operation."""
+
+    inv_lot_unique_id: str = Field(alias="invLotUniqueId")
+    """The task-level inventory tuple targeted (format ``{inventoryId}#{lotId}#{occurrence}``). Serialized as ``invLotUniqueId``."""
 
 
 class TaskSearchInventory(BaseAlbertModel):
