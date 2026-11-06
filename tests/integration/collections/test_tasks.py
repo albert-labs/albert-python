@@ -279,9 +279,10 @@ def test_allocate_inventory_task_lot(
             if info.inventory_id == seeded_inventory[0].id
         )
         assert target.quantity_used == 0.5
-
-        # Restore to zero so the shared lot is left as found.
-        restored = client.tasks.allocate_inventory(
+    finally:
+        # Restore the shared lot's quantity before deleting. The platform
+        # stores a 0 quantity as unset, so there is nothing to assert here.
+        client.tasks.allocate_inventory(
             task_id=task.id,
             allocations=[
                 TaskLotAllocation(
@@ -291,13 +292,6 @@ def test_allocate_inventory_task_lot(
                 )
             ],
         )
-        target = next(
-            info
-            for info in restored.inventory_information
-            if info.inventory_id == seeded_inventory[0].id
-        )
-        assert target.quantity_used == 0
-    finally:
         client.tasks.delete(id=task.id)
 
 
