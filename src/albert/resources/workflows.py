@@ -437,7 +437,7 @@ class Workflow(BaseResource):
     """The setpoints to apply, organized one entry per Data Template / Parameter Group. The order of these entries is part of the workflow's identity."""
 
     interval_combinations: list[IntervalCombination] | None = Field(
-        default=None, alias="IntervalCombinations"
+        default=None, alias="IntervalCombinations", exclude=True
     )
     """The realized conditions when parameters are intervalized. Populated by the platform; present when the workflow is retrieved, not something you set when building one."""
 
