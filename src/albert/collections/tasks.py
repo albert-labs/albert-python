@@ -2616,13 +2616,16 @@ class TaskCollection(BaseCollection):
             workflow=workflow,
             workflow_id=workflow_id,
         )
-        for datum in data:
+        if data:
             self.session.patch(
                 url=f"{self.base_path}/{task_id}",
                 json=[
                     {
                         "id": task_id,
-                        "data": [datum.model_dump(exclude_none=True, by_alias=True, mode="json")],
+                        "data": [
+                            datum.model_dump(exclude_none=True, by_alias=True, mode="json")
+                            for datum in data
+                        ],
                     }
                 ],
             )
