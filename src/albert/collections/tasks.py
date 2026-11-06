@@ -867,8 +867,8 @@ class TaskCollection(BaseCollection):
         !!! example
             ```python
             updated = client.tasks.update_task_workflow(task_id="TASBT999", workflow_id="WFL2")
-            updated.workflows[0].id
-            # 'WFL2'
+            [w.id for w in updated.workflows if w.category != "INITIAL"]
+            # ['WFL2']
             ```
 
         Parameters
