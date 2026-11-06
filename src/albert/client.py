@@ -22,6 +22,7 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
+from albert.collections.design_model_configs import DesignModelConfigCollection
 from albert.collections.design_runs import DesignRunCollection, DesignRunV4Collection
 from albert.collections.design_spaces import DesignSpaceCollection
 from albert.collections.entity_types import EntityTypeCollection
@@ -252,6 +253,11 @@ class Albert:
     def design_runs_v4(self) -> DesignRunV4Collection:
         """Design runs against the v4 design service."""
         return DesignRunV4Collection(session=self.session)
+
+    @property
+    def design_model_configs(self) -> DesignModelConfigCollection:
+        """Design model configs on the v4 design service."""
+        return DesignModelConfigCollection(session=self.session)
 
     @property
     def design_spaces(self) -> DesignSpaceCollection:
