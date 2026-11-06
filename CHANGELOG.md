@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.70.0](https://github.com/albert-labs/albert-python/compare/v1.69.0...v1.70.0) (2026-11-06)
+
+
+### Features
+
+* **attributes:** add formula metadata for ingredient basis and calculated properties ([#925](https://github.com/albert-labs/albert-python/issues/925)) ([659b378](https://github.com/albert-labs/albert-python/commit/659b378f8e768a1d58582a9c8c5c258e3a83fac9))
+* **inventory:** support cursor pagination for match_all_conditions search ([#910](https://github.com/albert-labs/albert-python/issues/910)) ([96f6226](https://github.com/albert-labs/albert-python/commit/96f6226f40a1fb384e842a0c5ece20d6750a974e))
+* **sheets:** add and remove calculations on a sheet ([#929](https://github.com/albert-labs/albert-python/issues/929)) ([0c900da](https://github.com/albert-labs/albert-python/commit/0c900daa1ec55d3f2499808dc8d329df216ead99))
+* **sheets:** read a sheet's calculations ([#928](https://github.com/albert-labs/albert-python/issues/928)) ([bb71de9](https://github.com/albert-labs/albert-python/commit/bb71de92dda9595db3a62d81e2f52ee33d369c20))
+* **sheets:** recognise calculated property rows and ingredient basis columns ([#926](https://github.com/albert-labs/albert-python/issues/926)) ([cf2e7ad](https://github.com/albert-labs/albert-python/commit/cf2e7ad0e5cc78614b1af25d532150387acb1615))
+* **tasks:** support increased interval combinations on batch tasks + migration guide ([#937](https://github.com/albert-labs/albert-python/issues/937)) ([46f6d30](https://github.com/albert-labs/albert-python/commit/46f6d304db286ca4855f7c099cf46952ff0279b5))
+
+
+### Bug Fixes
+
+* **inventory:** expose stored calculated property values ([#927](https://github.com/albert-labs/albert-python/issues/927)) ([1d22599](https://github.com/albert-labs/albert-python/commit/1d22599e9b7ad78de664314c608a3a34d8460beb))
+* **sheets:** treat every successful cell save as updated ([#923](https://github.com/albert-labs/albert-python/issues/923)) ([d87f9eb](https://github.com/albert-labs/albert-python/commit/d87f9eb2ed1faf74a19ca05f7fa9fdbc4c390924))
+
 ## [1.69.0](https://github.com/albert-labs/albert-python/compare/v1.68.0...v1.69.0) (2026-11-04)
 
 
