@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from enum import Enum
 from typing import Any, ForwardRef, Literal, TypedDict, Union
 
@@ -10,7 +11,8 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId, TaskId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
-from albert.exceptions import AlbertException, AlbertHTTPError
+from albert.core.utils import find_stack_level
+from albert.exceptions import AlbertException, AlbertHTTPError, AlbertPartialError
 from albert.resources.inventory import InventoryItem
 
 # Define forward references
@@ -84,8 +86,12 @@ class CellType(str, Enum):
     relevant when building formulations are ``INVENTORY`` (an ingredient amount),
     ``TOTAL`` (a computed total row), ``FORMULA`` and ``FOR`` (formulation
     columns), ``LKP`` (a lookup that displays an inventory attribute), and
-    ``BLANK`` (an empty cell). The remaining members correspond to specialized
-    grid content such as tags, prices, tasks, results, and apps.
+    ``BLANK`` (an empty cell). ``CALCULATED_PROPERTY`` marks a calculated property
+    row and ``INGREDIENT_BASIS`` an ingredient basis column; the worksheet computes
+    their values, so they are read-only (see
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells]). The remaining
+    members correspond to specialized grid content such as tags, prices, tasks,
+    results, and apps.
     """
 
     INVENTORY = "INV"
@@ -113,6 +119,19 @@ class CellType(str, Enum):
     DAT = "DAT"
     NDR = "NDR"
     PIC = "PIC"
+    CALCULATED_PROPERTY = "CPR"
+    INGREDIENT_BASIS = "IBS"
+
+
+def _grid_inventory_id(raw_id: Any, item_type: str) -> str | None:
+    """The ``INV``-prefixed inventory ID of a grid column or cell, or None.
+
+    Ingredient basis entries carry an attribute ID, not an inventory ID.
+    """
+    if not raw_id or item_type == CellType.INGREDIENT_BASIS:
+        return None
+    raw_id = str(raw_id)
+    return raw_id if raw_id.startswith("INV") else f"INV{raw_id}"
 
 
 class DesignType(str, Enum):
@@ -418,8 +437,7 @@ class Design(BaseSessionResource):
                     c["minValue"] = min_value
                 if max_value is not None:
                     c["maxValue"] = max_value
-                raw_id = c.pop("id", None)
-                inv = (raw_id if raw_id.startswith("INV") else f"INV{raw_id}") if raw_id else None
+                inv = _grid_inventory_id(c.pop("id", None), c.get("type"))
                 c["inventory_id"] = inv
 
                 cell = Cell(**c)
@@ -455,9 +473,9 @@ class Design(BaseSessionResource):
 
     def _get_columns(self, *, grid_response: dict) -> list[Column]:
         """
-        Normalizes inventory IDs (always prefixed "INV") and, for the
-        "Inventory ID" header, falls back to the row's top-level `id`
-        when Values[].id is absent.
+        Normalizes inventory IDs (always prefixed "INV"; ingredient basis
+        columns have none) and, for the "Inventory ID" header, falls back to
+        the row's top-level `id` when Values[].id is absent.
 
         Parameters
         ----------
@@ -491,10 +509,7 @@ class Design(BaseSessionResource):
             if raw_id is None and v.get("name") == "Inventory ID":
                 raw_id = row_item_id
 
-            if raw_id:
-                inv_id = raw_id if str(raw_id).startswith("INV") else f"INV{raw_id}"
-            else:
-                inv_id = None
+            inv_id = _grid_inventory_id(raw_id, v.get("type"))
 
             formula = formula_by_col.get(col_id) or {}
             state = formula.get("state") or {}
@@ -522,6 +537,7 @@ class Design(BaseSessionResource):
                     locked=locked,
                     pinned=pinned,
                     column_width=column_width,
+                    cp_reference_values=formula.get("cpReferenceValues"),
                 )
             )
 
@@ -1086,14 +1102,27 @@ class Sheet(BaseSessionResource):  # noqa:F811
             new_dicts.append(this_dict)
         return new_dicts
 
+    def _write_cells_or_raise(self, *, cells: list[Cell]) -> None:
+        """Write ``cells`` without a reload, raising when any of them is not written."""
+        _, failed = self.update_cells(cells=cells, refresh=False)
+        if failed:
+            self.grid = None
+            raise AlbertPartialError(
+                f"{len(failed)} cell(s) could not be written to sheet {self.id}.",
+                failed_items=[{"rowId": c.row_id, "colId": c.column_id} for c in failed],
+            )
+
     def _clear_formulation_from_column(self, *, column: Column) -> list[Cell]:
-        """Blank the column's ingredient cells and return their prior state."""
+        """Blank the column's ingredient cells and return their prior state.
+
+        Calculated property rows are left alone: the sheet computes them.
+        """
         original_cells = [
             cell
             for cell in column.cells
             if isinstance(cell, Cell)
             and cell.type == CellType.INVENTORY
-            and cell.row_type != CellType.TOTAL
+            and cell.row_type not in (CellType.TOTAL, CellType.CALCULATED_PROPERTY)
         ]
         cleared_cells = [
             cell.model_copy(update={"value": "", "calculation": ""}) for cell in original_cells
@@ -1179,6 +1208,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The formulation column that was created or updated.
+
+        Raises
+        ------
+        AlbertPartialError
+            If some ingredient amounts or Total cells could not be written. When
+            ingredient amounts fail, a reused column is restored to its previous
+            contents; read the sheet again and retry.
         """
 
         self.grid = None  # plan from the latest sheet state
@@ -1235,7 +1271,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Send ingredient cells first, then Total cells in a separate call.
         if ingredient_cells:
             try:
-                self.update_cells(cells=ingredient_cells, refresh=False)
+                self._write_cells_or_raise(cells=ingredient_cells)
             except AlbertException:
                 # A failed write must not leave the cleared column blank.
                 if cleared_cells:
@@ -1244,7 +1280,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 raise
 
         if total_cells:
-            self.update_cells(cells=total_cells, refresh=False)
+            self._write_cells_or_raise(cells=total_cells)
 
         # Reads after the call load the latest state, and the next write plans
         # from it too.
@@ -1359,6 +1395,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         list[Column]
             The formulation columns created or updated, in the order requested.
+
+        Raises
+        ------
+        AlbertPartialError
+            If some ingredient amounts or Total cells could not be written. When
+            ingredient amounts fail, reused columns are restored to their previous
+            contents; read the sheet again and retry.
         """
         if not formulations:
             return []
@@ -1527,7 +1570,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Send ingredient cells first, then Total cells in a separate call.
         if ingredient_cells:
             try:
-                self.update_cells(cells=ingredient_cells, refresh=False)
+                self._write_cells_or_raise(cells=ingredient_cells)
             except AlbertException:
                 # A failed write must not leave the cleared columns blank.
                 if cleared_cells:
@@ -1536,7 +1579,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 raise
 
         if total_cells:
-            self.update_cells(cells=total_cells, refresh=False)
+            self._write_cells_or_raise(cells=total_cells)
 
         if renames:
             self.rename_columns(
@@ -1594,6 +1637,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The updated formulation column.
+
+        Raises
+        ------
+        AlbertPartialError
+            If some component amounts could not be written. The column may be
+            incomplete; read the sheet again and retry.
         """
         self.grid = None  # plan from the latest sheet state
         col = self.get_column(
@@ -1632,7 +1681,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
 
         column = self.get_column(column_id=col_id)
-        self.update_cells(cells=all_cells, refresh=False)
+        self._write_cells_or_raise(cells=all_cells)
         self.grid = None
         return column
 
@@ -2108,6 +2157,19 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
         return total_cells
 
+    @staticmethod
+    def _last_top_level_column_id(*, columns: list[Column]) -> str | None:
+        """The ID of the rightmost column that is not an ingredient basis column.
+
+        New columns go right of it by default. An ingredient basis column belongs to
+        its formulation column, and placing a new column next to one puts the new
+        column at the far left of the sheet instead.
+        """
+        return next(
+            (col.column_id for col in reversed(columns) if col.type != CellType.INGREDIENT_BASIS),
+            None,
+        )
+
     def add_formulation_columns(
         self,
         *,
@@ -2166,7 +2228,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if starting_position is None:
             starting_position = {
                 "reference_id": (
-                    self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+                    self._last_top_level_column_id(columns=self.columns)
+                    or self.leftmost_pinned_column
                 ),
                 "position": ColumnPosition.RIGHT_OF.value,
             }
@@ -2969,6 +3032,41 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         return {"Id": {"rowId": cell.row_id, "colId": cell.column_id}, "data": data}
 
+    def _calculated_ids(self, *, design_id: str) -> tuple[set[str], set[str]]:
+        """Return the IDs of a design's calculated property rows and ingredient basis columns."""
+        design = next((d for d in self.designs if d.id == design_id), None)
+        if design is None:
+            return set(), set()
+        return (
+            {row.row_id for row in design.rows if row.type == CellType.CALCULATED_PROPERTY},
+            {col.column_id for col in design.columns if col.type == CellType.INGREDIENT_BASIS},
+        )
+
+    @staticmethod
+    def _writes_calculated_value(
+        *,
+        cell: Cell,
+        changes: list[PatchDatum],
+        calculated_row_ids: set[str],
+        basis_column_ids: set[str],
+    ) -> bool:
+        """Whether ``changes`` would overwrite a value the worksheet computes.
+
+        Cells in a calculated property row or an ingredient basis column hold computed
+        values; only their formatting may be written. The sheet's own row and column
+        types decide, so a cell built without them, or typed differently, is still
+        caught. The cell's types are a fallback for rows and columns not on the sheet.
+        """
+        # Client-side stopgap: the platform does not yet refuse these writes on unlocked
+        # formulas. Remove once it does (FS-3142).
+        calculated = (
+            cell.row_id in calculated_row_ids
+            or cell.column_id in basis_column_ids
+            or cell.row_type == CellType.CALCULATED_PROPERTY
+            or cell.type == CellType.INGREDIENT_BASIS
+        )
+        return calculated and any(change.attribute != "cellFormat" for change in changes)
+
     def _compare_cell_attributes(self, *, cell: Cell, existing_cell: Cell, attribute: str):
         """Compares a given attribute of two cells, trying both string and float comparison."""
         new_value = getattr(cell, attribute)
@@ -3003,6 +3101,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
         concurrently, some edits can fail and come back in ``failed``; read the
         sheet again and retry those.
 
+        The worksheet computes the values in a calculated property row and an
+        ingredient basis column, so a value, calculation or bound written there would be
+        overwritten the next time the sheet calculates and would leave the copies stored
+        with the formula out of date. Such cells are not written and come back unchanged
+        in ``failed``, and a ``UserWarning`` says how many; unlike cells that fail from
+        concurrent writes, retrying will not write them. Formatting changes on them, and
+        all other cells, are written as usual.
+
         !!! example
             ```python
             from albert.resources.sheets import CellColor
@@ -3033,7 +3139,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         tuple[list[Cell], list[Cell]]
             A ``(updated, failed)`` pair: the cells that were successfully updated
-            and the cells that failed to update.
+            and the cells that failed to update, including calculated cells whose
+            value, calculation or bounds were changed, which are not written.
         """
 
         request_path_dict: dict[str, list[Cell]] = {}
@@ -3041,6 +3148,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         failed: list[Cell] = []
         updated_keys: set[tuple[str, str, str]] = set()
         failed_keys: set[tuple[str, str, str]] = set()
+        refused = 0
         # sort by design ID
         for c in cells:
             if c.design_id not in request_path_dict:
@@ -3052,12 +3160,25 @@ class Sheet(BaseSessionResource):  # noqa:F811
             # Diff every cell against one snapshot of this design's grid rather
             # than rescanning the grid per cell.
             current_cells = self._grid_cells_by_coordinate(design_id=design_id)
+            calculated_row_ids, basis_column_ids = self._calculated_ids(design_id=design_id)
             payload_entries: list[tuple[CellChangePayload, Cell]] = []
             for cell in cell_list:
                 change_dict = self._get_cell_changes(
                     cell=cell, current_cell=current_cells.get((cell.row_id, cell.column_id))
                 )
                 if change_dict is None:
+                    continue
+                if self._writes_calculated_value(
+                    cell=cell,
+                    changes=change_dict["data"],
+                    calculated_row_ids=calculated_row_ids,
+                    basis_column_ids=basis_column_ids,
+                ):
+                    key = (cell.design_id, cell.row_id, cell.column_id)
+                    if key not in failed_keys:
+                        failed_keys.add(key)
+                        failed.append(cell)
+                        refused += 1
                     continue
 
                 # The value-update schema allows at most 2 data changes per
@@ -3148,6 +3269,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         if refresh:
             self.grid = None
+        if refused:
+            warnings.warn(
+                f"{refused} cell(s) in calculated property rows or ingredient basis columns "
+                "were not written because the sheet computes their values. They are returned "
+                "in `failed`; retrying will not write them.",
+                UserWarning,
+                stacklevel=find_stack_level(),
+            )
         return (updated, failed)
 
     def _add_column(
@@ -3161,7 +3290,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     ) -> Column:
         if reference_id is None:
             reference_id = (
-                self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+                self._last_top_level_column_id(columns=self.columns) or self.leftmost_pinned_column
             )
         payload: dict = {
             "type": type,
@@ -3251,7 +3380,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             return []
         if reference_id is None:
             reference_id = (
-                self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+                self._last_top_level_column_id(columns=self.columns) or self.leftmost_pinned_column
             )
         position_value = position.value if isinstance(position, ColumnPosition) else position
 
@@ -3454,12 +3583,37 @@ class Sheet(BaseSessionResource):  # noqa:F811
         }
         self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
 
+    @staticmethod
+    def _plan_column_moves(
+        *, current_ids: list[str], column_ids: list[str], child_ids: set[str]
+    ) -> list[tuple[str, str, ColumnPosition]]:
+        """The ``(source_id, reference_id, position)`` moves that reach ``column_ids``.
+
+        Ingredient basis columns (``child_ids``) move with their formula column and
+        cannot be a source or reference of a top-level move, so they are dropped from
+        both orders.
+        """
+        order = [col_id for col_id in current_ids if col_id not in child_ids]
+        target = [col_id for col_id in column_ids if col_id not in child_ids]
+        moves: list[tuple[str, str, ColumnPosition]] = []
+        for i, target_id in enumerate(target):
+            j = order.index(target_id)
+            if j == i:
+                continue
+            position = ColumnPosition.LEFT_OF if j > i else ColumnPosition.RIGHT_OF
+            moves.append((target_id, order[i], position))
+            order.pop(j)
+            order.insert(i, target_id)
+        return moves
+
     @validate_call
     def reorder_columns(self, *, column_ids: list[str]) -> None:
         """Reorder all columns on this sheet from left to right.
 
         Provide every column ID on the sheet exactly once, in the desired display
         order. The first ID is placed at the left edge; the last at the right.
+        Ingredient basis columns always stay with their formulation column: they may
+        be listed or left out, and where they are listed is ignored.
 
         !!! example
             ```python
@@ -3472,7 +3626,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ----------
         column_ids : list[str]
             Column IDs in the desired left-to-right order. Must include every column
-            on the sheet exactly once.
+            on the sheet exactly once; ingredient basis columns are optional.
 
         Returns
         -------
@@ -3482,44 +3636,36 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ------
         AlbertException
             If ``column_ids`` is empty, contains duplicates or unknown IDs, or omits
-            any column on the sheet.
+            any column on the sheet other than an ingredient basis column.
         """
         if not column_ids:
             raise AlbertException("column_ids must include at least one column ID.")
 
-        current_ids = [col.column_id for col in self.columns]
-        current_set = set(current_ids)
+        columns = self.columns
+        current_ids = [col.column_id for col in columns]
+        child_ids = {col.column_id for col in columns if col.type == CellType.INGREDIENT_BASIS}
         if len(column_ids) != len(set(column_ids)):
             raise AlbertException("column_ids must not contain duplicates.")
 
-        unknown = set(column_ids) - current_set
+        unknown = set(column_ids) - set(current_ids)
         if unknown:
             raise AlbertException(f"Unknown column ID(s): {', '.join(sorted(unknown))}")
 
-        missing = current_set - set(column_ids)
+        missing = set(current_ids) - child_ids - set(column_ids)
         if missing:
             raise AlbertException(
                 "column_ids must include every column on the sheet; "
                 f"missing: {', '.join(sorted(missing))}"
             )
 
-        if column_ids == current_ids:
+        moves = self._plan_column_moves(
+            current_ids=current_ids, column_ids=column_ids, child_ids=child_ids
+        )
+        if not moves:
             return
 
-        order = list(current_ids)
-        for i, target_id in enumerate(column_ids):
-            j = order.index(target_id)
-            if j == i:
-                continue
-            reference_id = order[i]
-            position = ColumnPosition.LEFT_OF if j > i else ColumnPosition.RIGHT_OF
-            self._move_column(
-                source_id=target_id,
-                reference_id=reference_id,
-                position=position,
-            )
-            order.pop(j)
-            order.insert(i, target_id)
+        for source_id, reference_id, position in moves:
+            self._move_column(source_id=source_id, reference_id=reference_id, position=position)
 
         self.grid = None
 
@@ -4196,6 +4342,9 @@ class Column(BaseSessionResource):  # noqa:F811
     column_width: str | None = Field(default=None)
     """The display width of the column (e.g. ``"142px"``), or None."""
 
+    cp_reference_values: dict[str, str] | None = Field(default=None, exclude=True, frozen=True)
+    """For a formulation column, the formula's current value of each calculated property attribute on the sheet, keyed by attribute ID, as text. Compare it with this column's cell in the calculated property row: a difference means the attribute value was changed outside the sheet. None when not available (for example, no value is stored yet), which does not mean the two match. Read-only."""
+
     @field_validator("locked", mode="before")
     @classmethod
     def _none_to_false(cls, v):
@@ -4280,6 +4429,8 @@ class Column(BaseSessionResource):  # noqa:F811
         """
         new_cells = []
         for c in self.cells:
+            if not isinstance(c, Cell):
+                continue
             cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
             new_cells.append(cell_copy)
         return self.sheet.update_cells(cells=new_cells)
@@ -4382,6 +4533,8 @@ class Row(BaseSessionResource):  # noqa:F811
         """
         new_cells = []
         for c in self.cells:
+            if not isinstance(c, Cell):
+                continue
             cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
             cell_copy.format = {"bgColor": color.value}
             new_cells.append(cell_copy)

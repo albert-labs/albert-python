@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from albert.core.session import AlbertSession
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.types import MetadataItem
@@ -2047,3 +2048,98 @@ def generate_attribute_seeds(
             validation=[ValidationItem(datatype=DataType.STRING)],
         ),
     ]
+
+
+# --- Worksheet calculations (ingredient basis and calculated properties) ---
+# The SDK has no public methods for these yet, so seeding mirrors what the worksheet
+# itself sends.
+
+
+def enable_sheet_calculations(
+    session: AlbertSession,
+    *,
+    sheet_id: str,
+    attribute: Attribute,
+    ingredient_basis_name: str,
+    calculated_property_name: str,
+) -> None:
+    """Show an attribute's ingredient basis and calculated property on a sheet.
+
+    The sheet configuration is replaced as a whole, so the current one is read and
+    extended. Adding the ingredient basis creates its columns under every formula.
+    """
+    path = f"/api/v3/worksheet/sheet/{sheet_id}/manageWorksheet"
+    config = session.get(path).json()
+
+    def _entry(name: str) -> dict:
+        return {"id": attribute.id, "name": name, "label": name, "parentAttributeId": attribute.id}
+
+    session.put(
+        path,
+        json={
+            "attributes": [
+                *(config.get("attributes") or []),
+                {"id": attribute.id, "name": attribute.reference_name},
+            ],
+            "ingredientBasis": [
+                *(config.get("ingredientBasis") or []),
+                _entry(ingredient_basis_name),
+            ],
+            "calculatedProperty": [
+                *(config.get("calculatedProperty") or []),
+                _entry(calculated_property_name),
+            ],
+            "rxnStaticCols": config.get("rxnStaticCols") or [],
+        },
+    )
+
+
+def add_calculated_property_row(
+    session: AlbertSession, *, design_id: str, name: str, attribute_id: str
+) -> str:
+    """Add a calculated property (CPR) row to a Product Design and return its row ID.
+
+    ``name`` must equal the calculated property's display name: the worksheet links
+    the row to its formula by name.
+    """
+    response = session.post(
+        f"/api/v3/worksheet/design/{design_id}/rows",
+        json={"type": "CPR", "name": name, "attributeId": attribute_id},
+    )
+    return response.json()["rowId"]
+
+
+def save_calculated_property_value(
+    session: AlbertSession,
+    *,
+    design_id: str,
+    row_id: str,
+    column_id: str,
+    inventory_id: str,
+    attribute_id: str,
+    value: float,
+) -> None:
+    """Store a calculated property value the way the worksheet does after computing it.
+
+    Test seeding only: the cell value and the formula's stored value are saved together,
+    which is the platform's only supported way to write one.
+    """
+    session.patch(
+        f"/api/v3/worksheet/{design_id}/values",
+        json=[
+            {
+                "Id": {"rowId": row_id, "colId": column_id},
+                "data": [{"operation": "add", "attribute": "cell", "newValue": str(value)}],
+                "inventory": {
+                    "id": inventory_id,
+                    "data": [
+                        {
+                            "attribute": f"calculatedProperties.{attribute_id}",
+                            "operation": "update",
+                            "newValue": {"value": value},
+                        }
+                    ],
+                },
+            }
+        ],
+    )
