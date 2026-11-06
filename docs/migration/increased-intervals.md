@@ -116,7 +116,9 @@ task = client.tasks.create_with_combinations(
         name="Mixing speed batch",
         parent_id="PRO123",
         batch_size_unit=BatchSizeUnit.GRAMS,
-        inventory_information=[TaskInventoryInformation(inventory_id="INVEXP123", batch_size=50.0)],
+        inventory_information=[
+            TaskInventoryInformation(inventory_id="INVEXP123", batch_size=50.0)
+        ],
         blocks=[Block(data_template=[{"id": "DAT123"}], workflow=[{"id": "WFL456"}])],
     ),
     wait=True,
@@ -177,7 +179,9 @@ values using the helpers on `Workflow`, then save them with `set_block_rules`:
 
 ```python
 workflow = client.workflows.get_by_id(id="WFL456")
-rule = workflow.build_rule(name="Exclude hot runs", parameter="Temperature", operator=">=", value=90)
+rule = workflow.build_rule(
+    name="Exclude hot runs", parameter="Temperature", operator=">=", value=90
+)
 
 client.tasks.set_block_rules(task_id="TAS123", block_id="BLK1", rules=[rule])
 ```
