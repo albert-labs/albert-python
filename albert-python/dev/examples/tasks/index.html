@@ -726,6 +726,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/increased-intervals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Increased Intervals (🧪Beta)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5300,6 +5328,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#create-an-intervalized-batch-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create an intervalized Batch task
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#modify-rules-and-regenerate-combinations-on-an-existing-task" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5508,6 +5547,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#create-an-intervalized-batch-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create an intervalized Batch task
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#modify-rules-and-regenerate-combinations-on-an-existing-task" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5580,12 +5630,12 @@ falls outside of the Albert support contract, but we'd love your feedback!</p>
 <td><code>create</code></td>
 </tr>
 <tr>
-<td>Create a Property task with blocks</td>
+<td>Create a Property or Batch task with blocks</td>
 <td><code>create</code></td>
 <td><code>create_with_combinations</code></td>
 </tr>
 <tr>
-<td>Create several Property tasks</td>
+<td>Create several Property or Batch tasks</td>
 <td><code>create_many</code></td>
 <td><code>create_many</code>, then <code>generate_block_combinations</code> for each block</td>
 </tr>
@@ -5606,13 +5656,13 @@ falls outside of the Albert support contract, but we'd love your feedback!</p>
 </tr>
 </tbody>
 </table>
-<p>When increased intervals is enabled, every Property task block needs its combinations
+<p>When increased intervals is enabled, every Property and Batch task block needs its combinations
 generated before it shows rows, even when its workflow has no intervals.
 <a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.create_with_combinations"><code>create_with_combinations</code></a>
 does this for you. For blocks created or changed any other way, call
 <a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.generate_block_combinations"><code>generate_block_combinations</code></a>
 for each block.</p>
-<p>When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a> blocks, Albert manages this matrix of conditions through <strong>intervals</strong>, <strong>rules</strong>, and <strong>combination overrides</strong>.</p>
+<p>When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a> and <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.BatchTask"><code>BatchTask</code></a> blocks, Albert manages this matrix of conditions through <strong>intervals</strong>, <strong>rules</strong>, and <strong>combination overrides</strong>.</p>
 <h3 id="what-are-intervals">What are intervals?</h3>
 <p>An <strong>interval</strong> is a discrete setpoint value assigned to a parameter within a workflow. When multiple parameters define intervals:</p>
 <ul>
@@ -5717,7 +5767,7 @@ for each block.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Property Tasks only</p>
-<p>Child-workflow interval combinations are exclusively supported on <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a>. They cannot be created or evaluated on <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.BatchTask"><code>BatchTask</code></a> or <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.GeneralTask"><code>GeneralTask</code></a>.</p>
+<p>Child-workflow interval combinations are supported on <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a> and <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.BatchTask"><code>BatchTask</code></a>. They cannot be created or evaluated on a <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.GeneralTask"><code>GeneralTask</code></a>.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Platform combinations cap</p>
@@ -5914,46 +5964,77 @@ for each block.</p>
 </span><span id="__span-3-82"><a id="__codelineno-3-82" name="__codelineno-3-82" href="#__codelineno-3-82"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">combo</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">combo</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">combo</span><span class="o">.</span><span class="n">interval_barcode</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
+<h2 id="create-an-intervalized-batch-task">Create an intervalized Batch task</h2>
+<p><a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.BatchTask"><code>BatchTask</code></a> blocks support combinations the same way Property task blocks do, including <code>intervals_start_from</code>, rules, and overrides. Use <a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.create_with_combinations"><code>create_with_combinations</code></a> instead of <code>create</code> so each block gets its combinations.</p>
+<div class="admonition example">
+<p class="admonition-title">Create a Batch task with an intervalized workflow</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.tasks</span><span class="w"> </span><span class="kn">import</span> <span class="n">BatchSizeUnit</span><span class="p">,</span> <span class="n">BatchTask</span><span class="p">,</span> <span class="n">Block</span><span class="p">,</span> <span class="n">TaskInventoryInformation</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">task</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">create_with_combinations</span><span class="p">(</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">task</span><span class="o">=</span><span class="n">BatchTask</span><span class="p">(</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">name</span><span class="o">=</span><span class="s2">"Mixing speed batch"</span><span class="p">,</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="n">parent_id</span><span class="o">=</span><span class="s2">"PRO123"</span><span class="p">,</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="n">batch_size_unit</span><span class="o">=</span><span class="n">BatchSizeUnit</span><span class="o">.</span><span class="n">GRAMS</span><span class="p">,</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="n">inventory_information</span><span class="o">=</span><span class="p">[</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>            <span class="n">TaskInventoryInformation</span><span class="p">(</span><span class="n">inventory_id</span><span class="o">=</span><span class="s2">"INVEXP123"</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mf">50.0</span><span class="p">)</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="p">],</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        <span class="n">blocks</span><span class="o">=</span><span class="p">[</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>            <span class="n">Block</span><span class="p">(</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>                <span class="n">data_template</span><span class="o">=</span><span class="p">[{</span><span class="s2">"id"</span><span class="p">:</span> <span class="s2">"DAT100"</span><span class="p">}],</span>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>                <span class="n">workflow</span><span class="o">=</span><span class="p">[{</span><span class="s2">"id"</span><span class="p">:</span> <span class="s2">"WFL456"</span><span class="p">}],</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>            <span class="p">)</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>        <span class="p">],</span>
+</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="p">),</span>
+</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="p">)</span>
+</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="n">block_id</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">id</span>
+</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="k">for</span> <span class="n">combo</span> <span class="ow">in</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_block_combinations</span><span class="p">(</span><span class="n">task_id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">):</span>
+</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">combo</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">combo</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">combo</span><span class="o">.</span><span class="n">interval_barcode</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
 <h2 id="modify-rules-and-regenerate-combinations-on-an-existing-task">Modify rules and regenerate combinations on an existing task</h2>
 <p>You can update rules and overrides on an existing task block at any time using <a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.set_block_rules"><code>set_block_rules</code></a>. By default, the SDK automatically recalculates the Cartesian product and regenerates child-workflow combinations on Albert.</p>
 <div class="admonition example">
 <p class="admonition-title">Update block rules and regenerate combinations</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">task_id</span> <span class="o">=</span> <span class="s2">"TASFOR1"</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">block_id</span> <span class="o">=</span> <span class="s2">"BLK1"</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># 1. Inspect existing rules and overrides on the block</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">current_rules</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_block_rules</span><span class="p">(</span><span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">)</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"Existing rules count:"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_rules</span><span class="o">.</span><span class="n">rules</span><span class="p">))</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"Existing overrides count:"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_rules</span><span class="o">.</span><span class="n">overrides</span><span class="p">))</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="c1"># 2. Update the block with new rules (and clear previous overrides)</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="c1"># Fetch the block's current workflow to build rules using parameter names</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">task</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task_id</span><span class="p">)</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">block</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">blocks</span> <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">block_id</span><span class="p">)</span>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="n">workflow</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">workflow</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
-</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="n">new_rule</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">build_rule</span><span class="p">(</span>
-</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">"Exclude cold temperatures"</span><span class="p">,</span>
-</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="n">conditions</span><span class="o">=</span><span class="p">[</span>
-</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>        <span class="p">(</span><span class="s2">"Temperature"</span><span class="p">,</span> <span class="s2">"&lt;"</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span>
-</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    <span class="p">],</span>
-</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="p">)</span>
-</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
-</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="c1"># Combinations are regenerated automatically on Albert by default</span>
-</span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="n">updated_rules</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">set_block_rules</span><span class="p">(</span>
-</span><span id="__span-4-27"><a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
-</span><span id="__span-4-28"><a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>
-</span><span id="__span-4-29"><a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    <span class="n">rules</span><span class="o">=</span><span class="p">[</span><span class="n">new_rule</span><span class="p">],</span>
-</span><span id="__span-4-30"><a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    <span class="n">overrides</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># Passing an empty list clears existing overrides</span>
-</span><span id="__span-4-31"><a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="p">)</span>
-</span><span id="__span-4-32"><a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"Regeneration status:"</span><span class="p">,</span> <span class="n">updated_rules</span><span class="o">.</span><span class="n">job</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
-</span><span id="__span-4-33"><a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>
-</span><span id="__span-4-34"><a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="c1"># 3. Read the updated combination variants</span>
-</span><span id="__span-4-35"><a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="n">updated_combos</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_block_combinations</span><span class="p">(</span><span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">))</span>
-</span><span id="__span-4-36"><a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Active combinations after rules update: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">updated_combos</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">task_id</span> <span class="o">=</span> <span class="s2">"TASFOR1"</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">block_id</span> <span class="o">=</span> <span class="s2">"BLK1"</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># 1. Inspect existing rules and overrides on the block</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">current_rules</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_block_rules</span><span class="p">(</span><span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">)</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"Existing rules count:"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_rules</span><span class="o">.</span><span class="n">rules</span><span class="p">))</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"Existing overrides count:"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_rules</span><span class="o">.</span><span class="n">overrides</span><span class="p">))</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1"># 2. Update the block with new rules (and clear previous overrides)</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1"># Fetch the block's current workflow to build rules using parameter names</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="n">task</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task_id</span><span class="p">)</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="n">block</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">blocks</span> <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">block_id</span><span class="p">)</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="n">workflow</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">workflow</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="n">new_rule</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">build_rule</span><span class="p">(</span>
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">"Exclude cold temperatures"</span><span class="p">,</span>
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    <span class="n">conditions</span><span class="o">=</span><span class="p">[</span>
+</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        <span class="p">(</span><span class="s2">"Temperature"</span><span class="p">,</span> <span class="s2">"&lt;"</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span>
+</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    <span class="p">],</span>
+</span><span id="__span-5-23"><a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="p">)</span>
+</span><span id="__span-5-24"><a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>
+</span><span id="__span-5-25"><a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="c1"># Combinations are regenerated automatically on Albert by default</span>
+</span><span id="__span-5-26"><a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="n">updated_rules</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">set_block_rules</span><span class="p">(</span>
+</span><span id="__span-5-27"><a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>    <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
+</span><span id="__span-5-28"><a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>    <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>
+</span><span id="__span-5-29"><a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>    <span class="n">rules</span><span class="o">=</span><span class="p">[</span><span class="n">new_rule</span><span class="p">],</span>
+</span><span id="__span-5-30"><a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>    <span class="n">overrides</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># Passing an empty list clears existing overrides</span>
+</span><span id="__span-5-31"><a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="p">)</span>
+</span><span id="__span-5-32"><a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"Regeneration status:"</span><span class="p">,</span> <span class="n">updated_rules</span><span class="o">.</span><span class="n">job</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
+</span><span id="__span-5-33"><a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>
+</span><span id="__span-5-34"><a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="c1"># 3. Read the updated combination variants</span>
+</span><span id="__span-5-35"><a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="n">updated_combos</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">get_block_combinations</span><span class="p">(</span><span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">))</span>
+</span><span id="__span-5-36"><a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Active combinations after rules update: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">updated_combos</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <div class="admonition note">
@@ -5978,24 +6059,6 @@ for each block.</p>
 <p>This feature enables users to import a .csv file straight into the Data Template of a Property Task allowing them to easily mass enter results without having to type them in manually or copy-paste.</p>
 <div class="admonition example">
 <p class="admonition-title">Import results from a CSV file</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.data_templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImportMode</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_client_credentials</span><span class="p">()</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">task</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">import_results</span><span class="p">(</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">"TAS123"</span><span class="p">,</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">"INV123"</span><span class="p">,</span>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">data_template_id</span><span class="o">=</span><span class="s2">"DT123"</span><span class="p">,</span>
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">file_path</span><span class="o">=</span><span class="s2">"path/to/results.csv"</span><span class="p">,</span>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="n">field_mapping</span><span class="o">=</span><span class="p">{</span><span class="s2">"comm"</span><span class="p">:</span> <span class="s2">"Comments"</span><span class="p">,</span> <span class="s2">"Solvent"</span><span class="p">:</span> <span class="s2">" Solvent, ppm"</span><span class="p">},</span>
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="n">mode</span><span class="o">=</span><span class="n">ImportMode</span><span class="o">.</span><span class="n">CSV</span><span class="p">,</span>
-</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="p">)</span>
-</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-</span></code></pre></div>
-</div>
-<div class="admonition example">
-<p class="admonition-title">Import results using a script</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.data_templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImportMode</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
@@ -6005,10 +6068,28 @@ for each block.</p>
 </span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">"TAS123"</span><span class="p">,</span>
 </span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">"INV123"</span><span class="p">,</span>
 </span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    <span class="n">data_template_id</span><span class="o">=</span><span class="s2">"DT123"</span><span class="p">,</span>
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">"BLK1"</span><span class="p">,</span>
-</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="n">file_path</span><span class="o">=</span><span class="s2">"path/to/results.csv"</span><span class="p">,</span>
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="n">mode</span><span class="o">=</span><span class="n">ImportMode</span><span class="o">.</span><span class="n">SCRIPT</span><span class="p">,</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="n">file_path</span><span class="o">=</span><span class="s2">"path/to/results.csv"</span><span class="p">,</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="n">field_mapping</span><span class="o">=</span><span class="p">{</span><span class="s2">"comm"</span><span class="p">:</span> <span class="s2">"Comments"</span><span class="p">,</span> <span class="s2">"Solvent"</span><span class="p">:</span> <span class="s2">" Solvent, ppm"</span><span class="p">},</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="n">mode</span><span class="o">=</span><span class="n">ImportMode</span><span class="o">.</span><span class="n">CSV</span><span class="p">,</span>
 </span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="p">)</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="admonition example">
+<p class="admonition-title">Import results using a script</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.data_templates</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImportMode</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_client_credentials</span><span class="p">()</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">task</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">import_results</span><span class="p">(</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">"TAS123"</span><span class="p">,</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">"INV123"</span><span class="p">,</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="n">data_template_id</span><span class="o">=</span><span class="s2">"DT123"</span><span class="p">,</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">"BLK1"</span><span class="p">,</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="n">file_path</span><span class="o">=</span><span class="s2">"path/to/results.csv"</span><span class="p">,</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="n">mode</span><span class="o">=</span><span class="n">ImportMode</span><span class="o">.</span><span class="n">SCRIPT</span><span class="p">,</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <div class="admonition warning">
