@@ -370,10 +370,10 @@ def test_update_keeps_repeated_parameter_rows(
         fetched = client.parameter_groups.get_by_id(id=pg.id)
         before = sorted((p.sequence, p.short_name) for p in fetched.parameters)
         assert len(before) == 3
-        resent = ParameterGroup(
-            **fetched.model_dump(by_alias=True, exclude_none=True),
-            name=f"{seed_prefix} - Repeated Rows PG renamed",
-        )
+        payload = fetched.model_dump(by_alias=True, exclude_none=True)
+        payload["name"] = f"{seed_prefix} - Repeated Rows PG renamed"
+        resent = ParameterGroup(**payload)
+        assert all(p.sequence is None for p in resent.parameters)
 
         updated = client.parameter_groups.update(parameter_group=resent)
 
