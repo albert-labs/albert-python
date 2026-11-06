@@ -2588,6 +2588,14 @@ class TaskCollection(BaseCollection):
         -------
         BaseTask
             The task after the allocation.
+
+        Raises
+        ------
+        AlbertException
+            If ``block_id`` is missing for a parameter allocation, the block is not
+            found on the task or has no workflow, the item + lot pair is not on the
+            task, or the inventory item matches multiple parameter rows and neither
+            ``parameter`` nor ``row_id`` disambiguates.
         """
         task = self.get_by_id(id=task_id)
         if not allocations:
