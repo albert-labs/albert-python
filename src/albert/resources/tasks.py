@@ -791,7 +791,7 @@ class TaskLotAllocation(BaseAlbertModel):
     """The lot consumed (format ``LOT...``). Must be a lot of ``inventory_id`` listed on the task."""
 
     quantity: float
-    """The total quantity of the item + lot pair consumed. An absolute value, not a delta."""
+    """The total quantity of the item + lot pair consumed. An absolute value, not a delta. Pass ``0`` to clear the recorded quantity (a cleared quantity reads back as unset)."""
 
     occurrence: int | None = Field(default=None)
     """Which row to target when the same inventory item and lot appear on the task more than once (the 1-based occurrence suffix of the task's inventory tuple)."""
