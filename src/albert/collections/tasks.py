@@ -188,7 +188,7 @@ class TaskCollection(BaseCollection):
         Remove a Block from a Property or Batch task.
     update_block_workflow(task_id, block_id, workflow_id) -> None
         Swap the Workflow assigned to a Block.
-    update_task_workflow(task_id, workflow_id) -> None
+    update_task_workflow(task_id, workflow_id) -> BaseTask
         Swap the Workflow assigned to a batch task.
     get_block_combinations(task_id, block_id, max_items=None) -> Iterator[IntervalCombinationItem] (🧪 Beta)
         Get the child-workflow combinations of a block.
@@ -855,7 +855,7 @@ class TaskCollection(BaseCollection):
         self.session.patch(url=url, json=patch)
 
     @validate_call
-    def update_task_workflow(self, *, task_id: TaskId, workflow_id: WorkflowId) -> None:
+    def update_task_workflow(self, *, task_id: TaskId, workflow_id: WorkflowId) -> BaseTask:
         """Swap the Workflow assigned to a batch task.
 
         A batch task can reference both an initial and a final workflow. This
@@ -866,7 +866,9 @@ class TaskCollection(BaseCollection):
 
         !!! example
             ```python
-            client.tasks.update_task_workflow(task_id="TASBT999", workflow_id="WFL2")
+            updated = client.tasks.update_task_workflow(task_id="TASBT999", workflow_id="WFL2")
+            updated.workflows[0].id
+            # 'WFL2'
             ```
 
         Parameters
@@ -879,7 +881,8 @@ class TaskCollection(BaseCollection):
 
         Returns
         -------
-        None
+        BaseTask
+            The updated task.
 
         Raises
         ------
@@ -906,7 +909,7 @@ class TaskCollection(BaseCollection):
             raise ValueError(f"No workflow found on task {task_id}")
         if existing_workflow_id == workflow_id:
             logger.info(f"Task {task_id} already has workflow {workflow_id}")
-            return None
+            return task
         patch = [
             {
                 "data": [
@@ -921,6 +924,7 @@ class TaskCollection(BaseCollection):
             }
         ]
         self.session.patch(url=f"{self.base_path}/{task_id}", json=patch)
+        return self.get_by_id(id=task_id)
 
     @validate_call
     def get_block_combinations(

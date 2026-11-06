@@ -414,8 +414,9 @@ def test_update_task_workflow(
         )
     )
     try:
-        client.tasks.update_task_workflow(task_id=task.id, workflow_id=seeded_workflows[1].id)
-        updated_task = client.tasks.get_by_id(id=task.id)
+        updated_task = client.tasks.update_task_workflow(
+            task_id=task.id, workflow_id=seeded_workflows[1].id
+        )
         final_workflow_ids = [w.id for w in updated_task.workflows if w.category != "INITIAL"]
         assert final_workflow_ids[0] == seeded_workflows[1].id
     finally:
