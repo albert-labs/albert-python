@@ -69,6 +69,21 @@ def test_unchanged_symbols_in_any_order_emit_no_op(offline_session) -> None:
     assert payload["data"] == []
 
 
+# --- calculated properties are read-only ---
+
+
+def test_changed_calculated_properties_emit_no_op(offline_session) -> None:
+    """Test that calculated property values are never patched, even when set and changed."""
+    existing = _item(calculated_properties={"ATR1": {"value": 1.0}})
+    updated = _item(calculated_properties={"ATR1": {"value": 2.0}, "ATR2": {"value": 3.0}})
+
+    payload = _collection(offline_session)._generate_inventory_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload["data"] == []
+
+
 # --- base scalar attributes pass through _generate_patch_payload unmodified ---
 
 

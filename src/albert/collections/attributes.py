@@ -560,6 +560,8 @@ class AttributeCollection(BaseCollection):
         Returns one [`AttributeValuesResponse`][albert.resources.attributes.AttributeValuesResponse]
         per entity when ``scope`` includes child lots. Inventory item values are
         the canonical source for worksheet reference columns.
+        A formula's values can include calculated property values that a worksheet
+        stored; they look like any other value.
 
         Parameters
         ----------
