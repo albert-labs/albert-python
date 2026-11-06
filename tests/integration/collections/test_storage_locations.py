@@ -5,6 +5,7 @@ import pytest
 from albert import Albert
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("projects")
 
@@ -45,6 +46,21 @@ def test_storage_location_get_all_with_filters(
     assert sample.model_dump(mode="json", include=list_fields) == by_id.model_dump(
         mode="json", include=list_fields
     )
+
+
+def test_get_by_name(client: Albert, seeded_storage_locations: list[StorageLocation]):
+    """Test get_by_name returns the seeded match and None for an unknown name."""
+    seeded = seeded_storage_locations[0]
+
+    found = poll_until(
+        lambda: client.storage_locations.get_by_name(name=seeded.name, exact_match=True),
+    )
+
+    assert isinstance(found, StorageLocation)
+    assert found.id == seeded.id
+
+    missing = client.storage_locations.get_by_name(name=f"TEST - {uuid.uuid4()}")
+    assert missing is None
 
 
 def test_get_or_create_storage_location(
