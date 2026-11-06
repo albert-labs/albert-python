@@ -389,6 +389,39 @@ def test_update_block_workflow_on_batch_task(
     assert new_workflow.id == _final_workflow_id(updated_block)
 
 
+def test_update_task_workflow(
+    client: Albert,
+    seed_prefix: str,
+    seeded_projects,
+    seeded_products,
+    seeded_locations,
+    seeded_workflows,
+):
+    """Test that the task-level workflow of a batch task can be swapped."""
+    task = client.tasks.create(
+        task=BatchTask(
+            name=f"{seed_prefix} - Update Task Workflow",
+            category=TaskCategory.BATCH,
+            inventory_information=[
+                TaskInventoryInformation(
+                    inventory_id=seeded_products[0].id,
+                    batch_size=50.0,
+                )
+            ],
+            parent_id=seeded_projects[0].id,
+            location=seeded_locations[0],
+            workflows=[seeded_workflows[0]],
+        )
+    )
+    try:
+        client.tasks.update_task_workflow(task_id=task.id, workflow_id=seeded_workflows[1].id)
+        updated_task = client.tasks.get_by_id(id=task.id)
+        final_workflow_ids = [w.id for w in updated_task.workflows if w.category != "INITIAL"]
+        assert final_workflow_ids[0] == seeded_workflows[1].id
+    finally:
+        client.tasks.delete(id=task.id)
+
+
 def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workflows):
     """Test that a property block can be removed from a batch task."""
     task = next(x for x in seeded_tasks if isinstance(x, BatchTask) and x.blocks is not None)

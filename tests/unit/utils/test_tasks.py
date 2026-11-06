@@ -41,6 +41,7 @@ from albert.utils.tasks import (
     extract_extensions_from_attachment,
     fetch_csv_table_rows,
     generate_adv_patch_payload,
+    get_current_workflow_id,
     is_metadata_item_list,
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
@@ -1449,6 +1450,83 @@ def test_resolve_task_block_raises_when_task_has_no_blocks():
 
     with pytest.raises(AlbertException, match="Block 'BLK1' not found on task 'TAS2'"):
         resolve_task_block(task=task, block_id="BLK1")
+
+
+# ---------------------------------------------------------------------------
+# get_current_workflow_id
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("workflows", [None, []])
+def test_get_current_workflow_id_returns_none_without_workflows(workflows):
+    """Test that an empty or missing workflow list yields no current workflow."""
+    assert get_current_workflow_id(workflows=workflows) is None
+
+
+@pytest.mark.parametrize(
+    "categories",
+    [["FINAL", "INITIAL"], ["INITIAL", "FINAL"]],
+)
+def test_get_current_workflow_id_prefers_final_over_initial(categories):
+    """Test that the final workflow wins over the initial one in any order."""
+    workflows = [
+        Workflow(id=f"WFL{i + 1}", category=category) for i, category in enumerate(categories)
+    ]
+
+    result = get_current_workflow_id(workflows=workflows)
+
+    assert result == next(w.id for w in workflows if w.category == "FINAL")
+
+
+def test_get_current_workflow_id_prefers_final_placeholder_over_real_initial():
+    """Test that a final placeholder still wins when the initial workflow is real."""
+    workflows = [
+        Workflow(id="WFL1", name="No Parameter Group", category="FINAL"),
+        Workflow(id="WFL7108", category="INITIAL"),
+    ]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL1"
+
+
+def test_get_current_workflow_id_skips_uncategorized_placeholder():
+    """Test that the placeholder is skipped for a real workflow when no categories exist."""
+    workflows = [
+        Workflow(id="WFL1", name="No Parameter Group"),
+        Workflow(id="WFL2"),
+    ]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL2"
+
+
+def test_get_current_workflow_id_keeps_placeholder_when_it_is_the_only_workflow():
+    """Test that a lone placeholder is returned rather than skipped."""
+    workflows = [Workflow(id="WFL1", name="No Parameter Group")]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL1"
+
+
+def test_get_current_workflow_id_falls_back_to_initial():
+    """Test that an initial-only list resolves to the initial workflow."""
+    workflows = [Workflow(id="WFL7108", category="INITIAL")]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL7108"
+
+
+def test_get_current_workflow_id_returns_first_when_nothing_is_categorized():
+    """Test that the first workflow wins when no categories or placeholder apply."""
+    workflows = [Workflow(id="WFL2"), Workflow(id="WFL3")]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL2"
+
+
+def test_get_current_workflow_id_reads_entity_links():
+    """Test that plain entity-link entries resolve by their category marker."""
+    workflows = [
+        EntityLink(id="WFL9591", category="INITIAL"),
+        EntityLink(id="WFL11206", category="FINAL"),
+    ]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL11206"
 
 
 # ---------------------------------------------------------------------------
