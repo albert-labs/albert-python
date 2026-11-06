@@ -20,16 +20,22 @@ from albert.exceptions import AlbertException
 from albert.resources.attachments import AttachmentMetadata
 from albert.resources.data_templates import CurveDataEntityLink, DataColumnValue
 from albert.resources.notes import Note, NoteAttachmentEntityLink
+from albert.resources.parameters import ParameterCategory
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
+    AllocatedLot,
     Block,
     GeneralTask,
     PropertyTask,
     TaskInventoryInformation,
+    TaskLotAllocation,
+    TaskParameterAllocation,
     TaskState,
 )
+from albert.resources.workflows import ParameterGroupSetpoints, ParameterSetpoint, Workflow
 from albert.utils.tasks import (
     build_property_payload,
+    build_quantity_used_data,
     build_task_metadata,
     determine_extension,
     extract_extensions_from_attachment,
@@ -39,6 +45,9 @@ from albert.utils.tasks import (
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
     resolve_attachment,
+    resolve_parameter_row_id,
+    resolve_task_block,
+    resolve_task_lot_target,
     resolve_unassigned_task_state,
 )
 from tests.unit.conftest import UNIT_BASE_URL
@@ -1407,3 +1416,465 @@ def test_curve_mode_entries_missing_name_or_id_are_skipped():
     )
 
     assert mapping == {"DAC2": "col1"}
+
+
+# ---------------------------------------------------------------------------
+# resolve_task_block
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_task_block_returns_matching_block():
+    """Test that the block with the requested ID is returned."""
+    block = Block(
+        id="BLK1",
+        workflow=[EntityLink(id="WFL1")],
+        data_template=[EntityLink(id="DAT1")],
+    )
+    task = PropertyTask(id="TAS1", name="Task", blocks=[block])
+
+    assert resolve_task_block(task=task, block_id="BLK1") is block
+
+
+def test_resolve_task_block_raises_when_block_missing():
+    """Test that an unknown block ID raises a descriptive error."""
+    task = PropertyTask(id="TAS1", name="Task", blocks=[])
+
+    with pytest.raises(AlbertException, match="Block 'BLK9' not found on task 'TAS1'"):
+        resolve_task_block(task=task, block_id="BLK9")
+
+
+def test_resolve_task_block_raises_when_task_has_no_blocks():
+    """Test that a task without any blocks raises instead of returning None."""
+    task = GeneralTask(id="TAS2", name="General")
+
+    with pytest.raises(AlbertException, match="Block 'BLK1' not found on task 'TAS2'"):
+        resolve_task_block(task=task, block_id="BLK1")
+
+
+# ---------------------------------------------------------------------------
+# resolve_parameter_row_id
+# ---------------------------------------------------------------------------
+
+
+def _allocation_workflow() -> Workflow:
+    """Workflow with one intervalized and one fixed special parameter."""
+    return Workflow.model_validate(
+        {
+            "albertId": "WFL416155",
+            "ParameterGroups": [
+                {
+                    "id": "PRG3549",
+                    "name": "UV Bonding",
+                    "prgSequence": 1,
+                    "rowId": "ROW28",
+                    "Parameters": [
+                        {
+                            "id": "PRM432",
+                            "name": "Equipment",
+                            "rowId": "ROW34",
+                            "shortName": "Light Source",
+                            "category": "Special",
+                            "Intervals": [
+                                {"id": "INT1", "rowId": "ROW35"},
+                                {
+                                    "id": "INT2",
+                                    "value": "INVC237902",
+                                    "name": "Lamp",
+                                    "rowId": "ROW36",
+                                },
+                            ],
+                        },
+                        {
+                            "id": "PRM432",
+                            "name": "Equipment",
+                            "rowId": "ROW37",
+                            "shortName": "Radiometer",
+                            "category": "Special",
+                            "value": None,
+                        },
+                        {
+                            "id": "PRM1368",
+                            "name": "Height",
+                            "rowId": "ROW39",
+                            "category": "Normal",
+                            "value": "6.35",
+                        },
+                    ],
+                },
+                {
+                    "id": "PRG3579",
+                    "name": "Block Shear",
+                    "prgSequence": 2,
+                    "rowId": "ROW109",
+                    "Parameters": [
+                        {
+                            "id": "PRM432",
+                            "name": "Equipment",
+                            "rowId": "ROW110",
+                            "shortName": "Equipment",
+                            "category": "Special",
+                            "value": {"id": "INVC239794", "name": "Instron"},
+                        }
+                    ],
+                },
+            ],
+        }
+    )
+
+
+def _ambiguous_workflow() -> Workflow:
+    """Workflow selecting the same item on two different special parameters."""
+    return Workflow.model_validate(
+        {
+            "albertId": "WFL9",
+            "ParameterGroups": [
+                {
+                    "id": "PRG3547",
+                    "name": "Substrate Preparation",
+                    "prgSequence": 1,
+                    "rowId": "ROW8",
+                    "Parameters": [
+                        {
+                            "id": "PRM431",
+                            "name": "Consumables",
+                            "rowId": "ROW9",
+                            "shortName": "Substrate 1",
+                            "category": "Special",
+                            "Intervals": [{"id": "INT1", "value": "INVB258689", "rowId": "ROW10"}],
+                        },
+                        {
+                            "id": "PRM431",
+                            "name": "Consumables",
+                            "rowId": "ROW15",
+                            "shortName": "Substrate 2",
+                            "category": "Special",
+                            "Intervals": [{"id": "INT1", "value": "INVB258689", "rowId": "ROW16"}],
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+
+
+def test_resolve_parameter_row_id_intervalized_parameter_uses_interval_row():
+    """Test that an intervalized special parameter resolves to the matching interval row."""
+    row_id = resolve_parameter_row_id(workflow=_allocation_workflow(), inventory_id="INVC237902")
+
+    assert row_id == "ROW36"
+
+
+def test_resolve_parameter_row_id_fixed_parameter_uses_parameter_row():
+    """Test that a fixed special parameter resolves to its own row ID."""
+    row_id = resolve_parameter_row_id(workflow=_allocation_workflow(), inventory_id="INVC239794")
+
+    assert row_id == "ROW110"
+
+
+def test_resolve_parameter_row_id_entity_link_value_matches():
+    """Test that an EntityLink value on a fixed special parameter is matched by ID."""
+    workflow = Workflow(
+        id="WFL3",
+        parameter_group_setpoints=[
+            ParameterGroupSetpoints(
+                id="PRG1",
+                parameter_setpoints=[
+                    ParameterSetpoint(
+                        parameter_id="PRM2",
+                        category=ParameterCategory.SPECIAL,
+                        value=EntityLink(id="INVC1"),
+                        row_id="ROW7",
+                    )
+                ],
+            )
+        ],
+    )
+
+    assert resolve_parameter_row_id(workflow=workflow, inventory_id="INVC1") == "ROW7"
+
+
+def test_resolve_parameter_row_id_parameter_selector_disambiguates():
+    """Test that the parameter selector picks one row when an item sits on several."""
+    row_id = resolve_parameter_row_id(
+        workflow=_ambiguous_workflow(), inventory_id="INVB258689", parameter="Substrate 2"
+    )
+
+    assert row_id == "ROW16"
+
+
+def test_resolve_parameter_row_id_raises_when_not_selected():
+    """Test that an item absent from all special parameters raises."""
+    with pytest.raises(AlbertException, match="not selected on any special parameter"):
+        resolve_parameter_row_id(workflow=_allocation_workflow(), inventory_id="INV9")
+
+
+def test_resolve_parameter_row_id_raise_mentions_parameter_selector():
+    """Test that the no-match error names the parameter selector that filtered everything out."""
+    with pytest.raises(AlbertException, match="matching 'Nope'"):
+        resolve_parameter_row_id(
+            workflow=_allocation_workflow(), inventory_id="INVC237902", parameter="Nope"
+        )
+
+
+def test_resolve_parameter_row_id_raises_when_ambiguous():
+    """Test that an item on several rows raises and lists the candidate rows."""
+    with pytest.raises(AlbertException, match="multiple parameter rows.*ROW10.*ROW16"):
+        resolve_parameter_row_id(workflow=_ambiguous_workflow(), inventory_id="INVB258689")
+
+
+# ---------------------------------------------------------------------------
+# resolve_task_lot_target
+# ---------------------------------------------------------------------------
+
+
+def _task_with_lots(*infos: TaskInventoryInformation) -> PropertyTask:
+    return PropertyTask(id="TAS679481", name="Task", inventory_information=list(infos))
+
+
+def test_resolve_task_lot_target_returns_tuple_and_current_quantity():
+    """Test that a matching inventory row resolves its tuple ID and quantity used."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INVB258493",
+            lot_id="LOT218913",
+            inv_lot_unique_id="INVB258493#LOT218913#1",
+            quantity_used=1.5,
+        )
+    )
+
+    assert resolve_task_lot_target(task=task, inventory_id="INVB258493", lot_id="LOT218913") == (
+        "INVB258493#LOT218913#1",
+        1.5,
+    )
+
+
+def test_resolve_task_lot_target_missing_quantity_reads_as_zero():
+    """Test that a row without a recorded quantity resolves to a current quantity of 0."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INVB258493",
+            lot_id="LOT218913",
+            inv_lot_unique_id="INVB258493#LOT218913#1",
+        )
+    )
+
+    assert resolve_task_lot_target(task=task, inventory_id="INVB258493", lot_id="LOT218913") == (
+        "INVB258493#LOT218913#1",
+        0,
+    )
+
+
+def test_resolve_task_lot_target_raises_when_not_on_task():
+    """Test that an inventory + lot pair absent from the task raises."""
+    task = _task_with_lots(TaskInventoryInformation(inventory_id="INV1", lot_id="LOT1"))
+
+    with pytest.raises(AlbertException, match="is not on task 'TAS679481'"):
+        resolve_task_lot_target(task=task, inventory_id="INV2", lot_id="LOT1")
+
+
+def test_resolve_task_lot_target_raises_on_duplicate_rows_without_occurrence():
+    """Test that duplicated inventory + lot rows raise without an occurrence."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INV1", lot_id="LOT1", inv_lot_unique_id="INV1#LOT1#1"
+        ),
+        TaskInventoryInformation(
+            inventory_id="INV1", lot_id="LOT1", inv_lot_unique_id="INV1#LOT1#2"
+        ),
+    )
+
+    with pytest.raises(AlbertException, match="appears 2 times"):
+        resolve_task_lot_target(task=task, inventory_id="INV1", lot_id="LOT1")
+
+
+def test_resolve_task_lot_target_occurrence_disambiguates():
+    """Test that the occurrence selects among duplicated inventory + lot rows."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INV1", lot_id="LOT1", inv_lot_unique_id="INV1#LOT1#1"
+        ),
+        TaskInventoryInformation(
+            inventory_id="INV1",
+            lot_id="LOT1",
+            inv_lot_unique_id="INV1#LOT1#2",
+            quantity_used=3.0,
+        ),
+    )
+
+    assert resolve_task_lot_target(
+        task=task, inventory_id="INV1", lot_id="LOT1", occurrence=2
+    ) == ("INV1#LOT1#2", 3.0)
+
+
+def test_resolve_task_lot_target_raises_without_tuple_identifier():
+    """Test that a matching row with no tuple identifier raises."""
+    task = _task_with_lots(TaskInventoryInformation(inventory_id="INV1", lot_id="LOT1"))
+
+    with pytest.raises(AlbertException, match="no tuple identifier"):
+        resolve_task_lot_target(task=task, inventory_id="INV1", lot_id="LOT1")
+
+
+# ---------------------------------------------------------------------------
+# build_quantity_used_data
+# ---------------------------------------------------------------------------
+
+
+def _dump_data(data) -> list[dict]:
+    return [datum.model_dump(exclude_none=True, by_alias=True, mode="json") for datum in data]
+
+
+def test_build_quantity_used_data_task_level_allocation_updates_tuple():
+    """Test that a task-level allocation becomes an update datum on the inventory tuple."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INVB258493",
+            lot_id="LOT218913",
+            inv_lot_unique_id="INVB258493#LOT218913#1",
+        )
+    )
+
+    data = build_quantity_used_data(
+        task=task,
+        allocations=[
+            TaskLotAllocation(inventory_id="INVB258493", lot_id="LOT218913", quantity=0.5)
+        ],
+        block_id=None,
+        workflow=None,
+        workflow_id=None,
+    )
+
+    assert _dump_data(data) == [
+        {
+            "operation": "update",
+            "attribute": "quantityUsed",
+            "newValue": 0.5,
+            "oldValue": 0,
+            "invLotUniqueId": "INVB258493#LOT218913#1",
+        }
+    ]
+
+
+def test_build_quantity_used_data_groups_parameter_allocations_into_one_add():
+    """Test that special-parameter allocations combine into one add datum of row entries."""
+    data = build_quantity_used_data(
+        task=PropertyTask(id="TAS1", name="Task"),
+        allocations=[
+            TaskParameterAllocation(
+                inventory_id="INVC237902",
+                lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+            ),
+            TaskParameterAllocation(
+                inventory_id="INVC239794",
+                lots=[AllocatedLot(lot_id="LOT7", quantity=0)],
+            ),
+        ],
+        block_id="BLK2",
+        workflow=_allocation_workflow(),
+        workflow_id="WFL416155",
+    )
+
+    assert _dump_data(data) == [
+        {
+            "operation": "add",
+            "attribute": "quantityUsed",
+            "newValue": [
+                {
+                    "rowId": "ROW36",
+                    "workflowId": "WFL416155",
+                    "invId": "INVC237902",
+                    "blockId": "BLK2",
+                    "lot": [{"id": "LOT150566", "quantity": 1.5}],
+                },
+                {
+                    "rowId": "ROW110",
+                    "workflowId": "WFL416155",
+                    "invId": "INVC239794",
+                    "blockId": "BLK2",
+                    "lot": [{"id": "LOT7", "quantity": 0}],
+                },
+            ],
+        }
+    ]
+
+
+def test_build_quantity_used_data_mixed_allocations_produce_both_shapes():
+    """Test that task-level and special-parameter allocations produce their own datums."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INVB258493",
+            lot_id="LOT218913",
+            inv_lot_unique_id="INVB258493#LOT218913#1",
+        )
+    )
+
+    data = build_quantity_used_data(
+        task=task,
+        allocations=[
+            TaskLotAllocation(inventory_id="INVB258493", lot_id="LOT218913", quantity=0.5),
+            TaskParameterAllocation(
+                inventory_id="INVC237902",
+                lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+            ),
+        ],
+        block_id="BLK2",
+        workflow=_allocation_workflow(),
+        workflow_id="WFL416155",
+    )
+
+    dumped = _dump_data(data)
+    assert [datum["operation"] for datum in dumped] == ["update", "add"]
+    assert dumped[0]["invLotUniqueId"] == "INVB258493#LOT218913#1"
+    assert dumped[1]["newValue"][0]["rowId"] == "ROW36"
+
+
+def test_build_quantity_used_data_row_id_override_skips_resolution():
+    """Test that an explicit row_id is used directly, without consulting the workflow."""
+    data = build_quantity_used_data(
+        task=PropertyTask(id="TAS1", name="Task"),
+        allocations=[
+            TaskParameterAllocation(
+                inventory_id="INVC237902",
+                lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+                row_id="ROW99",
+            )
+        ],
+        block_id="BLK2",
+        workflow=None,
+        workflow_id="WFL416155",
+    )
+
+    assert _dump_data(data)[0]["newValue"][0]["rowId"] == "ROW99"
+
+
+def test_build_quantity_used_data_raises_without_block_id_for_parameter_row():
+    """Test that a special-parameter allocation without a block ID raises."""
+    with pytest.raises(AlbertException, match="block_id is required"):
+        build_quantity_used_data(
+            task=PropertyTask(id="TAS1", name="Task"),
+            allocations=[
+                TaskParameterAllocation(
+                    inventory_id="INVC237902",
+                    lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+                )
+            ],
+            block_id=None,
+            workflow=_allocation_workflow(),
+            workflow_id="WFL416155",
+        )
+
+
+def test_build_quantity_used_data_raises_without_workflow_for_unresolved_row():
+    """Test that a special-parameter allocation without row_id or workflow raises."""
+    with pytest.raises(AlbertException, match="A workflow is required"):
+        build_quantity_used_data(
+            task=PropertyTask(id="TAS1", name="Task"),
+            allocations=[
+                TaskParameterAllocation(
+                    inventory_id="INVC237902",
+                    lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+                )
+            ],
+            block_id="BLK2",
+            workflow=None,
+            workflow_id="WFL416155",
+        )

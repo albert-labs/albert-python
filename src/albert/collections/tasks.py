@@ -61,6 +61,8 @@ from albert.resources.tasks import (
     TaskAdapter,
     TaskCategory,
     TaskHistory,
+    TaskLotAllocation,
+    TaskParameterAllocation,
     TaskPatchPayload,
     TaskSearchItem,
 )
@@ -76,6 +78,7 @@ from albert.utils.tags import resolve_tags
 from albert.utils.tasks import (
     CSV_EXTENSIONS,
     build_property_payload,
+    build_quantity_used_data,
     build_task_metadata,
     determine_extension,
     extract_extensions_from_attachment,
@@ -84,6 +87,7 @@ from albert.utils.tasks import (
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
     resolve_attachment,
+    resolve_task_block,
     resolve_unassigned_task_state,
 )
 from albert.utils.worker_jobs import poll_worker_job
@@ -171,6 +175,8 @@ class TaskCollection(BaseCollection):
         Same filters as search, but returns fully populated tasks.
     update(task) -> BaseTask
         Update an existing task.
+    allocate_inventory(task_id, allocations, block_id=None) -> BaseTask
+        Record how much inventory a task consumed (allocate inventory / assign lots).
     delete(id, delay=None) -> None
         Delete a task by its ID.
     add_block(task_id, data_template_id, workflow_id) -> None
@@ -2516,6 +2522,125 @@ class TaskCollection(BaseCollection):
             )
 
         return self.get_by_id(id=task.id)
+
+    @validate_call
+    def allocate_inventory(
+        self,
+        *,
+        task_id: TaskId,
+        allocations: list[TaskLotAllocation | TaskParameterAllocation],
+        block_id: BlockId | None = None,
+    ) -> BaseTask:
+        """Record how much inventory a task consumed (allocate inventory / assign lots).
+
+        Two kinds of allocation are supported and can be mixed in one call:
+
+        - [`TaskLotAllocation`][albert.resources.tasks.TaskLotAllocation]: the task's own
+          inventory. Sets the absolute quantity used for one inventory item + lot pair.
+        - [`TaskParameterAllocation`][albert.resources.tasks.TaskParameterAllocation]: an
+          inventory-linked special parameter (Equipment, Consumables, Templates) on a
+          block's workflow. The target row is found automatically from the workflow; set
+          the allocation's ``parameter`` when the same item sits on more than one
+          parameter row, or ``row_id`` to target a row directly.
+
+        Allocations against the task's own inventory set the absolute quantity used;
+        allocations against special parameter rows add lot quantities to the row.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import (
+                AllocatedLot,
+                TaskLotAllocation,
+                TaskParameterAllocation,
+            )
+
+            # The task's own inventory
+            client.tasks.allocate_inventory(
+                task_id="TASFOR1",
+                allocations=[
+                    TaskLotAllocation(
+                        inventory_id="INVB9999999", lot_id="LOT9999999", quantity=0.5
+                    )
+                ],
+            )
+
+            # A special parameter row on a block (e.g. the "Light Source" equipment)
+            client.tasks.allocate_inventory(
+                task_id="TASFOR2",
+                block_id="BLK2",
+                allocations=[
+                    TaskParameterAllocation(
+                        inventory_id="INVC9999999",
+                        lots=[AllocatedLot(lot_id="LOT8888888", quantity=1.5)],
+                    )
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task to allocate inventory on (format ``TAS...``).
+        allocations : list of TaskLotAllocation or TaskParameterAllocation
+            The allocations to record. An empty list leaves the task unchanged.
+        block_id : BlockId, optional
+            The block whose workflow carries the special parameters (format
+            ``BLK...``). Required when any allocation is a ``TaskParameterAllocation``.
+
+        Returns
+        -------
+        BaseTask
+            The task after the allocation.
+
+        Raises
+        ------
+        AlbertException
+            If ``block_id`` is missing for a parameter allocation, the block is not
+            found on the task or has no workflow, the item + lot pair is not on the
+            task, or the inventory item matches multiple parameter rows and neither
+            ``parameter`` nor ``row_id`` disambiguates.
+        """
+        task = self.get_by_id(id=task_id)
+        if not allocations:
+            logger.info(f"No allocations provided for task {task_id}; nothing to do")
+            return task
+
+        workflow: Workflow | None = None
+        workflow_id: str | None = None
+        if any(isinstance(a, TaskParameterAllocation) for a in allocations):
+            if block_id is None:
+                raise AlbertException(
+                    "block_id is required when allocating against a special parameter row."
+                )
+            block = resolve_task_block(task=task, block_id=block_id)
+            workflow_id = self._get_block_current_workflow_id(block)
+            if workflow_id is None:
+                raise AlbertException(
+                    f"Block '{block_id}' on task '{task_id}' has no workflow to allocate against."
+                )
+            workflow = WorkflowCollection(session=self.session).get_by_id(id=workflow_id)
+
+        data = build_quantity_used_data(
+            task=task,
+            allocations=allocations,
+            block_id=block_id,
+            workflow=workflow,
+            workflow_id=workflow_id,
+        )
+        if data:
+            self.session.patch(
+                url=f"{self.base_path}/{task_id}",
+                json=[
+                    {
+                        "id": task_id,
+                        "data": [
+                            datum.model_dump(exclude_none=True, by_alias=True, mode="json")
+                            for datum in data
+                        ],
+                    }
+                ],
+            )
+        return self.get_by_id(id=task_id)
 
     @validate_call
     def get_history(

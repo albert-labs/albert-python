@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any, Literal
 
@@ -6,15 +6,20 @@ from albert.collections.attachments import AttachmentCollection
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import DataTemplateId
+from albert.core.shared.identifiers import BlockId, DataTemplateId, WorkflowId
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
-from albert.core.shared.models.patch import PatchOperation
+from albert.core.shared.models.patch import PatchDatum, PatchOperation
 from albert.exceptions import AlbertException, AlbertHTTPError
 from albert.resources.data_templates import DataColumnValue
+from albert.resources.parameters import ParameterCategory
 from albert.resources.property_data import TaskDataColumn, TaskPropertyCreate
 from albert.resources.tasks import (
     BaseTask,
+    Block,
     PropertyTask,
+    QuantityUsedEntry,
+    QuantityUsedPatchDatum,
+    TaskLotAllocation,
     TaskMetadata,
     TaskMetadataBlockdata,
     TaskMetadataDataTemplate,
@@ -24,9 +29,11 @@ from albert.resources.tasks import (
     TaskMetadataIntervals,
     TaskMetadataInventory,
     TaskMetadataWorkflow,
+    TaskParameterAllocation,
     TaskPatchPayload,
     TaskState,
 )
+from albert.resources.workflows import ParameterSetpoint, Workflow
 
 CSV_EXTENSIONS: set[str] = {"csv"}
 
@@ -623,6 +630,198 @@ def generate_adv_patch_payload(
                 )
 
     return base_payload
+
+
+def resolve_task_block(*, task: BaseTask, block_id: str) -> Block:
+    """Return the named block of a task, raising when the task has no such block."""
+    block = next((b for b in (getattr(task, "blocks", None) or []) if b.id == block_id), None)
+    if block is None:
+        raise AlbertException(f"Block '{block_id}' not found on task '{task.id}'.")
+    return block
+
+
+def _special_parameter_value_id(*, value: Any) -> str | None:
+    """Return the entity ID referenced by a special-parameter value, if any.
+
+    Intervalized special values are plain ID strings; fixed values are
+    ``{"id": ...}`` mappings or entity links.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value or None
+    if isinstance(value, Mapping):
+        return value.get("id")
+    return getattr(value, "id", None)
+
+
+def _parameter_label_matches(*, setpoint: ParameterSetpoint, parameter: str) -> bool:
+    """Return True when a setpoint's name or short name matches the given selector."""
+    lowered = parameter.lower()
+    return any(lowered == label.lower() for label in (setpoint.short_name, setpoint.name) if label)
+
+
+def resolve_parameter_row_id(
+    *, workflow: Workflow, inventory_id: str, parameter: str | None = None
+) -> str:
+    """Resolve the allocation row ID of an inventory-linked special parameter.
+
+    An intervalized parameter contributes the row ID of the interval entry whose
+    value selects the inventory item; a fixed special parameter contributes its
+    own row ID.
+    """
+    matches: list[tuple[str, str]] = []
+    for group in workflow.parameter_group_setpoints:
+        for setpoint in group.parameter_setpoints:
+            if setpoint.category != ParameterCategory.SPECIAL:
+                continue
+            if parameter is not None and not _parameter_label_matches(
+                setpoint=setpoint, parameter=parameter
+            ):
+                continue
+            label = setpoint.short_name or setpoint.name or setpoint.parameter_id or "unknown"
+            if setpoint.intervals:
+                for interval in setpoint.intervals:
+                    if (
+                        _special_parameter_value_id(value=interval.value) == inventory_id
+                        and interval.row_id
+                    ):
+                        matches.append((interval.row_id, label))
+            elif setpoint.row_id and (
+                _special_parameter_value_id(value=setpoint.value) == inventory_id
+            ):
+                matches.append((setpoint.row_id, label))
+    unique_rows = {row_id for row_id, _ in matches}
+    if not unique_rows:
+        raise AlbertException(
+            f"Inventory item '{inventory_id}' is not selected on any special parameter"
+            + (f" matching '{parameter}'" if parameter is not None else "")
+            + f" of workflow '{workflow.id}'."
+        )
+    if len(unique_rows) > 1:
+        candidates = ", ".join(f"{row_id} ({label})" for row_id, label in matches)
+        raise AlbertException(
+            f"Inventory item '{inventory_id}' matches multiple parameter rows on workflow "
+            f"'{workflow.id}': {candidates}. Pass 'parameter' or 'row_id' to disambiguate."
+        )
+    return matches[0][0]
+
+
+def _tuple_occurrence(*, inv_lot_unique_id: str | None) -> int | None:
+    """Return the trailing occurrence number of an inventory tuple identifier."""
+    if not inv_lot_unique_id:
+        return None
+    try:
+        return int(inv_lot_unique_id.rsplit("#", 1)[-1])
+    except ValueError:
+        return None
+
+
+def resolve_task_lot_target(
+    *, task: BaseTask, inventory_id: str, lot_id: str, occurrence: int | None = None
+) -> tuple[str, float]:
+    """Resolve the inventory tuple identifier and current quantity for a task-level allocation."""
+    candidates = [
+        info
+        for info in task.inventory_information or []
+        if info.inventory_id == inventory_id and info.lot_id == lot_id
+    ]
+    if occurrence is not None:
+        candidates = [
+            info
+            for info in candidates
+            if _tuple_occurrence(inv_lot_unique_id=info.inv_lot_unique_id) == occurrence
+        ]
+    if not candidates:
+        raise AlbertException(
+            f"Inventory item '{inventory_id}' with lot '{lot_id}' is not on task '{task.id}'."
+        )
+    if len(candidates) > 1:
+        raise AlbertException(
+            f"Inventory item '{inventory_id}' with lot '{lot_id}' appears "
+            f"{len(candidates)} times on task '{task.id}'. Pass 'occurrence' to disambiguate."
+        )
+    target = candidates[0]
+    if not target.inv_lot_unique_id:
+        raise AlbertException(
+            f"The inventory row for '{inventory_id}' with lot '{lot_id}' on task "
+            f"'{task.id}' has no tuple identifier to allocate against."
+        )
+    return target.inv_lot_unique_id, target.quantity_used or 0
+
+
+def build_quantity_used_data(
+    *,
+    task: BaseTask,
+    allocations: list[TaskLotAllocation | TaskParameterAllocation],
+    block_id: BlockId | None,
+    workflow: Workflow | None,
+    workflow_id: WorkflowId | None,
+) -> list[PatchDatum]:
+    """Assemble the quantityUsed patch data for ``allocate_inventory``.
+
+    Task-level allocations each become an ``update`` datum addressed by their
+    inventory tuple; special-parameter allocations are grouped into a single
+    ``add`` datum whose new value lists one entry per allocation.
+    """
+    data: list[PatchDatum] = []
+    entries: list[QuantityUsedEntry] = []
+    for allocation in allocations:
+        if isinstance(allocation, TaskLotAllocation):
+            tuple_id, current_quantity = resolve_task_lot_target(
+                task=task,
+                inventory_id=allocation.inventory_id,
+                lot_id=allocation.lot_id,
+                occurrence=allocation.occurrence,
+            )
+            data.append(
+                QuantityUsedPatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute="quantityUsed",
+                    new_value=allocation.quantity,
+                    old_value=current_quantity,
+                    inv_lot_unique_id=tuple_id,
+                )
+            )
+            continue
+        if block_id is None or workflow_id is None:
+            raise AlbertException(
+                "block_id is required when allocating against a special parameter row."
+            )
+        if allocation.row_id is not None:
+            row_id = allocation.row_id
+        elif workflow is not None:
+            row_id = resolve_parameter_row_id(
+                workflow=workflow,
+                inventory_id=allocation.inventory_id,
+                parameter=allocation.parameter,
+            )
+        else:
+            raise AlbertException(
+                "A workflow is required to resolve the parameter row for inventory item "
+                f"'{allocation.inventory_id}'."
+            )
+        entries.append(
+            QuantityUsedEntry(
+                row_id=row_id,
+                workflow_id=workflow_id,
+                inventory_id=allocation.inventory_id,
+                block_id=block_id,
+                lots=allocation.lots,
+            )
+        )
+    if entries:
+        data.append(
+            PatchDatum(
+                operation=PatchOperation.ADD,
+                attribute="quantityUsed",
+                new_value=[
+                    entry.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    for entry in entries
+                ],
+            )
+        )
+    return data
 
 
 def _assign_mapping(
