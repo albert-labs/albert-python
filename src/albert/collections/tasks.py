@@ -2616,18 +2616,16 @@ class TaskCollection(BaseCollection):
             workflow=workflow,
             workflow_id=workflow_id,
         )
-        self.session.patch(
-            url=f"{self.base_path}/{task_id}",
-            json=[
-                {
-                    "id": task_id,
-                    "data": [
-                        datum.model_dump(exclude_none=True, by_alias=True, mode="json")
-                        for datum in data
-                    ],
-                }
-            ],
-        )
+        for datum in data:
+            self.session.patch(
+                url=f"{self.base_path}/{task_id}",
+                json=[
+                    {
+                        "id": task_id,
+                        "data": [datum.model_dump(exclude_none=True, by_alias=True, mode="json")],
+                    }
+                ],
+            )
         return self.get_by_id(id=task_id)
 
     @validate_call
