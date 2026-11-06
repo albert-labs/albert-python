@@ -76,6 +76,22 @@ def _formula_reads_function(expression: str) -> bool:
     )
 
 
+def _attributes_without_property_column(
+    *, attribute_ids: list[str], columns: list[Column]
+) -> list[str]:
+    """The attributes in ``attribute_ids`` that have no property (RSL) column yet.
+
+    Property columns live on the live sheet, not in the saved calculation list, so a
+    re-run after a failed save would add the same column again without this check.
+    """
+    with_column = {
+        c.attribute_id.upper() for c in columns if c.type == CellType.RSL and c.attribute_id
+    }
+    return [
+        attribute_id for attribute_id in attribute_ids if attribute_id.upper() not in with_column
+    ]
+
+
 def _calculation_entry(*, attribute_id: str, name: str, row_id: str | None = None) -> dict:
     """A sheet calculation entry, in the shape the Manage Worksheet panel saves."""
     entry = {"id": attribute_id, "name": name, "label": name, "parentAttributeId": attribute_id}
@@ -575,6 +591,7 @@ class Design(BaseSessionResource):
                 raw_id = row_item_id
 
             inv_id = _grid_inventory_id(raw_id, v.get("type"))
+            attribute_id = str(raw_id) if raw_id and v.get("type") == CellType.RSL else None
 
             formula = formula_by_col.get(col_id) or {}
             state = formula.get("state") or {}
@@ -598,6 +615,7 @@ class Design(BaseSessionResource):
                     session=self.session,
                     sheet=self.sheet,
                     inventory_id=inv_id,
+                    attribute_id=attribute_id,
                     hidden=hidden,
                     locked=locked,
                     pinned=pinned,
@@ -3128,7 +3146,19 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
         referenced = [found[i.upper()] for i in plan.attribute_ids]
 
+        without_column = (
+            {
+                i.upper()
+                for i in _attributes_without_property_column(
+                    attribute_ids=plan.attribute_ids, columns=self.columns
+                )
+            }
+            if referenced
+            else set()
+        )
         for ref in referenced:
+            if ref.id.upper() not in without_column:
+                continue
             self.add_property_column(
                 name=_attribute_label(ref),
                 attribute_id=ref.id,
@@ -4826,6 +4856,9 @@ class Column(BaseSessionResource):  # noqa:F811
 
     inventory_id: str | None = Field(default=None, exclude=True)
     """For a formulation column, the underlying inventory ID (format ``INV...``). Optional. Default is None."""
+
+    attribute_id: str | None = Field(default=None, exclude=True)
+    """For a property/result (``RSL``) column, the ID of the attribute it reads (format ``ATR...``). None for other column types. Read-only."""
 
     _cells: list[Cell] | None = PrivateAttr(default=None)
     locked: bool = Field(default=False)

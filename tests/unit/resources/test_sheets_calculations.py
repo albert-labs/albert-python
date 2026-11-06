@@ -6,7 +6,7 @@ import pytest
 import responses
 
 from albert.core.shared.models.patch import PatchDatum
-from albert.exceptions import AlbertException, AlbertPartialError
+from albert.exceptions import AlbertException, AlbertHTTPError, AlbertPartialError
 from albert.resources.attributes import Attribute, ExpressionType, FormulaMetadata
 from albert.resources.sheets import (
     Cell,
@@ -14,6 +14,7 @@ from albert.resources.sheets import (
     Column,
     ColumnPosition,
     Sheet,
+    _attributes_without_property_column,
     _CalculationPlan,
     _formula_attribute_ids,
     _formula_reads_function,
@@ -840,3 +841,151 @@ def test_basis_readers_ignores_another_attributes_calculated_properties():
     config = _config(properties=[_entry("Total Solids", attribute_id="ATR2")])
 
     assert Sheet._basis_readers(config=config, attribute=_attribute(_ib(), _cp())) == []
+
+
+# --- _attributes_without_property_column ---
+
+
+def _property_column(attribute_id: str, column_id: str = "COL9") -> Column:
+    return Column(
+        colId=column_id,
+        type=CellType.RSL,
+        sheet=_products_sheet(),
+        attribute_id=attribute_id,
+    )
+
+
+def test_get_columns_reads_the_attribute_of_a_property_column():
+    """Test that a property column carries the attribute it reads."""
+    grid = {
+        "Formulas": [{"colId": "COL1", "name": "Inventory ID", "type": "DEF", "state": {}}],
+        "Items": [
+            {
+                "rowId": "ROW1",
+                "rowUniqueId": "DES1#ROW1",
+                "type": "TOT",
+                "id": "APP1",
+                "name": "Total",
+                "Values": [
+                    {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": ""},
+                    {"colId": "COL9", "type": "RSL", "id": "ATR9", "name": "Density", "value": ""},
+                ],
+            }
+        ],
+    }
+
+    columns = _products_sheet().product_design._get_columns(grid_response=grid)
+
+    assert [(c.column_id, c.type, c.attribute_id) for c in columns] == [
+        ("COL1", "DEF", None),
+        ("COL9", CellType.RSL, "ATR9"),
+    ]
+
+
+def test_attributes_without_property_column_skips_attributes_that_have_one():
+    """Test that only referenced attributes without a property column are returned."""
+    columns = [_property_column("ATR9"), _column("COL5", "INV")]
+
+    assert _attributes_without_property_column(
+        attribute_ids=["ATR9", "ATR10"], columns=columns
+    ) == ["ATR10"]
+
+
+def test_attributes_without_property_column_requires_the_attribute_id():
+    """Test that a property column without an attribute ID does not count."""
+    assert _attributes_without_property_column(
+        attribute_ids=["ATR9"], columns=[_column("COL9", "RSL")]
+    ) == ["ATR9"]
+
+
+def test_attributes_without_property_column_matches_ids_without_case():
+    """Test that an attribute ID matches its property column regardless of case."""
+    assert (
+        _attributes_without_property_column(
+            attribute_ids=["atr9"], columns=[_property_column("ATR9")]
+        )
+        == []
+    )
+
+
+# --- Sheet.add_calculation ---
+
+
+@responses.activate
+def test_add_calculation_rerun_after_a_failed_save_does_not_duplicate_property_columns(
+    offline_session,
+):
+    """Test that a re-run finishes a failed save without adding property columns again."""
+    sheet = _products_sheet(session=offline_session)
+    formula = _ib(expression="wt% * [ATR9] / 100")
+    attribute = {
+        "albertId": "ATR1",
+        "fullName": "Solids Share",
+        "formulaMetadata": [
+            {
+                "displayName": formula.display_name,
+                "expression": formula.expression,
+                "expressionType": formula.expression_type.value,
+                "requestInverse": False,
+            }
+        ],
+    }
+    referenced = {
+        "albertId": "ATR9",
+        "fullName": "Density",
+        "datacolumn": {"id": "DAC9", "name": "Density"},
+    }
+    config = _config()
+    grid = {
+        "Formulas": [{"colId": "COL1", "name": "Inventory ID", "type": "DEF", "state": {}}],
+        "Items": [
+            {
+                "rowId": "ROW1",
+                "rowUniqueId": "DES1#ROW1",
+                "type": "TOT",
+                "id": "APP1",
+                "name": "Total",
+                "Values": [{"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": ""}],
+            }
+        ],
+    }
+    added = {"count": 0}
+
+    def add_column(_request):
+        added["count"] += 1
+        column = {"colId": "COL9", "type": "RSL", "id": "ATR9", "name": "Density", "value": ""}
+        grid["Items"][0]["Values"].append(column)
+        return (200, {}, json.dumps([{k: v for k, v in column.items() if k != "value"}]))
+
+    def get_grid(_request):
+        return (200, {}, json.dumps(grid))
+
+    responses.get(f"{UNIT_BASE_URL}/api/v3/attributes/ATR1", json=attribute)
+    responses.get(f"{UNIT_BASE_URL}/api/v3/attributes/ids", json={"Items": [referenced]})
+    responses.get(f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/manageWorksheet", json=config)
+    responses.add_callback(
+        responses.GET, f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid", callback=get_grid
+    )
+    responses.add_callback(
+        responses.POST,
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
+        callback=add_column,
+    )
+    responses.put(f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/manageWorksheet", status=400)
+    responses.put(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/manageWorksheet",
+        json={
+            "attributes": [{"id": "ATR9", "name": "Density"}],
+            "ingredientBasis": [_entry("Solids Share")],
+            "calculatedProperty": [],
+        },
+    )
+
+    with pytest.raises(AlbertHTTPError):
+        sheet.add_calculation(attribute_id="ATR1", display_name="Solids Share")
+
+    calculations = sheet.add_calculation(attribute_id="ATR1", display_name="Solids Share")
+
+    assert added["count"] == 1
+    assert [c.attribute_id for c in calculations.ingredient_bases] == ["ATR1"]
+    assert [a.id for a in calculations.attributes] == ["ATR9"]
