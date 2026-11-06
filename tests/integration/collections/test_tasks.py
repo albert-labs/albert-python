@@ -544,6 +544,32 @@ def test_generate_block_combinations_integration(
 
 
 @pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_generate_block_combinations_batch_task_integration(
+    client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
+):
+    """Test generating block combinations on a batch task block."""
+    task = next(x for x in seeded_tasks if isinstance(x, BatchTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    try:
+        job = client.tasks.generate_block_combinations(
+            task_id=task.id,
+            block_id=block.id,
+            wait=False,
+        )
+        assert isinstance(job, WorkerJob)
+        assert job.job_type == "createChildWorkflows"
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
 def test_create_with_combinations_integration(
     client: Albert, seeded_projects, seeded_data_templates, seeded_workflows
 ):

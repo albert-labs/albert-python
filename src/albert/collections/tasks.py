@@ -161,8 +161,8 @@ class TaskCollection(BaseCollection):
         Create a PropertyTask, BatchTask, or GeneralTask.
     create_many(tasks) -> list[BaseTask]
         Create multiple tasks in a single call.
-    create_with_combinations(task, wait=True) -> PropertyTask (🧪 Beta)
-        Create a Property task and generate its block combinations (increased intervals).
+    create_with_combinations(task, wait=True) -> PropertyTask | BatchTask (🧪 Beta)
+        Create a Property or Batch task and generate its block combinations (increased intervals).
     get_by_id(id) -> BaseTask
         Get a single fully populated task by its ID.
     search(...) -> Iterator[TaskSearchItem]
@@ -233,12 +233,12 @@ class TaskCollection(BaseCollection):
         set on the task's ``blocks`` or added after creation with
         [`add_block`][albert.collections.tasks.TaskCollection.add_block].
 
-        !!! warning "Property tasks with increased intervals (🧪 Beta)"
+        !!! warning "Property and Batch tasks with increased intervals (🧪 Beta)"
             When increased intervals is enabled for your tenant, ``create`` does not
-            generate combinations for a Property task's blocks, so those blocks show no
-            rows. This applies even when a block's workflow has no intervals, because
-            every block needs at least its baseline combination. Create Property tasks
-            with blocks using
+            generate combinations for a Property or Batch task's blocks, so those blocks
+            show no rows. This applies even when a block's workflow has no intervals,
+            because every block needs at least its baseline combination. Create Property
+            or Batch tasks with blocks using
             [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
             instead, or call
             [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
@@ -309,9 +309,9 @@ class TaskCollection(BaseCollection):
         ``Not Started`` / ``In Progress`` are rejected), while a task with an
         assignee starts ``Not Started``.
 
-        !!! warning "Property tasks with increased intervals (🧪 Beta)"
+        !!! warning "Property and Batch tasks with increased intervals (🧪 Beta)"
             When increased intervals is enabled for your tenant, ``create_many`` does not
-            generate combinations for Property task blocks, so those blocks show no rows,
+            generate combinations for Property or Batch task blocks, so those blocks show no rows,
             even when a block's workflow has no intervals. Call
             [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
             for each block of each created task, or create tasks one at a time with
@@ -384,23 +384,24 @@ class TaskCollection(BaseCollection):
     def create_with_combinations(
         self,
         *,
-        task: PropertyTask,
+        task: PropertyTask | BatchTask,
         wait: bool = True,
-    ) -> PropertyTask:
-        """Create a Property task and generate interval combinations across all its blocks (🧪 Beta).
+    ) -> PropertyTask | BatchTask:
+        """Create a Property or Batch task and generate interval combinations across all its blocks (🧪 Beta).
 
         Use this method instead of
         [`create`][albert.collections.tasks.TaskCollection.create] to create Property
         tasks with blocks when increased intervals is enabled for your tenant. Every
         block then needs its combinations generated, including blocks whose workflow
-        has no intervals (a single baseline combination). Only
-        [`PropertyTask`][albert.resources.tasks.PropertyTask] is supported, and only
+        has no intervals (a single baseline combination).
+        [`PropertyTask`][albert.resources.tasks.PropertyTask] and
+        [`BatchTask`][albert.resources.tasks.BatchTask] are supported, and only
         when increased intervals is enabled; otherwise the task is rejected and not
         created, so use [`create`][albert.collections.tasks.TaskCollection.create]
         instead. Albert enables increased intervals per tenant; if you're unsure
         whether it's enabled for yours, contact your Albert representative.
 
-        Provides an all-in-one method to create a Property task and materialize
+        Provides an all-in-one method to create a Property or Batch task and materialize
         child-workflow combination variants across every task block.
 
         Intervals, Modes, Rules, and Overrides:
@@ -480,8 +481,8 @@ class TaskCollection(BaseCollection):
 
         Parameters
         ----------
-        task : PropertyTask
-            The Property task definition to create, containing one or more
+        task : PropertyTask or BatchTask
+            The Property or Batch task definition to create, containing one or more
             [`Block`][albert.resources.tasks.Block] instances. Each block must have a
             data template and a workflow (either an existing workflow ID or a new
             [`Workflow`][albert.resources.workflows.Workflow] object), plus optional rules
@@ -492,23 +493,23 @@ class TaskCollection(BaseCollection):
 
         Returns
         -------
-        PropertyTask
-            The created Property task. If ``wait=True``, returns the re-fetched task with
+        PropertyTask or BatchTask
+            The created task. If ``wait=True``, returns the re-fetched task with
             combinations populated. If ``wait=False``, returns the task with job identifiers
             assigned on each block.
 
         Raises
         ------
         TypeError
-            If ``task`` is not a ``PropertyTask``.
+            If ``task`` is not a ``PropertyTask`` or ``BatchTask``.
         CombinationGenerationError
             If ``wait=True`` and combination generation fails on one or more blocks.
             The exception carries the created task (``err.task``) and failed block IDs
             (``err.failed_blocks``) so callers can inspect or retry specific blocks using
             [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
         """
-        if not isinstance(task, PropertyTask):
-            raise TypeError("task must be a PropertyTask")
+        if not isinstance(task, PropertyTask | BatchTask):
+            raise TypeError("task must be a PropertyTask or BatchTask")
 
         task = task.model_copy(deep=True)
         workflow_collection = WorkflowCollection(session=self.session)
@@ -531,8 +532,8 @@ class TaskCollection(BaseCollection):
 
         # 3. Create the task via standard create
         created_task = self.create(task=task)
-        if not isinstance(created_task, PropertyTask):
-            raise TypeError(f"Created task {created_task.id} is not a PropertyTask")
+        if not isinstance(created_task, PropertyTask | BatchTask):
+            raise TypeError(f"Created task {created_task.id} is not a PropertyTask or BatchTask")
 
         if not created_task.blocks:
             return created_task
@@ -606,8 +607,10 @@ class TaskCollection(BaseCollection):
                 )
 
             refetched = self.get_by_id(id=created_task.id)
-            if not isinstance(refetched, PropertyTask):
-                raise TypeError(f"Refetched task {refetched.id} is not a PropertyTask")
+            if not isinstance(refetched, PropertyTask | BatchTask):
+                raise TypeError(
+                    f"Refetched task {refetched.id} is not a PropertyTask or BatchTask"
+                )
             return refetched
 
         for blk in created_task.blocks:
@@ -881,7 +884,7 @@ class TaskCollection(BaseCollection):
         Parameters
         ----------
         task_id : TaskId
-            The Property task ID containing the block (format ``TAS...``), obtained
+            The Property or Batch task ID containing the block (format ``TAS...``), obtained
             from [`create`][albert.collections.tasks.TaskCollection.create],
             [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
             or [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id].
@@ -952,7 +955,7 @@ class TaskCollection(BaseCollection):
         Parameters
         ----------
         task_id : TaskId
-            The Property task ID containing the block (format ``TAS...``), obtained
+            The Property or Batch task ID containing the block (format ``TAS...``), obtained
             from [`create`][albert.collections.tasks.TaskCollection.create],
             [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
             or [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id].
@@ -1054,7 +1057,7 @@ class TaskCollection(BaseCollection):
         Parameters
         ----------
         task_id : TaskId
-            The Property task ID containing the block (format ``TAS...``).
+            The Property or Batch task ID containing the block (format ``TAS...``).
         block_id : BlockId
             The block ID whose exclusions to add (format ``BLK...``), obtained
             from ``task.blocks[i].id`` on a fetched task.
@@ -1155,7 +1158,7 @@ class TaskCollection(BaseCollection):
         Parameters
         ----------
         task_id : TaskId
-            The Property task ID containing the block (format ``TAS...``).
+            The Property or Batch task ID containing the block (format ``TAS...``).
         block_id : BlockId
             The block ID whose exclusions to remove (format ``BLK...``).
         exclusion_ids : list[str]
@@ -1317,7 +1320,7 @@ class TaskCollection(BaseCollection):
         Parameters
         ----------
         task_id : TaskId
-            The Property task ID containing the block (format ``TAS...``), obtained
+            The Property or Batch task ID containing the block (format ``TAS...``), obtained
             from [`create`][albert.collections.tasks.TaskCollection.create],
             [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
             or [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id].
@@ -1355,7 +1358,7 @@ class TaskCollection(BaseCollection):
         ValueError
             If both ``rules`` and ``overrides`` are omitted, or if the block is not found.
         TypeError
-            If the task is not a PropertyTask.
+            If the task is not a PropertyTask or BatchTask.
         AlbertException
             If combination generation fails or exceeds platform caps.
         """
@@ -1390,8 +1393,8 @@ class TaskCollection(BaseCollection):
             target_old_workflow_id = old_workflow_id
             if target_old_workflow_id is None:
                 task = self.get_by_id(id=task_id)
-                if not isinstance(task, PropertyTask):
-                    raise TypeError(f"Task {task_id} must be a PropertyTask")
+                if not isinstance(task, PropertyTask | BatchTask):
+                    raise TypeError(f"Task {task_id} must be a PropertyTask or BatchTask")
                 target_block = next((b for b in task.blocks if b.id == block_id), None)
                 if target_block is None:
                     raise ValueError(f"Block {block_id} not found on task {task_id}")
@@ -1471,7 +1474,7 @@ class TaskCollection(BaseCollection):
         Parameters
         ----------
         task_id : TaskId
-            The Property task ID containing the block (format ``TAS...``), obtained
+            The Property or Batch task ID containing the block (format ``TAS...``), obtained
             from [`create`][albert.collections.tasks.TaskCollection.create],
             [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
             or [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id].
@@ -1502,14 +1505,14 @@ class TaskCollection(BaseCollection):
         ValueError
             If the block is not found or has no assigned workflow.
         TypeError
-            If the task is not a PropertyTask.
+            If the task is not a PropertyTask or BatchTask.
         AlbertException
             If the generated combinations exceed the platform cap of 2,000, or if
             ``wait=True`` and the background generation job fails.
         """
         task = self.get_by_id(id=task_id)
-        if not isinstance(task, PropertyTask):
-            raise TypeError(f"Task {task_id} must be a PropertyTask")
+        if not isinstance(task, PropertyTask | BatchTask):
+            raise TypeError(f"Task {task_id} must be a PropertyTask or BatchTask")
 
         target_block = next((b for b in task.blocks if b.id == block_id), None)
         if target_block is None:
