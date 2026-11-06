@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.71.0](https://github.com/albert-labs/albert-python/compare/v1.70.1...v1.71.0) (2026-11-06)
+
+
+### Features
+
+* **tasks:** add allocate_inventory ([#933](https://github.com/albert-labs/albert-python/issues/933)) ([cba14d9](https://github.com/albert-labs/albert-python/commit/cba14d96c81c9d4c4af6fb1a7aff76964afb091c))
+
+
+### Bug Fixes
+
+* **parameter-groups:** keep repeated parameter rows on update ([#939](https://github.com/albert-labs/albert-python/issues/939)) ([74bc7e8](https://github.com/albert-labs/albert-python/commit/74bc7e8a1062927363c6f55ccfff14d1b7615019))
+
 ## [1.70.1](https://github.com/albert-labs/albert-python/compare/v1.70.0...v1.70.1) (2026-11-06)
 
 
