@@ -9,7 +9,7 @@ from pydantic import Field, PrivateAttr, field_validator, model_validator, valid
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId, TaskId
-from albert.core.shared.models.base import BaseResource, BaseSessionResource
+from albert.core.shared.models.base import BaseResource, BaseSessionResource, EntityLinkWithName
 from albert.core.shared.models.patch import PatchDatum
 from albert.core.utils import find_stack_level
 from albert.exceptions import AlbertException, AlbertHTTPError, AlbertPartialError
@@ -89,7 +89,8 @@ class CellType(str, Enum):
     ``BLANK`` (an empty cell). ``CALCULATED_PROPERTY`` marks a calculated property
     row and ``INGREDIENT_BASIS`` an ingredient basis column; the worksheet computes
     their values, so they are read-only (see
-    [`update_cells`][albert.resources.sheets.Sheet.update_cells]). The remaining
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells]); list them with
+    [`get_calculations`][albert.resources.sheets.Sheet.get_calculations]. The remaining
     members correspond to specialized grid content such as tags, prices, tasks,
     results, and apps.
     """
@@ -807,6 +808,47 @@ class SheetFormulationRef(BaseAlbertModel):
     hidden: bool = Field(description="Whether the formulation is hidden")
 
 
+class SheetCalculation(BaseAlbertModel):
+    """An ingredient basis or calculated property shown on a sheet.
+
+    The formula itself lives on the attribute: its
+    [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata] entry with the same
+    ``display_name`` holds the expression.
+    """
+
+    attribute_id: str = Field(alias="id")
+    """The ID of the attribute that defines the formula (format ``ATR...``)."""
+
+    name: str | None = Field(default=None)
+    """The formula's display name. An ingredient basis column and a calculated property
+    row on the sheet carry this name. Optional. Default is None."""
+
+
+class SheetCalculations(BaseAlbertModel):
+    """The ingredient bases, calculated properties and attributes a sheet uses.
+
+    This is what the sheet's Manage Worksheet panel shows. Each ingredient basis adds a
+    column under every formula column
+    ([`INGREDIENT_BASIS`][albert.resources.sheets.CellType.INGREDIENT_BASIS]), and each
+    calculated property adds a row in the Calculated Properties group
+    ([`CALCULATED_PROPERTY`][albert.resources.sheets.CellType.CALCULATED_PROPERTY]). The
+    worksheet computes their values when the sheet is open in Albert.
+
+    Read them with [`get_calculations`][albert.resources.sheets.Sheet.get_calculations].
+    """
+
+    attributes: list[EntityLinkWithName] = Field(default_factory=list)
+    """The attributes the sheet uses, by ID and name. A sheet can use at most 10."""
+
+    ingredient_bases: list[SheetCalculation] = Field(default_factory=list, alias="ingredientBasis")
+    """The ingredient bases on the sheet."""
+
+    calculated_properties: list[SheetCalculation] = Field(
+        default_factory=list, alias="calculatedProperty"
+    )
+    """The calculated properties on the sheet."""
+
+
 class Sheet(BaseSessionResource):  # noqa:F811
     """An interactive grid within a Worksheet where formulations are built.
 
@@ -861,6 +903,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Add an application row.
     get_app_rows() -> list[AppRow]
         Get the app rows of the Apps section, with their computed values.
+    get_calculations() -> SheetCalculations
+        Get the ingredient bases and calculated properties on the sheet (Manage Worksheet).
     add_parameter_group_row(parameter_group_id, ...) -> Row
         Add a parameter group (PRG) row to Process Design.
     add_task_row(task_id, ...) -> Row
@@ -2728,6 +2772,35 @@ class Sheet(BaseSessionResource):  # noqa:F811
         response = self.session.get(f"/api/v3/worksheet/{design_obj.id}/apps/grid/new")
         items = response.json().get("Items") or []
         return [AppRow(**item) for item in items if item.get("type") == CellType.APP.value]
+
+    @validate_call
+    def get_calculations(self) -> SheetCalculations:
+        """Get the ingredient bases and calculated properties on this sheet.
+
+        Lists the worksheet calculations the sheet shows, as in its Manage Worksheet
+        panel: each ingredient basis and calculated property by attribute ID and display
+        name, plus the attributes the sheet uses. Look up a formula's expression on its
+        attribute's [`formula_metadata`][albert.resources.attributes.Attribute.formula_metadata]
+        by display name.
+
+        !!! example
+            ```python
+            calculations = sheet.get_calculations()
+            for cp in calculations.calculated_properties:
+                attribute = client.attributes.get_by_id(id=cp.attribute_id)
+                formula = next(
+                    f for f in attribute.formula_metadata if f.display_name == cp.name
+                )
+                print(cp.name, formula.expression)
+            ```
+
+        Returns
+        -------
+        SheetCalculations
+            The sheet's ingredient bases, calculated properties and attributes.
+        """
+        response = self.session.get(f"/api/v3/worksheet/sheet/{self.id}/manageWorksheet")
+        return SheetCalculations(**response.json())
 
     @validate_call
     def add_parameter_group_row(
