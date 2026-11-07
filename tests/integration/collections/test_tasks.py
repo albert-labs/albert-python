@@ -17,6 +17,7 @@ from albert.resources.lists import ListItem
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
     BaseTask,
+    BatchSizeUnit,
     BatchTask,
     Block,
     GeneralTask,
@@ -402,6 +403,7 @@ def test_update_task_workflow(
         task=BatchTask(
             name=f"{seed_prefix} - Update Task Workflow",
             category=TaskCategory.BATCH,
+            batch_size_unit=BatchSizeUnit.GRAMS,
             inventory_information=[
                 TaskInventoryInformation(
                     inventory_id=seeded_products[0].id,
