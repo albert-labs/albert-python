@@ -1,7 +1,7 @@
 """Unit tests for the design-model-config resource models: wire round-trips and validators."""
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from albert.resources.design_model_configs import (
     CreateDesignModelConfigRequest,
@@ -9,6 +9,7 @@ from albert.resources.design_model_configs import (
     DesignModelConfigApplyResponse,
     DesignModelConfigCreated,
     DesignModelConfigFeaturePreview,
+    DesignModelConfigForkRequest,
     DesignModelConfigOperationsRequest,
     DesignModelConfigReferences,
     DesignModelConfigResolvedFeatures,
@@ -18,6 +19,7 @@ from albert.resources.design_model_configs import (
     FamilySelector,
     FeatureMask,
     OutputEntry,
+    PreviewCount,
     SetOutputOperation,
 )
 from albert.resources.design_operands import (
@@ -475,3 +477,33 @@ def test_created_config_parses_a_variable_not_derived_warning():
     )
 
     assert created.warnings[0].code == "variable_not_derived"
+
+
+@pytest.mark.parametrize("count", [3, "all"])
+def test_preview_count_accepts_a_positive_number_or_all(count):
+    """Test that a positive count and "all" are both valid preview counts."""
+    assert TypeAdapter(PreviewCount).validate_python(count) == count
+
+
+@pytest.mark.parametrize("bad", [0, -1, "some"])
+def test_preview_count_rejects_zero_negative_and_unknown_words(bad):
+    """Test that a zero, negative or unknown count fails before any request is built."""
+    with pytest.raises(ValidationError):
+        TypeAdapter(PreviewCount).validate_python(bad)
+
+
+def test_operations_request_rejects_an_empty_operation_list():
+    """Test that an apply with no operations fails locally."""
+    with pytest.raises(ValidationError):
+        DesignModelConfigOperationsRequest(operations=[])
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "wire"),
+    [({}, {}), ({"parent_id": "pro9"}, {"parentId": "PRO9"})],
+)
+def test_fork_request_sends_the_target_project_only_when_given(kwargs, wire):
+    """Test that a fork body is empty by default and carries the normalized project."""
+    request = DesignModelConfigForkRequest(**kwargs)
+
+    assert request.model_dump(by_alias=True, mode="json", exclude_none=True) == wire
