@@ -7,6 +7,7 @@ from albert.resources.design_candidates import (
     ParameterInput,
     PredictionDataType,
 )
+from albert.resources.design_operands import UnknownDescriptor
 
 CANDIDATE = {
     "id": "DCN1",
@@ -98,3 +99,27 @@ def test_candidate_set_parses_its_source():
     assert candidate_set.source.source_type == CandidateSetSourceType.DESIGN_RUN
     assert candidate_set.source.source_id == "DSR1042"
     assert candidate_set.objectives["TAR1"].weight == 1.0
+
+
+def test_candidate_inputs_keep_fields_and_kinds_this_version_does_not_model():
+    """Test that a newer descriptor field or input kind reads instead of failing."""
+    candidate = DesignCandidate.model_validate(
+        {
+            **CANDIDATE,
+            "inputs": [
+                {
+                    "type": "ingredientAmount",
+                    "ingredient": "INV001",
+                    "value": 0.2,
+                    "process": "P1",
+                },
+                {"type": "processStep", "step": "cure", "value": 3},
+            ],
+        }
+    )
+
+    amount, unknown = candidate.inputs
+    assert isinstance(amount, IngredientAmountInput)
+    assert amount.model_extra == {"process": "P1"}
+    assert isinstance(unknown, UnknownDescriptor)
+    assert unknown.model_dump(mode="json") == {"type": "processStep", "step": "cure", "value": 3}

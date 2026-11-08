@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
@@ -13,7 +13,11 @@ from albert.core.shared.identifiers import (
     TargetId,
 )
 from albert.core.shared.models.base import AuditFields, BaseResource
-from albert.resources.design_operands import IngredientAmountOperand, ParameterOperand
+from albert.resources.design_operands import (
+    IngredientAmountOperand,
+    ParameterOperand,
+    UnknownDescriptor,
+)
 from albert.resources.design_spaces import ParameterRef
 
 if sys.version_info >= (3, 11):  # pragma: no cover (py311+)
@@ -33,14 +37,18 @@ class PredictionDataType(StrEnum):
 
 
 class IngredientAmountInput(IngredientAmountOperand):
-    """The sampled amount of one ingredient."""
+    """The sampled amount of one ingredient. Fields this version does not model are kept."""
+
+    model_config = ConfigDict(extra="allow")
 
     value: float
     """The sampled amount."""
 
 
 class ParameterInput(ParameterOperand):
-    """The sampled value of one parameter."""
+    """The sampled value of one parameter. Fields this version does not model are kept."""
+
+    model_config = ConfigDict(extra="allow")
 
     ref: ParameterRef
     """The structured parts of the parameter key."""
@@ -49,8 +57,13 @@ class ParameterInput(ParameterOperand):
     """The sampled value."""
 
 
-CandidateInput = Annotated[IngredientAmountInput | ParameterInput, Field(discriminator="type")]
-"""One sampled design variable: an ingredient amount or a parameter value."""
+CandidateInput = Annotated[
+    Annotated[IngredientAmountInput | ParameterInput, Field(discriminator="type")]
+    | UnknownDescriptor,
+    Field(union_mode="left_to_right"),
+]
+"""One sampled design variable: an ingredient amount or a parameter value. A kind this
+version does not know yet parses to ``UnknownDescriptor`` instead of failing the read."""
 
 
 class Quantiles(BaseAlbertModel):
