@@ -68,10 +68,10 @@ def test_design_model_config_round_trips_the_full_example():
 
     config = DesignModelConfig.model_validate(wire)
 
-    # Every key comes back, including ``albertId``, which the config keeps as an extra
-    # field; only the null ``forkedFromId`` is dropped by ``exclude_none``.
+    # The ID is read once, as ``id`` (not ``albertId``); the null ``forkedFromId`` is
+    # dropped by ``exclude_none``.
     assert config.model_dump(by_alias=True, mode="json", exclude_none=True) == {
-        k: v for k, v in wire.items() if k != "forkedFromId"
+        k: v for k, v in wire.items() if k not in {"albertId", "forkedFromId"}
     }
 
 
@@ -592,3 +592,11 @@ def test_requests_still_reject_kinds_and_fields_the_service_does_not_accept():
         FeatureMask.model_validate(
             {"include": [{"type": "ingredientAmount", "ingredient": "INV1", "process": "PRC1"}]}
         )
+
+
+def test_a_config_that_carries_only_albert_id_reads_it_as_the_id():
+    """Test that the ID is read from ``albertId`` when ``id`` is absent, and kept once."""
+    config = DesignModelConfig.model_validate({"albertId": "DMC123", "name": "n"})
+
+    assert config.id == "DMC123"
+    assert "albertId" not in config.model_extra
