@@ -14,6 +14,7 @@ from albert.resources.design_model_configs import (
     DesignModelConfigResolvedFeatures,
     DesignModelConfigValidationResponse,
     DesignModelConfigViolation,
+    DesignModelConfigViolationCode,
     FamilySelector,
     FeatureMask,
     OutputEntry,
@@ -250,8 +251,8 @@ def test_output_entry_does_not_reject_a_transform_on_a_categorical_output():
     assert entry.output_transform == "log"
 
 
-def test_violation_accepts_the_contract_codes_and_rejects_others():
-    """Test that every contract code parses and an unknown one fails validation."""
+def test_violation_parses_known_codes_as_members_and_keeps_unknown_ones():
+    """Test that known codes parse to the enum and an unknown one is kept as a string."""
     for code in [
         "target_not_in_dataset",
         "transform_requires_positive_target",
@@ -262,12 +263,13 @@ def test_violation_accepts_the_contract_codes_and_rejects_others():
         "dimension_not_modelled",
         "invalid_settings",
         "invalid_constraint",
+        "insufficient_training_data",
     ]:
-        assert (
-            DesignModelConfigViolation.model_validate({"code": code, "message": "m"}).code == code
-        )
-    with pytest.raises(ValidationError):
-        DesignModelConfigViolation.model_validate({"code": "surprise", "message": "m"})
+        parsed = DesignModelConfigViolation.model_validate({"code": code, "message": "m"}).code
+        assert isinstance(parsed, DesignModelConfigViolationCode)
+        assert parsed == code
+    unknown = DesignModelConfigViolation.model_validate({"code": "surprise", "message": "m"})
+    assert unknown.code == "surprise"
 
 
 def test_validation_response_with_violations_is_a_normal_result():
