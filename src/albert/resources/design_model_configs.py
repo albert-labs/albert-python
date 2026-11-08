@@ -83,6 +83,7 @@ class DesignModelConfigViolationCode(StrEnum):
     INVALID_SETTINGS = "invalid_settings"
     INVALID_CONSTRAINT = "invalid_constraint"
     VARIABLE_NOT_DERIVED = "variable_not_derived"
+    INSUFFICIENT_TRAINING_DATA = "insufficient_training_data"
 
 
 class FamilySelector(TypedDesignModel):
@@ -204,8 +205,9 @@ class DesignModelConfig(BaseResource):
 class DesignModelConfigViolation(BaseAlbertModel):
     """A single design model config finding."""
 
-    code: DesignModelConfigViolationCode
-    """Machine-readable category of the finding."""
+    code: DesignModelConfigViolationCode | str = Field(union_mode="left_to_right")
+    """Machine-readable category of the finding. A code this version does not know yet is
+    kept as a plain string."""
 
     message: str
     """Human-readable explanation of the finding."""
