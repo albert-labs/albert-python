@@ -19,7 +19,7 @@ from albert.resources.design_operands import (
     LabelFractionOperand,
     ParameterOperand,
     PropertyAggregationOperand,
-    QuantityOperand,
+    QuantityOperandRead,
     TypedDesignModel,
 )
 from albert.resources.design_spaces import (
@@ -84,6 +84,8 @@ class DesignModelConfigViolationCode(StrEnum):
     INVALID_CONSTRAINT = "invalid_constraint"
     VARIABLE_NOT_DERIVED = "variable_not_derived"
     INSUFFICIENT_TRAINING_DATA = "insufficient_training_data"
+    DUPLICATE_EXTRA = "duplicate_extra"
+    CONFLICTING_LABEL_DEFINITION = "conflicting_label_definition"
 
 
 class FamilySelector(TypedDesignModel):
@@ -152,6 +154,43 @@ class OutputEntry(BaseAlbertModel):
     """Which features this output uses. Omit to use all features."""
 
 
+class _ReadFamilySelector(FamilySelector):
+    """A family selector read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+MaskEntryRead = Annotated[
+    _ReadFamilySelector | QuantityOperandRead,
+    Field(union_mode="left_to_right"),
+]
+"""A mask entry as read from the service. A known kind parses to its model (a
+``FamilySelector`` or a quantity descriptor) and keeps fields this version does not
+model; an unknown kind, such as a beta ``extraFeature`` reference, parses to
+``UnknownDescriptor``."""
+
+
+class FeatureMaskRead(FeatureMask):
+    """A feature mask as read from the service: a ``FeatureMask`` whose entries keep
+    fields and kinds this version does not model."""
+
+    model_config = ConfigDict(extra="allow")
+
+    include: list[MaskEntryRead] | None = Field(default=None, min_length=1)
+    """Use only the features these entries match."""
+
+    exclude: list[MaskEntryRead] | None = Field(default=None, min_length=1)
+    """Use every feature except those these entries match."""
+
+
+class OutputEntryRead(OutputEntry):
+    """An output's wiring as read from the service: an ``OutputEntry`` whose mask keeps
+    entries this version does not model."""
+
+    features: FeatureMaskRead | None = Field(default=None)
+    """Which features this output uses. ``None`` when it uses all features."""
+
+
 class DesignModelConfig(BaseResource):
     """A design model config: which targets to predict, how to transform them, and which
     default features each one uses.
@@ -159,7 +198,12 @@ class DesignModelConfig(BaseResource):
     A config is created as a draft, edited with builder operations, checked against a
     smart dataset, and published. A published config is frozen; editing one means
     forking it into a new draft.
+
+    Fields this version does not model, such as the beta ``extraFeatures``, ``labels``,
+    ``componentIndex`` and ``rationale``, are kept as extra fields when a config is read.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     id: DesignModelConfigId | None = Field(default=None)
     """The unique identifier of the config (format ``DMC...``)."""
@@ -189,7 +233,7 @@ class DesignModelConfig(BaseResource):
     """The smart dataset (format ``SDT...``) that seeded the first draft, if any.
     Provenance only; the config does not track the dataset afterwards."""
 
-    outputs: dict[TargetId, OutputEntry] | None = Field(default=None)
+    outputs: dict[TargetId, OutputEntryRead] | None = Field(default=None)
     """Output wiring, keyed by target ID (format ``TAR...``). Empty when absent."""
 
     version: int | None = Field(default=None)
@@ -253,11 +297,13 @@ class ResolvedFeature(BaseAlbertModel):
     ``property/<mean|sum>/<name>[/<label>]``, ``parameter/<composite key>`` or
     ``parameter/<composite key>/<category>``. Treat a key as opaque."""
 
-    family: FeatureFamily
-    """The default family the feature belongs to."""
+    family: FeatureFamily | str = Field(union_mode="left_to_right")
+    """The default family the feature belongs to. A family this version does not know yet
+    is kept as a plain string."""
 
-    descriptor: QuantityOperand
-    """The quantity the feature computes."""
+    descriptor: QuantityOperandRead
+    """The quantity the feature computes. A kind this version does not know yet parses to
+    ``UnknownDescriptor``."""
 
     value: str | None = Field(default=None)
     """The category a one-hot parameter feature encodes; ``None`` otherwise."""

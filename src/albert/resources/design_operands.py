@@ -4,6 +4,11 @@ A descriptor names a quantity inline (an ingredient amount, a label fraction, a
 parameter value, or a property aggregation). It is shared by design resources: the
 feature masks of design model configs use it now, and design-space constraints and
 candidates will use it later.
+
+The descriptor models are strict, so a request (and the schema an agent tool is built
+from) names exactly the fields and kinds the service accepts. Records read back from the
+service parse through the lenient variants instead (``QuantityOperandRead``), which keep
+fields and kinds a newer release adds, such as the beta ``process`` qualifier.
 """
 
 import sys
@@ -102,3 +107,58 @@ QuantityOperand = Annotated[
 ]
 """A quantity descriptor: an ingredient amount, a label fraction, a parameter, or a
 property aggregation."""
+
+
+class UnknownDescriptor(BaseAlbertModel):
+    """A descriptor or mask entry of a kind this SDK version does not know yet.
+
+    Only appears in records read from the service. A record written by a newer release
+    (for example a beta ``extraFeature`` mask entry) parses into this model instead of
+    failing, and keeps every key it carried. Requests never accept it.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    type: str
+    """The kind the service reported."""
+
+
+class _ReadIngredientAmountOperand(IngredientAmountOperand):
+    """An ingredient-amount descriptor read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadLabelFractionOperand(LabelFractionOperand):
+    """A label-fraction descriptor read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadParameterOperand(ParameterOperand):
+    """A parameter descriptor read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadPropertyAggregationOperand(PropertyAggregationOperand):
+    """A property-aggregation descriptor read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+QuantityOperandRead = Annotated[
+    Annotated[
+        _ReadIngredientAmountOperand
+        | _ReadLabelFractionOperand
+        | _ReadParameterOperand
+        | _ReadPropertyAggregationOperand,
+        Field(discriminator="type"),
+    ]
+    | UnknownDescriptor,
+    Field(union_mode="left_to_right"),
+]
+"""A quantity descriptor as read from the service. A known kind parses to its descriptor
+model (an instance of ``IngredientAmountOperand``, ``LabelFractionOperand``,
+``ParameterOperand`` or ``PropertyAggregationOperand``) and keeps fields this version
+does not model; an unknown kind parses to ``UnknownDescriptor``."""

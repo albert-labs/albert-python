@@ -20,6 +20,7 @@ from albert.resources.design_model_configs import (
     FeatureMask,
     OutputEntry,
     PreviewCount,
+    ResolvedFeature,
     SetOutputOperation,
 )
 from albert.resources.design_operands import (
@@ -27,6 +28,7 @@ from albert.resources.design_operands import (
     LabelFractionOperand,
     ParameterOperand,
     PropertyAggregationOperand,
+    UnknownDescriptor,
 )
 from albert.resources.design_spaces import RemoveComponentOperation, UpdateComponentOperation
 
@@ -66,8 +68,10 @@ def test_design_model_config_round_trips_the_full_example():
 
     config = DesignModelConfig.model_validate(wire)
 
+    # Every key comes back, including ``albertId``, which the config keeps as an extra
+    # field; only the null ``forkedFromId`` is dropped by ``exclude_none``.
     assert config.model_dump(by_alias=True, mode="json", exclude_none=True) == {
-        k: v for k, v in wire.items() if k not in {"albertId", "forkedFromId"}
+        k: v for k, v in wire.items() if k != "forkedFromId"
     }
 
 
@@ -340,12 +344,15 @@ def test_resolved_features_parse_typed_descriptors_and_routing():
     """Test that a resolved-features payload parses into typed features and routing."""
     resolved = DesignModelConfigResolvedFeatures.model_validate(_RESOLVED)
 
-    assert [type(f.descriptor) for f in resolved.features] == [
+    expected = [
         IngredientAmountOperand,
         ParameterOperand,
         PropertyAggregationOperand,
         LabelFractionOperand,
     ]
+    assert all(
+        isinstance(f.descriptor, kind) for f, kind in zip(resolved.features, expected, strict=True)
+    )
     assert resolved.features[1].value == "high"
     assert resolved.features[2].origin == "default"
     assert resolved.outputs == {"TAR046": ["ingredient/INV001", "label/TAG1"]}
@@ -507,3 +514,81 @@ def test_fork_request_sends_the_target_project_only_when_given(kwargs, wire):
     request = DesignModelConfigForkRequest(**kwargs)
 
     assert request.model_dump(by_alias=True, mode="json", exclude_none=True) == wire
+
+
+_BETA_CONFIG = {
+    "id": "DMC123",
+    "name": "Clearcoat surrogate",
+    "state": "draft",
+    "parentId": "PRO456",
+    "outputs": {
+        "TAR045": {
+            "dataType": "numeric",
+            "estimator": "randomForest",
+            "rationale": "hardness spans three orders of magnitude",
+            "features": {
+                "include": [
+                    {"type": "extraFeature", "key": "MDF1"},
+                    {
+                        "type": "propertyAggregation",
+                        "basis": "mean",
+                        "property": "Tg",
+                        "process": "PRC1",
+                        "useReciprocal": True,
+                    },
+                    {"type": "allParameters"},
+                ]
+            },
+        }
+    },
+    "extraFeatures": {"MDF1": {"type": "propertyAggregation", "basis": "sum", "property": "cost"}},
+    "labels": {"local:resins": {"members": ["INV001"]}},
+    "componentIndex": {"outputs/TAR045": ["extraFeatures/MDF1"]},
+    "rationale": "VOC concentrates in the thickener package",
+}
+
+
+def test_a_beta_config_parses_and_keeps_what_this_version_does_not_model():
+    """Test that beta fields, entry kinds and operand fields survive a read unchanged."""
+    config = DesignModelConfig.model_validate(_BETA_CONFIG)
+
+    extra_feature, aggregation, family = config.outputs["TAR045"].features.include
+    assert isinstance(extra_feature, UnknownDescriptor)
+    assert extra_feature.type == "extraFeature"
+    assert isinstance(aggregation, PropertyAggregationOperand)
+    assert isinstance(family, FamilySelector)
+    assert set(config.model_extra) == {"extraFeatures", "labels", "componentIndex", "rationale"}
+    assert config.model_dump(by_alias=True, mode="json", exclude_none=True) == _BETA_CONFIG
+
+
+def test_a_resolved_feature_of_an_unknown_kind_or_family_parses():
+    """Test that a beta extra feature with a descriptor kind this version lacks still reads."""
+    feature = ResolvedFeature.model_validate(
+        {
+            "key": "extra/MDF2",
+            "family": "molecularDescriptor",
+            "descriptor": {"type": "molecularDescriptor", "name": "logP"},
+            "origin": "MDF2",
+        }
+    )
+
+    assert isinstance(feature.descriptor, UnknownDescriptor)
+    assert feature.family == "molecularDescriptor"
+
+
+def test_requests_still_reject_kinds_and_fields_the_service_does_not_accept():
+    """Test that only reads are lenient: a request keeps the strict alpha schema."""
+    with pytest.raises(ValidationError):
+        SetOutputOperation.model_validate(
+            {
+                "key": "TAR045",
+                "value": {
+                    "dataType": "numeric",
+                    "features": {"include": [{"type": "extraFeature", "key": "MDF1"}]},
+                },
+            }
+        )
+    with pytest.raises(ValidationError):
+        FeatureMask.model_validate(
+            {"include": [{"type": "ingredientAmount", "ingredient": "INV1", "process": "PRC1"}]}
+        )
