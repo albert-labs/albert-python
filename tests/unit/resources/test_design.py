@@ -6,6 +6,8 @@ from albert.resources.design import (
     DesignRunValidationResponse,
     DesignRunViolation,
     DesignRunViolationCode,
+    DOEDesignRunRequest,
+    OptimizationDesignRunRequest,
 )
 from albert.resources.targets import Criterion
 
@@ -82,3 +84,36 @@ def test_run_violation_keeps_an_unknown_code_as_a_string():
     violation = DesignRunViolation.model_validate({"code": "brand_new_code", "message": "m"})
 
     assert violation.code == "brand_new_code"
+
+
+@pytest.mark.parametrize(
+    ("request_cls", "method"),
+    [(OptimizationDesignRunRequest, "generate"), (DOEDesignRunRequest, "space_filling")],
+)
+def test_run_request_sends_the_ownership_fields_in_wire_form(request_cls, method):
+    """Test that the v4 project, space and config ids serialize camelCase and normalized."""
+    request = request_cls(
+        smart_dataset_id="SDT1",
+        parent_id="pro456",
+        design_space_id="DSP1",
+        design_model_config_id="DMC1",
+    )
+
+    assert request.model_dump(by_alias=True, mode="json", exclude_none=True) == {
+        "method": method,
+        "smartDatasetId": "SDT1",
+        "parentId": "PRO456",
+        "designSpaceId": "DSP1",
+        "designModelConfigId": "DMC1",
+    }
+
+
+@pytest.mark.parametrize("request_cls", [OptimizationDesignRunRequest, DOEDesignRunRequest])
+def test_run_request_without_ownership_fields_keeps_the_v3_body(request_cls):
+    """Test that a v3 request, which sets none of the v4 fields, sends none of them."""
+    request = request_cls(smart_dataset_id="SDT1")
+
+    assert set(request.model_dump(by_alias=True, mode="json", exclude_none=True)) == {
+        "method",
+        "smartDatasetId",
+    }
