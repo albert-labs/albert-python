@@ -629,16 +629,11 @@ class DesignRunV4Collection(DesignRunCollection):
         Iterator[DesignRun]
             A lazily paginated iterator over the design runs.
         """
-        params = {"parentId": parent_id}
-        if state is not None:
-            params["state"] = state
-        if method is not None:
-            params["method"] = method
         return _LastKeyCursorPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
-            params=params,
+            params=self._list_params(parent_id=parent_id, state=state, method=method),
             max_items=max_items,
             deserialize=lambda items: [DesignRun(**item) for item in items],
         )
@@ -682,3 +677,15 @@ class DesignRunV4Collection(DesignRunCollection):
             return existing
         response = self.session.patch(f"{self.base_path}/{design_run.id}", json=patch_payload)
         return DesignRun(**response.json())
+
+    @staticmethod
+    def _list_params(
+        *, parent_id: ProjectId, state: DesignRunState | None, method: DesignMethod | None
+    ) -> dict[str, str]:
+        """The list query: the project, plus the state and method when given."""
+        params = {"parentId": parent_id}
+        if state is not None:
+            params["state"] = state
+        if method is not None:
+            params["method"] = method
+        return params
