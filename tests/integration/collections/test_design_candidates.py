@@ -6,6 +6,8 @@ from albert.resources.design_candidates import DesignCandidate
 from albert.resources.design_runs import DesignRun, DesignRunState
 from albert.resources.projects import Project
 
+pytestmark = pytest.mark.xdist_group("projects")
+
 ignore_in_ten0 = pytest.mark.xfail(
     reason="The v4 design service is not enabled for the TEN0 test tenant.",
     strict=False,

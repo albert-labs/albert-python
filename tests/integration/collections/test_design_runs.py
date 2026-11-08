@@ -2,7 +2,11 @@ import pytest
 
 from albert.client import Albert
 from albert.resources.btinsight import BTInsight, BTInsightCategory
-from albert.resources.design import DesignObjective, DesignRunValidationResponse
+from albert.resources.design import (
+    DesignMethod,
+    DesignObjective,
+    DesignRunValidationResponse,
+)
 from albert.resources.design_runs import DesignRun, DesignRunState
 from albert.resources.smart_datasets import SmartDataset
 from albert.resources.targets import Criterion
@@ -16,6 +20,13 @@ ignore_in_ten0 = pytest.mark.xfail(
 
 
 both_versions = pytest.mark.parametrize("collection_name", ["design_runs", "design_runs_v4"])
+
+
+def _owner(collection_name: str, dataset: SmartDataset) -> dict[str, str]:
+    """The project a v4 run must name (the dataset's first source project); v3 takes none."""
+    if collection_name == "design_runs_v4":
+        return {"parent_id": dataset.scope.project_ids[0]}
+    return {}
 
 
 @ignore_in_ten0
@@ -56,7 +67,9 @@ def test_v4_create_returns_queued_design_run(
 ) -> None:
     """Test v4 create_doe returns a DesignRun in a non-terminal state."""
     run = client.design_runs_v4.create_doe(
-        smart_dataset_id=seeded_smart_dataset.id, name="SDK v4 space-filling run"
+        smart_dataset_id=seeded_smart_dataset.id,
+        parent_id=seeded_smart_dataset.scope.project_ids[0],
+        name="SDK v4 space-filling run",
     )
     assert isinstance(run, DesignRun)
     assert run.id is not None
@@ -71,7 +84,7 @@ def test_validate_optimization_returns_response(
 ) -> None:
     """Test validate_optimization returns a DesignRunValidationResponse."""
     result = getattr(client, collection_name).validate_optimization(
-        smart_dataset_id=seeded_smart_dataset.id
+        smart_dataset_id=seeded_smart_dataset.id, **_owner(collection_name, seeded_smart_dataset)
     )
     assert isinstance(result, DesignRunValidationResponse)
     assert isinstance(result.valid, bool)
@@ -84,7 +97,7 @@ def test_validate_doe_returns_response(
 ) -> None:
     """Test validate_doe returns a DesignRunValidationResponse."""
     result = getattr(client, collection_name).validate_doe(
-        smart_dataset_id=seeded_smart_dataset.id
+        smart_dataset_id=seeded_smart_dataset.id, **_owner(collection_name, seeded_smart_dataset)
     )
     assert isinstance(result, DesignRunValidationResponse)
     assert isinstance(result.valid, bool)
@@ -97,13 +110,18 @@ def test_create_optimization_accepts_weighted_objectives(
 ) -> None:
     """Test create_optimization accepts an objective carrying a weight."""
     target_id = seeded_smart_dataset.scope.target_ids[0]
-    insight = getattr(client, collection_name).create_optimization(
+    result = getattr(client, collection_name).create_optimization(
         smart_dataset_id=seeded_smart_dataset.id,
+        **_owner(collection_name, seeded_smart_dataset),
         name="SDK weighted optimization run",
         objectives={target_id: DesignObjective(operator="gte", value=1.0, weight=2.0)},
     )
-    assert isinstance(insight, BTInsight)
-    assert insight.category == BTInsightCategory.GENERATE
+    if collection_name == "design_runs_v4":
+        assert isinstance(result, DesignRun)
+        assert result.method == DesignMethod.GENERATE
+    else:
+        assert isinstance(result, BTInsight)
+        assert result.category == BTInsightCategory.GENERATE
 
 
 @ignore_in_ten0
@@ -115,6 +133,7 @@ def test_validate_optimization_accepts_weighted_objectives(
     target_id = seeded_smart_dataset.scope.target_ids[0]
     result = getattr(client, collection_name).validate_optimization(
         smart_dataset_id=seeded_smart_dataset.id,
+        **_owner(collection_name, seeded_smart_dataset),
         objectives={target_id: DesignObjective(operator="gte", value=1.0, weight=2.0)},
     )
     assert isinstance(result, DesignRunValidationResponse)
@@ -129,6 +148,7 @@ def test_validate_optimization_accepts_plain_criterion(
     target_id = seeded_smart_dataset.scope.target_ids[0]
     result = getattr(client, collection_name).validate_optimization(
         smart_dataset_id=seeded_smart_dataset.id,
+        **_owner(collection_name, seeded_smart_dataset),
         objectives={target_id: Criterion(operator="gte", value=1.0)},
     )
     assert isinstance(result, DesignRunValidationResponse)
@@ -143,6 +163,7 @@ def test_validate_optimization_treats_a_null_weight_as_unweighted(
     target_id = seeded_smart_dataset.scope.target_ids[0]
     result = getattr(client, collection_name).validate_optimization(
         smart_dataset_id=seeded_smart_dataset.id,
+        **_owner(collection_name, seeded_smart_dataset),
         objectives={target_id: {"operator": "gte", "value": 1.0, "weight": None}},
     )
     assert isinstance(result, DesignRunValidationResponse)

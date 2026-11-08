@@ -110,7 +110,7 @@ class DesignRun(BaseResource):
     objectives: dict[TargetId, DesignObjective] | None = Field(default=None)
     """Per-target objectives, keyed by target ID. Optimization runs only."""
 
-    anchor_targets: list[str] | None = Field(default=None, alias="anchorTargets")
+    anchor_targets: list[TargetId] | None = Field(default=None, alias="anchorTargets")
     """Target IDs that narrowed which experiments anchor a space-filling run."""
 
     settings: DesignRunSettings | None = Field(default=None)

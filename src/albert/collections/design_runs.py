@@ -321,8 +321,9 @@ class DesignRunV4Collection(DesignRunCollection):
     [`DesignRunCollection`][albert.collections.design_runs.DesignRunCollection], except
     that the create methods return the queued
     [`DesignRun`][albert.resources.design_runs.DesignRun] instead of a ``BTInsight``, and
-    the create and validate methods also accept ``parent_id``, ``design_space_id`` and
-    ``design_model_config_id``. It adds methods to read stored runs and rename them.
+    the create and validate methods also take the owning project (``parent_id``, required)
+    and accept ``design_space_id`` and ``design_model_config_id``. It adds methods to read
+    stored runs and rename them.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -340,13 +341,13 @@ class DesignRunV4Collection(DesignRunCollection):
 
     Methods
     -------
-    create_optimization(smart_dataset_id, name=None, objectives=None, settings=None, chat_session=None, parent_id=None, design_space_id=None, design_model_config_id=None) -> DesignRun
+    create_optimization(smart_dataset_id, name=None, objectives=None, settings=None, chat_session=None, parent_id, design_space_id=None, design_model_config_id=None) -> DesignRun
         Triggers a model-guided optimization run for a smart dataset.
-    create_doe(smart_dataset_id, name=None, settings=None, chat_session=None, anchor_targets=None, parent_id=None, design_space_id=None, design_model_config_id=None) -> DesignRun
+    create_doe(smart_dataset_id, name=None, settings=None, chat_session=None, anchor_targets=None, parent_id, design_space_id=None, design_model_config_id=None) -> DesignRun
         Triggers a space-filling design run for a smart dataset.
-    validate_optimization(smart_dataset_id, objectives=None, settings=None, parent_id=None, design_space_id=None, design_model_config_id=None) -> DesignRunValidationResponse
+    validate_optimization(smart_dataset_id, objectives=None, settings=None, parent_id, design_space_id=None, design_model_config_id=None) -> DesignRunValidationResponse
         Validates an optimization run configuration without starting a job.
-    validate_doe(smart_dataset_id, settings=None, anchor_targets=None, parent_id=None, design_space_id=None, design_model_config_id=None) -> DesignRunValidationResponse
+    validate_doe(smart_dataset_id, settings=None, anchor_targets=None, parent_id, design_space_id=None, design_model_config_id=None) -> DesignRunValidationResponse
         Validates a space-filling run configuration without starting a job.
     get_by_id(id) -> DesignRun
         Get a stored design run by its ID.
@@ -374,7 +375,7 @@ class DesignRunV4Collection(DesignRunCollection):
         objectives: dict[TargetId, DesignObjective] | None = None,
         settings: OptimizationRunSettings | None = None,
         chat_session: ChatSessionRef | None = None,
-        parent_id: ProjectId | None = None,
+        parent_id: ProjectId,
         design_space_id: DesignSpaceId | None = None,
         design_model_config_id: DesignModelConfigId | None = None,
     ) -> DesignRun:
@@ -396,9 +397,8 @@ class DesignRunV4Collection(DesignRunCollection):
             Run sizing for candidate generation and selection.
         chat_session : ChatSessionRef, optional
             Chat session to notify when the run completes.
-        parent_id : ProjectId, optional
-            The project (format ``PRO...``) that owns the run. When ``None``, the smart
-            dataset's project is used.
+        parent_id : ProjectId
+            The project (format ``PRO...``) that owns the run and controls access to it.
         design_space_id : DesignSpaceId, optional
             A published design space (format ``DSP...``) to sample from. When ``None``, a
             space derived from the dataset is used.
@@ -443,7 +443,7 @@ class DesignRunV4Collection(DesignRunCollection):
         anchor_targets: list[str] | None = None,
         settings: DOERunSettings | None = None,
         chat_session: ChatSessionRef | None = None,
-        parent_id: ProjectId | None = None,
+        parent_id: ProjectId,
         design_space_id: DesignSpaceId | None = None,
         design_model_config_id: DesignModelConfigId | None = None,
     ) -> DesignRun:
@@ -491,7 +491,7 @@ class DesignRunV4Collection(DesignRunCollection):
         smart_dataset_id: SmartDatasetId,
         objectives: dict[TargetId, DesignObjective] | None = None,
         settings: OptimizationRunSettings | None = None,
-        parent_id: ProjectId | None = None,
+        parent_id: ProjectId,
         design_space_id: DesignSpaceId | None = None,
         design_model_config_id: DesignModelConfigId | None = None,
     ) -> DesignRunValidationResponse:
@@ -534,7 +534,7 @@ class DesignRunV4Collection(DesignRunCollection):
         smart_dataset_id: SmartDatasetId,
         anchor_targets: list[str] | None = None,
         settings: DOERunSettings | None = None,
-        parent_id: ProjectId | None = None,
+        parent_id: ProjectId,
         design_space_id: DesignSpaceId | None = None,
         design_model_config_id: DesignModelConfigId | None = None,
     ) -> DesignRunValidationResponse:

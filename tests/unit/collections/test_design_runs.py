@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 import responses
+from pydantic import ValidationError
 
 from albert.collections.design_runs import DesignRunCollection, DesignRunV4Collection
 from albert.resources.design import DesignMethod
@@ -18,6 +19,12 @@ from tests.unit.conftest import UNIT_BASE_URL
 SDT = "SDT1"
 INSIGHT = {"name": "run", "category": "Generate", "albertId": "INS1"}
 VALIDATION = {"valid": True, "violations": []}
+
+
+def _owner(cls) -> dict[str, str]:
+    """The project a v4 run must name; the v3 collection takes none."""
+    return {"parent_id": "PRO456"} if cls is DesignRunV4Collection else {}
+
 
 ROUTES = [
     (DesignRunCollection, "/api/v3/designruns", "/api/v3/designruns/validate"),
@@ -34,7 +41,7 @@ def test_create_posts_to_collection_route(
     """Test that create methods post to the collection's base route."""
     responses.post(f"{UNIT_BASE_URL}{create_path}", json=INSIGHT)
 
-    getattr(cls(session=offline_session), method)(smart_dataset_id=SDT)
+    getattr(cls(session=offline_session), method)(smart_dataset_id=SDT, **_owner(cls))
 
     assert len(responses.calls) == 1
     assert json.loads(responses.calls[0].request.body)["smartDatasetId"] == SDT
@@ -49,10 +56,19 @@ def test_validate_posts_to_collection_validate_route(
     """Test that validate methods post to the collection's validate route."""
     responses.post(f"{UNIT_BASE_URL}{validate_path}", json=VALIDATION)
 
-    result = getattr(cls(session=offline_session), method)(smart_dataset_id=SDT)
+    result = getattr(cls(session=offline_session), method)(smart_dataset_id=SDT, **_owner(cls))
 
     assert len(responses.calls) == 1
     assert result.valid is True
+
+
+@pytest.mark.parametrize(
+    "method", ["create_optimization", "create_doe", "validate_optimization", "validate_doe"]
+)
+def test_v4_requires_the_owning_project(offline_session, method):
+    """Test that a v4 run cannot be created or validated without its project."""
+    with pytest.raises(ValidationError, match="parent_id"):
+        getattr(DesignRunV4Collection(session=offline_session), method)(smart_dataset_id=SDT)
 
 
 RUNS = f"{UNIT_BASE_URL}/api/v4/design/runs"

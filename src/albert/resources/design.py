@@ -47,6 +47,7 @@ class DesignRunViolationCode(StrEnum):
     INTERNAL = "internal"
     JOB_TIMEOUT = "job_timeout"
     RESULT_PERSISTENCE_FAILED = "result_persistence_failed"
+    ESTIMATOR_DOWNGRADED = "estimator_downgraded"
     UNKNOWN_REFERENCE = "unknown_reference"
     REFERENCE_NOT_PUBLISHED = "reference_not_published"
     UNSUPPORTED_OPERAND = "unsupported_operand"
@@ -55,13 +56,21 @@ class DesignRunViolationCode(StrEnum):
     DIMENSION_NOT_IN_DATASET = "dimension_not_in_dataset"
     DIMENSION_NOT_MODELLED = "dimension_not_modelled"
     DUPLICATE_CONSTRAINT_SUBJECT = "duplicate_constraint_subject"
+    VARIABLE_NOT_DERIVED = "variable_not_derived"
+    TARGET_NOT_IN_DATASET = "target_not_in_dataset"
+    TRANSFORM_REQUIRES_POSITIVE_TARGET = "transform_requires_positive_target"
+    INERT_MASK_ENTRY = "inert_mask_entry"
+    FEATURE_DROPPED_BY_OVERLAP = "feature_dropped_by_overlap"
+    DUPLICATE_EXTRA = "duplicate_extra"
+    CONFLICTING_LABEL_DEFINITION = "conflicting_label_definition"
 
 
 class DesignRunViolation(BaseAlbertModel):
     """A single validation failure for a design-run configuration."""
 
-    code: DesignRunViolationCode
-    """Machine-readable violation category."""
+    code: DesignRunViolationCode | str = Field(union_mode="left_to_right")
+    """Machine-readable violation category. A code this version does not know yet is kept
+    as a plain string."""
 
     message: str
     """Human-readable explanation of the failure."""
@@ -181,7 +190,7 @@ class OptimizationDesignRunRequest(BaseAlbertModel):
     """Chat session to notify when the run completes; create-only."""
 
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
-    """Project that owns the run; v4 only. Omitted, the smart dataset's project is used."""
+    """Project that owns the run; v4 only, where it is required."""
 
     design_space_id: DesignSpaceId | None = Field(default=None, alias="designSpaceId")
     """Published design space to sample from; v4 only. Omitted, a dataset-derived default is used."""
@@ -235,7 +244,7 @@ class DOEDesignRunRequest(BaseAlbertModel):
     """Chat session to notify when the run completes; create-only."""
 
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
-    """Project that owns the run; v4 only. Omitted, the smart dataset's project is used."""
+    """Project that owns the run; v4 only, where it is required."""
 
     design_space_id: DesignSpaceId | None = Field(default=None, alias="designSpaceId")
     """Published design space to sample from; v4 only. Omitted, a dataset-derived default is used."""

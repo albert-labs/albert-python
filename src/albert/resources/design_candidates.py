@@ -14,6 +14,7 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.shared.models.base import AuditFields, BaseResource
 from albert.resources.design_operands import IngredientAmountOperand, ParameterOperand
+from albert.resources.design_spaces import ParameterRef
 
 if sys.version_info >= (3, 11):  # pragma: no cover (py311+)
     from enum import StrEnum
@@ -29,23 +30,6 @@ class PredictionDataType(StrEnum):
 
     NUMERIC = "numeric"
     CATEGORICAL = "categorical"
-
-
-class ParameterRef(BaseAlbertModel):
-    """The structured parts of a parameter key. One of ``data_template_id`` and
-    ``parameter_group_id`` is set."""
-
-    parameter_id: str = Field(alias="parameterId")
-    """The parameter ID (format ``PRM...``)."""
-
-    data_template_id: str | None = Field(default=None, alias="dataTemplateId")
-    """The data template (format ``DAT...``) the parameter belongs to, if any."""
-
-    parameter_group_id: str | None = Field(default=None, alias="parameterGroupId")
-    """The parameter group (format ``PRG...``) the parameter belongs to, if any."""
-
-    unit_id: str | None = Field(default=None, alias="unitId")
-    """The unit (format ``UNI...``) of the value. ``None`` for a unit-less column."""
 
 
 class IngredientAmountInput(IngredientAmountOperand):
