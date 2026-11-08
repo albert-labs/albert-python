@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -211,14 +212,11 @@ class DesignModelConfigCollection(BaseCollection):
         Iterator[DesignModelConfig]
             A lazily paginated iterator over the project's design model configs.
         """
-        params = {"parentId": parent_id}
-        if state is not None:
-            params["state"] = state
         return _LastKeyCursorPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
-            params=params,
+            params=self._list_params(parent_id=parent_id, state=state),
             max_items=max_items,
             deserialize=lambda items: [DesignModelConfig(**item) for item in items],
         )
@@ -374,25 +372,15 @@ class DesignModelConfigCollection(BaseCollection):
         AlbertHTTPError
             Other failures.
         """
-        counts = {"num_rows": preview_rows, "max_columns": preview_max_columns}
-        preview = (
-            DesignModelConfigPreviewRequest(
-                **{k: None if v == "all" else v for k, v in counts.items() if v is not None}
-            )
-            if any(v is not None for v in counts.values())
-            else None
-        )
-        body = DesignModelConfigOperationsRequest(
+        body = self._operations_body(
             operations=operations,
-            validate_=validate,
+            validate=validate,
             resolve=resolve,
-            preview=preview,
+            preview_rows=preview_rows,
+            preview_max_columns=preview_max_columns,
             dry_run=dry_run,
             smart_dataset_id=smart_dataset_id,
-        ).model_dump(by_alias=True, mode="json", exclude_none=True)
-        if preview is not None:
-            # A null count means "all", so the preview keeps the counts that were set, nulls too.
-            body["preview"] = preview.model_dump(by_alias=True, mode="json", exclude_unset=True)
+        )
         response = self.session.post(f"{self.base_path}/{id}/operations", json=body)
         return DesignModelConfigApplyResponse(**response.json())
 
@@ -514,14 +502,11 @@ class DesignModelConfigCollection(BaseCollection):
         DesignModelConfigFeaturePreview
             The previewed rows, per-feature summary and automatic features.
         """
-        params = {
-            "smartDatasetId": smart_dataset_id,
-            "numRows": num_rows,
-            "maxColumns": max_columns,
-        }
         response = self.session.get(
             f"{self.base_path}/{id}/feature-values",
-            params={k: v for k, v in params.items() if v is not None},
+            params=self._feature_values_params(
+                smart_dataset_id=smart_dataset_id, num_rows=num_rows, max_columns=max_columns
+            ),
         )
         return DesignModelConfigFeaturePreview(**response.json())
 
@@ -653,3 +638,65 @@ class DesignModelConfigCollection(BaseCollection):
         None
         """
         self.session.delete(f"{self.base_path}/{id}")
+
+    @staticmethod
+    def _list_params(
+        *, parent_id: ProjectId, state: DesignModelConfigState | None
+    ) -> dict[str, str]:
+        """The list query: the project, plus the state when one is given."""
+        params = {"parentId": parent_id}
+        if state is not None:
+            params["state"] = state
+        return params
+
+    @staticmethod
+    def _operations_body(
+        *,
+        operations: list[DesignModelConfigOperation],
+        validate: bool,
+        resolve: bool,
+        preview_rows: PreviewCount | None,
+        preview_max_columns: PreviewCount | None,
+        dry_run: bool,
+        smart_dataset_id: SmartDatasetId | None,
+    ) -> dict[str, Any]:
+        """The ``apply`` request body.
+
+        A preview is sent only when a count is given. ``"all"`` is sent as a null count, and
+        the counts that were set are kept even when null.
+        """
+        counts = {"num_rows": preview_rows, "max_columns": preview_max_columns}
+        preview = (
+            DesignModelConfigPreviewRequest(
+                **{k: None if v == "all" else v for k, v in counts.items() if v is not None}
+            )
+            if any(v is not None for v in counts.values())
+            else None
+        )
+        body = DesignModelConfigOperationsRequest(
+            operations=operations,
+            validate_=validate,
+            resolve=resolve,
+            preview=preview,
+            dry_run=dry_run,
+            smart_dataset_id=smart_dataset_id,
+        ).model_dump(by_alias=True, mode="json", exclude_none=True)
+        if preview is not None:
+            # A null count means "all", so the preview keeps the counts that were set, nulls too.
+            body["preview"] = preview.model_dump(by_alias=True, mode="json", exclude_unset=True)
+        return body
+
+    @staticmethod
+    def _feature_values_params(
+        *,
+        smart_dataset_id: SmartDatasetId,
+        num_rows: PreviewCount | None,
+        max_columns: PreviewCount | None,
+    ) -> dict[str, str | int]:
+        """The feature-values query: the dataset, plus the counts that were given."""
+        params = {
+            "smartDatasetId": smart_dataset_id,
+            "numRows": num_rows,
+            "maxColumns": max_columns,
+        }
+        return {k: v for k, v in params.items() if v is not None}
