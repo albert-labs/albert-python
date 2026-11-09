@@ -637,3 +637,19 @@ def test_a_read_output_with_content_this_version_does_not_model_is_refused(entry
 
     with pytest.raises(ValidationError):
         SetOutputOperation(key="TAR1", value=config.outputs["TAR1"])
+
+
+def test_a_malformed_mask_entry_of_a_known_kind_raises():
+    """Test that a known entry kind missing a field fails, rather than reading as unknown."""
+    with pytest.raises(ValidationError):
+        DesignModelConfig.model_validate(
+            {
+                "id": "DMC1",
+                "outputs": {
+                    "TAR1": {
+                        "dataType": "numeric",
+                        "features": {"exclude": [{"type": "ingredientAmount"}]},
+                    }
+                },
+            }
+        )

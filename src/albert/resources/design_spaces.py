@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import ConfigDict, Field, model_serializer, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_serializer, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
@@ -125,6 +125,12 @@ ParameterConstraint = Annotated[
 of numbers, or a set of categories."""
 
 
+_CONSTRAINT_KINDS = frozenset(
+    model.model_fields["type"].default
+    for model in (ContinuousConstraint, DiscreteConstraint, CategoricalConstraint)
+)
+
+
 class UnknownParameterConstraint(BaseAlbertModel):
     """A parameter constraint of a kind this SDK version does not know yet.
 
@@ -137,6 +143,14 @@ class UnknownParameterConstraint(BaseAlbertModel):
 
     type: str
     """The kind the service reported."""
+
+    @field_validator("type")
+    @classmethod
+    def _only_unknown_kinds(cls, kind: str) -> str:
+        """Refuse a kind this version models: a malformed constraint of it is an error."""
+        if kind in _CONSTRAINT_KINDS:
+            raise ValueError(f"{kind!r} constraint does not match its schema")
+        return kind
 
 
 class _ReadContinuousConstraint(ContinuousConstraint):

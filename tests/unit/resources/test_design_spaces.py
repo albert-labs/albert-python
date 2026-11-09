@@ -446,3 +446,11 @@ def test_a_read_constraint_is_checked_again_when_sent():
         ParameterAssignment(
             data_type="numeric", constraint=space.parameters["DAT01#PRM07"].constraint
         )
+
+
+def test_a_malformed_constraint_of_a_known_kind_raises():
+    """Test that a known constraint kind that breaks its schema fails, rather than reading as unknown."""
+    with pytest.raises(ValidationError):
+        ParameterEntry.model_validate(
+            {"ref": _REF, "dataType": "numeric", "constraint": {"type": "discrete", "values": []}}
+        )

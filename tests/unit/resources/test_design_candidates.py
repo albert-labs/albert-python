@@ -1,5 +1,8 @@
 """Unit tests for the design candidate and candidate-set resource models."""
 
+import pytest
+from pydantic import ValidationError
+
 from albert.resources.design_candidate_sets import CandidateSetSourceType, DesignCandidateSet
 from albert.resources.design_candidates import (
     DesignCandidate,
@@ -123,3 +126,14 @@ def test_candidate_inputs_keep_fields_and_kinds_this_version_does_not_model():
     assert amount.model_extra == {"newField": "x"}
     assert isinstance(unknown, UnknownDescriptor)
     assert unknown.model_dump(mode="json") == {"type": "newKind", "key": "X1", "value": 3}
+
+
+def test_a_malformed_input_of_a_known_kind_raises():
+    """Test that a known input kind missing a field fails, rather than reading as unknown."""
+    with pytest.raises(ValidationError):
+        DesignCandidate.model_validate(
+            {
+                **CANDIDATE,
+                "inputs": [{"type": "parameter", "parameter": "DAT1#PRM1", "value": 3.0}],
+            }
+        )

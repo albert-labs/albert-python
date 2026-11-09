@@ -13,7 +13,7 @@ and kinds a newer service version adds.
 import sys
 from typing import Annotated, Literal
 
-from pydantic import ConfigDict, Field, model_serializer
+from pydantic import ConfigDict, Field, field_validator, model_serializer
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import InventoryId
@@ -110,6 +110,17 @@ QuantityOperand = Annotated[
 property aggregation."""
 
 
+_DESCRIPTOR_KINDS = frozenset(
+    model.model_fields["type"].default
+    for model in (
+        IngredientAmountOperand,
+        LabelFractionOperand,
+        ParameterOperand,
+        PropertyAggregationOperand,
+    )
+)
+
+
 class UnknownDescriptor(BaseAlbertModel):
     """A descriptor or mask entry of a kind this SDK version does not know yet.
 
@@ -122,6 +133,14 @@ class UnknownDescriptor(BaseAlbertModel):
 
     type: str
     """The kind the service reported."""
+
+    @field_validator("type")
+    @classmethod
+    def _only_unknown_kinds(cls, kind: str) -> str:
+        """Refuse a kind this version models: a malformed entry of it is an error."""
+        if kind in _DESCRIPTOR_KINDS:
+            raise ValueError(f"{kind!r} entry does not match its schema")
+        return kind
 
 
 class _ReadIngredientAmountOperand(IngredientAmountOperand):
