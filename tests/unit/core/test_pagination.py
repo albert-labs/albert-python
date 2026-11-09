@@ -7,8 +7,10 @@ These exercise the pagination state machine with scripted responses so edge case
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import pytest
+import responses
 from pydantic import BaseModel
 
 from albert.collections.cas import CasPaginator
@@ -16,10 +18,12 @@ from albert.collections.substance_v4 import SubstanceV4SearchPaginator
 from albert.core.pagination import (
     AlbertPaginator,
     AsyncAlbertPaginator,
+    LastKeyCursorPaginator,
     MappedPaginator,
     MetadataPreservingIterator,
 )
 from albert.core.shared.enums import PaginationMode
+from tests.unit.conftest import UNIT_BASE_URL
 
 
 class _JsonResponse:
@@ -820,3 +824,65 @@ def test_search_after_has_more_without_total(next_search_after, expected) -> Non
     list(pag)
 
     assert pag.has_more is expected
+
+
+# --- LastKeyCursorPaginator ---
+
+_LAST_KEY_PATH = "/api/v4/design/spaces"
+
+
+def _last_key_listing(offline_session, pages: list[dict], **kwargs) -> LastKeyCursorPaginator:
+    for page in pages:
+        responses.add(responses.GET, f"{UNIT_BASE_URL}{_LAST_KEY_PATH}", json=page)
+    return LastKeyCursorPaginator(
+        mode=PaginationMode.KEY,
+        path=_LAST_KEY_PATH,
+        session=offline_session,
+        params={"parentId": "PRO456"},
+        deserialize=lambda items: [item["id"] for item in items],
+        **kwargs,
+    )
+
+
+def _sent_cursors() -> list[str | None]:
+    return [
+        parse_qs(urlparse(call.request.url).query).get("lastKey", [None])[0]
+        for call in responses.calls
+    ]
+
+
+@responses.activate
+def test_last_key_paginator_sends_the_cursor_back_as_last_key(offline_session):
+    """Test that each page's lastKey is sent back as lastKey until a page has none."""
+    pager = _last_key_listing(
+        offline_session,
+        [{"items": [{"id": 1}, {"id": 2}], "lastKey": "k1"}, {"items": [{"id": 3}]}],
+    )
+
+    assert list(pager) == [1, 2, 3]
+    assert _sent_cursors() == [None, "k1"]
+    assert pager.has_more is False
+
+
+@responses.activate
+def test_last_key_paginator_reports_more_when_max_items_stops_early(offline_session):
+    """Test that stopping at max_items with a cursor in hand reports more results."""
+    pager = _last_key_listing(
+        offline_session, [{"items": [{"id": 1}, {"id": 2}], "lastKey": "k1"}], max_items=1
+    )
+
+    assert list(pager) == [1]
+    assert len(responses.calls) == 1
+    assert pager.has_more is True
+
+
+@responses.activate
+def test_last_key_paginator_stops_on_a_repeated_cursor(offline_session):
+    """Test that a page repeating an already-seen lastKey ends iteration."""
+    pager = _last_key_listing(
+        offline_session,
+        [{"items": [{"id": 1}], "lastKey": "k1"}, {"items": [{"id": 2}], "lastKey": "k1"}],
+    )
+
+    assert list(pager) == [1]
+    assert _sent_cursors() == [None, "k1"]

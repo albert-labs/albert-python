@@ -4,8 +4,7 @@ from typing import Any
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.collections.design_spaces import _LastKeyCursorPaginator
-from albert.core.pagination import PaginationMode
+from albert.core.pagination import LastKeyCursorPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import DesignModelConfigId, ProjectId, SmartDatasetId
 from albert.resources.design_model_configs import (
@@ -212,7 +211,7 @@ class DesignModelConfigCollection(BaseCollection):
         Iterator[DesignModelConfig]
             A lazily paginated iterator over the project's design model configs.
         """
-        return _LastKeyCursorPaginator(
+        return LastKeyCursorPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,

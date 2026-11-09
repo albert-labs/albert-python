@@ -3,8 +3,7 @@ from collections.abc import Iterator
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.collections.design_spaces import _LastKeyCursorPaginator
-from albert.core.pagination import PaginationMode
+from albert.core.pagination import LastKeyCursorPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import DesignCandidateSetId
 from albert.resources.design_candidate_sets import DesignCandidateSet
@@ -107,7 +106,7 @@ class DesignCandidateSetCollection(BaseCollection):
         Iterator[DesignCandidate]
             A lazily paginated iterator over the set's candidates.
         """
-        return _LastKeyCursorPaginator(
+        return LastKeyCursorPaginator(
             mode=PaginationMode.KEY,
             path=f"{self.base_path}/{id}/candidates",
             session=self.session,
