@@ -77,13 +77,13 @@ class DesignModelConfigCollection(BaseCollection):
         Get all design model configs in a project.
     update(design_model_config) -> DesignModelConfig
         Update the name or description of a draft design model config.
-    apply(id, operations, validate=False, resolve=False, preview_rows=None, dry_run=False, smart_dataset_id=None) -> DesignModelConfigApplyResponse
+    apply(id, operations, validate=False, resolve=False, preview_rows=None, preview_max_columns=None, dry_run=False, smart_dataset_id=None) -> DesignModelConfigApplyResponse
         Apply builder operations to a draft design model config.
     check_compatibility(id, smart_dataset_id) -> DesignModelConfigValidationResponse
         Check a design model config against a smart dataset.
     get_resolved_features(id, smart_dataset_id) -> DesignModelConfigResolvedFeatures
         Get the features a config resolves to against a smart dataset.
-    get_feature_values(id, smart_dataset_id) -> DesignModelConfigFeaturePreview
+    get_feature_values(id, smart_dataset_id, num_rows=None, max_columns=None) -> DesignModelConfigFeaturePreview
         Preview a few dataset rows run through the config's features.
     publish(id) -> DesignModelConfig
         Publish a draft design model config, freezing it.
