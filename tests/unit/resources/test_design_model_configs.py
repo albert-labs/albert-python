@@ -653,3 +653,15 @@ def test_a_malformed_mask_entry_of_a_known_kind_raises():
                 },
             }
         )
+
+
+def test_a_read_output_keeps_a_data_type_and_transform_this_version_does_not_know():
+    """Test that a newer type or transform reads as a string; a request still refuses it."""
+    config = DesignModelConfig.model_validate(
+        {"id": "DMC1", "outputs": {"TAR1": {"dataType": "newType", "outputTransform": "newT"}}}
+    )
+
+    output = config.outputs["TAR1"]
+    assert (output.data_type, output.output_transform) == ("newType", "newT")
+    with pytest.raises(ValidationError):
+        OutputEntry(data_type="numeric", output_transform="newT")

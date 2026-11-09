@@ -81,11 +81,13 @@ class DesignRun(BaseResource):
     method: DesignMethod | None = Field(default=None)
     """How candidates are produced: ``generate`` or ``space_filling``."""
 
-    state: DesignRunState | None = Field(default=None)
-    """Lifecycle state: ``queued``, ``running``, ``complete`` or ``error``."""
+    state: DesignRunState | str | None = Field(default=None, union_mode="left_to_right")
+    """Lifecycle state: ``queued``, ``running``, ``complete`` or ``error``. A state this
+    version does not know yet is kept as a plain string."""
 
-    stage: DesignRunStage | None = Field(default=None)
-    """What the run is doing while ``running``."""
+    stage: DesignRunStage | str | None = Field(default=None, union_mode="left_to_right")
+    """What the run is doing while ``running``. A stage this version does not know yet is
+    kept as a plain string."""
 
     violations: list[DesignRunViolation] | None = Field(default=None)
     """Why the run failed. Populated when ``state`` is ``error``."""

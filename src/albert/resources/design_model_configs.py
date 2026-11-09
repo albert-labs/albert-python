@@ -186,8 +186,18 @@ class FeatureMaskRead(FeatureMask):
 
 
 class OutputEntryRead(OutputEntry):
-    """An output's wiring as read from the service: an ``OutputEntry`` whose mask keeps
-    entries this version does not model."""
+    """An output's wiring as read from the service: an ``OutputEntry`` that keeps data types,
+    transforms and mask entries this version does not model."""
+
+    data_type: OutputDataType | str = Field(alias="dataType", union_mode="left_to_right")
+    """Whether the target is numeric or categorical. A type this version does not know yet
+    is kept as a plain string."""
+
+    output_transform: OutputTransform | str | None = Field(
+        default=None, alias="outputTransform", union_mode="left_to_right"
+    )
+    """Transform for a numeric output. A transform this version does not know yet is kept
+    as a plain string."""
 
     features: FeatureMaskRead | None = Field(default=None)
     """Which features this output uses. ``None`` when it uses all features."""
