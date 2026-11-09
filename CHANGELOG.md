@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.72.0](https://github.com/albert-labs/albert-python/compare/v1.71.0...v1.72.0) (2026-11-09)
+
+
+### Features
+
+* **design:** model configs, stored design runs and candidates; tolerant design space reads (AIM-1368, AIM-1379) ([#919](https://github.com/albert-labs/albert-python/issues/919)) ([eb46384](https://github.com/albert-labs/albert-python/commit/eb46384e9d63d0da8b93979d5e2f74771965632b))
+
 ## [1.71.0](https://github.com/albert-labs/albert-python/compare/v1.70.1...v1.71.0) (2026-11-06)
 
 
