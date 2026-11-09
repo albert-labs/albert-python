@@ -30,7 +30,7 @@ ignore_in_ten0 = pytest.mark.xfail(
 )
 
 builder_not_deployed = pytest.mark.xfail(
-    reason="design-model-config service routes not yet deployed",
+    reason="design-model-config routes are not available in this environment",
     strict=False,
 )
 

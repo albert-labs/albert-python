@@ -295,7 +295,7 @@ class DesignModelConfigCollection(BaseCollection):
           change one field of an output in place (for example ``outputTransform``).
 
         A transform other than ``none`` on a categorical output is rejected
-        (``invalid_settings``), and fields that are not yet available are rejected
+        (``invalid_settings``), and fields the service does not accept are rejected
         (``invalid_constraint``).
 
         ``resolve`` and ``preview_rows`` need ``smart_dataset_id`` (the call fails

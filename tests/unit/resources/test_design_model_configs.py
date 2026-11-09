@@ -222,7 +222,7 @@ def test_property_aggregation_impute_accepts_a_bool_or_a_number():
 def test_unknown_mask_entry_type_is_rejected():
     """Test that a mask entry kind the SDK does not model fails validation."""
     with pytest.raises(ValidationError):
-        FeatureMask.model_validate({"exclude": [{"type": "extraFeature", "key": "MDF1"}]})
+        FeatureMask.model_validate({"exclude": [{"type": "newKind", "key": "X1"}]})
 
 
 @pytest.mark.parametrize(
@@ -241,9 +241,9 @@ def test_feature_mask_needs_exactly_one_non_empty_list(mask):
         FeatureMask.model_validate(mask)
 
 
-def test_output_entry_passes_beta_fields_through():
+def test_output_entry_passes_unmodelled_fields_through():
     """Test that fields the SDK does not model survive a parse and re-serialize."""
-    wire = {"dataType": "numeric", "estimator": {"kind": "gp"}, "rationale": "because"}
+    wire = {"dataType": "numeric", "newField": {"kind": "x"}, "otherField": "y"}
 
     entry = OutputEntry.model_validate(wire)
 
@@ -516,7 +516,7 @@ def test_fork_request_sends_the_target_project_only_when_given(kwargs, wire):
     assert request.model_dump(by_alias=True, mode="json", exclude_none=True) == wire
 
 
-_BETA_CONFIG = {
+_NEWER_CONFIG = {
     "id": "DMC123",
     "name": "Clearcoat surrogate",
     "state": "draft",
@@ -524,73 +524,69 @@ _BETA_CONFIG = {
     "outputs": {
         "TAR045": {
             "dataType": "numeric",
-            "estimator": "randomForest",
-            "rationale": "hardness spans three orders of magnitude",
+            "newField": "x",
             "features": {
                 "include": [
-                    {"type": "extraFeature", "key": "MDF1"},
+                    {"type": "newKind", "key": "X1"},
                     {
                         "type": "propertyAggregation",
                         "basis": "mean",
                         "property": "Tg",
-                        "process": "PRC1",
-                        "useReciprocal": True,
+                        "newField": "y",
                     },
                     {"type": "allParameters"},
                 ]
             },
         }
     },
-    "extraFeatures": {"MDF1": {"type": "propertyAggregation", "basis": "sum", "property": "cost"}},
-    "labels": {"local:resins": {"members": ["INV001"]}},
-    "componentIndex": {"outputs/TAR045": ["extraFeatures/MDF1"]},
-    "rationale": "VOC concentrates in the thickener package",
+    "newCollection": {"X1": {"type": "newKind"}},
+    "newNote": "z",
 }
 
 
-def test_a_beta_config_parses_and_keeps_what_this_version_does_not_model():
-    """Test that beta fields, entry kinds and operand fields survive a read unchanged."""
-    config = DesignModelConfig.model_validate(_BETA_CONFIG)
+def test_a_newer_config_parses_and_keeps_what_this_version_does_not_model():
+    """Test that unknown fields, entry kinds and operand fields survive a read unchanged."""
+    config = DesignModelConfig.model_validate(_NEWER_CONFIG)
 
-    extra_feature, aggregation, family = config.outputs["TAR045"].features.include
-    assert isinstance(extra_feature, UnknownDescriptor)
-    assert extra_feature.type == "extraFeature"
+    unknown, aggregation, family = config.outputs["TAR045"].features.include
+    assert isinstance(unknown, UnknownDescriptor)
+    assert unknown.type == "newKind"
     assert isinstance(aggregation, PropertyAggregationOperand)
     assert isinstance(family, FamilySelector)
-    assert set(config.model_extra) == {"extraFeatures", "labels", "componentIndex", "rationale"}
-    assert config.model_dump(by_alias=True, mode="json", exclude_none=True) == _BETA_CONFIG
+    assert set(config.model_extra) == {"newCollection", "newNote"}
+    assert config.model_dump(by_alias=True, mode="json", exclude_none=True) == _NEWER_CONFIG
 
 
 def test_a_resolved_feature_of_an_unknown_kind_or_family_parses():
-    """Test that a beta extra feature with a descriptor kind this version lacks still reads."""
+    """Test that a descriptor kind and family this version does not know still read."""
     feature = ResolvedFeature.model_validate(
         {
-            "key": "extra/MDF2",
-            "family": "molecularDescriptor",
-            "descriptor": {"type": "molecularDescriptor", "name": "logP"},
-            "origin": "MDF2",
+            "key": "x/X2",
+            "family": "newFamily",
+            "descriptor": {"type": "newKind", "name": "n"},
+            "origin": "X2",
         }
     )
 
     assert isinstance(feature.descriptor, UnknownDescriptor)
-    assert feature.family == "molecularDescriptor"
+    assert feature.family == "newFamily"
 
 
 def test_requests_still_reject_kinds_and_fields_the_service_does_not_accept():
-    """Test that only reads are lenient: a request keeps the strict alpha schema."""
+    """Test that only reads are lenient: a request keeps the strict schema."""
     with pytest.raises(ValidationError):
         SetOutputOperation.model_validate(
             {
                 "key": "TAR045",
                 "value": {
                     "dataType": "numeric",
-                    "features": {"include": [{"type": "extraFeature", "key": "MDF1"}]},
+                    "features": {"include": [{"type": "newKind", "key": "X1"}]},
                 },
             }
         )
     with pytest.raises(ValidationError):
         FeatureMask.model_validate(
-            {"include": [{"type": "ingredientAmount", "ingredient": "INV1", "process": "PRC1"}]}
+            {"include": [{"type": "ingredientAmount", "ingredient": "INV1", "newField": "y"}]}
         )
 
 

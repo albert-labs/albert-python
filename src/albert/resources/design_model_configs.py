@@ -137,8 +137,7 @@ class FeatureMask(BaseAlbertModel):
 class OutputEntry(BaseAlbertModel):
     """One predicted target's wiring, keyed by target ID in a config's ``outputs``.
 
-    Fields the SDK does not model (for example beta ones) are kept as extra fields and
-    sent back unchanged.
+    Fields the SDK does not model are kept as extra fields and sent back unchanged.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -166,8 +165,7 @@ MaskEntryRead = Annotated[
 ]
 """A mask entry as read from the service. A known kind parses to its model (a
 ``FamilySelector`` or a quantity descriptor) and keeps fields this version does not
-model; an unknown kind, such as a beta ``extraFeature`` reference, parses to
-``UnknownDescriptor``."""
+model; an unknown kind parses to ``UnknownDescriptor``."""
 
 
 class FeatureMaskRead(FeatureMask):
@@ -199,8 +197,7 @@ class DesignModelConfig(BaseResource):
     smart dataset, and published. A published config is frozen; editing one means
     forking it into a new draft.
 
-    Fields this version does not model, such as the beta ``extraFeatures``, ``labels``,
-    ``componentIndex`` and ``rationale``, are kept as extra fields when a config is read.
+    Fields this version does not model are kept as extra fields when a config is read.
     """
 
     model_config = ConfigDict(extra="allow")
