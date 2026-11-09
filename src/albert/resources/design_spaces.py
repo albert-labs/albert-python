@@ -74,7 +74,9 @@ class _ParameterConstraintBase(BaseAlbertModel):
     covers a constraint nested in an operation or passed as an update value.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    # A lenient read instance (a subclass) passed into a request is checked against this
+    # strict model again, so content this version does not model is refused, not dropped.
+    model_config = ConfigDict(extra="forbid", revalidate_instances="subclass-instances")
 
     @model_serializer(mode="wrap")
     def _keep_type_discriminator(self, handler):

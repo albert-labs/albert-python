@@ -599,3 +599,41 @@ def test_a_config_that_carries_only_albert_id_reads_it_as_the_id():
 
     assert config.id == "DMC123"
     assert "albertId" not in config.model_extra
+
+
+_KNOWN_OUTPUT = {
+    "dataType": "numeric",
+    "features": {"exclude": [{"type": "ingredientAmount", "ingredient": "INV9"}]},
+}
+
+
+def test_a_read_output_with_only_known_content_round_trips_through_set_output():
+    """Test that an output read from a config can be sent back unchanged."""
+    config = DesignModelConfig.model_validate({"id": "DMC1", "outputs": {"TAR1": _KNOWN_OUTPUT}})
+
+    operation = SetOutputOperation(key="TAR1", value=config.outputs["TAR1"])
+
+    assert operation.model_dump(by_alias=True, mode="json", exclude_none=True)["value"] == (
+        _KNOWN_OUTPUT
+    )
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"type": "ingredientAmount", "ingredient": "INV9", "newField": "x"},
+        {"type": "newKind", "key": "X1"},
+    ],
+    ids=["unknown-field", "unknown-kind"],
+)
+def test_a_read_output_with_content_this_version_does_not_model_is_refused(entry):
+    """Test that a read output is checked again when sent, so nothing is silently dropped."""
+    config = DesignModelConfig.model_validate(
+        {
+            "id": "DMC1",
+            "outputs": {"TAR1": {"dataType": "numeric", "features": {"exclude": [entry]}}},
+        }
+    )
+
+    with pytest.raises(ValidationError):
+        SetOutputOperation(key="TAR1", value=config.outputs["TAR1"])

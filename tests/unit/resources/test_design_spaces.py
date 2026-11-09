@@ -412,3 +412,37 @@ def test_requests_still_reject_constraint_kinds_and_fields_the_service_does_not_
         ParameterAssignment.model_validate(
             {"dataType": "numeric", "constraint": {"type": "continuous", "min": 1, "newField": 5}}
         )
+
+
+def test_a_read_constraint_is_checked_again_when_sent():
+    """Test that a constraint read from a space is refused in a request if it carries more."""
+    space = DesignSpace.model_validate(
+        {
+            "id": "DSP1",
+            "parameters": {
+                "DAT01#PRM07": {
+                    "ref": _REF,
+                    "dataType": "numeric",
+                    "constraint": {"type": "continuous", "min": 1, "max": 2, "newField": 3},
+                },
+                "DAT01#PRM08": {
+                    "ref": {**_REF, "parameterId": "PRM08"},
+                    "dataType": "numeric",
+                    "constraint": {"type": "continuous", "min": 1, "max": 2},
+                },
+            },
+        }
+    )
+
+    known = ParameterAssignment(
+        data_type="numeric", constraint=space.parameters["DAT01#PRM08"].constraint
+    )
+    assert known.model_dump(by_alias=True, mode="json", exclude_none=True)["constraint"] == {
+        "type": "continuous",
+        "min": 1.0,
+        "max": 2.0,
+    }
+    with pytest.raises(ValidationError):
+        ParameterAssignment(
+            data_type="numeric", constraint=space.parameters["DAT01#PRM07"].constraint
+        )

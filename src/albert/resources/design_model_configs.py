@@ -118,7 +118,9 @@ class FeatureMask(BaseAlbertModel):
     Each is a non-empty list of mask entries. An output with no mask uses all features.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    # A lenient read instance (a subclass) passed into a request is checked against this
+    # strict model again, so content this version does not model is refused, not dropped.
+    model_config = ConfigDict(extra="forbid", revalidate_instances="subclass-instances")
 
     include: list[MaskEntry] | None = Field(default=None, min_length=1)
     """Use only the features these entries match."""
@@ -140,7 +142,9 @@ class OutputEntry(BaseAlbertModel):
     Fields the SDK does not model are kept as extra fields and sent back unchanged.
     """
 
-    model_config = ConfigDict(extra="allow")
+    # A lenient read instance (a subclass) passed into a request is checked against this
+    # strict model again, so content this version does not model is refused, not dropped.
+    model_config = ConfigDict(extra="allow", revalidate_instances="subclass-instances")
 
     data_type: OutputDataType = Field(alias="dataType")
     """Whether the target is numeric or categorical."""
