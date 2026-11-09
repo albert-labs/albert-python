@@ -54,10 +54,8 @@ def test_get_candidate_set_and_candidates(client: Albert, seeded_projects: list[
     assert isinstance(candidate_set, DesignCandidateSet)
     assert candidate_set.source.source_id == run.id
 
-    from_set = list(client.design_candidate_sets.get_candidates(id=candidate_set.id, max_items=5))
     listed = list(client.design_candidates.get_all(candidate_set_id=candidate_set.id, max_items=5))
-    assert from_set
-    assert [c.id for c in from_set] == [c.id for c in listed]
+    assert listed
     assert all(isinstance(c, DesignCandidate) for c in listed)
     assert all(c.candidate_set_id == candidate_set.id for c in listed)
 

@@ -48,7 +48,7 @@ class DesignCandidateSet(BaseResource):
     """The candidates a design run produced. A set is read-only.
 
     List its candidates with
-    [`get_candidates`][albert.collections.design_candidate_sets.DesignCandidateSetCollection.get_candidates].
+    [`get_all`][albert.collections.design_candidates.DesignCandidateCollection.get_all].
     """
 
     id: DesignCandidateSetId | None = Field(default=None)
