@@ -1,10 +1,9 @@
 from collections.abc import Iterator
-from typing import Any
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import LastKeyCursorPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import DesignSpaceId, ProjectId, SmartDatasetId
 from albert.resources.design_spaces import (
@@ -23,22 +22,6 @@ from albert.resources.design_spaces import (
     DesignSpaceValidationRequest,
     DesignSpaceValidationResponse,
 )
-
-
-class _LastKeyCursorPaginator(AlbertPaginator):
-    """KEY-mode paginator for a service that takes its cursor back as ``lastKey``.
-
-    The base KEY mode sends the previous page's ``lastKey`` as ``startKey``; the
-    design-spaces listing reads the cursor from a ``lastKey`` query parameter instead.
-    """
-
-    def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
-        last_key = data.get("lastKey")
-        self._last_key = last_key
-        if not last_key:
-            return False
-        self._pagination_params["lastKey"] = last_key
-        return True
 
 
 class DesignSpaceCollection(BaseCollection):
@@ -231,7 +214,7 @@ class DesignSpaceCollection(BaseCollection):
         params = {"parentId": parent_id}
         if state is not None:
             params["state"] = state
-        return _LastKeyCursorPaginator(
+        return LastKeyCursorPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,

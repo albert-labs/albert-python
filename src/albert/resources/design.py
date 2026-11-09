@@ -6,7 +6,13 @@ from typing import Literal
 from pydantic import Field, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import SmartDatasetId, TargetId
+from albert.core.shared.identifiers import (
+    DesignModelConfigId,
+    DesignSpaceId,
+    ProjectId,
+    SmartDatasetId,
+    TargetId,
+)
 from albert.resources.chats import ChatSessionRef
 from albert.resources.targets import Criterion
 
@@ -40,19 +46,40 @@ class DesignRunViolationCode(StrEnum):
     OPTIMIZATION_SYSTEM_MISMATCH = "optimization_system_mismatch"
     INTERNAL = "internal"
     JOB_TIMEOUT = "job_timeout"
+    RESULT_PERSISTENCE_FAILED = "result_persistence_failed"
+    ESTIMATOR_DOWNGRADED = "estimator_downgraded"
+    UNKNOWN_REFERENCE = "unknown_reference"
+    REFERENCE_NOT_PUBLISHED = "reference_not_published"
+    UNSUPPORTED_OPERAND = "unsupported_operand"
+    INVALID_CONSTRAINT = "invalid_constraint"
+    FEASIBILITY_INDETERMINATE = "feasibility_indeterminate"
+    DIMENSION_NOT_IN_DATASET = "dimension_not_in_dataset"
+    DIMENSION_NOT_MODELLED = "dimension_not_modelled"
+    DUPLICATE_CONSTRAINT_SUBJECT = "duplicate_constraint_subject"
+    VARIABLE_NOT_DERIVED = "variable_not_derived"
+    TARGET_NOT_IN_DATASET = "target_not_in_dataset"
+    TRANSFORM_REQUIRES_POSITIVE_TARGET = "transform_requires_positive_target"
+    INERT_MASK_ENTRY = "inert_mask_entry"
+    FEATURE_DROPPED_BY_OVERLAP = "feature_dropped_by_overlap"
+    DUPLICATE_EXTRA = "duplicate_extra"
+    CONFLICTING_LABEL_DEFINITION = "conflicting_label_definition"
 
 
 class DesignRunViolation(BaseAlbertModel):
     """A single validation failure for a design-run configuration."""
 
-    code: DesignRunViolationCode
-    """Machine-readable violation category."""
+    code: DesignRunViolationCode | str = Field(union_mode="left_to_right")
+    """Machine-readable violation category. A code this version does not know yet is kept
+    as a plain string."""
 
     message: str
     """Human-readable explanation of the failure."""
 
     target_id: str | None = Field(default=None, alias="targetId")
     """Target id when the violation is scoped to one performance target."""
+
+    components: list[str] | None = Field(default=None)
+    """The entities (element ids, parameter keys or target ids) the violation points at."""
 
 
 class DesignRunValidationResponse(BaseAlbertModel):
@@ -162,6 +189,17 @@ class OptimizationDesignRunRequest(BaseAlbertModel):
     session: ChatSessionRef | None = None
     """Chat session to notify when the run completes; create-only."""
 
+    parent_id: ProjectId | None = Field(default=None, alias="parentId")
+    """Project that owns the run; v4 only, where it is required."""
+
+    design_space_id: DesignSpaceId | None = Field(default=None, alias="designSpaceId")
+    """Published design space to sample from; v4 only. Omitted, a dataset-derived default is used."""
+
+    design_model_config_id: DesignModelConfigId | None = Field(
+        default=None, alias="designModelConfigId"
+    )
+    """Published model config to train with; v4 only. Omitted, a dataset-derived default is used."""
+
 
 class DOERunSettings(BaseAlbertModel):
     """Settings for a space-filling DOE design run.
@@ -204,3 +242,14 @@ class DOEDesignRunRequest(BaseAlbertModel):
 
     session: ChatSessionRef | None = None
     """Chat session to notify when the run completes; create-only."""
+
+    parent_id: ProjectId | None = Field(default=None, alias="parentId")
+    """Project that owns the run; v4 only, where it is required."""
+
+    design_space_id: DesignSpaceId | None = Field(default=None, alias="designSpaceId")
+    """Published design space to sample from; v4 only. Omitted, a dataset-derived default is used."""
+
+    design_model_config_id: DesignModelConfigId | None = Field(
+        default=None, alias="designModelConfigId"
+    )
+    """Published model config to train with; v4 only. Omitted, a dataset-derived default is used."""
