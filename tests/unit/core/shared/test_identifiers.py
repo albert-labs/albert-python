@@ -393,3 +393,27 @@ def test_worker_job_metadata_preserves_child_workflow_fields():
     assert dumped["newWorkflowId"] == "WFL383358"
     assert dumped["oldWorkflowId"] == "WFL375193"
     assert dumped["parentType"] == "TAS"
+
+
+_UUID_ID_FUNCTIONS = [
+    (ensure_design_space_id, "DSP"),
+    (ensure_design_model_config_id, "DMC"),
+    (ensure_design_run_id, "DSR"),
+    (ensure_design_candidate_set_id, "DCS"),
+    (ensure_design_candidate_id, "DCN"),
+]
+
+
+@pytest.mark.parametrize(("ensure_func", "prefix"), _UUID_ID_FUNCTIONS)
+def test_uuid_ids_prefix_a_bare_uuid_that_starts_like_another_prefix(ensure_func, prefix):
+    """Test that a bare uuid starting with another entity's prefix is still read as bare."""
+    uuid = "dac84400-e29b-41d4-a716-446655440000"
+
+    assert ensure_func(uuid) == f"{prefix}{uuid}"
+
+
+@pytest.mark.parametrize(("ensure_func", "prefix"), _UUID_ID_FUNCTIONS)
+def test_uuid_ids_still_reject_another_entitys_id(ensure_func, prefix):
+    """Test that an ID carrying another entity's prefix is rejected."""
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_func("INV123")

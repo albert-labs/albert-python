@@ -287,46 +287,59 @@ def ensure_propertydata_id(id: str) -> str:
 PropertyDataId = Annotated[str, AfterValidator(ensure_propertydata_id)]
 
 
+# A bare uuid, which a candidate id follows with ``-<n>``.
+_BARE_UUID = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(-\d+)?", re.IGNORECASE
+)
+
+
+def _ensure_uuid_albert_id(id: str, id_type: str) -> str:
+    """Prefix a uuid-based Albert ID, keeping the rest of it exactly as given.
+
+    These IDs are the prefix plus a lowercase uuid, and lookups are case-sensitive, so only
+    the prefix is normalized. A bare uuid is prefixed even when it happens to start with
+    another entity's prefix (``dac...``); any other ID with another entity's prefix is
+    rejected.
+    """
+    prefix = _ALBERT_PREFIXES[id_type]
+    if id and _BARE_UUID.fullmatch(id):
+        return f"{prefix}{id}"
+    _ensure_albert_id(id, id_type)
+    if id[: len(prefix)].upper() == prefix:
+        return f"{prefix}{id[len(prefix) :]}"
+    return f"{prefix}{id}"
+
+
 def ensure_design_space_id(id: str) -> str:
-    # Ids are DSP + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
-    _ensure_albert_id(id, "DesignSpaceId")
-    return f"DSP{id[3:]}" if id[:3].upper() == "DSP" else f"DSP{id}"
+    return _ensure_uuid_albert_id(id, "DesignSpaceId")
 
 
 DesignSpaceId = Annotated[str, AfterValidator(ensure_design_space_id)]
 
 
 def ensure_design_model_config_id(id: str) -> str:
-    # Ids are DMC + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
-    _ensure_albert_id(id, "DesignModelConfigId")
-    return f"DMC{id[3:]}" if id[:3].upper() == "DMC" else f"DMC{id}"
+    return _ensure_uuid_albert_id(id, "DesignModelConfigId")
 
 
 DesignModelConfigId = Annotated[str, AfterValidator(ensure_design_model_config_id)]
 
 
 def ensure_design_run_id(id: str) -> str:
-    # Ids are DSR + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
-    _ensure_albert_id(id, "DesignRunId")
-    return f"DSR{id[3:]}" if id[:3].upper() == "DSR" else f"DSR{id}"
+    return _ensure_uuid_albert_id(id, "DesignRunId")
 
 
 DesignRunId = Annotated[str, AfterValidator(ensure_design_run_id)]
 
 
 def ensure_design_candidate_set_id(id: str) -> str:
-    # Ids are DCS + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
-    _ensure_albert_id(id, "DesignCandidateSetId")
-    return f"DCS{id[3:]}" if id[:3].upper() == "DCS" else f"DCS{id}"
+    return _ensure_uuid_albert_id(id, "DesignCandidateSetId")
 
 
 DesignCandidateSetId = Annotated[str, AfterValidator(ensure_design_candidate_set_id)]
 
 
 def ensure_design_candidate_id(id: str) -> str:
-    # Ids are DCN + a lowercase uuid and lookups are case-sensitive, so only the prefix is uppercased.
-    _ensure_albert_id(id, "DesignCandidateId")
-    return f"DCN{id[3:]}" if id[:3].upper() == "DCN" else f"DCN{id}"
+    return _ensure_uuid_albert_id(id, "DesignCandidateId")
 
 
 DesignCandidateId = Annotated[str, AfterValidator(ensure_design_candidate_id)]
