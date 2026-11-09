@@ -111,15 +111,15 @@ def test_candidate_inputs_keep_fields_and_kinds_this_version_does_not_model():
                     "type": "ingredientAmount",
                     "ingredient": "INV001",
                     "value": 0.2,
-                    "process": "P1",
+                    "newField": "x",
                 },
-                {"type": "processStep", "step": "cure", "value": 3},
+                {"type": "newKind", "key": "X1", "value": 3},
             ],
         }
     )
 
     amount, unknown = candidate.inputs
     assert isinstance(amount, IngredientAmountInput)
-    assert amount.model_extra == {"process": "P1"}
+    assert amount.model_extra == {"newField": "x"}
     assert isinstance(unknown, UnknownDescriptor)
-    assert unknown.model_dump(mode="json") == {"type": "processStep", "step": "cure", "value": 3}
+    assert unknown.model_dump(mode="json") == {"type": "newKind", "key": "X1", "value": 3}
