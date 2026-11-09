@@ -240,7 +240,28 @@ class ParameterEntry(BaseAlbertModel):
     know yet parses to ``UnknownParameterConstraint``."""
 
 
-class DesignSpace(BaseResource):
+class _DesignRecord(BaseResource):
+    """A stored design record read from the service, keeping fields this version does not
+    model as extra fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _keep_the_id_once(cls, data: Any) -> Any:
+        """Keep the ID once, as ``id``: the service sends it as both ``id`` and ``albertId``.
+
+        Without this, ``albertId`` would be kept as an extra field. A record that carries
+        only ``albertId`` gets it as ``id``.
+        """
+        if isinstance(data, dict) and "albertId" in data:
+            data = dict(data)
+            albert_id = data.pop("albertId")
+            data.setdefault("id", albert_id)
+        return data
+
+
+class DesignSpace(_DesignRecord):
     """A design space: the bounded envelope a design run samples formulations from.
 
     Also called the search space or simply the bounds: which ingredients may or must
@@ -253,8 +274,6 @@ class DesignSpace(BaseResource):
 
     Fields this version does not model are kept as extra fields when a space is read.
     """
-
-    model_config = ConfigDict(extra="allow")
 
     id: DesignSpaceId | None = Field(default=None)
     """The unique identifier of the design space (format ``DSP...``)."""
@@ -304,20 +323,6 @@ class DesignSpace(BaseResource):
 
     updated: AuditFields | None = Field(default=None, alias="updated", frozen=True)
     """Audit fields for the last update of the design space."""
-
-    @model_validator(mode="before")
-    @classmethod
-    def _keep_the_id_once(cls, data: Any) -> Any:
-        """Keep the ID once, as ``id``: the service sends it as both ``id`` and ``albertId``.
-
-        Without this, ``albertId`` would be kept as an extra field. A record that carries
-        only ``albertId`` gets it as ``id``.
-        """
-        if isinstance(data, dict) and "albertId" in data:
-            data = dict(data)
-            albert_id = data.pop("albertId")
-            data.setdefault("id", albert_id)
-        return data
 
 
 class DesignSpaceViolation(BaseAlbertModel):

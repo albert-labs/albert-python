@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from pydantic import ConfigDict, Field, PositiveInt, model_validator
 
@@ -13,7 +13,7 @@ from albert.core.shared.identifiers import (
     SmartDatasetId,
     TargetId,
 )
-from albert.core.shared.models.base import AuditFields, BaseResource
+from albert.core.shared.models.base import AuditFields
 from albert.resources.design_operands import (
     IngredientAmountOperand,
     LabelFractionOperand,
@@ -25,6 +25,7 @@ from albert.resources.design_operands import (
 from albert.resources.design_spaces import (
     RemoveComponentOperation,
     UpdateComponentOperation,
+    _DesignRecord,
     _DesignSpaceOperationBase,
 )
 
@@ -203,7 +204,7 @@ class OutputEntryRead(OutputEntry):
     """Which features this output uses. ``None`` when it uses all features."""
 
 
-class DesignModelConfig(BaseResource):
+class DesignModelConfig(_DesignRecord):
     """A design model config: which targets to predict, how to transform them, and which
     default features each one uses.
 
@@ -213,8 +214,6 @@ class DesignModelConfig(BaseResource):
 
     Fields this version does not model are kept as extra fields when a config is read.
     """
-
-    model_config = ConfigDict(extra="allow")
 
     id: DesignModelConfigId | None = Field(default=None)
     """The unique identifier of the config (format ``DMC...``)."""
@@ -255,20 +254,6 @@ class DesignModelConfig(BaseResource):
 
     updated: AuditFields | None = Field(default=None, alias="updated", frozen=True)
     """Audit fields for the last update of the config."""
-
-    @model_validator(mode="before")
-    @classmethod
-    def _keep_the_id_once(cls, data: Any) -> Any:
-        """Keep the ID once, as ``id``: the service sends it as both ``id`` and ``albertId``.
-
-        Without this, ``albertId`` would be kept as an extra field. A record that carries
-        only ``albertId`` gets it as ``id``.
-        """
-        if isinstance(data, dict) and "albertId" in data:
-            data = dict(data)
-            albert_id = data.pop("albertId")
-            data.setdefault("id", albert_id)
-        return data
 
 
 class DesignModelConfigViolation(BaseAlbertModel):
