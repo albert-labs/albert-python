@@ -4,8 +4,8 @@ A descriptor names a quantity inline (an ingredient amount, a label fraction, a
 parameter value, or a property aggregation), and is shared by design resources such as
 the feature masks of design model configs.
 
-The descriptor models are strict, so a request (and any schema generated from it) names
-exactly the fields and kinds the service accepts. Records read back from the service
+The descriptor models are strict, so what a caller sends (and any schema generated from
+it) names exactly the fields and kinds the service accepts. Records read back from the service
 parse through the lenient variants instead (``QuantityOperandRead``), which keep fields
 and kinds a newer service version adds.
 """

@@ -414,9 +414,8 @@ class DesignRunV4Collection(DesignRunCollection):
         Raises
         ------
         AlbertClientError
-            The run was rejected (HTTP 422). ``err.response.json()["message"]`` is the
-            list of violations, each with ``code``, ``message`` and optional ``targetId``
-            and ``components``.
+            The run was rejected. The error lists each violation with its ``code``,
+            ``message``, and optional ``targetId`` and ``components``.
         AlbertHTTPError
             Other failures.
         """
@@ -464,9 +463,8 @@ class DesignRunV4Collection(DesignRunCollection):
         Raises
         ------
         AlbertClientError
-            The run was rejected (HTTP 422). ``err.response.json()["message"]`` is the
-            list of violations, each with ``code``, ``message`` and optional ``targetId``
-            and ``components``.
+            The run was rejected. The error lists each violation with its ``code``,
+            ``message``, and optional ``targetId`` and ``components``.
         AlbertHTTPError
             Other failures.
         """
@@ -496,7 +494,7 @@ class DesignRunV4Collection(DesignRunCollection):
     ) -> DesignRunValidationResponse:
         """Validate an optimization run configuration without starting a job.
 
-        Takes the same request as
+        Takes the same arguments as
         [`create_optimization`][albert.collections.design_runs.DesignRunV4Collection.create_optimization]
         and returns a preflight result with ``valid`` and ``violations``.
 
@@ -509,11 +507,10 @@ class DesignRunV4Collection(DesignRunCollection):
         Raises
         ------
         AlbertClientError
-            The run was rejected (HTTP 422). ``err.response.json()["message"]`` is the
-            list of violations, each with ``code``, ``message`` and optional ``targetId``
-            and ``components``.
+            The run was rejected. The error lists each violation with its ``code``,
+            ``message``, and optional ``targetId`` and ``components``.
         AlbertHTTPError
-            Other request failures.
+            Other failures.
         """
         body = OptimizationDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -523,7 +520,9 @@ class DesignRunV4Collection(DesignRunCollection):
             design_space_id=design_space_id,
             design_model_config_id=design_model_config_id,
         ).model_dump(by_alias=True, mode="json", exclude_none=True)
-        response = self.session.post(f"{self.base_path}/{self._validate_suffix}", json=body)
+        response = self.session.post(
+            f"{self.base_path}/{self._validate_suffix}", json=body, retry_safe=True
+        )
         return DesignRunValidationResponse(**response.json())
 
     @validate_call
@@ -539,7 +538,7 @@ class DesignRunV4Collection(DesignRunCollection):
     ) -> DesignRunValidationResponse:
         """Validate a space-filling run configuration without starting a job.
 
-        Takes the same request as
+        Takes the same arguments as
         [`create_doe`][albert.collections.design_runs.DesignRunV4Collection.create_doe]
         and returns a preflight result with ``valid`` and ``violations``.
 
@@ -552,11 +551,10 @@ class DesignRunV4Collection(DesignRunCollection):
         Raises
         ------
         AlbertClientError
-            The run was rejected (HTTP 422). ``err.response.json()["message"]`` is the
-            list of violations, each with ``code``, ``message`` and optional ``targetId``
-            and ``components``.
+            The run was rejected. The error lists each violation with its ``code``,
+            ``message``, and optional ``targetId`` and ``components``.
         AlbertHTTPError
-            Other request failures.
+            Other failures.
         """
         body = DOEDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -566,7 +564,9 @@ class DesignRunV4Collection(DesignRunCollection):
             design_space_id=design_space_id,
             design_model_config_id=design_model_config_id,
         ).model_dump(by_alias=True, mode="json", exclude_none=True)
-        response = self.session.post(f"{self.base_path}/{self._validate_suffix}", json=body)
+        response = self.session.post(
+            f"{self.base_path}/{self._validate_suffix}", json=body, retry_safe=True
+        )
         return DesignRunValidationResponse(**response.json())
 
     @validate_call
@@ -588,7 +588,7 @@ class DesignRunV4Collection(DesignRunCollection):
         Returns
         -------
         DesignRun
-            The run and its status.
+            The fully populated DesignRun.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return DesignRun(**response.json())

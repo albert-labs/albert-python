@@ -11,7 +11,7 @@ from albert.resources.design_candidates import DesignCandidate
 
 
 class DesignCandidateSetCollection(BaseCollection):
-    """Read design candidate sets in the Albert platform (🧪 Beta).
+    """Access design candidate sets in the Albert platform (🧪 Beta).
 
     A candidate set holds the candidates a design run produced. Its ID is the
     ``result_set_id`` of the completed run. Sets are read-only.
@@ -74,7 +74,7 @@ class DesignCandidateSetCollection(BaseCollection):
         Returns
         -------
         DesignCandidateSet
-            The candidate set.
+            The fully populated DesignCandidateSet.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return DesignCandidateSet(**response.json())

@@ -10,7 +10,7 @@ from albert.resources.design_candidates import DesignCandidate
 
 
 class DesignCandidateCollection(BaseCollection):
-    """Read design candidates in the Albert platform (🧪 Beta).
+    """Access design candidates in the Albert platform (🧪 Beta).
 
     A candidate is one formulation a design run proposed, with its sampled inputs and,
     where the run produced them, its predictions and score. Candidates are read-only.
@@ -73,7 +73,7 @@ class DesignCandidateCollection(BaseCollection):
         Returns
         -------
         DesignCandidate
-            The candidate.
+            The fully populated DesignCandidate.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return DesignCandidate(**response.json())

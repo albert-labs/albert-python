@@ -491,10 +491,10 @@ class DesignModelConfigCollection(BaseCollection):
         smart_dataset_id : SmartDatasetId
             Smart dataset (format ``SDT...``) to featurize rows from.
         num_rows : int or "all", optional
-            Rows to return; ``"all"`` for every row. Defaults to 10 on the server.
+            Rows to return; ``"all"`` for every row. Defaults to 10.
         max_columns : int or "all", optional
             Keyed feature columns whose values are returned; ``"all"`` for every column.
-            Defaults to 50 on the server.
+            Defaults to 50.
 
         Returns
         -------
