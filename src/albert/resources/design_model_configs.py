@@ -454,6 +454,11 @@ class DesignModelConfigReferences(BaseAlbertModel):
 
     model_config = ConfigDict(extra="allow")
 
+    references: list[str] = Field(default_factory=list)
+    """Component paths (``<collection>/<key>``, for example ``outputs/TAR046``) that point
+    at the requested component, such as the outputs whose feature mask names it. Empty
+    when nothing does."""
+
 
 class DesignModelConfigApplyResponse(BaseAlbertModel):
     """The result of applying builder operations to a draft design model config."""

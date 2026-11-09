@@ -347,10 +347,11 @@ def test_violation_keeps_an_unknown_code_as_a_string():
 def test_sample_and_references_preserve_undeclared_keys():
     """Test that the open-ended sample and reference documents keep unknown keys."""
     sample = DesignSpaceSample.model_validate({"rows": [{"INV001": 0.5}], "seed": 7})
-    references = DesignSpaceReferences.model_validate({"references": []})
+    references = DesignSpaceReferences.model_validate({"references": [], "newField": 1})
 
     assert sample.model_dump() == {"rows": [{"INV001": 0.5}], "seed": 7}
-    assert references.model_dump() == {"references": []}
+    assert references.references == []
+    assert references.model_dump() == {"references": [], "newField": 1}
 
 
 # No explicit nulls, so the read round-trips under ``exclude_none``.

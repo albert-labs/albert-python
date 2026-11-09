@@ -450,11 +450,14 @@ def test_apply_response_without_the_optional_parts():
     assert result.warnings == []
 
 
-def test_references_preserve_undeclared_keys():
-    """Test that the open-ended references document keeps unknown keys."""
-    references = DesignModelConfigReferences.model_validate({"references": []})
+def test_references_parse_the_list_and_keep_undeclared_keys():
+    """Test that the reference list is typed and unknown keys are kept."""
+    references = DesignModelConfigReferences.model_validate(
+        {"references": ["outputs/TAR046"], "newField": 1}
+    )
 
-    assert references.model_dump() == {"references": []}
+    assert references.references == ["outputs/TAR046"]
+    assert references.model_dump() == {"references": ["outputs/TAR046"], "newField": 1}
 
 
 def test_violation_carries_the_operation_it_came_from():

@@ -358,6 +358,10 @@ class DesignSpaceReferences(BaseAlbertModel):
 
     model_config = ConfigDict(extra="allow")
 
+    references: list[str] = Field(default_factory=list)
+    """Component paths (``<collection>/<key>``) that point at the requested component.
+    Empty when nothing does."""
+
 
 class DesignSpaceApplyResponse(BaseAlbertModel):
     """The result of applying builder operations to a draft design space."""
