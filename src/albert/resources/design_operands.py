@@ -1,14 +1,13 @@
 """Quantity descriptors shared by design resources.
 
 A descriptor names a quantity inline (an ingredient amount, a label fraction, a
-parameter value, or a property aggregation). It is shared by design resources: the
-feature masks of design model configs use it now, and design-space constraints and
-candidates will use it later.
+parameter value, or a property aggregation), and is shared by design resources such as
+the feature masks of design model configs.
 
-The descriptor models are strict, so a request (and the schema an agent tool is built
-from) names exactly the fields and kinds the service accepts. Records read back from the
-service parse through the lenient variants instead (``QuantityOperandRead``), which keep
-fields and kinds a newer release adds, such as the beta ``process`` qualifier.
+The descriptor models are strict, so a request (and any schema generated from it) names
+exactly the fields and kinds the service accepts. Records read back from the service
+parse through the lenient variants instead (``QuantityOperandRead``), which keep fields
+and kinds a newer service version adds.
 """
 
 import sys
@@ -112,9 +111,9 @@ property aggregation."""
 class UnknownDescriptor(BaseAlbertModel):
     """A descriptor or mask entry of a kind this SDK version does not know yet.
 
-    Only appears in records read from the service. A record written by a newer release
-    (for example a beta ``extraFeature`` mask entry) parses into this model instead of
-    failing, and keeps every key it carried. Requests never accept it.
+    Only appears in records read from the service. An entry written by a newer service
+    version parses into this model instead of failing, and keeps every key it carried.
+    Requests never accept it.
     """
 
     model_config = ConfigDict(extra="allow")
