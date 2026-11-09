@@ -8,10 +8,12 @@ from albert.resources.batch_data import (
     BatchData,
     BatchDataLotUsage,
     BatchDataProduct,
+    BatchProcessValue,
     BatchValueId,
     BatchValuePatchDatum,
     BatchValuePatchPayload,
 )
+from albert.resources.sheets import Component
 from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
@@ -27,6 +29,23 @@ pytestmark = pytest.mark.xdist_group("tasks")
 
 def _seeded_batch_task(seeded_tasks: list[BaseTask]) -> BatchTask:
     return [t for t in seeded_tasks if isinstance(t, BatchTask)][0]
+
+
+def _wait_for_grid(client: Albert, task_id: str, timeout: float = 120.0) -> BatchData | None:
+    """Wait for the batch task's grid, which is built asynchronously after task creation.
+
+    Returns None when the grid is still not fully built after ``timeout`` seconds.
+    """
+
+    def _fetch() -> list[BatchData]:
+        with suppress(NotFoundError):
+            grid = client.batch_data.get_by_id(id=task_id)
+            if grid.rows and grid.product and any(v.type == "INV" for v in grid.rows[0].values):
+                return [grid]
+        return []
+
+    grids = poll_until(_fetch, timeout=timeout)
+    return grids[0] if grids else None
 
 
 def _create_batch_task(
@@ -62,22 +81,30 @@ def _create_batch_task(
 
 def _ensure_batch_data(client: Albert, task_id: str) -> None:
     """Initialize the batch data grid when task creation did not already do it."""
-    with suppress(NotFoundError):
-        grid = client.batch_data.get_by_id(id=task_id)
-        if grid.product:
-            return
+    if _wait_for_grid(client, task_id, timeout=30.0):
+        return
     with suppress(BadRequestError):
         # Batch data creation is not idempotent ("already exist").
         client.batch_data.create_batch_data(task_id=task_id)
 
 
-def test_get_by_id(client: Albert, seeded_tasks: list[BaseTask]):
+@pytest.fixture(scope="module")
+def batch_grid(client: Albert, seeded_tasks: list[BaseTask]) -> BatchData:
+    """The seeded batch task's grid, once its asynchronous build has finished."""
+    task = _seeded_batch_task(seeded_tasks)
+    grid = _wait_for_grid(client, task.id)
+    if grid is None:
+        pytest.fail(f"batch data grid for {task.id} was not built within 120s")
+    return grid
+
+
+def test_get_by_id(client: Albert, seeded_tasks: list[BaseTask], batch_grid: BatchData):
     batch_task = [t for t in seeded_tasks if isinstance(t, BatchTask)][0]
     batch_data = client.batch_data.get_by_id(id=batch_task.id)
     assert batch_data.id == batch_task.id
 
 
-def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
+def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask], batch_grid: BatchData):
     batch_task = [t for t in seeded_tasks if isinstance(t, BatchTask)][0]
 
     existing_batch_data = client.batch_data.get_by_id(id=batch_task.id)
@@ -122,7 +149,7 @@ def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
     assert found
 
 
-def test_get_lookup_column(client: Albert, seeded_tasks: list[BaseTask]):
+def test_get_lookup_column(client: Albert, seeded_tasks: list[BaseTask], batch_grid: BatchData):
     """Get the lookup column data of the seeded batch task."""
     batch_task = _seeded_batch_task(seeded_tasks)
 
@@ -132,7 +159,7 @@ def test_get_lookup_column(client: Albert, seeded_tasks: list[BaseTask]):
     assert lookup.id == batch_task.id
 
 
-def test_get_by_lot_id(client: Albert, seeded_tasks: list[BaseTask]):
+def test_get_by_lot_id(client: Albert, seeded_tasks: list[BaseTask], batch_grid: BatchData):
     """List the batch data usages of a lot of the seeded batch task's formula."""
     batch_task = _seeded_batch_task(seeded_tasks)
     grid = client.batch_data.get_by_id(id=batch_task.id)
@@ -248,6 +275,87 @@ def test_resync_task(
     finally:
         with suppress(NotFoundError, BadRequestError):
             client.tasks.delete(id=task.id)
+
+
+def test_update_process_values(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_projects,
+    seeded_locations,
+    seeded_sheet,
+    seeded_parameter_groups,
+    static_user,
+):
+    """Test process parameter values are written to a batch task's Process Design rows."""
+    if seeded_sheet.process_design is None:
+        pytest.skip("Seeded sheet has no Process Design section")
+    # A private formula: a formula locks once a batch task uses it, and the seeded
+    # formula already has seeded batch tasks.
+    column = seeded_sheet.add_formulation(
+        formulation_name=f"{seed_prefix} - Process Values Formula",
+        components=[
+            Component(inventory_item=seeded_inventory[0], amount=50),
+            Component(inventory_item=seeded_inventory[1], amount=50),
+        ],
+    )
+    formula = client.inventory.get_by_id(id=column.inventory_id)
+    pg_row = seeded_sheet.add_parameter_group_row(parameter_group_id=seeded_parameter_groups[0].id)
+    task = None
+    try:
+        # A batch grid only includes the process parameters that have a value for its
+        # formula, so set one on the sheet before the task is created.
+        seeded_sheet.grid = None
+        process_cells = [
+            cell.model_copy(update={"value": "250"})
+            for row in seeded_sheet.process_design.rows
+            if row.type == "PRM"
+            for cell in row.cells
+            if cell.column_id == column.column_id
+        ]
+        assert process_cells, "sheet has no process parameter cells for the formula"
+        _, failed = seeded_sheet.update_cells(cells=process_cells)
+        assert failed == []
+
+        task = _create_batch_task(
+            client,
+            seed_prefix=seed_prefix,
+            name_suffix="Batch Data Process Values",
+            seeded_products=[formula],
+            seeded_projects=seeded_projects,
+            seeded_locations=seeded_locations,
+            static_user=static_user,
+        )
+        _ensure_batch_data(client, task.id)
+        grid = poll_until(
+            lambda: [client.batch_data.get_by_id(id=task.id)],
+            predicate=lambda found: any(r.type == "PRM" for r in found[0].rows or []),
+        )[0]
+        prm_row = next((r for r in grid.rows or [] if r.type == "PRM"), None)
+        assert prm_row is not None, "batch grid has no process parameter rows"
+        col_id = next(v.col_id for v in prm_row.values if v.type == "INV")
+
+        client.batch_data.update_process_values(
+            task_id=task.id,
+            values=[BatchProcessValue(row_id=prm_row.row_id, col_id=col_id, value="500")],
+        )
+
+        def _written(found: list[BatchData]) -> bool:
+            return any(
+                v.col_id == col_id and v.value == "500"
+                for r in found[0].rows or []
+                if r.row_id == prm_row.row_id
+                for v in r.values
+            )
+
+        updated = poll_until(lambda: [client.batch_data.get_by_id(id=task.id)], predicate=_written)
+        assert _written(updated), "process value was not written"
+    finally:
+        if task is not None:
+            with suppress(NotFoundError, BadRequestError):
+                client.tasks.delete(id=task.id)
+        with suppress(NotFoundError, BadRequestError):
+            seeded_sheet.delete_row(row_id=pg_row.row_id, design_id=seeded_sheet.process_design.id)
 
 
 def test_delete_batch_data(

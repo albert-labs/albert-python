@@ -10,7 +10,7 @@ import requests
 from albert.core.logging import logger
 
 if TYPE_CHECKING:
-    from albert.resources.tasks import PropertyTask
+    from albert.resources.tasks import BatchTask, PropertyTask
 
 
 class AlbertException(Exception):
@@ -246,15 +246,15 @@ class CombinationGenerationError(AlbertException):
 
     Attributes
     ----------
-    task : PropertyTask or None
-        The created Property task, re-fetched from the platform.
+    task : PropertyTask or BatchTask or None
+        The created Property or Batch task, re-fetched from the platform.
     failed_blocks : list[str]
         List of block IDs (format ``BLK...``) whose combination generation failed.
     job_states : dict[str, str]
         Mapping of block IDs to their final job states (e.g. ``{"BLK1": "successful", "BLK2": "failed"}``).
     """
 
-    task: PropertyTask | None
+    task: PropertyTask | BatchTask | None
     failed_blocks: list[str]
     job_states: dict[str, str]
 
@@ -262,7 +262,7 @@ class CombinationGenerationError(AlbertException):
         self,
         message: str,
         *,
-        task: PropertyTask | None = None,
+        task: PropertyTask | BatchTask | None = None,
         failed_blocks: list[str] | None = None,
         job_states: dict[str, str] | None = None,
     ):

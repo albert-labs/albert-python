@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.71.0](https://github.com/albert-labs/albert-python/compare/v1.70.1...v1.71.0) (2026-11-06)
+
+
+### Features
+
+* **tasks:** add allocate_inventory ([#933](https://github.com/albert-labs/albert-python/issues/933)) ([cba14d9](https://github.com/albert-labs/albert-python/commit/cba14d96c81c9d4c4af6fb1a7aff76964afb091c))
+
+
+### Bug Fixes
+
+* **parameter-groups:** keep repeated parameter rows on update ([#939](https://github.com/albert-labs/albert-python/issues/939)) ([74bc7e8](https://github.com/albert-labs/albert-python/commit/74bc7e8a1062927363c6f55ccfff14d1b7615019))
+
+## [1.70.1](https://github.com/albert-labs/albert-python/compare/v1.70.0...v1.70.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **workflows:** exclude read-only interval combinations on create ([#936](https://github.com/albert-labs/albert-python/issues/936)) ([ac29c04](https://github.com/albert-labs/albert-python/commit/ac29c04c5ff8b172c19804aca47d275ced4b4f67))
+
+## [1.70.0](https://github.com/albert-labs/albert-python/compare/v1.69.0...v1.70.0) (2026-11-06)
+
+
+### Features
+
+* **attributes:** add formula metadata for ingredient basis and calculated properties ([#925](https://github.com/albert-labs/albert-python/issues/925)) ([659b378](https://github.com/albert-labs/albert-python/commit/659b378f8e768a1d58582a9c8c5c258e3a83fac9))
+* **inventory:** support cursor pagination for match_all_conditions search ([#910](https://github.com/albert-labs/albert-python/issues/910)) ([96f6226](https://github.com/albert-labs/albert-python/commit/96f6226f40a1fb384e842a0c5ece20d6750a974e))
+* **sheets:** add and remove calculations on a sheet ([#929](https://github.com/albert-labs/albert-python/issues/929)) ([0c900da](https://github.com/albert-labs/albert-python/commit/0c900daa1ec55d3f2499808dc8d329df216ead99))
+* **sheets:** read a sheet's calculations ([#928](https://github.com/albert-labs/albert-python/issues/928)) ([bb71de9](https://github.com/albert-labs/albert-python/commit/bb71de92dda9595db3a62d81e2f52ee33d369c20))
+* **sheets:** recognise calculated property rows and ingredient basis columns ([#926](https://github.com/albert-labs/albert-python/issues/926)) ([cf2e7ad](https://github.com/albert-labs/albert-python/commit/cf2e7ad0e5cc78614b1af25d532150387acb1615))
+* **tasks:** support increased interval combinations on batch tasks + migration guide ([#937](https://github.com/albert-labs/albert-python/issues/937)) ([46f6d30](https://github.com/albert-labs/albert-python/commit/46f6d304db286ca4855f7c099cf46952ff0279b5))
+
+
+### Bug Fixes
+
+* **inventory:** expose stored calculated property values ([#927](https://github.com/albert-labs/albert-python/issues/927)) ([1d22599](https://github.com/albert-labs/albert-python/commit/1d22599e9b7ad78de664314c608a3a34d8460beb))
+* **sheets:** treat every successful cell save as updated ([#923](https://github.com/albert-labs/albert-python/issues/923)) ([d87f9eb](https://github.com/albert-labs/albert-python/commit/d87f9eb2ed1faf74a19ca05f7fa9fdbc4c390924))
+
+## [1.69.0](https://github.com/albert-labs/albert-python/compare/v1.68.0...v1.69.0) (2026-11-04)
+
+
+### Features
+
+* **projects:** support updating project locations via update() ([#915](https://github.com/albert-labs/albert-python/issues/915)) ([2f11714](https://github.com/albert-labs/albert-python/commit/2f117141867d7927adae32194968ecdd026d1984))
+* **projects:** support updating project_class via update() ([#914](https://github.com/albert-labs/albert-python/issues/914)) ([71aa3d9](https://github.com/albert-labs/albert-python/commit/71aa3d94e12f87d281f9d1037f5a350ef9667cdf))
+* **worksheets:** create template sheets with the current endpoint ([#916](https://github.com/albert-labs/albert-python/issues/916)) ([5085233](https://github.com/albert-labs/albert-python/commit/5085233fc182c6aa734219c51e93de34927df33b))
+
+
+### Bug Fixes
+
+* **property_data:** include voided records in search by default ([#917](https://github.com/albert-labs/albert-python/issues/917)) ([e3393c2](https://github.com/albert-labs/albert-python/commit/e3393c2e7a585275a2484ccbd1f57b5aa5f3798a))
+
 ## [1.68.0](https://github.com/albert-labs/albert-python/compare/v1.67.0...v1.68.0) (2026-10-23)
 
 

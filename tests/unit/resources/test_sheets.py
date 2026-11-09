@@ -9,6 +9,7 @@ from albert.exceptions import AlbertException
 from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.resources.sheets import (
     Cell,
+    CellColor,
     CellType,
     Column,
     Component,
@@ -261,6 +262,34 @@ def test_add_formulation_restores_cleared_column_when_write_fails(monkeypatch):
     assert writes[-1] == [original]
 
 
+@pytest.mark.parametrize("owner", [Column, Row], ids=["column", "row"])
+def test_recolor_cells_skips_empty_grid_padding(monkeypatch, owner):
+    """Test recoloring a column or row skips empty grid padding instead of failing."""
+    sheet = _empty_sheet()
+    cell = Cell(colId="COL1", rowId="ROW1", value="7", type=CellType.INVENTORY, design_id="DES1")
+    writes: list[list[Cell]] = []
+
+    def _update_cells(*, cells):
+        writes.append(cells)
+        return cells, []
+
+    monkeypatch.setattr(owner, "cells", property(lambda self: [cell, None, float("nan")]))
+    monkeypatch.setattr(
+        Sheet, "update_cells", lambda self, *, cells, **_: _update_cells(cells=cells)
+    )
+    target = (
+        Column(colId="COL1", name="F1", type=CellType.INVENTORY, sheet=sheet)
+        if owner is Column
+        else Row(rowId="ROW1", type=CellType.INVENTORY, sheet=sheet, design=sheet.designs[0])
+    )
+
+    target.recolor_cells(CellColor.YELLOW)
+
+    assert [[(c.row_id, c.format) for c in cells] for cells in writes] == [
+        [("ROW1", {"bgColor": CellColor.YELLOW.value})]
+    ]
+
+
 def test_clear_formulation_ignores_empty_grid_padding(monkeypatch):
     """Test clearing a column skips empty grid padding instead of failing."""
     sheet = _empty_sheet()
@@ -309,6 +338,7 @@ def test_filter_cells_marks_only_failed_items_as_failed():
     ]
     updated, failed = sheet._filter_cells(
         cells=cells,
+        status_code=206,
         response_dict={
             "error": "Some values are not updated properly. Try again!",
             "FailedItems": [
@@ -333,6 +363,7 @@ def test_filter_cells_ignores_updated_items_column_records():
     ]
     updated, failed = sheet._filter_cells(
         cells=cells,
+        status_code=206,
         response_dict={
             "error": "Some values are not updated properly. Try again!",
             "UpdatedItems": [
@@ -359,6 +390,29 @@ def test_filter_cells_ignores_updated_items_column_records():
     )
     assert [cell.column_id for cell in updated] == ["COL5"]
     assert [cell.column_id for cell in failed] == ["COL6", "COL7"]
+
+
+@pytest.mark.parametrize(
+    ("status_code", "response_dict"),
+    [
+        (204, None),
+        (200, {"Items": [{"rowId": "ROW1", "colId": "COL1", "value": "52"}]}),
+        (206, {"FailedInventories": [{"id": "INV1", "msg": "Not updated"}]}),
+    ],
+    ids=["no-content", "ok-with-body", "partial-inventory-only"],
+)
+def test_filter_cells_treats_saves_without_failed_items_as_updated(status_code, response_dict):
+    """Test that a successful save with no failed cells reports every cell as updated."""
+    sheet = _empty_sheet()
+    cells = [
+        Cell(colId="COL1", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+        Cell(colId="COL2", rowId="ROW1", type=CellType.TOTAL, design_id="DES1"),
+    ]
+    updated, failed = sheet._filter_cells(
+        cells=cells, status_code=status_code, response_dict=response_dict
+    )
+    assert updated == cells
+    assert failed == []
 
 
 @responses.activate

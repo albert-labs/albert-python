@@ -2,19 +2,27 @@
 
 Allowed under the patch-builder exception in OPINIONS.md: these guard
 non-obvious diff behavior in ``_generate_attribute_patch_payload`` (reference
-names are add/update only, unit assignment is set-once) with no I/O to fake.
+names are add/update only, unit assignment is set-once, formulas are one
+whole-list op) and the ``_check_formulas`` field rules, with no I/O to fake.
 ``get_by_ids`` chunking is covered with ``responses`` since those tests only
 assert on the requests the SDK sends.
 """
 
 from urllib.parse import parse_qs, urlparse
 
+import pytest
 import responses
 
 from albert.collections.attributes import AttributeCollection
 from albert.core.shared.models.base import EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
-from albert.resources.attributes import Attribute, AttributeParameterItem, ValidationItem
+from albert.resources.attributes import (
+    Attribute,
+    AttributeParameterItem,
+    ExpressionType,
+    FormulaMetadata,
+    ValidationItem,
+)
 from albert.resources.parameter_groups import DataType, Operator
 from tests.unit.conftest import UNIT_BASE_URL
 
@@ -255,6 +263,248 @@ def test_unset_unit_id_emits_no_op(offline_session) -> None:
     )
 
     assert payload.data == []
+
+
+# --- formula_metadata ---
+
+
+def _ib(**overrides) -> FormulaMetadata:
+    fields = {
+        "display_name": "Solids Share",
+        "expression": "wt% / sum(wt%) * [ATR45]",
+        "expression_type": ExpressionType.INGREDIENT_BASIS,
+        "request_inverse": False,
+    }
+    return FormulaMetadata(**{**fields, **overrides})
+
+
+def _cp(**overrides) -> FormulaMetadata:
+    fields = {
+        "display_name": "Total Solids",
+        "expression": "sum(ingredient_basis)",
+        "expression_type": ExpressionType.CALCULATED_PROPERTY,
+        "request_inverse": False,
+    }
+    return FormulaMetadata(**{**fields, **overrides})
+
+
+_IB_WIRE = {
+    "displayName": "Solids Share",
+    "expression": "wt% / sum(wt%) * [ATR45]",
+    "expressionType": "INGREDIENT_BASIS",
+    "requestInverse": False,
+}
+_CP_WIRE = {
+    "displayName": "Total Solids",
+    "expression": "sum(ingredient_basis)",
+    "expressionType": "CALCULATED_PROPERTY",
+    "requestInverse": False,
+}
+
+
+def _patch_dump(*, existing: Attribute, updated: Attribute, session) -> dict:
+    payload = AttributeCollection(session=session)._generate_attribute_patch_payload(
+        existing=existing, updated=updated
+    )
+    return payload.model_dump(by_alias=True, mode="json")
+
+
+def test_unset_formula_metadata_emits_no_op(offline_session) -> None:
+    """Test that unset formula_metadata leaves existing formulas untouched."""
+    existing = Attribute(id="ATR1", formula_metadata=[_ib()])
+    updated = Attribute(id="ATR1")  # formula_metadata never set
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {"data": []}
+
+
+@pytest.mark.parametrize("cleared", [None, []], ids=["none", "empty-list"])
+def test_cleared_formula_metadata_emits_root_delete(offline_session, cleared) -> None:
+    """Test that None or [] removes every existing formula with one root delete."""
+    existing = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
+    updated = Attribute(id="ATR1", formula_metadata=cleared)
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {"data": [{"operation": "delete", "attribute": "formulaMetadata"}]}
+
+
+@pytest.mark.parametrize("cleared", [None, []], ids=["none", "empty-list"])
+def test_cleared_formula_metadata_emits_no_op_when_none_exist(offline_session, cleared) -> None:
+    """Test that clearing formulas on an attribute without any emits no op."""
+    existing = Attribute(id="ATR1")
+    updated = Attribute(id="ATR1", formula_metadata=cleared)
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {"data": []}
+
+
+def test_first_formulas_emit_root_add_with_full_list(offline_session) -> None:
+    """Test that formulas on an attribute without any are sent as one root add."""
+    existing = Attribute(id="ATR1")
+    updated = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {
+        "data": [
+            {"operation": "add", "attribute": "formulaMetadata", "newValue": [_IB_WIRE, _CP_WIRE]}
+        ]
+    }
+
+
+def test_appended_formula_emits_root_update_with_full_list(offline_session) -> None:
+    """Test that adding a formula to existing ones replaces the whole list, keeping the rest."""
+    existing = Attribute(id="ATR1", formula_metadata=[_ib()])
+    updated = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "formulaMetadata",
+                "newValue": [_IB_WIRE, _CP_WIRE],
+            }
+        ]
+    }
+
+
+def test_renamed_formula_emits_root_update_with_full_list(offline_session) -> None:
+    """Test that renaming one formula sends the full list with the new name."""
+    existing = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
+    updated = Attribute(id="ATR1", formula_metadata=[_ib(), _cp(display_name="Solids")])
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "formulaMetadata",
+                "newValue": [_IB_WIRE, {**_CP_WIRE, "displayName": "Solids"}],
+            }
+        ]
+    }
+
+
+def test_removed_formula_emits_root_update_with_remaining_list(offline_session) -> None:
+    """Test that leaving one formula out sends only the formulas that remain."""
+    existing = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
+    updated = Attribute(id="ATR1", formula_metadata=[_ib()])
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {
+        "data": [{"operation": "update", "attribute": "formulaMetadata", "newValue": [_IB_WIRE]}]
+    }
+
+
+def test_unchanged_formula_metadata_emits_no_op(offline_session) -> None:
+    """Test that an equal formula list (new instances, same values) emits no op."""
+    existing = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
+    updated = Attribute(id="ATR1", formula_metadata=[_ib(), _cp()])
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {"data": []}
+
+
+def test_formula_display_names_are_trimmed(offline_session) -> None:
+    """Test that surrounding whitespace in a display name is removed before sending."""
+    existing = Attribute(id="ATR1")
+    updated = Attribute(id="ATR1", formula_metadata=[_ib(display_name="  Solids Share ")])
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {
+        "data": [{"operation": "add", "attribute": "formulaMetadata", "newValue": [_IB_WIRE]}]
+    }
+
+
+def test_fetched_attribute_with_other_change_emits_no_formula_op(offline_session) -> None:
+    """Test that a fetched attribute edited elsewhere sends no formula op, even with rule-breaking formulas."""
+    raw = {
+        "albertId": "ATR1",
+        "referenceName": "Solids",
+        "formulaMetadata": [
+            {**_CP_WIRE, "requestInverse": True},
+            {**_CP_WIRE, "displayName": "Total Solids 2"},
+        ],
+    }
+    existing = Attribute.model_validate(raw)
+    updated = Attribute.model_validate(raw)
+    updated.reference_name = "Solids Content"
+
+    dumped = _patch_dump(existing=existing, updated=updated, session=offline_session)
+
+    assert dumped == {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "referenceName",
+                "oldValue": "Solids",
+                "newValue": "Solids Content",
+            }
+        ]
+    }
+
+
+def test_changed_formula_metadata_raises_on_field_rule(offline_session) -> None:
+    """Test that a changed formula list breaking a field rule raises before anything is sent."""
+    existing = Attribute(id="ATR1", formula_metadata=[_ib()])
+    updated = Attribute(id="ATR1", formula_metadata=[_ib(), _cp(request_inverse=True)])
+
+    with pytest.raises(ValueError, match="request_inverse=True on CALCULATED_PROPERTY"):
+        AttributeCollection(session=offline_session)._generate_attribute_patch_payload(
+            existing=existing, updated=updated
+        )
+
+
+# --- _check_formulas ---
+
+
+@pytest.mark.parametrize(
+    "formulas",
+    [
+        pytest.param([], id="empty"),
+        pytest.param([_ib()], id="one-ib"),
+        pytest.param([_cp()], id="one-cp"),
+        pytest.param([_ib(request_inverse=True), _cp()], id="ib-back-solve-and-cp"),
+        pytest.param(
+            [_ib(), _ib(display_name="PHR"), _cp(), _cp(display_name="Density")],
+            id="several-ib-and-cp",
+        ),
+        pytest.param([_cp(expression="sum(wt% * [Viscosity]) / sum(wt%)")], id="name-reference"),
+        pytest.param(
+            [_cp(expression='sum(wt% WHERE Function = Core AND Function = "Shell")')],
+            id="malformed-where",
+        ),
+    ],
+)
+def test_check_formulas_accepts(formulas) -> None:
+    """Test that formulas within the field rules pass, whatever their expressions say."""
+    AttributeCollection._check_formulas(formulas)
+
+
+def test_check_formulas_rejects_back_solved_calculated_properties() -> None:
+    """Test that every calculated property with request_inverse=True is named in one error."""
+    formulas = [
+        _ib(),
+        _cp(request_inverse=True),
+        _cp(display_name="Density", request_inverse=True),
+    ]
+
+    with pytest.raises(ValueError) as excinfo:
+        AttributeCollection._check_formulas(formulas)
+
+    assert str(excinfo.value) == (
+        "Invalid formula_metadata: request_inverse=True on CALCULATED_PROPERTY "
+        "(Total Solids, Density); back-solving needs an INGREDIENT_BASIS."
+    )
 
 
 # --- get_by_ids chunking ---

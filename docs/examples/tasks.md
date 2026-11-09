@@ -14,20 +14,20 @@ Tasks in Albert are a way to manage and track your daily work and collaborate wi
 | Action | Increased intervals not enabled | Increased intervals enabled |
 | --- | --- | --- |
 | Create a General task | `create` | `create` |
-| Create a Property task with blocks | `create` | `create_with_combinations` |
-| Create several Property tasks | `create_many` | `create_many`, then `generate_block_combinations` for each block |
+| Create a Property or Batch task with blocks | `create` | `create_with_combinations` |
+| Create several Property or Batch tasks | `create_many` | `create_many`, then `generate_block_combinations` for each block |
 | Add a block | `add_block` / `add_blocks` | Same, then `generate_block_combinations` |
 | Change a block's workflow | `update_block_workflow` | Same, then `generate_block_combinations(old_workflow_id=<previous>)` |
 | Remove a block | `remove_block` | `remove_block` |
 
-When increased intervals is enabled, every Property task block needs its combinations
+When increased intervals is enabled, every Property and Batch task block needs its combinations
 generated before it shows rows, even when its workflow has no intervals.
 [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
 does this for you. For blocks created or changed any other way, call
 [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
 for each block.
 
-When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] blocks, Albert manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
+When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] and [`BatchTask`][albert.resources.tasks.BatchTask] blocks, Albert manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
 
 ### What are intervals?
 
@@ -138,7 +138,7 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
     - [`workflow.build_override`][albert.resources.workflows.Workflow.build_override]: Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride] directly from a dictionary of parameter names and values (e.g. `workflow.build_override(parameter_values={"Temperature": 25, "Speed": 2000}, action="skip")`).
 
 !!! warning "Property Tasks only"
-    Child-workflow interval combinations are exclusively supported on [`PropertyTask`][albert.resources.tasks.PropertyTask]. They cannot be created or evaluated on [`BatchTask`][albert.resources.tasks.BatchTask] or [`GeneralTask`][albert.resources.tasks.GeneralTask].
+    Child-workflow interval combinations are supported on [`PropertyTask`][albert.resources.tasks.PropertyTask] and [`BatchTask`][albert.resources.tasks.BatchTask]. They cannot be created or evaluated on a [`GeneralTask`][albert.resources.tasks.GeneralTask].
 
 !!! warning "Platform combinations cap"
     The platform enforces a maximum safety cap of 2,000 combinations per block. If your parameter intervals expand to more than 2,000 combinations (after applying rules and overrides), creation will fail.
@@ -330,6 +330,39 @@ In this workflow:
     )
 
     # 5. Iterate over the materialized combinations
+    block_id = task.blocks[0].id
+    for combo in client.tasks.get_block_combinations(task_id=task.id, block_id=block_id):
+        print(combo.id, combo.name, combo.interval_barcode)
+    ```
+
+## Create an intervalized Batch task
+
+[`BatchTask`][albert.resources.tasks.BatchTask] blocks support combinations the same way Property task blocks do, including `intervals_start_from`, rules, and overrides. Use [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations] instead of `create` so each block gets its combinations.
+
+!!! example "Create a Batch task with an intervalized workflow"
+    ```python
+    from albert import Albert
+    from albert.resources.tasks import BatchSizeUnit, BatchTask, Block, TaskInventoryInformation
+
+    client = Albert()
+
+    task = client.tasks.create_with_combinations(
+        task=BatchTask(
+            name="Mixing speed batch",
+            parent_id="PRO123",
+            batch_size_unit=BatchSizeUnit.GRAMS,
+            inventory_information=[
+                TaskInventoryInformation(inventory_id="INVEXP123", batch_size=50.0)
+            ],
+            blocks=[
+                Block(
+                    data_template=[{"id": "DAT100"}],
+                    workflow=[{"id": "WFL456"}],
+                )
+            ],
+        ),
+        wait=True,
+    )
     block_id = task.blocks[0].id
     for combo in client.tasks.get_block_combinations(task_id=task.id, block_id=block_id):
         print(combo.id, combo.name, combo.interval_barcode)
