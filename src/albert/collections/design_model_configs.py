@@ -661,29 +661,22 @@ class DesignModelConfigCollection(BaseCollection):
     ) -> dict[str, Any]:
         """The ``apply`` request body.
 
-        A preview is sent only when a count is given. ``"all"`` is sent as a null count, and
-        the counts that were set are kept even when null.
+        Serialized with ``exclude_unset``, as design spaces' ``apply`` is: what the caller set
+        is sent, nulls included, so an operation can clear a field with ``value=None`` and a
+        preview count of ``"all"`` is sent as a null. A preview is sent only when a count is
+        given, and the dataset only when one is given.
         """
+        options: dict[str, Any] = {"validate_": validate, "resolve": resolve, "dry_run": dry_run}
         counts = {"num_rows": preview_rows, "max_columns": preview_max_columns}
-        preview = (
-            DesignModelConfigPreviewRequest(
+        if any(v is not None for v in counts.values()):
+            options["preview"] = DesignModelConfigPreviewRequest(
                 **{k: None if v == "all" else v for k, v in counts.items() if v is not None}
             )
-            if any(v is not None for v in counts.values())
-            else None
+        if smart_dataset_id is not None:
+            options["smart_dataset_id"] = smart_dataset_id
+        return DesignModelConfigOperationsRequest(operations=operations, **options).model_dump(
+            by_alias=True, mode="json", exclude_unset=True
         )
-        body = DesignModelConfigOperationsRequest(
-            operations=operations,
-            validate_=validate,
-            resolve=resolve,
-            preview=preview,
-            dry_run=dry_run,
-            smart_dataset_id=smart_dataset_id,
-        ).model_dump(by_alias=True, mode="json", exclude_none=True)
-        if preview is not None:
-            # A null count means "all", so the preview keeps the counts that were set, nulls too.
-            body["preview"] = preview.model_dump(by_alias=True, mode="json", exclude_unset=True)
-        return body
 
     @staticmethod
     def _feature_values_params(

@@ -12,7 +12,7 @@ from albert.resources.design_model_configs import (
     OutputEntry,
     SetOutputOperation,
 )
-from albert.resources.design_spaces import RemoveComponentOperation
+from albert.resources.design_spaces import RemoveComponentOperation, UpdateComponentOperation
 
 REMOVE = RemoveComponentOperation(path="outputs/TAR2")
 
@@ -92,6 +92,15 @@ def test_operations_body_folds_every_option():
         "dryRun": True,
         "smartDatasetId": "SDT1",
     }
+
+
+def test_operations_body_keeps_an_explicit_null_value_that_clears_a_field():
+    """Test that updateComponent with value=None is sent with its null, so it clears the field."""
+    clear = UpdateComponentOperation(path="outputs/TAR1", field="features", value=None)
+
+    assert _operations_body(operations=[clear])["operations"] == [
+        {"op": "updateComponent", "path": "outputs/TAR1", "field": "features", "value": None}
+    ]
 
 
 def test_operations_body_defaults_send_no_preview_or_dataset():
