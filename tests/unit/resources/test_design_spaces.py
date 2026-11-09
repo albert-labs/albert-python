@@ -12,11 +12,13 @@ from albert.resources.design_spaces import (
     DesignSpaceReferences,
     DesignSpaceSample,
     DesignSpaceViolation,
+    DesignSpaceViolationCode,
     DiscreteConstraint,
     ParameterAssignment,
     ParameterEntry,
     SetCountBoundsOperation,
     SetParameterOperation,
+    UnknownParameterConstraint,
     UpdateComponentOperation,
 )
 
@@ -324,16 +326,22 @@ def test_violation_carries_the_operation_it_came_from():
     )
 
 
-@pytest.mark.parametrize("code", ["variable_not_derived", "duplicate_constraint_subject"])
-def test_violation_accepts_the_newer_warning_codes(code):
-    """Test that codes the service can now return parse instead of failing validation."""
-    assert DesignSpaceViolation.model_validate({"code": code, "message": "m"}).code == code
+@pytest.mark.parametrize(
+    "code", ["variable_not_derived", "duplicate_constraint_subject", "unsupported_operand"]
+)
+def test_violation_accepts_the_newer_codes(code):
+    """Test that codes the service can now return parse to the enum."""
+    parsed = DesignSpaceViolation.model_validate({"code": code, "message": "m"}).code
+
+    assert isinstance(parsed, DesignSpaceViolationCode)
+    assert parsed == code
 
 
-def test_violation_rejects_an_unknown_code():
-    """Test that a violation code outside the known vocabulary fails validation."""
-    with pytest.raises(ValidationError):
-        DesignSpaceViolation.model_validate({"code": "surprise", "message": "m"})
+def test_violation_keeps_an_unknown_code_as_a_string():
+    """Test that a code this version does not know yet parses instead of failing."""
+    violation = DesignSpaceViolation.model_validate({"code": "brand_new_code", "message": "m"})
+
+    assert violation.code == "brand_new_code"
 
 
 def test_sample_and_references_preserve_undeclared_keys():
@@ -343,3 +351,63 @@ def test_sample_and_references_preserve_undeclared_keys():
 
     assert sample.model_dump() == {"rows": [{"INV001": 0.5}], "seed": 7}
     assert references.model_dump() == {"references": []}
+
+
+# No explicit nulls, so the read round-trips under ``exclude_none``.
+_REF = {"parameterId": "PRM07", "dataTemplateId": "DAT01"}
+
+_NEWER_SPACE = {
+    "id": "DSP123",
+    "name": "Low-VOC clearcoat envelope",
+    "parentId": "PRO456",
+    "state": "draft",
+    "parameters": {
+        "DAT01#PRM07": {
+            "ref": _REF,
+            "dataType": "numeric",
+            "constraint": {"type": "continuous", "min": 60, "max": 120, "newField": 5},
+            "otherField": "x",
+        },
+        "DAT01#PRM08": {
+            "ref": {**_REF, "parameterId": "PRM08"},
+            "dataType": "numeric",
+            "constraint": {"type": "newKind", "min": 1, "max": 1000},
+        },
+    },
+    "newCollection": {"X1": {"type": "newKind"}},
+    "newNote": "y",
+}
+
+
+def test_a_newer_space_parses_and_keeps_what_this_version_does_not_model():
+    """Test that unknown fields, constraint kinds and constraint fields survive a read."""
+    space = DesignSpace.model_validate(_NEWER_SPACE)
+
+    known = space.parameters["DAT01#PRM07"]
+    assert isinstance(known.constraint, ContinuousConstraint)
+    assert known.model_extra == {"otherField": "x"}
+    unknown = space.parameters["DAT01#PRM08"].constraint
+    assert isinstance(unknown, UnknownParameterConstraint)
+    assert unknown.type == "newKind"
+    assert set(space.model_extra) == {"newCollection", "newNote"}
+    assert space.model_dump(by_alias=True, mode="json", exclude_none=True) == _NEWER_SPACE
+
+
+def test_a_space_that_carries_only_albert_id_reads_it_as_the_id():
+    """Test that the ID is read from ``albertId`` when ``id`` is absent, and kept once."""
+    space = DesignSpace.model_validate({"albertId": "DSP123", "name": "n"})
+
+    assert space.id == "DSP123"
+    assert "albertId" not in space.model_extra
+
+
+def test_requests_still_reject_constraint_kinds_and_fields_the_service_does_not_accept():
+    """Test that only reads are lenient: a parameter assignment keeps the strict schema."""
+    with pytest.raises(ValidationError):
+        ParameterAssignment.model_validate(
+            {"dataType": "numeric", "constraint": {"type": "newKind", "min": 1, "max": 9}}
+        )
+    with pytest.raises(ValidationError):
+        ParameterAssignment.model_validate(
+            {"dataType": "numeric", "constraint": {"type": "continuous", "min": 1, "newField": 5}}
+        )
