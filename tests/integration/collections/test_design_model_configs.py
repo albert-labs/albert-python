@@ -20,6 +20,7 @@ from albert.resources.design_model_configs import (
 from albert.resources.design_operands import IngredientAmountOperand
 from albert.resources.projects import Project
 from albert.resources.smart_datasets import SmartDataset
+from albert.resources.targets import Target
 from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
@@ -153,16 +154,17 @@ def test_create_from_smart_dataset(
 @ignore_in_ten0
 @builder_not_deployed
 def test_apply_sets_an_output_without_a_dataset(
-    client: Albert, seeded_projects: list[Project]
+    client: Albert, seeded_projects: list[Project], seeded_targets: list[Target]
 ) -> None:
     """Test applying a setOutput operation with a structural-only check."""
+    target_id = seeded_targets[0].id
     config = _create_config(client, seeded_projects[0].id, "apply ops")
     try:
         result = client.design_model_configs.apply(
             id=config.id,
             operations=[
                 SetOutputOperation(
-                    key="TAR1",
+                    key=target_id,
                     value=OutputEntry(
                         data_type="numeric",
                         features=FeatureMask(exclude=[IngredientAmountOperand(ingredient="INV1")]),
@@ -172,7 +174,7 @@ def test_apply_sets_an_output_without_a_dataset(
             validate=True,
         )
         assert isinstance(result, DesignModelConfigApplyResponse)
-        assert "TAR1" in (result.design_model_config.outputs or {})
+        assert target_id in (result.design_model_config.outputs or {})
         assert isinstance(result.warnings, list)
     finally:
         with suppress(NotFoundError):
@@ -182,16 +184,19 @@ def test_apply_sets_an_output_without_a_dataset(
 @ignore_in_ten0
 @builder_not_deployed
 def test_apply_resolve_without_a_dataset_is_rejected(
-    client: Albert, seeded_projects: list[Project]
+    client: Albert, seeded_projects: list[Project], seeded_targets: list[Target]
 ) -> None:
     """Test that resolve needs a smart dataset."""
     config = _create_config(client, seeded_projects[0].id, "resolve needs data")
     try:
+        # A real target, so the rejection is for the missing dataset, not an unknown reference.
         with pytest.raises(AlbertClientError):
             client.design_model_configs.apply(
                 id=config.id,
                 operations=[
-                    SetOutputOperation(key="TAR1", value=OutputEntry(data_type="numeric"))
+                    SetOutputOperation(
+                        key=seeded_targets[0].id, value=OutputEntry(data_type="numeric")
+                    )
                 ],
                 resolve=True,
             )
@@ -234,11 +239,22 @@ def test_check_compatibility_resolve_and_preview_against_a_dataset(
 
 @ignore_in_ten0
 @builder_not_deployed
-def test_publish_then_fork(client: Albert, seeded_projects: list[Project]) -> None:
+def test_publish_then_fork(
+    client: Albert, seeded_projects: list[Project], seeded_targets: list[Target]
+) -> None:
     """Test publishing a draft and forking the published config into a new draft."""
     config = _create_config(client, seeded_projects[0].id, "publish me")
     forked = None
     try:
+        # A config needs at least one output to publish.
+        client.design_model_configs.apply(
+            id=config.id,
+            operations=[
+                SetOutputOperation(
+                    key=seeded_targets[0].id, value=OutputEntry(data_type="numeric")
+                )
+            ],
+        )
         published = client.design_model_configs.publish(id=config.id)
         assert published.state == DesignModelConfigState.PUBLISHED
 
