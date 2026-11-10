@@ -6,6 +6,7 @@ import pytest
 from albert.client import Albert
 from albert.exceptions import NotFoundError
 from albert.resources.locations import Location
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("projects")
 
@@ -40,6 +41,36 @@ def test_get_by_id(client: Albert, seeded_locations: list[Location]):
     assert isinstance(fetched_location, Location)
     assert fetched_location.id == seeded_location.id
     assert fetched_location.name == seeded_location.name
+
+
+def test_get_by_name(client: Albert, seeded_locations: list[Location]):
+    """Test get_by_name returns the seeded match and None for an unknown name."""
+    seeded = seeded_locations[0]
+
+    found = poll_until(
+        lambda: (
+            [match]
+            if (match := client.locations.get_by_name(name=seeded.name, exact_match=True))
+            else []
+        )
+    )
+
+    assert isinstance(found[0], Location)
+    assert found[0].id == seeded.id
+
+    fuzzy = poll_until(
+        lambda: (
+            [match]
+            if (match := client.locations.get_by_name(name=seeded.name, exact_match=False))
+            else []
+        )
+    )
+
+    assert isinstance(fuzzy[0], Location)
+    assert fuzzy[0].id == seeded.id
+
+    missing = client.locations.get_by_name(name=f"TEST - {uuid.uuid4()}")
+    assert missing is None
 
 
 def test_list_by_ids(client: Albert, seeded_locations: list[Location]):
