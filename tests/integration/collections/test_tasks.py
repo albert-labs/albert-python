@@ -422,7 +422,8 @@ def test_update_task_workflow(
         final_workflow_ids = [w.id for w in updated_task.workflows if w.category != "INITIAL"]
         assert final_workflow_ids[0] == seeded_workflows[1].id
     finally:
-        client.tasks.delete(id=task.id)
+        with suppress(NotFoundError, BadRequestError):
+            client.tasks.delete(id=task.id)
 
 
 def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workflows):
