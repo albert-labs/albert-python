@@ -47,7 +47,9 @@ def test_get_by_name(client: Albert, seeded_locations: list[Location]):
     seeded = seeded_locations[0]
 
     found = poll_until(
-        lambda: client.locations.get_by_name(name=seeded.name, exact_match=True),
+        lambda: [match]
+        if (match := client.locations.get_by_name(name=seeded.name, exact_match=True))
+        else []
     )
 
     assert isinstance(found, Location)
