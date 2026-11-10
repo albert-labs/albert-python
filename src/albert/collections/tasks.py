@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import requests
 from pydantic import validate_call
@@ -84,6 +84,7 @@ from albert.utils.tasks import (
     extract_extensions_from_attachment,
     fetch_csv_table_rows,
     generate_adv_patch_payload,
+    get_current_workflow_id,
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
     resolve_attachment,
@@ -187,6 +188,8 @@ class TaskCollection(BaseCollection):
         Remove a Block from a Property or Batch task.
     update_block_workflow(task_id, block_id, workflow_id) -> None
         Swap the Workflow assigned to a Block.
+    update_task_workflow(task_id, workflow_id) -> BatchTask
+        Swap the Workflow assigned to a batch task.
     get_block_combinations(task_id, block_id, max_items=None) -> Iterator[IntervalCombinationItem] (🧪 Beta)
         Get the child-workflow combinations of a block.
     get_block_rules(task_id, block_id) -> BlockRules (🧪 Beta)
@@ -837,6 +840,78 @@ class TaskCollection(BaseCollection):
             }
         ]
         self.session.patch(url=url, json=patch)
+
+    @validate_call
+    def update_task_workflow(self, *, task_id: TaskId, workflow_id: WorkflowId) -> BatchTask:
+        """Swap the Workflow assigned to a batch task.
+
+        A batch task can reference both an initial and a final workflow. This
+        replaces the final (current) one and leaves the initial untouched. The
+        task must be a Batch task. To change the workflow of an individual block,
+        use [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow]
+        instead.
+
+        !!! example
+            ```python
+            updated = client.tasks.update_task_workflow(task_id="TASBT999", workflow_id="WFL2")
+            [w.id for w in updated.workflows if w.category != "INITIAL"]
+            # ['WFL2']
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The batch task to update (format ``TAS...``).
+        workflow_id : WorkflowId
+            The new Workflow to assign to the task (format ``WFL...``). When no
+            parameter groups apply, use ``WFL1``, the platform default ("No Parameter Group").
+
+        Returns
+        -------
+        BatchTask
+            The updated task.
+
+        Raises
+        ------
+        TypeError
+            If the task is not a BatchTask.
+        ValueError
+            If the task has no workflow to replace.
+
+        Notes
+        -----
+        If the task already uses ``workflow_id``, no change is made. The workflow
+        replaced is the one marked as the task's final workflow. When no entry
+        carries a final/initial marker, the platform default placeholder
+        ("No Parameter Group") is skipped in favor of a real workflow, and
+        otherwise the first workflow is treated as current.
+        """
+        task = self.get_by_id(id=task_id)
+        if not isinstance(task, BatchTask) or task.category == TaskCategory.REACTION_BATCH:
+            logger.error(f"Task {task_id} is not a BatchTask")
+            raise TypeError(f"Task {task_id} is not a BatchTask")
+        existing_workflow_id = get_current_workflow_id(workflows=task.workflows)
+        if existing_workflow_id is None:
+            logger.error(f"No workflow found on task {task_id}")
+            raise ValueError(f"No workflow found on task {task_id}")
+        if existing_workflow_id == workflow_id:
+            logger.info(f"Task {task_id} already has workflow {workflow_id}")
+            return task
+        patch = [
+            {
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "workflow",
+                        "oldValue": existing_workflow_id,
+                        "newValue": workflow_id,
+                    }
+                ],
+                "id": task_id,
+            }
+        ]
+        self.session.patch(url=f"{self.base_path}/{task_id}", json=patch)
+        return cast(BatchTask, self.get_by_id(id=task_id))
 
     @validate_call
     def get_block_combinations(

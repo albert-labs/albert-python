@@ -640,6 +640,36 @@ def resolve_task_block(*, task: BaseTask, block_id: str) -> Block:
     return block
 
 
+def get_current_workflow_id(*, workflows: list[Workflow | EntityLink] | None) -> str | None:
+    """Return the current (final) workflow ID from a task's workflow list.
+
+    The platform marks each entry's slot with a ``category``: ``"FINAL"`` is the
+    active workflow and ``"INITIAL"`` the one the task started from. When
+    no entry is marked ``"FINAL"`` (workflows recorded before categories were
+    assigned), the first entry that is neither an initial workflow nor the
+    platform default placeholder ("No Parameter Group", skipped only when another
+    workflow sits alongside it) is treated as current, falling back to the initial
+    workflow and then to the first entry.
+    """
+    if not workflows:
+        return None
+    initial_workflow_id: str | None = None
+    uncategorized_workflow_id: str | None = None
+    for workflow in workflows:
+        if workflow.category == "FINAL":
+            return workflow.id
+        if workflow.category == "INITIAL":
+            if initial_workflow_id is None:
+                initial_workflow_id = workflow.id
+            continue
+        if workflow.name == "No Parameter Group" and len(workflows) > 1:
+            # platform built-in placeholder; a real workflow alongside it is the current one
+            continue
+        if uncategorized_workflow_id is None:
+            uncategorized_workflow_id = workflow.id
+    return uncategorized_workflow_id or initial_workflow_id or workflows[0].id
+
+
 def _special_parameter_value_id(*, value: Any) -> str | None:
     """Return the entity ID referenced by a special-parameter value, if any.
 
