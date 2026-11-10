@@ -48,6 +48,8 @@ def test_get_by_name(client: Albert, seeded_locations: list[Location]):
 
     found = poll_until(
         lambda: [match]
+    found = poll_until(
+        lambda: [match]
         if (match := client.locations.get_by_name(name=seeded.name, exact_match=True))
         else []
     )
