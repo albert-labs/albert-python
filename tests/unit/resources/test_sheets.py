@@ -1551,6 +1551,65 @@ def test_plan_ordered_component_rows_starts_a_new_run_per_anchor():
     assert virtual_order == ["ROW1", "ROW2", "__new_1__", "__new_0__"]
 
 
+def test_plan_ordered_component_rows_plans_new_rows_above_total_on_new_sheet():
+    """Test that a sheet with only a Total row gets its new rows planned above Total."""
+    sheet = _empty_sheet()
+    product_rows = [
+        Row(
+            rowId="ROW1",
+            type=CellType.TOTAL,
+            design=sheet.product_design,
+            sheet=sheet,
+            inventory_id="INVAPP1",
+        ),
+    ]
+
+    assignments, runs, virtual_order = Sheet._plan_ordered_component_rows(
+        formulations_components=[
+            [
+                Component(inventory_id="INVA1", amount=1.0),
+                Component(inventory_id="INVA2", amount=2.0),
+            ]
+        ],
+        product_rows=product_rows,
+    )
+
+    assert assignments == [["__new_0__", "__new_1__"]]
+    assert runs == [
+        {"anchor": None, "inventory_ids": ["INVA1", "INVA2"], "keys": ["__new_0__", "__new_1__"]}
+    ]
+    assert virtual_order == ["__new_0__", "__new_1__", "ROW1"]
+
+
+def test_plan_ordered_component_rows_plans_new_rows_at_top_when_only_blank_and_total():
+    """Test that a sheet with no ingredient rows gets its new rows planned at the top."""
+    sheet = _empty_sheet()
+    product_rows = [
+        Row(rowId="ROW1", type=CellType.BLANK, design=sheet.product_design, sheet=sheet),
+        Row(
+            rowId="ROW2",
+            type=CellType.TOTAL,
+            design=sheet.product_design,
+            sheet=sheet,
+            inventory_id="INVAPP1",
+        ),
+    ]
+
+    assignments, runs, virtual_order = Sheet._plan_ordered_component_rows(
+        formulations_components=[
+            [Component(inventory_id="INVA1", amount=1.0)],
+            [Component(inventory_id="INVA2", amount=2.0)],
+        ],
+        product_rows=product_rows,
+    )
+
+    assert assignments == [["__new_0__"], ["__new_1__"]]
+    assert runs == [
+        {"anchor": None, "inventory_ids": ["INVA1", "INVA2"], "keys": ["__new_0__", "__new_1__"]}
+    ]
+    assert virtual_order == ["__new_0__", "__new_1__", "ROW1", "ROW2"]
+
+
 @responses.activate
 def test_add_formulations_enforce_order_creates_runs_in_place(offline_session):
     """Test ordered bulk creation places new rows below their anchor rows."""
@@ -1730,7 +1789,7 @@ def test_add_formulation_enforce_order_batches_new_rows(offline_session):
 
 @responses.activate
 def test_add_formulations_creates_contiguous_new_rows_in_one_call(offline_session):
-    """Test new rows that are contiguous in the planned order are created in one call."""
+    """Test new rows on a new sheet are created in one call above the Total row."""
     sheet = _products_sheet(session=offline_session)
     responses.post(
         f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns",
@@ -1754,8 +1813,10 @@ def test_add_formulations_creates_contiguous_new_rows_in_one_call(offline_sessio
         json={
             "Items": [
                 {
+                    "id": "APP1",
                     "rowId": "ROW1",
                     "rowUniqueId": "DES1#ROW1",
+                    "lableName": "Inventory Total",
                     "name": "Total",
                     "type": "TOT",
                     "Values": [],
@@ -1808,9 +1869,9 @@ def test_add_formulations_creates_contiguous_new_rows_in_one_call(offline_sessio
     ]
     assert len(rows_posts) == 1
     assert json.loads(rows_posts[0].request.body) == [
-        {"type": "INV", "id": "INVA1", "referenceId": "ROW1", "position": "below"},
-        {"type": "INV", "id": "INVA2", "referenceId": "ROW1", "position": "below"},
-        {"type": "INV", "id": "INVA1", "referenceId": "ROW1", "position": "below"},
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW1", "position": "above"},
+        {"type": "INV", "id": "INVA2", "referenceId": "ROW1", "position": "above"},
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW1", "position": "above"},
     ]
 
     patches = [c for c in responses.calls if c.request.method == "PATCH"]
