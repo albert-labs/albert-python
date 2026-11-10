@@ -803,32 +803,19 @@ class TaskCollection(BaseCollection):
 
         Notes
         -----
-        If the block already uses ``workflow_id``, no change is made. A block's
-        default placeholder workflow ("No Parameter Group") is skipped when it is
-        not the block's only workflow.
+        If the block already uses ``workflow_id``, no change is made. The block's
+        final workflow is the one replaced, even when the final slot holds the
+        default placeholder ("No Parameter Group") alongside another workflow.
         """
         url = f"{self.base_path}/{task_id}"
         task = self.get_by_id(id=task_id)
         if not isinstance(task, PropertyTask | BatchTask):
             logger.error(f"Task {task_id} is not a PropertyTask or BatchTask")
             raise TypeError(f"Task {task_id} is not a PropertyTask or BatchTask")
-        existing_workflow_id: str | None = None
-        initial_workflow_id: str | None = None
-        for b in task.blocks:
-            if b.id != block_id:
-                continue
-            for w in b.workflow:
-                if w.name == "No Parameter Group" and len(b.workflow) > 1:
-                    # hardcoded default workflow
-                    continue
-                if w.category == "INITIAL":
-                    if initial_workflow_id is None:
-                        initial_workflow_id = w.id
-                else:
-                    existing_workflow_id = w.id
-            if existing_workflow_id is None:
-                existing_workflow_id = initial_workflow_id
-            break
+        target_block = next((b for b in task.blocks or [] if b.id == block_id), None)
+        existing_workflow_id = (
+            self._get_block_current_workflow_id(target_block) if target_block else None
+        )
         if existing_workflow_id is None:
             logger.error(f"No workflow found for block {block_id} on task {task_id}")
             raise ValueError(f"No workflow found for block {block_id} on task {task_id}")
@@ -1196,11 +1183,11 @@ class TaskCollection(BaseCollection):
         new_workflow_id: str | None = None
         unset_category_ids: list[str] = []
         for w in block.workflow or []:
-            if getattr(w, "name", None) == "No Parameter Group" and len(block.workflow) > 1:
-                continue
             category = getattr(w, "category", None)
             if category == "FINAL":
                 return w.id
+            if getattr(w, "name", None) == "No Parameter Group" and len(block.workflow) > 1:
+                continue
             if category == "INITIAL":
                 continue
             if category is None:
