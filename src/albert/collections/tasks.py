@@ -803,9 +803,9 @@ class TaskCollection(BaseCollection):
 
         Notes
         -----
-        If the block already uses ``workflow_id``, no change is made. A block's
-        default placeholder workflow ("No Parameter Group") is skipped when it is
-        not the block's only workflow.
+        If the block already uses ``workflow_id``, no change is made. The block's
+        final workflow is the one replaced, even when the final slot holds the
+        default placeholder ("No Parameter Group") alongside another workflow.
         """
         url = f"{self.base_path}/{task_id}"
         task = self.get_by_id(id=task_id)
