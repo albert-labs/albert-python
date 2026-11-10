@@ -158,8 +158,8 @@ class LocationCollection(BaseCollection):
     def get_by_name(self, *, name: str, exact_match: bool = True) -> Location | None:
         """Get a single Location by name.
 
-        Returns the first match, or None if no location matches. To check only for
-        existence, use [`exists`][albert.collections.locations.LocationCollection.exists]; to look up or create in one step, use
+        Returns the first match, or None if no location matches. To look up or
+        create in one step, use
         [`get_or_create`][albert.collections.locations.LocationCollection.get_or_create].
 
         !!! example
