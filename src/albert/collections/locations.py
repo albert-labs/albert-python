@@ -174,8 +174,8 @@ class LocationCollection(BaseCollection):
         name : str
             The location name to look up.
         exact_match : bool, optional
-            When True (default), requires an exact name match. When False, matches
-            on a substring of the name.
+            When True (default), requires an exact name match (case-insensitive).
+            When False, matches on a substring of the name.
 
         Returns
         -------
