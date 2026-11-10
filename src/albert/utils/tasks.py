@@ -641,10 +641,10 @@ def resolve_task_block(*, task: BaseTask, block_id: str) -> Block:
 
 
 def get_current_workflow_id(*, workflows: list[Workflow | EntityLink] | None) -> str | None:
-    """Return the current (final) workflow ID from a task or block workflow list.
+    """Return the current (final) workflow ID from a task's workflow list.
 
     The platform marks each entry's slot with a ``category``: ``"FINAL"`` is the
-    active workflow and ``"INITIAL"`` the one the task or block started from. When
+    active workflow and ``"INITIAL"`` the one the task started from. When
     no entry is marked ``"FINAL"`` (workflows recorded before categories were
     assigned), the first entry that is neither an initial workflow nor the
     platform default placeholder ("No Parameter Group", skipped only when another
