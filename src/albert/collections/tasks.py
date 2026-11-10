@@ -900,7 +900,7 @@ class TaskCollection(BaseCollection):
         otherwise the first workflow is treated as current.
         """
         task = self.get_by_id(id=task_id)
-        if not isinstance(task, BatchTask):
+        if not isinstance(task, BatchTask) or task.category == TaskCategory.REACTION_BATCH:
             logger.error(f"Task {task_id} is not a BatchTask")
             raise TypeError(f"Task {task_id} is not a BatchTask")
         existing_workflow_id = get_current_workflow_id(workflows=task.workflows)
