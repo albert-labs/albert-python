@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.72.1](https://github.com/albert-labs/albert-python/compare/v1.72.0...v1.72.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **smart-datasets:** add build_error to SmartDataset ([#947](https://github.com/albert-labs/albert-python/issues/947)) ([e17acc5](https://github.com/albert-labs/albert-python/commit/e17acc50ec412309f939f15f897e2fa8d6074c01))
+
 ## [1.72.0](https://github.com/albert-labs/albert-python/compare/v1.71.0...v1.72.0) (2026-11-09)
 
 
