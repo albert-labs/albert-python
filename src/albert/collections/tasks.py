@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import requests
 from pydantic import validate_call
@@ -188,7 +188,7 @@ class TaskCollection(BaseCollection):
         Remove a Block from a Property or Batch task.
     update_block_workflow(task_id, block_id, workflow_id) -> None
         Swap the Workflow assigned to a Block.
-    update_task_workflow(task_id, workflow_id) -> BaseTask
+    update_task_workflow(task_id, workflow_id) -> BatchTask
         Swap the Workflow assigned to a batch task.
     get_block_combinations(task_id, block_id, max_items=None) -> Iterator[IntervalCombinationItem] (🧪 Beta)
         Get the child-workflow combinations of a block.
@@ -855,7 +855,7 @@ class TaskCollection(BaseCollection):
         self.session.patch(url=url, json=patch)
 
     @validate_call
-    def update_task_workflow(self, *, task_id: TaskId, workflow_id: WorkflowId) -> BaseTask:
+    def update_task_workflow(self, *, task_id: TaskId, workflow_id: WorkflowId) -> BatchTask:
         """Swap the Workflow assigned to a batch task.
 
         A batch task can reference both an initial and a final workflow. This
@@ -881,7 +881,7 @@ class TaskCollection(BaseCollection):
 
         Returns
         -------
-        BaseTask
+        BatchTask
             The updated task.
 
         Raises
@@ -924,7 +924,7 @@ class TaskCollection(BaseCollection):
             }
         ]
         self.session.patch(url=f"{self.base_path}/{task_id}", json=patch)
-        return self.get_by_id(id=task_id)
+        return cast(BatchTask, self.get_by_id(id=task_id))
 
     @validate_call
     def get_block_combinations(
