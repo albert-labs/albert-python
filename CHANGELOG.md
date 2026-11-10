@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.73.0](https://github.com/albert-labs/albert-python/compare/v1.72.1...v1.73.0) (2026-11-10)
+
+
+### Features
+
+* **locations:** add get_by_name to LocationCollection ([#935](https://github.com/albert-labs/albert-python/issues/935)) ([19760b7](https://github.com/albert-labs/albert-python/commit/19760b72126da91b75cf5c01184f8b6963e6b3e0))
+* **storage_locations:** add get_by_name ([#934](https://github.com/albert-labs/albert-python/issues/934)) ([4ea2570](https://github.com/albert-labs/albert-python/commit/4ea2570a5fdf457920d5e4476c70e27375e3919b))
+* **tasks:** add update_task_workflow for batch task workflow swaps ([#942](https://github.com/albert-labs/albert-python/issues/942)) ([eadf3d1](https://github.com/albert-labs/albert-python/commit/eadf3d14ea35f1ffe296c8a8c2e50953541fa72e))
+
+
+### Bug Fixes
+
+* **tasks:** resolve a block's final workflow before skipping the placeholder ([#941](https://github.com/albert-labs/albert-python/issues/941)) ([244aa59](https://github.com/albert-labs/albert-python/commit/244aa591f6b723e0e58e80081327b0678068ff7b))
+
 ## [1.72.1](https://github.com/albert-labs/albert-python/compare/v1.72.0...v1.72.1) (2026-11-10)
 
 
