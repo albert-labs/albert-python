@@ -10746,7 +10746,7 @@ alternate (de)serialization.</p>
 </span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131" href="#__codelineno-0-131"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A change applied to a target field when a rule case is triggered."</span><span class="p">,</span>
 </span><span id="__span-0-132"><a id="__codelineno-0-132" name="__codelineno-0-132" href="#__codelineno-0-132"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-133"><a id="__codelineno-0-133" name="__codelineno-0-133" href="#__codelineno-0-133"></a><span class="w">    </span><span class="nt">"target_field"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134" href="#__codelineno-0-134"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The name of the field this action affects."</span><span class="p">,</span>
+</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134" href="#__codelineno-0-134"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The name of the field this action affects. When ``target_field_id`` is set, this\nmust exactly match the ``name`` of that custom field; a mismatch raises\n``BadRequestError``."</span><span class="p">,</span>
 </span><span id="__span-0-135"><a id="__codelineno-0-135" name="__codelineno-0-135" href="#__codelineno-0-135"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Target Field"</span><span class="p">,</span>
 </span><span id="__span-0-136"><a id="__codelineno-0-136" name="__codelineno-0-136" href="#__codelineno-0-136"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-137"><a id="__codelineno-0-137" name="__codelineno-0-137" href="#__codelineno-0-137"></a><span class="w">    </span><span class="p">},</span>
@@ -10760,7 +10760,7 @@ alternate (de)serialization.</p>
 </span><span id="__span-0-145"><a id="__codelineno-0-145" name="__codelineno-0-145" href="#__codelineno-0-145"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146" href="#__codelineno-0-146"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147" href="#__codelineno-0-147"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148" href="#__codelineno-0-148"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the target custom field (format ``CTF...``), if known."</span><span class="p">,</span>
+</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148" href="#__codelineno-0-148"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the target custom field (format ``CTF...``), if known. Must be a custom\nfield available to the entity type's service."</span><span class="p">,</span>
 </span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149" href="#__codelineno-0-149"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Target Field Id"</span>
 </span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150" href="#__codelineno-0-150"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-151"><a id="__codelineno-0-151" name="__codelineno-0-151" href="#__codelineno-0-151"></a><span class="w">    </span><span class="nt">"hidden"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -10865,13 +10865,13 @@ alternate (de)serialization.</p>
 
                   <details class="mkdocstrings-source">
                     <summary>Source code in <code>src/albert/resources/entity_types.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-345">345</a></span>
-<span class="normal"><a href="#__codelineno-0-346">346</a></span>
-<span class="normal"><a href="#__codelineno-0-347">347</a></span>
-<span class="normal"><a href="#__codelineno-0-348">348</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-345"><a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-</span><span id="__span-0-346"><a id="__codelineno-0-346" name="__codelineno-0-346"></a>    <span class="k">if</span> <span class="s2">"default"</span> <span class="ow">in</span> <span class="n">data</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">"default"</span><span class="p">],</span> <span class="n">EntityLink</span><span class="p">):</span>
-</span><span id="__span-0-347"><a id="__codelineno-0-347" name="__codelineno-0-347"></a>        <span class="n">data</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="o">=</span> <span class="n">EntityLinkOption</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-</span><span id="__span-0-348"><a id="__codelineno-0-348" name="__codelineno-0-348"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
+                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-348">348</a></span>
+<span class="normal"><a href="#__codelineno-0-349">349</a></span>
+<span class="normal"><a href="#__codelineno-0-350">350</a></span>
+<span class="normal"><a href="#__codelineno-0-351">351</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-348"><a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+</span><span id="__span-0-349"><a id="__codelineno-0-349" name="__codelineno-0-349"></a>    <span class="k">if</span> <span class="s2">"default"</span> <span class="ow">in</span> <span class="n">data</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">"default"</span><span class="p">],</span> <span class="n">EntityLink</span><span class="p">):</span>
+</span><span id="__span-0-350"><a id="__codelineno-0-350" name="__codelineno-0-350"></a>        <span class="n">data</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span> <span class="o">=</span> <span class="n">EntityLinkOption</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">"default"</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="__span-0-351"><a id="__codelineno-0-351" name="__codelineno-0-351"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
                   </details>
 
@@ -10898,7 +10898,9 @@ alternate (de)serialization.</p>
 
     <div class="doc doc-contents ">
 
-        <p>The name of the field this action affects.</p>
+        <p>The name of the field this action affects. When <code>target_field_id</code> is set, this
+must exactly match the <code>name</code> of that custom field; a mismatch raises
+<code>BadRequestError</code>.</p>
 
     </div>
 
@@ -10918,7 +10920,8 @@ alternate (de)serialization.</p>
 
     <div class="doc doc-contents ">
 
-        <p>The ID of the target custom field (format <code>CTF...</code>), if known.</p>
+        <p>The ID of the target custom field (format <code>CTF...</code>), if known. Must be a custom
+field available to the entity type's service.</p>
 
     </div>
 
@@ -11168,7 +11171,7 @@ alternate (de)serialization.</p>
 </span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131" href="#__codelineno-0-131"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A change applied to a target field when a rule case is triggered."</span><span class="p">,</span>
 </span><span id="__span-0-132"><a id="__codelineno-0-132" name="__codelineno-0-132" href="#__codelineno-0-132"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-133"><a id="__codelineno-0-133" name="__codelineno-0-133" href="#__codelineno-0-133"></a><span class="w">        </span><span class="nt">"target_field"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134" href="#__codelineno-0-134"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The name of the field this action affects."</span><span class="p">,</span>
+</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134" href="#__codelineno-0-134"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The name of the field this action affects. When ``target_field_id`` is set, this\nmust exactly match the ``name`` of that custom field; a mismatch raises\n``BadRequestError``."</span><span class="p">,</span>
 </span><span id="__span-0-135"><a id="__codelineno-0-135" name="__codelineno-0-135" href="#__codelineno-0-135"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Target Field"</span><span class="p">,</span>
 </span><span id="__span-0-136"><a id="__codelineno-0-136" name="__codelineno-0-136" href="#__codelineno-0-136"></a><span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-137"><a id="__codelineno-0-137" name="__codelineno-0-137" href="#__codelineno-0-137"></a><span class="w">        </span><span class="p">},</span>
@@ -11182,7 +11185,7 @@ alternate (de)serialization.</p>
 </span><span id="__span-0-145"><a id="__codelineno-0-145" name="__codelineno-0-145" href="#__codelineno-0-145"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146" href="#__codelineno-0-146"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147" href="#__codelineno-0-147"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148" href="#__codelineno-0-148"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the target custom field (format ``CTF...``), if known."</span><span class="p">,</span>
+</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148" href="#__codelineno-0-148"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the target custom field (format ``CTF...``), if known. Must be a custom\nfield available to the entity type's service."</span><span class="p">,</span>
 </span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149" href="#__codelineno-0-149"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Target Field Id"</span>
 </span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150" href="#__codelineno-0-150"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-151"><a id="__codelineno-0-151" name="__codelineno-0-151" href="#__codelineno-0-151"></a><span class="w">        </span><span class="nt">"hidden"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -11505,7 +11508,7 @@ alternate (de)serialization.</p>
 </span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131" href="#__codelineno-0-131"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A change applied to a target field when a rule case is triggered."</span><span class="p">,</span>
 </span><span id="__span-0-132"><a id="__codelineno-0-132" name="__codelineno-0-132" href="#__codelineno-0-132"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-133"><a id="__codelineno-0-133" name="__codelineno-0-133" href="#__codelineno-0-133"></a><span class="w">        </span><span class="nt">"target_field"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134" href="#__codelineno-0-134"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The name of the field this action affects."</span><span class="p">,</span>
+</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134" href="#__codelineno-0-134"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The name of the field this action affects. When ``target_field_id`` is set, this\nmust exactly match the ``name`` of that custom field; a mismatch raises\n``BadRequestError``."</span><span class="p">,</span>
 </span><span id="__span-0-135"><a id="__codelineno-0-135" name="__codelineno-0-135" href="#__codelineno-0-135"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Target Field"</span><span class="p">,</span>
 </span><span id="__span-0-136"><a id="__codelineno-0-136" name="__codelineno-0-136" href="#__codelineno-0-136"></a><span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-137"><a id="__codelineno-0-137" name="__codelineno-0-137" href="#__codelineno-0-137"></a><span class="w">        </span><span class="p">},</span>
@@ -11519,7 +11522,7 @@ alternate (de)serialization.</p>
 </span><span id="__span-0-145"><a id="__codelineno-0-145" name="__codelineno-0-145" href="#__codelineno-0-145"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146" href="#__codelineno-0-146"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147" href="#__codelineno-0-147"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148" href="#__codelineno-0-148"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the target custom field (format ``CTF...``), if known."</span><span class="p">,</span>
+</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148" href="#__codelineno-0-148"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the target custom field (format ``CTF...``), if known. Must be a custom\nfield available to the entity type's service."</span><span class="p">,</span>
 </span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149" href="#__codelineno-0-149"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Target Field Id"</span>
 </span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150" href="#__codelineno-0-150"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-151"><a id="__codelineno-0-151" name="__codelineno-0-151" href="#__codelineno-0-151"></a><span class="w">        </span><span class="nt">"hidden"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -11705,7 +11708,12 @@ alternate (de)serialization.</p>
 applies actions to other fields, such as showing, hiding, requiring, or
 setting default options. Rules are read and set via
 <a class="autorefs autorefs-internal" href="../../collections/entity_types/#albert.collections.entity_types.EntityTypeCollection.get_rules"><code>get_rules</code></a> and
-<a class="autorefs autorefs-internal" href="../../collections/entity_types/#albert.collections.entity_types.EntityTypeCollection.set_rules"><code>set_rules</code></a>.</p>
+<a class="autorefs autorefs-internal" href="../../collections/entity_types/#albert.collections.entity_types.EntityTypeCollection.set_rules"><code>set_rules</code></a>, and
+removed via
+<a class="autorefs autorefs-internal" href="../../collections/entity_types/#albert.collections.entity_types.EntityTypeCollection.delete_rule"><code>delete_rule</code></a>.</p>
+<p>The trigger field must be a custom field available to the entity type's service,
+and multiselect list fields cannot be triggers. Only one rule may exist per
+trigger field and value pair; adding a duplicate raises <code>BadRequestError</code>.</p>
 
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
@@ -11878,7 +11886,7 @@ setting default options. Rules are read and set via
 </span><span id="__span-0-168"><a id="__codelineno-0-168" name="__codelineno-0-168" href="#__codelineno-0-168"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A change applied to a target field when a rule case is triggered."</span><span class="p">,</span>
 </span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169" href="#__codelineno-0-169"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170" href="#__codelineno-0-170"></a><span class="w">        </span><span class="nt">"target_field"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-171"><a id="__codelineno-0-171" name="__codelineno-0-171" href="#__codelineno-0-171"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The name of the field this action affects."</span><span class="p">,</span>
+</span><span id="__span-0-171"><a id="__codelineno-0-171" name="__codelineno-0-171" href="#__codelineno-0-171"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The name of the field this action affects. When ``target_field_id`` is set, this\nmust exactly match the ``name`` of that custom field; a mismatch raises\n``BadRequestError``."</span><span class="p">,</span>
 </span><span id="__span-0-172"><a id="__codelineno-0-172" name="__codelineno-0-172" href="#__codelineno-0-172"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Target Field"</span><span class="p">,</span>
 </span><span id="__span-0-173"><a id="__codelineno-0-173" name="__codelineno-0-173" href="#__codelineno-0-173"></a><span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-174"><a id="__codelineno-0-174" name="__codelineno-0-174" href="#__codelineno-0-174"></a><span class="w">        </span><span class="p">},</span>
@@ -11892,7 +11900,7 @@ setting default options. Rules are read and set via
 </span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182" href="#__codelineno-0-182"></a><span class="w">            </span><span class="p">}</span>
 </span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183" href="#__codelineno-0-183"></a><span class="w">          </span><span class="p">],</span>
 </span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184" href="#__codelineno-0-184"></a><span class="w">          </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185" href="#__codelineno-0-185"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the target custom field (format ``CTF...``), if known."</span><span class="p">,</span>
+</span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185" href="#__codelineno-0-185"></a><span class="w">          </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the target custom field (format ``CTF...``), if known. Must be a custom\nfield available to the entity type's service."</span><span class="p">,</span>
 </span><span id="__span-0-186"><a id="__codelineno-0-186" name="__codelineno-0-186" href="#__codelineno-0-186"></a><span class="w">          </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Target Field Id"</span>
 </span><span id="__span-0-187"><a id="__codelineno-0-187" name="__codelineno-0-187" href="#__codelineno-0-187"></a><span class="w">        </span><span class="p">},</span>
 </span><span id="__span-0-188"><a id="__codelineno-0-188" name="__codelineno-0-188" href="#__codelineno-0-188"></a><span class="w">        </span><span class="nt">"hidden"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -12014,7 +12022,7 @@ setting default options. Rules are read and set via
 </span><span id="__span-0-304"><a id="__codelineno-0-304" name="__codelineno-0-304" href="#__codelineno-0-304"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-305"><a id="__codelineno-0-305" name="__codelineno-0-305" href="#__codelineno-0-305"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-306"><a id="__codelineno-0-306" name="__codelineno-0-306" href="#__codelineno-0-306"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-307"><a id="__codelineno-0-307" name="__codelineno-0-307" href="#__codelineno-0-307"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A rule that makes an entity type's field behavior conditional.\n\nA rule watches one custom field (the trigger) and, depending on its value,\napplies actions to other fields, such as showing, hiding, requiring, or\nsetting default options. Rules are read and set via\n[`get_rules`][albert.collections.entity_types.EntityTypeCollection.get_rules] and\n[`set_rules`][albert.collections.entity_types.EntityTypeCollection.set_rules]."</span><span class="p">,</span>
+</span><span id="__span-0-307"><a id="__codelineno-0-307" name="__codelineno-0-307" href="#__codelineno-0-307"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A rule that makes an entity type's field behavior conditional.\n\nA rule watches one custom field (the trigger) and, depending on its value,\napplies actions to other fields, such as showing, hiding, requiring, or\nsetting default options. Rules are read and set via\n[`get_rules`][albert.collections.entity_types.EntityTypeCollection.get_rules] and\n[`set_rules`][albert.collections.entity_types.EntityTypeCollection.set_rules], and\nremoved via\n[`delete_rule`][albert.collections.entity_types.EntityTypeCollection.delete_rule].\n\nThe trigger field must be a custom field available to the entity type's service,\nand multiselect list fields cannot be triggers. Only one rule may exist per\ntrigger field and value pair; adding a duplicate raises ``BadRequestError``."</span><span class="p">,</span>
 </span><span id="__span-0-308"><a id="__codelineno-0-308" name="__codelineno-0-308" href="#__codelineno-0-308"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-309"><a id="__codelineno-0-309" name="__codelineno-0-309" href="#__codelineno-0-309"></a><span class="w">    </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-310"><a id="__codelineno-0-310" name="__codelineno-0-310" href="#__codelineno-0-310"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -12062,11 +12070,11 @@ setting default options. Rules are read and set via
 </span><span id="__span-0-352"><a id="__codelineno-0-352" name="__codelineno-0-352" href="#__codelineno-0-352"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-353"><a id="__codelineno-0-353" name="__codelineno-0-353" href="#__codelineno-0-353"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-354"><a id="__codelineno-0-354" name="__codelineno-0-354" href="#__codelineno-0-354"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-355"><a id="__codelineno-0-355" name="__codelineno-0-355" href="#__codelineno-0-355"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unique identifier for the rule (format ``RUL...``)."</span><span class="p">,</span>
+</span><span id="__span-0-355"><a id="__codelineno-0-355" name="__codelineno-0-355" href="#__codelineno-0-355"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The unique identifier for the rule (format ``RUL...``). Assigned when the rule\nis registered in Albert."</span><span class="p">,</span>
 </span><span id="__span-0-356"><a id="__codelineno-0-356" name="__codelineno-0-356" href="#__codelineno-0-356"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Id"</span>
 </span><span id="__span-0-357"><a id="__codelineno-0-357" name="__codelineno-0-357" href="#__codelineno-0-357"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-358"><a id="__codelineno-0-358" name="__codelineno-0-358" href="#__codelineno-0-358"></a><span class="w">    </span><span class="nt">"customFieldId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-359"><a id="__codelineno-0-359" name="__codelineno-0-359" href="#__codelineno-0-359"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the trigger custom field the rule watches (format ``CTF...``)."</span><span class="p">,</span>
+</span><span id="__span-0-359"><a id="__codelineno-0-359" name="__codelineno-0-359" href="#__codelineno-0-359"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ID of the trigger custom field the rule watches (format ``CTF...``). Cannot\nbe a multiselect list field."</span><span class="p">,</span>
 </span><span id="__span-0-360"><a id="__codelineno-0-360" name="__codelineno-0-360" href="#__codelineno-0-360"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Customfieldid"</span><span class="p">,</span>
 </span><span id="__span-0-361"><a id="__codelineno-0-361" name="__codelineno-0-361" href="#__codelineno-0-361"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-362"><a id="__codelineno-0-362" name="__codelineno-0-362" href="#__codelineno-0-362"></a><span class="w">    </span><span class="p">},</span>
@@ -12139,7 +12147,8 @@ setting default options. Rules are read and set via
 
     <div class="doc doc-contents ">
 
-        <p>The unique identifier for the rule (format <code>RUL...</code>).</p>
+        <p>The unique identifier for the rule (format <code>RUL...</code>). Assigned when the rule
+is registered in Albert.</p>
 
     </div>
 
@@ -12159,7 +12168,8 @@ setting default options. Rules are read and set via
 
     <div class="doc doc-contents ">
 
-        <p>The ID of the trigger custom field the rule watches (format <code>CTF...</code>).</p>
+        <p>The ID of the trigger custom field the rule watches (format <code>CTF...</code>). Cannot
+be a multiselect list field.</p>
 
     </div>
 
