@@ -1,3 +1,4 @@
+import random
 import time
 import uuid
 from collections.abc import AsyncGenerator, Callable, Iterator
@@ -918,12 +919,23 @@ def _create_entity_type(client: Albert, entity_type: EntityType) -> EntityType:
     last_error: BadRequestError | None = None
     for prefix in candidates:
         entity_type.prefix = prefix
-        try:
-            return client.entity_types.create(entity_type=entity_type)
-        except BadRequestError as err:
-            if "Invalid prefix" not in str(err):
-                raise
-            last_error = err
+        # Concurrent xdist workers create entity types referencing the same shared
+        # custom fields, and the service rejects colliding creates, mislabeling the
+        # conflict as "customCategory already exist". The create is atomic, so
+        # nothing is written on a conflict and a backoff retry is safe.
+        for attempt in range(4):
+            try:
+                return client.entity_types.create(entity_type=entity_type)
+            except BadRequestError as err:
+                if "customCategory already exist" in str(err):
+                    if attempt == 3:
+                        raise
+                    time.sleep(2**attempt + random.random())
+                    continue
+                if "Invalid prefix" not in str(err):
+                    raise
+                last_error = err
+                break
     if last_error is not None:
         raise last_error
     raise ValueError(f"No prefix candidates for category {entity_type.category}")

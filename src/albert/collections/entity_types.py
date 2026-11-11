@@ -6,7 +6,7 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy
-from albert.core.shared.identifiers import EntityTypeId
+from albert.core.shared.identifiers import EntityTypeId, RuleId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation
 from albert.resources.entity_types import (
     EntityServiceType,
@@ -79,6 +79,8 @@ class EntityTypeCollection(BaseCollection):
         Add conditional field rules to an entity type (appended, not replaced).
     delete_rules(id) -> None
         Remove the conditional field rules for an entity type.
+    delete_rule(id, rule_id) -> None
+        Remove a single conditional field rule from an entity type.
     """
 
     _api_version = "v3"
@@ -425,12 +427,22 @@ class EntityTypeCollection(BaseCollection):
         id : EntityTypeId
             The Entity Type ID to set the rules for (format ``ETT...``).
         rules : list[EntityTypeRule]
-            The rules to add to the entity type.
+            The rules to add to the entity type. Each rule's trigger field must be a
+            custom field available to the entity type's service and cannot be a
+            multiselect list field. Only one rule may exist per trigger field and
+            value pair.
 
         Returns
         -------
         list[EntityTypeRule]
             The rules as registered in Albert after the call.
+
+        Raises
+        ------
+        BadRequestError
+            If a trigger field is invalid or multiselect, if an action's
+            ``target_field`` does not match the name of its ``target_field_id``, or if
+            a rule already exists for a trigger field and value pair.
         """
         response = self.session.put(
             f"{self.base_path}/rules/{id}",
@@ -457,6 +469,36 @@ class EntityTypeCollection(BaseCollection):
         None
         """
         self.session.delete(f"{self.base_path}/rules/{id}")
+
+    @validate_call
+    def delete_rule(self, *, id: EntityTypeId, rule_id: RuleId) -> None:
+        """Delete a single conditional field rule from an entity type.
+
+        To remove all rules from an entity type at once, use
+        [`delete_rules`][albert.collections.entity_types.EntityTypeCollection.delete_rules].
+
+        !!! example
+            ```python
+            client.entity_types.delete_rule(id="ETT1", rule_id="RUL123")
+            ```
+
+        Parameters
+        ----------
+        id : EntityTypeId
+            The Entity Type ID to remove the rule from (format ``ETT...``).
+        rule_id : RuleId
+            The ID of the rule to delete (format ``RUL...``).
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        NotFoundError
+            If the entity type does not exist, or the rule is not on it.
+        """
+        self.session.delete(f"{self.base_path}/{id}/rules/{rule_id}")
 
     def get_all(
         self,

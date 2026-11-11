@@ -1,9 +1,21 @@
+from contextlib import suppress
 from uuid import uuid4
 
 import pytest
 
 from albert import Albert
-from albert.resources.entity_types import EntityType, EntityTypeSearchQueryStrings
+from albert.exceptions import AlbertServerError, NotFoundError
+from albert.resources.custom_fields import CustomField, FieldType
+from albert.resources.entity_types import (
+    EntityCategory,
+    EntityServiceType,
+    EntityType,
+    EntityTypeRule,
+    EntityTypeRuleAction,
+    EntityTypeRuleTrigger,
+    EntityTypeRuleTriggerCase,
+    EntityTypeSearchQueryStrings,
+)
 
 pytestmark = pytest.mark.xdist_group("entitytypes")
 
@@ -66,3 +78,65 @@ def test_update_adds_unset_search_query_string(
 
     assert updated.search_query_string is not None
     assert updated.search_query_string.DAT == "status=active"
+
+
+def test_entity_type_delete_rule(
+    client: Albert,
+    static_entity_custom_fields: list[CustomField],
+):
+    """Test that a rule added via set_rules is removed by delete_rule."""
+    # Private entity type: rules validation accepts any active custom field for the
+    # service when the entity type has no custom category, and the shared seeded
+    # entity types stay untouched. Tasks requires a prefix already allowlisted on
+    # the tenant (see _DEFAULT_TASK_PREFIXES in seeding.py).
+    entity_type = client.entity_types.create(
+        entity_type=EntityType(
+            label=f"SDK-Test delete_rule {uuid4().hex[:8]}",
+            service=EntityServiceType.TASKS,
+            category=EntityCategory.PROPERTY,
+            prefix="FOR",
+        )
+    )
+    try:
+        # The multiselect list field cannot be a trigger (rules on multiselect
+        # fields are rejected), so the string field triggers and the list field is
+        # the target.
+        trigger_field = next(
+            cf for cf in static_entity_custom_fields if cf.field_type == FieldType.STRING
+        )
+        target_field = next(
+            cf for cf in static_entity_custom_fields if cf.field_type == FieldType.LIST
+        )
+        rule = EntityTypeRule(
+            custom_field_id=trigger_field.id,
+            trigger=EntityTypeRuleTrigger(
+                cases=[
+                    EntityTypeRuleTriggerCase(
+                        value=f"SDK-Test Trigger {uuid4().hex[:8]}",
+                        actions=[
+                            EntityTypeRuleAction(
+                                target_field=target_field.name,
+                                target_field_id=target_field.id,
+                                hidden=True,
+                            )
+                        ],
+                    )
+                ]
+            ),
+        )
+        [created] = client.entity_types.set_rules(id=entity_type.id, rules=[rule])
+        assert created.id is not None
+
+        client.entity_types.delete_rule(id=entity_type.id, rule_id=created.id)
+
+        remaining = client.entity_types.get_rules(id=entity_type.id)
+        assert created.id not in {r.id for r in remaining}
+    finally:
+        with suppress(NotFoundError, AlbertServerError):
+            client.entity_types.delete(id=entity_type.id)
+
+
+def test_entity_type_delete_rule_not_found(client: Albert, seeded_entity_types: list[EntityType]):
+    """Deleting a rule that does not exist raises NotFoundError."""
+    with pytest.raises(NotFoundError):
+        client.entity_types.delete_rule(id=seeded_entity_types[0].id, rule_id="RUL999999999")
