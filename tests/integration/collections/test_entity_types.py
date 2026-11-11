@@ -1,3 +1,4 @@
+from contextlib import suppress
 from uuid import uuid4
 
 import pytest
@@ -112,10 +113,14 @@ def test_entity_type_delete_rule(
     [created] = client.entity_types.set_rules(id=entity_type.id, rules=[rule])
     assert created.id is not None
 
-    client.entity_types.delete_rule(id=entity_type.id, rule_id=created.id)
+    try:
+        client.entity_types.delete_rule(id=entity_type.id, rule_id=created.id)
 
-    remaining = client.entity_types.get_rules(id=entity_type.id)
-    assert created.id not in {r.id for r in remaining}
+        remaining = client.entity_types.get_rules(id=entity_type.id)
+        assert created.id not in {r.id for r in remaining}
+    finally:
+        with suppress(NotFoundError):
+            client.entity_types.delete_rule(id=entity_type.id, rule_id=created.id)
 
 
 def test_entity_type_delete_rule_not_found(client: Albert, seeded_entity_types: list[EntityType]):
