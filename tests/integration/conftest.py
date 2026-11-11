@@ -920,11 +920,9 @@ def _create_entity_type(client: Albert, entity_type: EntityType) -> EntityType:
     for prefix in candidates:
         entity_type.prefix = prefix
         # Concurrent xdist workers create entity types referencing the same shared
-        # custom fields, and the service runs each create as a transaction that also
-        # touches those custom field items. Colliding transactions are rejected and
-        # mislabeled as "customCategory already exist" (api-entitytype postEntityType
-        # maps any ConditionalCheckFailed to that message). The transaction is atomic,
-        # so nothing is written on a conflict and a backoff retry is safe.
+        # custom fields, and the service rejects colliding creates, mislabeling the
+        # conflict as "customCategory already exist". The create is atomic, so
+        # nothing is written on a conflict and a backoff retry is safe.
         for attempt in range(4):
             try:
                 return client.entity_types.create(entity_type=entity_type)
