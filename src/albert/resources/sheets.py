@@ -1899,8 +1899,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
         placeholders for rows to create), the creation runs to execute in order
         (each a contiguous block inserted below one anchor row), and the resulting
         virtual row order.
+
+        Only ingredient rows are reused or used as anchors; the Total row carries an
+        ID too but is never an ingredient. With no ingredient row to anchor to, new
+        rows are planned at the top of the Product Design, above Total.
         """
-        virtual_rows = [(row.row_id, row.inventory_id) for row in product_rows]
+        virtual_rows = [
+            (row.row_id, row.inventory_id if row.type == CellType.INVENTORY else None)
+            for row in product_rows
+        ]
         assignments: list[list[str]] = []
         runs: list[dict] = []
         creation_count = 0
@@ -1935,7 +1942,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                             {"anchor": anchor, "inventory_ids": [inv_id], "keys": [chosen]}
                         )
                     if anchor is None:
-                        virtual_rows.append((chosen, inv_id))
+                        virtual_rows.insert(0, (chosen, inv_id))
                     else:
                         anchor_index = next(
                             i for i, (key, _) in enumerate(virtual_rows) if key == anchor
@@ -1953,7 +1960,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         A block is a maximal run of new rows in the planned order, created with
         one call below the row directly above it (chained in 24-row chunks to
-        preserve order). Blocks are emitted in planned order, which is a valid
+        preserve order). A block at the top of the order is created above the
+        first existing row instead. Blocks are emitted in planned order, which is a valid
         execution order: a block's anchor row always sits above it, so a block
         anchored at another block's new row is emitted after that block.
         Returns the product rows in the planned order and the resolution of
@@ -1974,10 +1982,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
             while j < len(virtual_order) and virtual_order[j] in inventory_by_key:
                 j += 1
             block = virtual_order[i:j]
-            anchor = virtual_order[i - 1] if i > 0 else None
             position = None
-            if anchor is not None:
-                position = {"reference_id": key_to_row[anchor].row_id, "position": "below"}
+            if i > 0:
+                position = {
+                    "reference_id": key_to_row[virtual_order[i - 1]].row_id,
+                    "position": RowPosition.BELOW.value,
+                }
+            elif j < len(virtual_order):
+                position = {
+                    "reference_id": key_to_row[virtual_order[j]].row_id,
+                    "position": RowPosition.ABOVE.value,
+                }
             created_rows = self.add_inventory_rows(
                 inventory_ids=[inventory_by_key[k] for k in block], position=position
             )

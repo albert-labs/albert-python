@@ -249,6 +249,71 @@ def test_add_formulations_enforce_order_follows_component_order(
     assert {float(cell.value) for cell in _inventory_cells(column)} == {60.0, 40.0}
 
 
+def test_add_formulations_enforce_order_keeps_total_last_on_new_sheet(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+):
+    """Test that an ordered bulk build on a new sheet keeps the Total row last."""
+    first, second, third = seeded_inventory[0], seeded_inventory[1], seeded_inventory[2]
+    location = client.locations.create(
+        location=Location(
+            name=f"{seed_prefix} - ordered new sheet",
+            latitude=40.7,
+            longitude=-74.0,
+            address="1 Main St",
+            country="US",
+        )
+    )
+    project = None
+    try:
+        project = client.projects.create(
+            project=Project(
+                description=f"{seed_prefix} - ordered new sheet",
+                locations=[EntityLink(id=location.id)],
+            )
+        )
+        worksheet = client.worksheets.setup_worksheet(project_id=project.id, add_sheet=True)
+        sheet = worksheet.sheets[0]
+        assert [row.type for row in sheet.product_design.rows] == [CellType.TOTAL]
+
+        sheet.add_formulations(
+            enforce_order=True,
+            formulations=[
+                FormulationSpec(
+                    name=f"{seed_prefix} - ordered new sheet A",
+                    components=[
+                        Component(inventory_item=first, amount=60.0),
+                        Component(inventory_item=second, amount=40.0),
+                    ],
+                ),
+                FormulationSpec(
+                    name=f"{seed_prefix} - ordered new sheet B",
+                    components=[
+                        Component(inventory_item=second, amount=30.0),
+                        Component(inventory_item=third, amount=70.0),
+                    ],
+                ),
+            ],
+        )
+
+        # Read back fresh from the server rather than the in-memory cache.
+        sheet.grid = None
+        rows = sheet.product_design.rows
+        assert [(row.type, row.inventory_id) for row in rows[:-1]] == [
+            (CellType.INVENTORY, first.id),
+            (CellType.INVENTORY, second.id),
+            (CellType.INVENTORY, third.id),
+        ]
+        assert rows[-1].type == CellType.TOTAL
+    finally:
+        if project is not None:
+            with suppress(NotFoundError, BadRequestError):
+                client.projects.delete(id=project.id)
+        with suppress(NotFoundError, BadRequestError):
+            client.locations.delete(id=location.id)
+
+
 def test_add_formulations_clear_rebuilds_existing_columns(
     seed_prefix: str,
     seeded_sheet: Sheet,
