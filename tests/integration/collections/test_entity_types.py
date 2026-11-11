@@ -3,7 +3,16 @@ from uuid import uuid4
 import pytest
 
 from albert import Albert
-from albert.resources.entity_types import EntityType, EntityTypeSearchQueryStrings
+from albert.exceptions import NotFoundError
+from albert.resources.custom_fields import CustomField, FieldType
+from albert.resources.entity_types import (
+    EntityType,
+    EntityTypeRule,
+    EntityTypeRuleAction,
+    EntityTypeRuleTrigger,
+    EntityTypeRuleTriggerCase,
+    EntityTypeSearchQueryStrings,
+)
 
 pytestmark = pytest.mark.xdist_group("entitytypes")
 
@@ -66,3 +75,50 @@ def test_update_adds_unset_search_query_string(
 
     assert updated.search_query_string is not None
     assert updated.search_query_string.DAT == "status=active"
+
+
+def test_entity_type_delete_rule(
+    client: Albert,
+    seeded_entity_types: list[EntityType],
+    static_entity_custom_fields: list[CustomField],
+):
+    """A rule added via set_rules is removed by delete_rule without touching other rules."""
+    entity_type = seeded_entity_types[0]
+    # The multiselect list field cannot be a trigger (the API rejects rules on
+    # multiselect fields), so the string field triggers and the list field is the target.
+    trigger_field = next(
+        cf for cf in static_entity_custom_fields if cf.field_type == FieldType.STRING
+    )
+    target_field = next(
+        cf for cf in static_entity_custom_fields if cf.field_type == FieldType.LIST
+    )
+    rule = EntityTypeRule(
+        custom_field_id=trigger_field.id,
+        trigger=EntityTypeRuleTrigger(
+            cases=[
+                EntityTypeRuleTriggerCase(
+                    value=f"SDK-Test Trigger {uuid4().hex[:8]}",
+                    actions=[
+                        EntityTypeRuleAction(
+                            target_field=target_field.name,
+                            target_field_id=target_field.id,
+                            hidden=True,
+                        )
+                    ],
+                )
+            ]
+        ),
+    )
+    [created] = client.entity_types.set_rules(id=entity_type.id, rules=[rule])
+    assert created.id is not None
+
+    client.entity_types.delete_rule(id=entity_type.id, rule_id=created.id)
+
+    remaining = client.entity_types.get_rules(id=entity_type.id)
+    assert created.id not in {r.id for r in remaining}
+
+
+def test_entity_type_delete_rule_not_found(client: Albert, seeded_entity_types: list[EntityType]):
+    """Deleting a rule that does not exist raises NotFoundError."""
+    with pytest.raises(NotFoundError):
+        client.entity_types.delete_rule(id=seeded_entity_types[0].id, rule_id="RUL999999999")
