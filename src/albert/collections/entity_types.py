@@ -427,12 +427,22 @@ class EntityTypeCollection(BaseCollection):
         id : EntityTypeId
             The Entity Type ID to set the rules for (format ``ETT...``).
         rules : list[EntityTypeRule]
-            The rules to add to the entity type.
+            The rules to add to the entity type. Each rule's trigger field must be a
+            custom field available to the entity type's service and cannot be a
+            multiselect list field. Only one rule may exist per trigger field and
+            value pair.
 
         Returns
         -------
         list[EntityTypeRule]
             The rules as registered in Albert after the call.
+
+        Raises
+        ------
+        BadRequestError
+            If a trigger field is invalid or multiselect, if an action's
+            ``target_field`` does not match the name of its ``target_field_id``, or if
+            a rule already exists for a trigger field and value pair.
         """
         response = self.session.put(
             f"{self.base_path}/rules/{id}",
@@ -482,6 +492,11 @@ class EntityTypeCollection(BaseCollection):
         Returns
         -------
         None
+
+        Raises
+        ------
+        NotFoundError
+            If the entity type does not exist, or the rule is not on it.
         """
         self.session.delete(f"{self.base_path}/{id}/rules/{rule_id}")
 
