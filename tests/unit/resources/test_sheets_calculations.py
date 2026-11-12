@@ -116,6 +116,42 @@ def test_get_columns_keeps_ingredient_basis_columns_without_inventory_id():
     ]
 
 
+@pytest.mark.parametrize(
+    ("first_row_id", "first_row_type", "first_row_item_id"),
+    [("ROW1", "TOT", "APP1"), ("ROW2", "INV", "INVA1")],
+)
+def test_get_columns_inventory_id_column_never_borrows_a_row_item_id(
+    first_row_id, first_row_type, first_row_item_id
+):
+    """Test the built-in Inventory ID column has no inventory ID at any row order."""
+    grid = {
+        "Formulas": [
+            {"colId": "COL1", "name": "Inventory ID", "type": "DEF", "state": {}},
+            {"colId": "COL6", "name": "Formula B", "type": "INV", "id": "INVB2", "state": {}},
+        ],
+        "Items": [
+            {
+                "rowId": first_row_id,
+                "rowUniqueId": f"DES1#{first_row_id}",
+                "type": first_row_type,
+                "id": first_row_item_id,
+                "name": "First",
+                "Values": [
+                    {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": ""},
+                    {"colId": "COL6", "type": "INV", "id": "INVB2", "value": "5"},
+                ],
+            }
+        ],
+    }
+
+    columns = _products_sheet().product_design._get_columns(grid_response=grid)
+
+    assert [(c.column_id, c.type, c.inventory_id) for c in columns] == [
+        ("COL1", "DEF", None),
+        ("COL6", CellType.INVENTORY, "INVB2"),
+    ]
+
+
 def test_get_columns_reads_cp_reference_values_and_leaves_absent_ones_none():
     """Test that each formulation column carries its calculated property reference values."""
     sheet = _products_sheet()
