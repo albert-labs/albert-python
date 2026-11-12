@@ -536,7 +536,7 @@ class NotebookCollection(BaseCollection):
             The created block.
         """
         ketcher_action = self._prepare_block_for_create(notebook_id=notebook_id, block=block)
-        response = self.session.post(
+        self.session.post(
             url=f"{self.base_path}/{notebook_id}/blocks/{block.id}",
             json=PostBlockPayload(
                 type=block.type, content=block.content, previous_block_id=previous_block_id
@@ -552,7 +552,8 @@ class NotebookCollection(BaseCollection):
             self._synthesis.create_reactant_productant_table(
                 synthesis_id=ketcher_action.synthesis_id
             )
-        return TypeAdapter(NotebookBlock).validate_python(response.json())
+        # The create call returns an empty body; read the block back to return it.
+        return self.get_block_by_id(notebook_id=notebook_id, block_id=block.id)
 
     @validate_call
     def update_block(self, *, notebook_id: NotebookId, block: NotebookBlock) -> NotebookBlock:
