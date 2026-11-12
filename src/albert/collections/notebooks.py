@@ -19,6 +19,7 @@ from albert.core.shared.identifiers import (
     SynthesisId,
     TaskId,
 )
+from albert.core.shared.models.patch import PatchDatum, PatchPayload
 from albert.exceptions import AlbertException
 from albert.resources.files import FileNamespace
 from albert.resources.notebooks import (
@@ -30,6 +31,8 @@ from albert.resources.notebooks import (
     NotebookCopyInfo,
     NotebookCopyType,
     NotebookSearchItem,
+    NotebookVersion,
+    PostBlockPayload,
     PutBlockDatum,
     PutBlockPayload,
     PutOperation,
@@ -55,7 +58,10 @@ class NotebookCollection(BaseCollection):
 
     Notebook content is edited block-by-block rather than by overwriting the whole
     document. Create an empty Notebook with [`create`][albert.collections.notebooks.NotebookCollection.create], then add or change
-    blocks with [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content] or [`append_blocks`][albert.collections.notebooks.NotebookCollection.append_blocks]. The
+    blocks with [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content] or [`append_blocks`][albert.collections.notebooks.NotebookCollection.append_blocks],
+    or edit single blocks in place with [`create_block`][albert.collections.notebooks.NotebookCollection.create_block],
+    [`update_block`][albert.collections.notebooks.NotebookCollection.update_block], and
+    [`delete_block`][albert.collections.notebooks.NotebookCollection.delete_block]. The
     [`update`][albert.collections.notebooks.NotebookCollection.update] method changes only the Notebook name.
 
     This collection is accessed as ``client.notebooks``.
@@ -100,6 +106,16 @@ class NotebookCollection(BaseCollection):
         Append blocks to the end of a notebook, preserving existing blocks.
     get_block_by_id(notebook_id, block_id) -> NotebookBlock
         Get a single block from a notebook by block ID.
+    create_block(notebook_id, block, previous_block_id=None) -> NotebookBlock
+        Create a single block in a notebook.
+    update_block(notebook_id, block) -> NotebookBlock
+        Update the content of a single notebook block in place.
+    delete_block(notebook_id, block_id) -> None
+        Delete a single block from a notebook.
+    get_versions(notebook_id, max_items=None) -> list[NotebookVersion]
+        Get the saved versions of a notebook.
+    restore_version(notebook_id, version_id) -> Notebook
+        Restore a notebook to a saved version.
     copy(notebook_copy_info, type) -> Notebook
         Copy a notebook into a specified parent.
     """
@@ -478,6 +494,245 @@ class NotebookCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/{notebook_id}/blocks/{block_id}")
         return TypeAdapter(NotebookBlock).validate_python(response.json())
 
+    @validate_call
+    def create_block(
+        self,
+        *,
+        notebook_id: NotebookId,
+        block: NotebookBlock,
+        previous_block_id: str | None = None,
+    ) -> NotebookBlock:
+        """Create a single block in a Notebook.
+
+        The new block takes the ``id`` of the given block object; block IDs are
+        generated automatically (a UUID) when the block object is built. To add
+        several blocks at once or to reshape the whole document, use
+        [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content]
+        or [`append_blocks`][albert.collections.notebooks.NotebookCollection.append_blocks].
+
+        !!! example
+            ```python
+            from albert.resources.notebooks import ParagraphBlock, ParagraphContent
+
+            block = client.notebooks.create_block(
+                notebook_id="NTB123",
+                block=ParagraphBlock(content=ParagraphContent(text="Weighed 1.2 g.")),
+            )
+            ```
+
+        Parameters
+        ----------
+        notebook_id : NotebookId
+            The Notebook ID to create the block in (format ``NTB...``).
+        block : NotebookBlock
+            The block to create, typed according to its block type (e.g.
+            [`ParagraphBlock`][albert.resources.notebooks.ParagraphBlock]).
+        previous_block_id : str, optional
+            The ID of the block the new block should follow.
+
+        Returns
+        -------
+        NotebookBlock
+            The created block.
+        """
+        ketcher_action = self._prepare_block_for_create(notebook_id=notebook_id, block=block)
+        response = self.session.post(
+            url=f"{self.base_path}/{notebook_id}/blocks/{block.id}",
+            json=PostBlockPayload(
+                type=block.type, content=block.content, previous_block_id=previous_block_id
+            ).model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+        if ketcher_action is not None:
+            self._synthesis.update_canvas_data(
+                synthesis_id=ketcher_action.synthesis_id,
+                smiles=ketcher_action.smiles,
+                data=ketcher_action.data,
+                png=ketcher_action.png,
+            )
+            self._synthesis.create_reactant_productant_table(
+                synthesis_id=ketcher_action.synthesis_id
+            )
+        return TypeAdapter(NotebookBlock).validate_python(response.json())
+
+    @validate_call
+    def update_block(self, *, notebook_id: NotebookId, block: NotebookBlock) -> NotebookBlock:
+        """Update the content of a single Notebook block in place.
+
+        Only the block's own content changes; the surrounding blocks are left
+        untouched. If the content is unchanged, the existing block is returned
+        unchanged. To change many blocks at once or to reorder them, use
+        [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content].
+
+        !!! warning
+            Updating existing Ketcher blocks is not supported. To change a Ketcher
+            block, delete it and create a new one instead.
+
+        !!! example
+            ```python
+            block = client.notebooks.get_block_by_id(notebook_id="NTB123", block_id="abc-123")
+            block.content.text = "Revised observation."
+            block = client.notebooks.update_block(notebook_id="NTB123", block=block)
+            ```
+
+        Parameters
+        ----------
+        notebook_id : NotebookId
+            The Notebook ID the block belongs to (format ``NTB...``).
+        block : NotebookBlock
+            The block carrying the desired content. Its ``id`` identifies the
+            block to update.
+
+        Returns
+        -------
+        NotebookBlock
+            The updated block.
+
+        Raises
+        ------
+        AlbertException
+            If the given block's type differs from the existing block's type.
+
+        Notes
+        -----
+        The following fields can be updated: ``content``.
+        """
+        if isinstance(block, (AttachesBlock | ImageBlock)):
+            self._prepare_file_block(notebook_id=notebook_id, block=block)
+        existing = self.get_block_by_id(notebook_id=notebook_id, block_id=block.id)
+        patch_data = self._generate_block_patch_payload(existing=existing, updated=block)
+        if not patch_data.data:
+            return existing
+        self.session.patch(
+            f"{self.base_path}/{notebook_id}/blocks/{block.id}",
+            json=patch_data.model_dump(mode="json", by_alias=True),
+        )
+        return self.get_block_by_id(notebook_id=notebook_id, block_id=block.id)
+
+    @validate_call
+    def delete_block(self, *, notebook_id: NotebookId, block_id: str) -> None:
+        """Delete a single block from a Notebook.
+
+        !!! example
+            ```python
+            client.notebooks.delete_block(notebook_id="NTB123", block_id="abc-123")
+            ```
+
+        Parameters
+        ----------
+        notebook_id : NotebookId
+            The Notebook ID the block belongs to (format ``NTB...``).
+        block_id : str
+            The ID of the block to delete.
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self.base_path}/{notebook_id}/blocks/{block_id}")
+
+    @validate_call
+    def get_versions(
+        self, *, notebook_id: NotebookId, max_items: int | None = None
+    ) -> list[NotebookVersion]:
+        """Get the saved versions of a Notebook.
+
+        Each [`NotebookVersion`][albert.resources.notebooks.NotebookVersion]
+        captures the notebook's content at a point in time. Restore one with
+        [`restore_version`][albert.collections.notebooks.NotebookCollection.restore_version].
+
+        !!! example
+            ```python
+            versions = client.notebooks.get_versions(notebook_id="NTB123")
+            for version in versions:
+                print(version.id)
+            ```
+
+        Parameters
+        ----------
+        notebook_id : NotebookId
+            The Notebook ID whose versions should be listed (format ``NTB...``).
+        max_items : int, optional
+            Maximum number of versions to return. If None (the default), returns
+            every saved version.
+
+        Returns
+        -------
+        list[NotebookVersion]
+            The saved versions of the notebook.
+        """
+        response = self.session.get(f"{self.base_path}/{notebook_id}/versions")
+        versions = [NotebookVersion.model_validate(item) for item in response.json()]
+        if max_items is not None:
+            versions = versions[:max_items]
+        return versions
+
+    @validate_call
+    def restore_version(self, *, notebook_id: NotebookId, version_id: str) -> Notebook:
+        """Restore a Notebook to a saved version.
+
+        The notebook's content is replaced with the content captured in the
+        given version. List the saved versions with
+        [`get_versions`][albert.collections.notebooks.NotebookCollection.get_versions].
+
+        !!! example
+            ```python
+            versions = client.notebooks.get_versions(notebook_id="NTB123")
+            notebook = client.notebooks.restore_version(
+                notebook_id="NTB123", version_id=versions[0].id
+            )
+            ```
+
+        Parameters
+        ----------
+        notebook_id : NotebookId
+            The Notebook ID to restore (format ``NTB...``).
+        version_id : str
+            The ID of the saved version to restore.
+
+        Returns
+        -------
+        Notebook
+            The restored notebook.
+        """
+        response = self.session.put(f"{self.base_path}/{notebook_id}/restore/{version_id}")
+        return Notebook(**response.json())
+
+    def _prepare_block_for_create(
+        self, *, notebook_id: NotebookId, block: NotebookBlock
+    ) -> _KetcherUpdateAction | None:
+        """Prepare a new block's backing file or synthesis records before creation."""
+        if isinstance(block, KetcherBlock):
+            return self._prepare_ketcher_block(notebook_id=notebook_id, block=block)
+        if isinstance(block, (AttachesBlock | ImageBlock)):
+            self._prepare_file_block(notebook_id=notebook_id, block=block)
+        return None
+
+    @staticmethod
+    def _generate_block_patch_payload(
+        *, existing: NotebookBlock, updated: NotebookBlock
+    ) -> PatchPayload:
+        """Build the update data for an in-place block content change."""
+        if type(existing) is not type(updated):
+            msg = (
+                f"Cannot convert an existing block type into another block type. "
+                f"Create a new block with `create_block()` and remove the old one with "
+                f"`delete_block()` instead. [existing_block_type={type(existing)}, "
+                f"new_block_type={type(updated)}]"
+            )
+            raise AlbertException(msg)
+        if existing.content == updated.content:
+            return PatchPayload(data=[])
+        return PatchPayload(
+            data=[
+                PatchDatum(
+                    operation="update",
+                    attribute="content",
+                    old_value=existing.content.model_dump(mode="json", by_alias=True),
+                    new_value=updated.content.model_dump(mode="json", by_alias=True),
+                )
+            ]
+        )
+
     def _generate_put_block_payload(
         self, *, notebook: Notebook
     ) -> tuple[PutBlockPayload, list[_KetcherUpdateAction]]:
@@ -501,9 +756,11 @@ class NotebookCollection(BaseCollection):
                 raise AlbertException(msg)
 
             if isinstance(block, KetcherBlock) and existing_block is None:
-                ketcher_updates.append(self._prepare_ketcher_block(notebook=notebook, block=block))
+                ketcher_updates.append(
+                    self._prepare_ketcher_block(notebook_id=notebook.id, block=block)
+                )
             elif isinstance(block, (AttachesBlock | ImageBlock)):
-                self._prepare_file_block(notebook=notebook, block=block)
+                self._prepare_file_block(notebook_id=notebook.id, block=block)
 
             put_datum = PutBlockDatum(
                 id=block.id,
@@ -523,7 +780,7 @@ class NotebookCollection(BaseCollection):
         return PutBlockPayload(data=data), ketcher_updates
 
     def _prepare_file_block(
-        self, *, notebook: Notebook, block: AttachesBlock | ImageBlock
+        self, *, notebook_id: NotebookId, block: AttachesBlock | ImageBlock
     ) -> None:
         content = block.content
         file_path = content.file_path
@@ -532,7 +789,7 @@ class NotebookCollection(BaseCollection):
             if file_key:
                 file_name = PurePosixPath(file_key).name
                 if "/" not in file_key:
-                    content.file_key = f"{notebook.id}/{block.id}/{file_key}"
+                    content.file_key = f"{notebook_id}/{block.id}/{file_key}"
                 if content.format is None:
                     content.format = (
                         mimetypes.guess_type(file_name)[0] or "application/octet-stream"
@@ -543,9 +800,9 @@ class NotebookCollection(BaseCollection):
 
         path = Path(file_path)
         if file_key and "/" not in file_key:
-            file_key = f"{notebook.id}/{block.id}/{file_key}"
+            file_key = f"{notebook_id}/{block.id}/{file_key}"
         elif not file_key:
-            file_key = f"{notebook.id}/{block.id}/{path.name}"
+            file_key = f"{notebook_id}/{block.id}/{path.name}"
 
         content.file_key = file_key
         file_name = PurePosixPath(file_key).name
@@ -563,7 +820,7 @@ class NotebookCollection(BaseCollection):
             )
 
     def _prepare_ketcher_block(
-        self, *, notebook: Notebook, block: KetcherBlock
+        self, *, notebook_id: NotebookId, block: KetcherBlock
     ) -> _KetcherUpdateAction:
         """
         Prepare a Ketcher block for creation.
@@ -581,7 +838,7 @@ class NotebookCollection(BaseCollection):
                 raise AlbertException("smiles is required to create a Ketcher block.")
             name = "Chemical Draw Block"
             synthesis = self._synthesis.create(
-                parent_id=notebook.id, name=name, block_id=block.id, smiles=smiles or None
+                parent_id=notebook_id, name=name, block_id=block.id, smiles=smiles or None
             )
             content.synthesis_id = synthesis.id
             content.s3_key = synthesis.s3_key or content.s3_key

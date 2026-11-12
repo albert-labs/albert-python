@@ -12,7 +12,9 @@ from albert.resources.notebooks import (
     Notebook,
     NotebookCopyACL,
     NotebookCopyInfo,
+    NotebookVersion,
     ParagraphContent,
+    PostBlockPayload,
     PowerPointBlock,
     PutBlockDatum,
     PutBlockPayload,
@@ -233,3 +235,49 @@ def test_copy_info_serializes_template_id():
     payload = info.model_dump(mode="json", by_alias=True, exclude_none=True)
 
     assert payload["templateId"] == "CTP789"
+
+
+def test_post_block_payload_rejects_mismatched_content():
+    """Test PostBlockPayload rejects content whose type differs from the block type."""
+    with pytest.raises(AlbertException, match="The content type and block type do not match."):
+        PostBlockPayload(type=BlockType.KETCHER, content=ParagraphContent(text="test"))
+
+
+def test_post_block_payload_serializes_to_wire_format():
+    """Test PostBlockPayload dumps to the wire shape, omitting an unset previous block."""
+    payload = PostBlockPayload(type=BlockType.PARAGRAPH, content=ParagraphContent(text="hi"))
+
+    assert payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "blockType": "paragraph",
+        "content": {"text": "hi"},
+    }
+
+
+def test_post_block_payload_includes_previous_block_id_when_set():
+    """Test PostBlockPayload carries the placement anchor when provided."""
+    payload = PostBlockPayload(
+        type=BlockType.PARAGRAPH,
+        content=ParagraphContent(text="hi"),
+        previous_block_id="B0",
+    )
+
+    dumped = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+    assert dumped["previousBlockId"] == "B0"
+
+
+def test_notebook_version_parses_wire_format():
+    """Test NotebookVersion parses a saved version record."""
+    version = NotebookVersion.model_validate(
+        {"id": "V1", "Created": {"by": "USR1", "byName": "Ada", "at": "2024-01-01T00:00:00Z"}}
+    )
+
+    assert version.id == "V1"
+    assert version.created.by == "USR1"
+    assert version.created.by_name == "Ada"
+
+
+def test_notebook_version_parses_albert_id_key():
+    """Test NotebookVersion also accepts the albertId key used by other platform records."""
+    version = NotebookVersion.model_validate({"albertId": "V1"})
+
+    assert version.id == "V1"

@@ -779,6 +779,42 @@ class PutBlockPayload(BaseAlbertModel):
         return {"data": [item.model_dump(**kwargs) for item in self.data]}
 
 
+class PostBlockPayload(BaseAlbertModel):
+    """Content and placement for a single new notebook block."""
+
+    type: BlockType = Field(alias="blockType")
+    """The type of the block to create."""
+
+    content: NotebookContent
+    """The content of the block. Must match ``type``."""
+
+    previous_block_id: str | None = Field(default=None, alias="previousBlockId")
+    """The ID of the block the new block should follow."""
+
+    @model_validator(mode="after")
+    def content_matches_type(self) -> PostBlockPayload:
+        content_type = allowed_notebook_contents.get(self.type)
+        if content_type and not isinstance(self.content, content_type):
+            msg = f"The content type and block type do not match. [content_type={type(self.content)}, block_type={self.type}]"
+            raise AlbertException(msg)
+        return self
+
+
+class NotebookVersion(BaseAlbertModel):
+    """A saved version of a [`Notebook`][albert.resources.notebooks.Notebook].
+
+    Returned by
+    [`get_versions`][albert.collections.notebooks.NotebookCollection.get_versions].
+    Restore one with
+    [`restore_version`][albert.collections.notebooks.NotebookCollection.restore_version]."""
+
+    id: str | None = Field(default=None, alias="albertId")
+    """The ID of the saved version."""
+
+    created: AuditFields | None = Field(default=None, alias="Created")
+    """Audit information for when the version was saved."""
+
+
 class NotebookCopyACL(BaseResource):
     """
     Access settings applied to a copied notebook.

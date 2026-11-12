@@ -3,7 +3,7 @@ from collections.abc import Iterator
 import pytest
 
 from albert import Albert
-from albert.exceptions import AlbertException
+from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.notebooks import (
     HeaderBlock,
     HeaderContent,
@@ -142,3 +142,69 @@ def test_copy(client: Albert, seeded_notebook: Notebook, seeded_projects: Iterat
     assert len(blocks) == len(block_copies)
     for block, block_copy in zip(blocks, block_copies, strict=True):
         assert type(block) == type(block_copy)
+
+
+def test_create_block(client: Albert, seeded_notebook: Notebook):
+    """Test creating a block adds it to the notebook, preserving existing blocks."""
+    existing_ids = {b.id for b in seeded_notebook.blocks}
+    new_block = ParagraphBlock(content=ParagraphContent(text="Created in place."))
+
+    created = client.notebooks.create_block(notebook_id=seeded_notebook.id, block=new_block)
+
+    assert created.id == new_block.id
+    refreshed = client.notebooks.get_by_id(id=seeded_notebook.id)
+    assert existing_ids | {created.id} <= {b.id for b in refreshed.blocks}
+
+
+def test_create_block_after_a_given_block(client: Albert, seeded_notebook: Notebook):
+    """Test creating a block with previous_block_id places it directly after that block."""
+    anchor = seeded_notebook.blocks[0]
+    new_block = ParagraphBlock(content=ParagraphContent(text="Placed after the first block."))
+
+    created = client.notebooks.create_block(
+        notebook_id=seeded_notebook.id, block=new_block, previous_block_id=anchor.id
+    )
+
+    refreshed_ids = [b.id for b in client.notebooks.get_by_id(id=seeded_notebook.id).blocks]
+    assert refreshed_ids.index(created.id) == refreshed_ids.index(anchor.id) + 1
+
+
+def test_update_block(client: Albert, seeded_notebook: Notebook):
+    """Test updating a block changes its content in place and leaves other blocks untouched."""
+    paragraph = next(b for b in seeded_notebook.blocks if isinstance(b, ParagraphBlock))
+    updated_block = paragraph.model_copy(deep=True)
+    updated_block.content.text = "Updated in place."
+
+    result = client.notebooks.update_block(notebook_id=seeded_notebook.id, block=updated_block)
+
+    assert result.id == paragraph.id
+    assert result.content.text == "Updated in place."
+    refreshed = client.notebooks.get_by_id(id=seeded_notebook.id)
+    assert [b.id for b in refreshed.blocks] == [b.id for b in seeded_notebook.blocks]
+
+
+def test_delete_block(client: Albert, seeded_notebook: Notebook):
+    """Test deleting a block removes it from the notebook."""
+    block = client.notebooks.create_block(
+        notebook_id=seeded_notebook.id,
+        block=ParagraphBlock(content=ParagraphContent(text="Delete me.")),
+    )
+
+    client.notebooks.delete_block(notebook_id=seeded_notebook.id, block_id=block.id)
+
+    with pytest.raises(NotFoundError):
+        client.notebooks.get_block_by_id(notebook_id=seeded_notebook.id, block_id=block.id)
+
+
+def test_get_versions_and_restore_version(client: Albert, seeded_notebook: Notebook):
+    """Test saved versions of a notebook can be listed and restored."""
+    versions = poll_until(lambda: client.notebooks.get_versions(notebook_id=seeded_notebook.id))
+    assert versions, "Expected at least one saved version after content edits"
+    assert all(version.id for version in versions)
+
+    restored = client.notebooks.restore_version(
+        notebook_id=seeded_notebook.id, version_id=versions[0].id
+    )
+
+    assert restored.id == seeded_notebook.id
+    assert len(restored.blocks) > 0
