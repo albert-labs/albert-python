@@ -3,7 +3,7 @@ from collections.abc import Iterator
 import pytest
 
 from albert import Albert
-from albert.exceptions import AlbertException, NotFoundError
+from albert.exceptions import AlbertException
 from albert.resources.notebooks import (
     HeaderBlock,
     HeaderContent,
@@ -192,8 +192,8 @@ def test_delete_block(client: Albert, seeded_notebook: Notebook):
 
     client.notebooks.delete_block(notebook_id=seeded_notebook.id, block_id=block.id)
 
-    with pytest.raises(NotFoundError):
-        client.notebooks.get_block_by_id(notebook_id=seeded_notebook.id, block_id=block.id)
+    refreshed = client.notebooks.get_by_id(id=seeded_notebook.id)
+    assert block.id not in {b.id for b in refreshed.blocks}
 
 
 def test_get_versions_and_restore_version(client: Albert, seeded_notebook: Notebook):
