@@ -278,7 +278,7 @@ class AttributeCollection(BaseCollection):
                     formula_metadata=[
                         FormulaMetadata(
                             display_name="Solids Share",
-                            expression=f"wt% / sum(wt%) * [{solids_id}]",
+                            expression=f"wt% * [{solids_id}]",
                             expression_type=ExpressionType.INGREDIENT_BASIS,
                             request_inverse=False,
                         ),
