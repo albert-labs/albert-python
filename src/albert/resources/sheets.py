@@ -4197,6 +4197,29 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         self.grid = None
 
+    def _without_basis_columns(self, *, col_ids: list[str], action: str) -> list[str]:
+        """``col_ids`` without ingredient basis columns, warning about any left out.
+
+        An ingredient basis column is pinned and unpinned only with its formulation
+        column, as in Albert. Pinned alone, it is split from that column and shows twice
+        on the sheet.
+        """
+        if not col_ids:
+            return []
+        # Read the columns again so an ingredient basis added since the last read is caught.
+        self.grid = None
+        basis = {c.column_id for c in self.columns if c.type == CellType.INGREDIENT_BASIS}
+        skipped = [col_id for col_id in col_ids if col_id in basis]
+        if skipped:
+            warnings.warn(
+                f"Ingredient basis column(s) {', '.join(skipped)} were not {action}: an "
+                f"ingredient basis column is {action} together with its formulation column, "
+                "so pass that column instead.",
+                UserWarning,
+                stacklevel=find_stack_level(),
+            )
+        return [col_id for col_id in col_ids if col_id not in basis]
+
     @validate_call
     def pin_columns(
         self,
@@ -4206,6 +4229,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
     ) -> None:
         """Pin one or more columns to the left or right edge of the sheet.
 
+        Pinning a formulation column pins its ingredient basis columns
+        ([`INGREDIENT_BASIS`][albert.resources.sheets.CellType.INGREDIENT_BASIS]) with it,
+        as in Albert. An ingredient basis column cannot be pinned on its own: its ID is
+        skipped with a ``UserWarning`` and the other columns are still pinned. To pin an
+        ingredient basis column, pin its formulation column.
+
         !!! example
             ```python
             sheet.pin_columns(col_ids=["COL9999999", "COL2"], side="left")
@@ -4214,14 +4243,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Parameters
         ----------
         col_ids : list[str]
-            The column IDs to pin.
+            The column IDs to pin. Ingredient basis column IDs are skipped.
         side : "left" or "right"
             Which edge to pin to.
 
         Returns
         -------
         None
+
+        Warns
+        -----
+        UserWarning
+            If ``col_ids`` includes an ingredient basis column, which is left unpinned.
         """
+        col_ids = self._without_basis_columns(col_ids=col_ids, action="pinned")
+        if not col_ids:
+            return
         payload = {
             "data": [
                 {
@@ -4239,6 +4276,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def unpin_columns(self, *, col_ids: list[str]) -> None:
         """Unpin one or more columns.
 
+        Unpinning a formulation column unpins its ingredient basis columns
+        ([`INGREDIENT_BASIS`][albert.resources.sheets.CellType.INGREDIENT_BASIS]) with it,
+        as in Albert. An ingredient basis column cannot be unpinned on its own: its ID is
+        skipped with a ``UserWarning`` and the other columns are still unpinned. To unpin
+        an ingredient basis column, unpin its formulation column.
+
         !!! example
             ```python
             sheet.unpin_columns(col_ids=["COL9999999", "COL2"])
@@ -4247,12 +4290,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Parameters
         ----------
         col_ids : list[str]
-            The column IDs to unpin.
+            The column IDs to unpin. Ingredient basis column IDs are skipped.
 
         Returns
         -------
         None
+
+        Warns
+        -----
+        UserWarning
+            If ``col_ids`` includes an ingredient basis column, which is left as it is.
         """
+        col_ids = self._without_basis_columns(col_ids=col_ids, action="unpinned")
+        if not col_ids:
+            return
         payload = {
             "data": [
                 {

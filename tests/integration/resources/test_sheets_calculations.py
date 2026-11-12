@@ -466,6 +466,53 @@ def test_formula_exposes_stored_calculated_property_values(
     assert value.updated_at
 
 
+def _pin_layout(sheet: Sheet) -> list[tuple[str, str | None]]:
+    sheet.grid = None
+    return [(c.column_id, c.pinned) for c in sheet.columns]
+
+
+def test_pin_columns_skips_ingredient_basis_columns(calculations_sheet: CalculationsSheet):
+    """Test that pinning or unpinning an ingredient basis column alone changes nothing."""
+    sheet = calculations_sheet.sheet
+    before = _pin_layout(sheet)
+    basis_id = next(c.column_id for c in sheet.columns if c.type == CellType.INGREDIENT_BASIS)
+
+    with pytest.warns(UserWarning, match=basis_id) as record:
+        sheet.pin_columns(col_ids=[basis_id], side="left")
+    with pytest.warns(UserWarning, match=basis_id):
+        sheet.unpin_columns(col_ids=[basis_id])
+
+    assert _pin_layout(sheet) == before
+    assert record[0].filename == __file__
+
+
+def test_pin_columns_keeps_ingredient_basis_with_its_formulation_column(
+    calculations_sheet: CalculationsSheet,
+):
+    """Test that a pinned, then unpinned, formulation column keeps its ingredient basis beside it."""
+    sheet = calculations_sheet.sheet
+    formula_id = calculations_sheet.formula_column_id
+
+    def formula_and_next() -> tuple[tuple[str, str | None], tuple[str, str | None]]:
+        layout = _pin_layout(sheet)
+        i = next(i for i, (col_id, _) in enumerate(layout) if col_id == formula_id)
+        return layout[i], layout[i + 1]
+
+    _, (basis_id, _) = formula_and_next()
+    assert next(c for c in sheet.columns if c.column_id == basis_id).type == (
+        CellType.INGREDIENT_BASIS
+    )
+    try:
+        sheet.pin_columns(col_ids=[formula_id], side="left")
+        pinned_formula, pinned_next = formula_and_next()
+    finally:
+        sheet.unpin_columns(col_ids=[formula_id])
+    unpinned_formula, unpinned_next = formula_and_next()
+
+    assert (pinned_formula, pinned_next[0]) == ((formula_id, "left"), basis_id)
+    assert (unpinned_formula, unpinned_next[0]) == ((formula_id, None), basis_id)
+
+
 @pytest.fixture(scope="module")
 def editable_sheet(client: Albert, seed_prefix: str) -> Iterator[PrivateSheet]:
     """A private sheet that starts without calculations, for adding and removing them."""
