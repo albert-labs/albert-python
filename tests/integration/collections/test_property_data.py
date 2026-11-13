@@ -859,6 +859,73 @@ def test_get_task_property_records_filters_by_inventory(
     )
 
 
+def test_get_task_property_records_resolves_child_workflow_intervals(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_locations,
+    seeded_projects,
+    seeded_data_templates: list[DataTemplate],
+    seeded_workflows,
+):
+    """Test increased-intervals records carry the ROW chain, child workflow and setpoints."""
+    inventory_id = seeded_inventory[0].id
+    data_template = client.data_templates.get_by_id(id=seeded_data_templates[0].id)
+    task_id = None
+    try:
+        # Workflow 2: fixed setpoints plus one normal parameter intervalized over 1.1 and 2.2.
+        task = client.tasks.create_with_combinations(
+            task=PropertyTask(
+                name=f"{seed_prefix} - child workflow records task",
+                category=TaskCategory.PROPERTY,
+                inventory_information=[TaskInventoryInformation(inventory_id=inventory_id)],
+                parent_id=inventory_id,
+                location=seeded_locations[0],
+                project=seeded_projects[0],
+                blocks=[Block(workflow=[seeded_workflows[1]], data_template=[data_template])],
+            )
+        )
+        task_id = task.id
+        block_id = task.blocks[0].id
+        combo = next(client.tasks.get_block_combinations(task_id=task_id, block_id=block_id))
+        client.property_data.add_properties_to_task(
+            task_id=task_id,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            properties=[
+                TaskPropertyCreate(
+                    data_template=data_template,
+                    data_column=TaskDataColumn(
+                        data_column_id=data_template.data_column_values[0].data_column_id,
+                        column_sequence=data_template.data_column_values[0].sequence,
+                    ),
+                    value="12.5",
+                    interval_combination=combo.interval_row_key,
+                )
+            ],
+            return_scope="none",
+        )
+
+        records = [
+            r
+            for r in client.property_data.get_task_property_records(task_id=task_id)
+            if r.value == "12.5"
+        ]
+
+        assert records != []
+        assert {(r.interval_combination, r.child_workflow_id) for r in records} == {
+            (combo.interval_row_key, combo.id)
+        }
+        setpoints = records[0].parameter_setpoints
+        # The combination's interval value, plus the workflow's fixed setpoints.
+        assert len(set(setpoints.values()) & {"1.1", "2.2"}) == 1
+        assert len(setpoints) > 1
+    finally:
+        if task_id:
+            with suppress(NotFoundError):
+                client.tasks.delete(id=task_id)
+
+
 def test_image_upload_onto_partially_filled_trial(
     client: Albert,
     seed_prefix: str,
