@@ -1,4 +1,5 @@
 from collections.abc import Iterable, Mapping
+from itertools import zip_longest
 from pathlib import Path
 from typing import Any, Literal
 
@@ -64,6 +65,49 @@ def resolve_unassigned_task_state(*, state: TaskState | None) -> TaskState:
     return state
 
 
+COMBINATIONS_MODE_CHILD_WORKFLOWS = "child_workflows"
+"""Combinations mode of a block whose combinations are generated after it is added or its
+workflow changes (increased intervals enabled for the tenant)."""
+
+
+def child_workflow_block_ids(*, modes: Mapping[str, str | None]) -> list[str]:
+    """Return the IDs of the blocks whose combinations must be generated, in order.
+
+    ``modes`` maps block IDs to their combinations mode. Only ``"child_workflows"``
+    needs generation; any other mode, or none, is treated as legacy.
+    """
+    unreported = [block_id for block_id, mode in modes.items() if mode is None]
+    if unreported:
+        logger.debug("Blocks %s report no combinations mode; treated as legacy", unreported)
+    return [
+        block_id for block_id, mode in modes.items() if mode == COMBINATIONS_MODE_CHILD_WORKFLOWS
+    ]
+
+
+def added_block_modes(*, data: Any, task_id: str) -> dict[str, str | None]:
+    """Map each block an add-block call created to its combinations mode, in the order added.
+
+    Raises ``AlbertException`` when the added blocks were not reported.
+    """
+    blocks = data.get("blocks") if isinstance(data, dict) else None
+    if not blocks:
+        raise AlbertException(
+            f"Blocks were added to task {task_id}, but their IDs were not reported, so "
+            "their combinations were not generated."
+        )
+    return {block["id"]: block.get("combinationsMode") for block in blocks}
+
+
+def interleave_task_blocks(*, block_ids: Mapping[str, list[str]]) -> list[tuple[str, str]]:
+    """Order ``(task ID, block ID)`` pairs round robin across tasks.
+
+    Every task's first block comes first, then every task's second block, and so on,
+    so that blocks of the same task are as far apart as possible.
+    """
+    rounds = zip_longest(*([(task_id, b) for b in ids] for task_id, ids in block_ids.items()))
+    return [pair for round_ in rounds for pair in round_ if pair is not None]
+
+
 def build_property_payload(
     *,
     data_rows: Iterable[dict[str, dict]],
@@ -117,7 +161,8 @@ def build_task_metadata(
     Supports both v1 (legacy ROW combinations and Blockdata) and v2
     (Increased Intervals compact schemaVersion=2 and intervals.combos).
     When schema_version is omitted, auto-detects from the block's
-    Increased Intervals attributes (intervals_start_from, jobId, combinationsCount).
+    Increased Intervals attributes (combinationsMode, intervals_start_from, jobId,
+    combinationsCount).
     """
     block_info = next((blk for blk in (task.blocks or []) if blk.id == block_id), None)
     if block_info is None:
@@ -130,7 +175,8 @@ def build_task_metadata(
         resolved_version = schema_version
     else:
         has_increased_intervals = (
-            block_info.intervals_start_from is not None
+            block_info.combinations_mode == COMBINATIONS_MODE_CHILD_WORKFLOWS
+            or block_info.intervals_start_from is not None
             or getattr(block_info, "job_id", None) is not None
             or any(
                 getattr(wf, "combinations_count", None) is not None

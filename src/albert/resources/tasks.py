@@ -353,6 +353,14 @@ class Block(BaseAlbertModel):
     job_state: str | None = Field(default=None, alias="jobState", exclude=True)
     """State of the worker job in [`job_id`][albert.resources.tasks.Block.job_id], or ``None`` when no job is associated. Serialized as ``jobState``."""
 
+    combinations_mode: str | None = Field(default=None, alias="combinationsMode", exclude=True)
+    """Read-only. How the block's interval combinations are kept: ``"child_workflows"`` when increased intervals is enabled for your tenant (combinations are generated for the block whenever it is added or its workflow changes), ``"legacy"`` otherwise. ``None`` on blocks you build yourself."""
+
+    previous_workflow_id: str | None = Field(
+        default=None, alias="previousWorkflowId", exclude=True
+    )
+    """Read-only. The workflow this block was switched from, until combinations are generated for its new workflow (format ``WFL...``). ``None`` otherwise, or when increased intervals is not enabled for your tenant."""
+
     intervals_start_from: Literal["all", "none"] | None = Field(
         default=None, alias="intervalsStartFrom"
     )

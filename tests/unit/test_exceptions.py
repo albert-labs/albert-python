@@ -195,6 +195,31 @@ def test_combination_generation_error_attributes():
     assert "Combination generation failed" in str(err)
 
 
+def test_combination_generation_error_tasks_default_to_the_task():
+    """Test that tasks holds the single task when only task is given."""
+    task = PropertyTask(id="TASFOR123", name="Test Task")
+
+    err = CombinationGenerationError("failed", task=task)
+
+    assert err.tasks == [task]
+
+
+def test_combination_generation_error_keeps_tasks_without_a_task():
+    """Test that an error over several tasks keeps them all and no single task."""
+    tasks = [PropertyTask(id="TASFOR1", name="A"), PropertyTask(id="TASFOR2", name="B")]
+
+    err = CombinationGenerationError(
+        "failed", tasks=tasks, failed_blocks=["TASFOR2/BLK1"], job_states={}
+    )
+
+    assert (err.task, err.tasks, err.failed_blocks) == (None, tasks, ["TASFOR2/BLK1"])
+
+
+def test_combination_generation_error_tasks_empty_without_tasks():
+    """Test that tasks is empty when no task is given."""
+    assert CombinationGenerationError("failed").tasks == []
+
+
 # --- status code -> exception class mapping -----------------------------------
 
 

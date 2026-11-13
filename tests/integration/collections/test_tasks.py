@@ -14,6 +14,7 @@ from albert.resources.interval_combinations import (
     RuleOperator,
 )
 from albert.resources.lists import ListItem
+from albert.resources.property_data import TaskDataColumn, TaskPropertyCreate
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
     BaseTask,
@@ -40,6 +41,44 @@ def _final_workflow_id(block) -> str:
         if workflow.category != "INITIAL":
             return workflow.id
     return block.workflow[0].id
+
+
+def _data_template_id(block: Block) -> str:
+    data_template = block.data_template
+    return (data_template[0] if isinstance(data_template, list) else data_template).id
+
+
+def _assert_combinations_generated(blocks: list[Block]) -> None:
+    """Assert every block that needs generated combinations (increased intervals) has them."""
+    pending = [
+        (b.id, b.job_state)
+        for b in blocks
+        if b.combinations_mode == "child_workflows" and b.job_state != "successful"
+    ]
+    assert pending == []
+
+
+def _property_task(
+    name: str,
+    *,
+    inventory_id: str,
+    location,
+    project,
+    data_template_id: str,
+    workflows: list[Workflow],
+) -> PropertyTask:
+    return PropertyTask(
+        name=name,
+        category=TaskCategory.PROPERTY,
+        inventory_information=[TaskInventoryInformation(inventory_id=inventory_id)],
+        parent_id=inventory_id,
+        location=location,
+        project=project,
+        blocks=[
+            Block(workflow=[{"id": w.id}], data_template=[{"id": data_template_id}])
+            for w in workflows
+        ],
+    )
 
 
 def test_task_search_with_pagination(client: Albert, seed_prefix: str, seeded_tasks):
@@ -139,6 +178,169 @@ def test_create_many_rejects_mixed_categories(client: Albert):
     """Test that create_many rejects tasks of mixed categories."""
     with pytest.raises(AlbertException):
         client.tasks.create_many(tasks=[GeneralTask(name="a"), BatchTask(name="b")])
+
+
+def test_create_generates_block_combinations(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_locations,
+    seeded_projects,
+    seeded_data_templates,
+    seeded_workflows,
+):
+    """Test a plain create leaves every block ready for results, with no explicit generate."""
+    inventory_id = seeded_inventory[0].id
+    data_template = client.data_templates.get_by_id(id=seeded_data_templates[0].id)
+    workflow = client.workflows.get_by_id(id=seeded_workflows[1].id)
+    interval_id = workflow.interval_combinations[0].interval_id
+    task = client.tasks.create(
+        task=_property_task(
+            f"{seed_prefix} - routed create",
+            inventory_id=inventory_id,
+            location=seeded_locations[0],
+            project=seeded_projects[0],
+            data_template_id=data_template.id,
+            # Workflow 1 has fixed setpoints only; Workflow 2 has one intervalized parameter.
+            workflows=[seeded_workflows[0], seeded_workflows[1]],
+        )
+    )
+    try:
+        _assert_combinations_generated(task.blocks)
+        # Writing to an interval combination needs that combination generated.
+        interval_block_id = task.blocks[1].id
+        client.property_data.add_properties_to_task(
+            task_id=task.id,
+            inventory_id=inventory_id,
+            block_id=interval_block_id,
+            properties=[
+                TaskPropertyCreate(
+                    data_template=data_template,
+                    data_column=TaskDataColumn(
+                        data_column_id=data_template.data_column_values[0].data_column_id,
+                        column_sequence=data_template.data_column_values[0].sequence,
+                    ),
+                    value="7.5",
+                    interval_combination=interval_id,
+                )
+            ],
+            return_scope="none",
+        )
+        records = [
+            (r.value, r.interval_combination)
+            for r in client.property_data.get_task_property_records(task_id=task.id)
+            if r.block_id == interval_block_id and r.value == "7.5"
+        ]
+        assert records == [("7.5", interval_id)]
+    finally:
+        with suppress(NotFoundError):
+            client.tasks.delete(id=task.id)
+
+
+def test_create_without_waiting_starts_generation(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_locations,
+    seeded_projects,
+    seeded_data_templates,
+    seeded_workflows,
+):
+    """Test create with wait=False returns once generation has started on each block."""
+    task = client.tasks.create(
+        task=_property_task(
+            f"{seed_prefix} - routed create no wait",
+            inventory_id=seeded_inventory[0].id,
+            location=seeded_locations[0],
+            project=seeded_projects[0],
+            data_template_id=seeded_data_templates[0].id,
+            workflows=[seeded_workflows[0], seeded_workflows[1]],
+        ),
+        wait=False,
+    )
+    try:
+        unstarted = [
+            b.id
+            for b in task.blocks
+            if b.combinations_mode == "child_workflows" and b.job_id is None
+        ]
+        assert unstarted == []
+    finally:
+        with suppress(NotFoundError):
+            client.tasks.delete(id=task.id)
+
+
+def test_create_many_generates_block_combinations(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_locations,
+    seeded_projects,
+    seeded_data_templates,
+    seeded_workflows,
+):
+    """Test create_many generates the combinations of every created task's blocks."""
+    tasks = [
+        _property_task(
+            f"{seed_prefix} - routed create_many {i}",
+            inventory_id=seeded_inventory[0].id,
+            location=seeded_locations[0],
+            project=seeded_projects[0],
+            data_template_id=seeded_data_templates[0].id,
+            workflows=[seeded_workflows[0]],
+        )
+        for i in range(2)
+    ]
+    created = client.tasks.create_many(tasks=tasks)
+    try:
+        assert len(created) == 2
+        _assert_combinations_generated([b for t in created for b in t.blocks])
+    finally:
+        for t in created:
+            with suppress(NotFoundError):
+                client.tasks.delete(id=t.id)
+
+
+def test_generate_block_combinations_keeps_barcodes_on_regeneration(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_locations,
+    seeded_projects,
+    seeded_data_templates,
+    seeded_workflows,
+):
+    """Test regenerating a block's combinations, with no old workflow given, keeps barcodes."""
+    task = client.tasks.create(
+        task=_property_task(
+            f"{seed_prefix} - regenerate barcodes",
+            inventory_id=seeded_inventory[0].id,
+            location=seeded_locations[0],
+            project=seeded_projects[0],
+            data_template_id=seeded_data_templates[0].id,
+            workflows=[seeded_workflows[1]],
+        )
+    )
+    try:
+        block = task.blocks[0]
+        if block.combinations_mode != "child_workflows":
+            pytest.skip("Increased intervals is not enabled for the test tenant.")
+        before = sorted(
+            c.interval_barcode
+            for c in client.tasks.get_block_combinations(task_id=task.id, block_id=block.id)
+        )
+
+        client.tasks.generate_block_combinations(task_id=task.id, block_id=block.id)
+
+        after = sorted(
+            c.interval_barcode
+            for c in client.tasks.get_block_combinations(task_id=task.id, block_id=block.id)
+        )
+        assert len(before) == 2
+        assert after == before
+    finally:
+        with suppress(NotFoundError):
+            client.tasks.delete(id=task.id)
 
 
 def test_create_with_project_parent_id_links_project(
@@ -297,23 +499,25 @@ def test_allocate_inventory_task_lot(
 
 
 def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):
+    """Test adding a block returns its ID and generates its combinations when needed."""
     task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
-    starting_blocks = len(task.blocks)
-    client.tasks.add_block(
+    starting_ids = {b.id for b in client.tasks.get_by_id(id=task.id).blocks or []}
+    block_id = client.tasks.add_block(
         task_id=task.id,
         data_template_id=seeded_data_templates[0].id,
         workflow_id=seeded_workflows[0].id,
     )
     updated_task = client.tasks.get_by_id(id=task.id)
-    assert len(updated_task.blocks) == starting_blocks + 1
+    added = [b for b in updated_task.blocks if b.id not in starting_ids]
+    assert [b.id for b in added] == [block_id]
+    _assert_combinations_generated(added)
 
 
 def test_add_blocks(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):
-    """Test adding multiple blocks to a task in one call."""
+    """Test adding multiple blocks returns their IDs in the order given."""
     task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
-    task = client.tasks.get_by_id(id=task.id)
-    starting_blocks = len(task.blocks)
-    client.tasks.add_blocks(
+    starting_ids = {b.id for b in client.tasks.get_by_id(id=task.id).blocks or []}
+    block_ids = client.tasks.add_blocks(
         task_id=task.id,
         blocks=[
             Block(
@@ -327,7 +531,22 @@ def test_add_blocks(client: Albert, seeded_tasks, seeded_workflows, seeded_data_
         ],
     )
     updated_task = client.tasks.get_by_id(id=task.id)
-    assert len(updated_task.blocks) == starting_blocks + 2
+    added = [b for b in updated_task.blocks if b.id not in starting_ids]
+    assert [b.id for b in added] == block_ids
+    assert [_data_template_id(b) for b in added] == [
+        seeded_data_templates[0].id,
+        seeded_data_templates[1].id,
+    ]
+    _assert_combinations_generated(added)
+
+
+def test_add_blocks_empty_input_returns_empty(client: Albert, seeded_tasks):
+    """Test adding no blocks returns no IDs and leaves the task unchanged."""
+    task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+    starting_ids = [b.id for b in client.tasks.get_by_id(id=task.id).blocks or []]
+
+    assert client.tasks.add_blocks(task_id=task.id, blocks=[]) == []
+    assert [b.id for b in client.tasks.get_by_id(id=task.id).blocks or []] == starting_ids
 
 
 def test_update_block_workflow(
@@ -351,6 +570,9 @@ def test_update_block_workflow(
     assert len(updated_task.blocks) == starting_blocks
     updated_block = next(block for block in updated_task.blocks if block.id == block_id)
     assert new_workflow.id == _final_workflow_id(updated_block)
+    _assert_combinations_generated([updated_block])
+    # Regenerating for the new workflow consumes the record of the replaced one.
+    assert updated_block.previous_workflow_id is None
 
 
 def test_add_block_to_batch_task(

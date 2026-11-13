@@ -34,14 +34,17 @@ from albert.resources.tasks import (
 )
 from albert.resources.workflows import ParameterGroupSetpoints, ParameterSetpoint, Workflow
 from albert.utils.tasks import (
+    added_block_modes,
     build_property_payload,
     build_quantity_used_data,
     build_task_metadata,
+    child_workflow_block_ids,
     determine_extension,
     extract_extensions_from_attachment,
     fetch_csv_table_rows,
     generate_adv_patch_payload,
     get_current_workflow_id,
+    interleave_task_blocks,
     is_metadata_item_list,
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
@@ -138,6 +141,108 @@ def test_resolve_unassigned_task_state_rejects_ownership_states(state):
 def test_resolve_unassigned_task_state_preserves_allowed_explicit_states(state):
     """Test that explicit Unclaimed and terminal states pass through unchanged."""
     assert resolve_unassigned_task_state(state=state) is state
+
+
+# ---------------------------------------------------------------------------
+# child_workflow_block_ids
+# ---------------------------------------------------------------------------
+
+
+def test_child_workflow_block_ids_keeps_child_workflow_blocks_in_order():
+    """Test that only child-workflow blocks are selected, in the order given."""
+    modes = {
+        "BLK3": "child_workflows",
+        "BLK1": "legacy",
+        "BLK2": "child_workflows",
+        "BLK4": None,
+        "BLK5": "future",
+    }
+
+    assert child_workflow_block_ids(modes=modes) == ["BLK3", "BLK2"]
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        pytest.param("legacy", id="legacy"),
+        pytest.param(None, id="unreported"),
+        pytest.param("future", id="unknown"),
+    ],
+)
+def test_child_workflow_block_ids_treats_other_modes_as_legacy(mode):
+    """Test that a legacy, unreported, or unknown mode needs no generation."""
+    assert child_workflow_block_ids(modes={"BLK1": mode}) == []
+
+
+# ---------------------------------------------------------------------------
+# added_block_modes
+# ---------------------------------------------------------------------------
+
+
+def test_added_block_modes_maps_blocks_in_order_added():
+    """Test that each added block maps to its combinations mode, in the order added."""
+    data = {
+        "blocks": [
+            {"id": "BLK3", "taskId": "TAS1", "combinationsMode": "child_workflows", "jobId": None},
+            {"id": "BLK2", "taskId": "TAS1", "combinationsMode": "legacy", "jobId": None},
+            {"id": "BLK4", "taskId": "TAS1"},
+        ]
+    }
+
+    modes = added_block_modes(data=data, task_id="TAS1")
+
+    assert list(modes.items()) == [
+        ("BLK3", "child_workflows"),
+        ("BLK2", "legacy"),
+        ("BLK4", None),
+    ]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(None, id="no-body"),
+        pytest.param({}, id="no-blocks-key"),
+        pytest.param({"blocks": []}, id="empty-blocks"),
+        pytest.param([], id="not-an-object"),
+    ],
+)
+def test_added_block_modes_raises_when_blocks_not_reported(data):
+    """Test that a missing list of added blocks raises a clear error."""
+    with pytest.raises(AlbertException, match="Blocks were added to task TAS1"):
+        added_block_modes(data=data, task_id="TAS1")
+
+
+# ---------------------------------------------------------------------------
+# interleave_task_blocks
+# ---------------------------------------------------------------------------
+
+
+def test_interleave_task_blocks_alternates_tasks():
+    """Test that blocks are ordered round robin across tasks, keeping each task's order."""
+    block_ids = {"TAS1": ["BLK1", "BLK2", "BLK3"], "TAS2": ["BLK1"], "TAS3": ["BLK2", "BLK1"]}
+
+    assert interleave_task_blocks(block_ids=block_ids) == [
+        ("TAS1", "BLK1"),
+        ("TAS2", "BLK1"),
+        ("TAS3", "BLK2"),
+        ("TAS1", "BLK2"),
+        ("TAS3", "BLK1"),
+        ("TAS1", "BLK3"),
+    ]
+
+
+def test_interleave_task_blocks_keeps_a_single_task_in_order():
+    """Test that a single task's blocks keep their order."""
+    assert interleave_task_blocks(block_ids={"TAS1": ["BLK2", "BLK1"]}) == [
+        ("TAS1", "BLK2"),
+        ("TAS1", "BLK1"),
+    ]
+
+
+def test_interleave_task_blocks_returns_empty_for_no_tasks():
+    """Test that no tasks give no blocks."""
+    assert interleave_task_blocks(block_ids={}) == []
 
 
 def _payload(offline_session, *, existing: GeneralTask, updated: GeneralTask):
@@ -840,6 +945,21 @@ def test_build_task_metadata_v2_autodetect_from_intervals_start_from():
     assert payload_dict["dataTemplateId"] == "DAT1"
     assert "inventories" in payload_dict
     assert "Blockdata" not in payload_dict
+
+
+def test_build_task_metadata_v2_autodetect_from_combinations_mode():
+    """Test that a child-workflow block with no other interval markers uses schemaVersion=2."""
+    block = Block(
+        id="BLK1",
+        workflow=[EntityLink(id="WFL1", name="Workflow A")],
+        data_template=[EntityLink(id="DAT1", name="Data Template A")],
+        combinationsMode="child_workflows",
+    )
+    task = PropertyTask(id="TAS1", name="Task", blocks=[block])
+
+    metadata = build_task_metadata(task=task, block_id="BLK1", filename="results.csv")
+
+    assert (metadata.schema_version, metadata.blockdata) == (2, None)
 
 
 def test_build_task_metadata_v1_populates_intervals_and_workflow_json_with_session():
