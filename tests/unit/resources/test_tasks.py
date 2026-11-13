@@ -137,3 +137,48 @@ def test_reaction_read_only_fields_excluded_from_dump():
     assert "inventoryOnHand" not in row_dump
     assert "parentUnit" not in row_dump
     assert "Location" not in row_dump
+
+
+# Mirrors a block of GET /api/v3/tasks/multi/{id} on a tenant with increased intervals.
+CHILD_WORKFLOWS_BLOCK_PAYLOAD = {
+    "id": "BLK1",
+    "Datatemplate": [{"id": "DAT1", "name": "Viscosity"}],
+    "Workflow": [{"id": "WFL2", "name": "Cure", "category": "FINAL"}],
+    "combinationsMode": "child_workflows",
+    "previousWorkflowId": "WFL1",
+    "jobId": "JOB1",
+    "jobState": "successful",
+}
+
+
+def test_block_parses_combinations_mode_and_previous_workflow():
+    """Test a block read from a task carries its combinations mode and previous workflow."""
+    task = PropertyTask(name="Task", blocks=[CHILD_WORKFLOWS_BLOCK_PAYLOAD])
+
+    block = task.blocks[0]
+
+    assert (block.combinations_mode, block.previous_workflow_id) == ("child_workflows", "WFL1")
+
+
+def test_block_parses_unknown_combinations_mode():
+    """Test a combinations mode the SDK does not know still parses."""
+    task = PropertyTask(
+        name="Task", blocks=[{**CHILD_WORKFLOWS_BLOCK_PAYLOAD, "combinationsMode": "future"}]
+    )
+
+    assert task.blocks[0].combinations_mode == "future"
+
+
+def test_block_read_only_interval_fields_excluded_from_dump():
+    """Test combinations mode and previous workflow never serialize into a create payload."""
+    task = PropertyTask(name="Task", blocks=[CHILD_WORKFLOWS_BLOCK_PAYLOAD])
+
+    dumped = task.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+    assert dumped["Blocks"] == [
+        {
+            "id": "BLK1",
+            "Datatemplate": [{"id": "DAT1", "name": "Viscosity"}],
+            "Workflow": [{"id": "WFL2"}],
+        }
+    ]

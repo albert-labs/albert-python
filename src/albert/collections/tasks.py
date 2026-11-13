@@ -77,14 +77,17 @@ from albert.utils.interval_combinations import generate_interval_combinations
 from albert.utils.tags import resolve_tags
 from albert.utils.tasks import (
     CSV_EXTENSIONS,
+    added_block_modes,
     build_property_payload,
     build_quantity_used_data,
     build_task_metadata,
+    child_workflow_block_ids,
     determine_extension,
     extract_extensions_from_attachment,
     fetch_csv_table_rows,
     generate_adv_patch_payload,
     get_current_workflow_id,
+    interleave_task_blocks,
     map_csv_headers_to_columns,
     mirror_project_from_parent_id,
     resolve_attachment,
@@ -162,9 +165,9 @@ class TaskCollection(BaseCollection):
 
     Methods
     -------
-    create(task) -> BaseTask
+    create(task, wait=True) -> BaseTask
         Create a PropertyTask, BatchTask, or GeneralTask.
-    create_many(tasks) -> list[BaseTask]
+    create_many(tasks, wait=True) -> list[BaseTask]
         Create multiple tasks in a single call.
     create_with_combinations(task, wait=True) -> PropertyTask | BatchTask (🧪 Beta)
         Create a Property or Batch task and generate its block combinations (increased intervals).
@@ -180,13 +183,13 @@ class TaskCollection(BaseCollection):
         Record how much inventory a task consumed (allocate inventory / assign lots).
     delete(id, delay=None) -> None
         Delete a task by its ID.
-    add_block(task_id, data_template_id, workflow_id) -> None
+    add_block(task_id, data_template_id, workflow_id, wait=True) -> BlockId
         Add a Block (Data Template + Workflow) to a Property or Batch task.
-    add_blocks(task_id, blocks) -> None
+    add_blocks(task_id, blocks, wait=True) -> list[BlockId]
         Add multiple Blocks to a task in one call.
     remove_block(task_id, block_id) -> None
         Remove a Block from a Property or Batch task.
-    update_block_workflow(task_id, block_id, workflow_id) -> None
+    update_block_workflow(task_id, block_id, workflow_id, wait=True) -> None
         Swap the Workflow assigned to a Block.
     update_task_workflow(task_id, workflow_id) -> BatchTask
         Swap the Workflow assigned to a batch task.
@@ -228,7 +231,9 @@ class TaskCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{TaskCollection._api_version}/tasks"
 
-    def create(self, *, task: PropertyTask | GeneralTask | BatchTask) -> BaseTask:
+    def create(
+        self, *, task: PropertyTask | GeneralTask | BatchTask, wait: bool = True
+    ) -> BaseTask:
         """Create a new task.
 
         Pass the concrete task type you want to create. Its ``category`` is set
@@ -242,16 +247,14 @@ class TaskCollection(BaseCollection):
         set on the task's ``blocks`` or added after creation with
         [`add_block`][albert.collections.tasks.TaskCollection.add_block].
 
-        !!! warning "Property and Batch tasks with increased intervals (🧪 Beta)"
-            When increased intervals is enabled for your tenant, ``create`` does not
-            generate combinations for a Property or Batch task's blocks, so those blocks
-            show no rows. This applies even when a block's workflow has no intervals,
-            because every block needs at least its baseline combination. Create Property
-            or Batch tasks with blocks using
-            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
-            instead, or call
-            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
-            for each block after ``create``. General tasks are not affected.
+        When increased intervals is enabled for your tenant, the interval combinations
+        of every block of a Property or Batch task are generated before ``create``
+        returns, so the blocks are ready for results. This adds the generation time to
+        the call, with at least 10 seconds between blocks of the task. Pass
+        ``wait=False`` to return as soon as generation has started. To set combination
+        rules or overrides on the blocks, use
+        [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+        instead.
 
         Lifecycle state on create is coupled to the assignee:
 
@@ -275,19 +278,40 @@ class TaskCollection(BaseCollection):
         task : PropertyTask or GeneralTask or BatchTask
             The task to create. ``name`` is required. Any tags that do not yet
             exist in Albert are created automatically.
+        wait : bool, default True
+            Whether to wait until the interval combinations of the task's blocks are
+            generated, when increased intervals is enabled for your tenant. If False,
+            returns as soon as generation has started.
 
         Returns
         -------
         BaseTask
             The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
-            populated with its assigned Task ID.
+            populated with its assigned Task ID. Blocks whose combinations were
+            generated carry ``job_id`` and ``job_state``.
 
         Raises
         ------
         AlbertException
             If ``task`` has no ``assigned_to`` but ``state`` is ``Not Started`` or
             ``In Progress``.
+        CombinationGenerationError
+            If combinations could not be generated for one or more blocks. The task was
+            created anyway (``err.task``): retry only ``err.failed_blocks`` with
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            rather than calling ``create`` again, which would create a second task.
         """
+        created = self._create(task=task)
+        block_ids = self._block_ids_to_generate(task=created)
+        if block_ids:
+            jobs = self._run_block_combination_jobs(
+                blocks=[(created.id, block_id) for block_id in block_ids], wait=wait
+            )
+            self._set_block_jobs(task=created, jobs=jobs)
+        return created
+
+    def _create(self, *, task: PropertyTask | GeneralTask | BatchTask) -> BaseTask:
+        """Create a task without generating the combinations of its blocks."""
         if task.tags:
             task.tags = resolve_tags(session=self.session, tags=task.tags)
         payload = mirror_project_from_parent_id(
@@ -305,7 +329,7 @@ class TaskCollection(BaseCollection):
 
     @validate_call
     def create_many(
-        self, *, tasks: list[PropertyTask | GeneralTask | BatchTask]
+        self, *, tasks: list[PropertyTask | GeneralTask | BatchTask], wait: bool = True
     ) -> list[BaseTask]:
         """Create multiple tasks in a single call.
 
@@ -318,13 +342,11 @@ class TaskCollection(BaseCollection):
         ``Not Started`` / ``In Progress`` are rejected), while a task with an
         assignee starts ``Not Started``.
 
-        !!! warning "Property and Batch tasks with increased intervals (🧪 Beta)"
-            When increased intervals is enabled for your tenant, ``create_many`` does not
-            generate combinations for Property or Batch task blocks, so those blocks show no rows,
-            even when a block's workflow has no intervals. Call
-            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
-            for each block of each created task, or create tasks one at a time with
-            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations].
+        When increased intervals is enabled for your tenant, the interval combinations
+        of every block of the created Property or Batch tasks are generated before
+        ``create_many`` returns, as with
+        [`create`][albert.collections.tasks.TaskCollection.create]. Pass ``wait=False``
+        to return as soon as generation has started.
 
         !!! example
             ```python
@@ -347,12 +369,17 @@ class TaskCollection(BaseCollection):
             The tasks to create. Must be non-empty and share one category and
             one ``parent_id``. For General tasks, ``location`` is required.
             Any tags that do not yet exist in Albert are created automatically.
+        wait : bool, default True
+            Whether to wait until the interval combinations of the tasks' blocks are
+            generated, when increased intervals is enabled for your tenant. If False,
+            returns as soon as generation has started.
 
         Returns
         -------
         list[BaseTask]
             The created tasks, in request order, populated with their assigned
-            Task IDs.
+            Task IDs. Blocks whose combinations were generated carry ``job_id`` and
+            ``job_state``.
 
         Raises
         ------
@@ -360,6 +387,12 @@ class TaskCollection(BaseCollection):
             If ``tasks`` is empty, if items have conflicting categories or
             parent IDs, or if any task has no ``assigned_to`` but ``state`` is
             ``Not Started`` or ``In Progress``.
+        CombinationGenerationError
+            If combinations could not be generated for one or more blocks. All tasks
+            were created anyway (``err.tasks``); ``err.failed_blocks`` names each failed
+            block with its task (``TAS.../BLK...``). Retry only those with
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            rather than calling ``create_many`` again, which would create the tasks twice.
         """
         if not tasks:
             raise AlbertException("tasks must include at least one task.")
@@ -387,7 +420,17 @@ class TaskCollection(BaseCollection):
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"
         response = self.session.post(url=url, json=payload)
-        return [TaskAdapter.validate_python(item) for item in response.json()]
+        created = [TaskAdapter.validate_python(item) for item in response.json()]
+        block_ids = {t.id: ids for t in created if (ids := self._block_ids_to_generate(task=t))}
+        if block_ids:
+            jobs = self._run_block_combination_jobs(
+                blocks=interleave_task_blocks(block_ids=block_ids),
+                wait=wait,
+                label_with_task=True,
+            )
+            for t in created:
+                self._set_block_jobs(task=t, jobs=jobs)
+        return created
 
     @validate_call
     def create_with_combinations(
@@ -398,11 +441,11 @@ class TaskCollection(BaseCollection):
     ) -> PropertyTask | BatchTask:
         """Create a Property or Batch task and generate interval combinations across all its blocks (🧪 Beta).
 
-        Use this method instead of
-        [`create`][albert.collections.tasks.TaskCollection.create] to create Property
-        tasks with blocks when increased intervals is enabled for your tenant. Every
-        block then needs its combinations generated, including blocks whose workflow
-        has no intervals (a single baseline combination).
+        Use this method to create a Property or Batch task whose blocks need combination
+        rules or overrides, or workflows defined inline, when increased intervals is
+        enabled for your tenant.
+        [`create`][albert.collections.tasks.TaskCollection.create] also generates the
+        combinations of every block, but without rules or overrides.
         [`PropertyTask`][albert.resources.tasks.PropertyTask] and
         [`BatchTask`][albert.resources.tasks.BatchTask] are supported, and only
         when increased intervals is enabled; otherwise the task is rejected and not
@@ -512,9 +555,10 @@ class TaskCollection(BaseCollection):
         TypeError
             If ``task`` is not a ``PropertyTask`` or ``BatchTask``.
         CombinationGenerationError
-            If ``wait=True`` and combination generation fails on one or more blocks.
-            The exception carries the created task (``err.task``) and failed block IDs
-            (``err.failed_blocks``) so callers can inspect or retry specific blocks using
+            If combination generation could not be started, or with ``wait=True`` fails,
+            on one or more blocks. The exception carries the created task (``err.task``)
+            and failed block IDs (``err.failed_blocks``) so callers can inspect or retry
+            specific blocks using
             [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
         """
         if not isinstance(task, PropertyTask | BatchTask):
@@ -539,8 +583,8 @@ class TaskCollection(BaseCollection):
                 if block.intervals_start_from is None:
                     block.intervals_start_from = "all"
 
-        # 3. Create the task via standard create
-        created_task = self.create(task=task)
+        # 3. Create the task; combinations are generated below, after the rules are saved
+        created_task = self._create(task=task)
         if not isinstance(created_task, PropertyTask | BatchTask):
             raise TypeError(f"Created task {created_task.id} is not a PropertyTask or BatchTask")
 
@@ -567,54 +611,11 @@ class TaskCollection(BaseCollection):
         if rules_payload:
             self.session.put(f"{self.base_path}/{created_task.id}/rules", json=rules_payload)
 
-        # 5. Sequentially trigger generate_block_combinations for each block with paced delay
-        jobs: dict[str, WorkerJob] = {}
-        last_job_time = 0.0
-
-        for i, created_b in enumerate(created_task.blocks):
-            if i > 0 and last_job_time > 0:
-                elapsed = time.time() - last_job_time
-                remaining = _BLOCK_COMBINATION_JOB_GAP_SECONDS - elapsed
-                if remaining > 0:
-                    time.sleep(remaining)
-
-            job = self.generate_block_combinations(
-                task_id=created_task.id,
-                block_id=created_b.id,
-                old_workflow_id=None,
-                wait=False,
-            )
-            last_job_time = time.time()
-            jobs[created_b.id] = job
-
-        # 6. Handle wait semantics
+        # 5. Generate combinations for every block, waiting when asked
+        jobs = self._run_block_combination_jobs(
+            blocks=[(created_task.id, b.id) for b in created_task.blocks], wait=wait
+        )
         if wait:
-            failed_blocks: list[str] = []
-            job_states: dict[str, str] = {}
-            for blk_id, job in jobs.items():
-                try:
-                    completed_job = poll_worker_job(
-                        session=self.session,
-                        job_id=job.albert_id,
-                        raise_on_failure=False,
-                        job_description=f"Create child workflows for task {created_task.id} block {blk_id}",
-                    )
-                    job_states[blk_id] = completed_job.state.value
-                    if completed_job.state != WorkerJobState.SUCCESSFUL:
-                        failed_blocks.append(blk_id)
-                except (TimeoutError, AlbertException):
-                    failed_blocks.append(blk_id)
-                    job_states[blk_id] = "failed"
-
-            if failed_blocks:
-                refetched = self.get_by_id(id=created_task.id)
-                raise CombinationGenerationError(
-                    f"Combination generation failed for blocks: {', '.join(failed_blocks)}",
-                    task=refetched,
-                    failed_blocks=failed_blocks,
-                    job_states=job_states,
-                )
-
             refetched = self.get_by_id(id=created_task.id)
             if not isinstance(refetched, PropertyTask | BatchTask):
                 raise TypeError(
@@ -622,16 +623,18 @@ class TaskCollection(BaseCollection):
                 )
             return refetched
 
-        for blk in created_task.blocks:
-            if blk.id in jobs:
-                blk.job_id = jobs[blk.id].albert_id
-                blk.job_state = jobs[blk.id].state.value
+        self._set_block_jobs(task=created_task, jobs=jobs)
         return created_task
 
     @validate_call
     def add_block(
-        self, *, task_id: TaskId, data_template_id: DataTemplateId, workflow_id: WorkflowId
-    ) -> None:
+        self,
+        *,
+        task_id: TaskId,
+        data_template_id: DataTemplateId,
+        workflow_id: WorkflowId,
+        wait: bool = True,
+    ) -> BlockId:
         """Add a Block to a Property or Batch task.
 
         A Block pairs a Data Template (the results/data columns to capture) with a
@@ -639,18 +642,17 @@ class TaskCollection(BaseCollection):
         blocks, e.g. one per test. Once a block exists, results are written against
         it through the Property Data collection.
 
-        !!! warning "Increased intervals (🧪 Beta)"
-            When increased intervals is enabled for your tenant, adding a block does not
-            generate its combinations, so the block shows no rows, even when its workflow
-            has no intervals. Call
-            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
-            for the added block, leaving ``old_workflow_id`` unset.
+        When increased intervals is enabled for your tenant, the block's interval
+        combinations are generated before ``add_block`` returns, so the block is ready
+        for results. Pass ``wait=False`` to return as soon as generation has started.
 
         !!! example
             ```python
-            client.tasks.add_block(
+            block_id = client.tasks.add_block(
                 task_id="TASFOR1", data_template_id="DAT9999999", workflow_id="WFL1"
             )
+            block_id
+            # 'BLK2'
             ```
 
         Parameters
@@ -664,17 +666,29 @@ class TaskCollection(BaseCollection):
             The Workflow supplying the block's parameter conditions
             (format ``WFL...``). When no parameter groups apply, use ``WFL1``, the
             platform default ("No Parameter Group").
+        wait : bool, default True
+            Whether to wait until the block's interval combinations are generated, when
+            increased intervals is enabled for your tenant. If False, returns as soon as
+            generation has started.
 
         Returns
         -------
-        None
+        BlockId
+            The ID of the added block (format ``BLK...``).
+
+        Raises
+        ------
+        CombinationGenerationError
+            If the block's combinations could not be generated. The block was added
+            anyway: retry with
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            rather than adding it again.
 
         See Also
         --------
         remove_block : Remove a block from a task.
         update_block_workflow : Change the workflow on an existing block.
         """
-        url = f"{self.base_path}/{task_id}"
         payload = [
             {
                 "id": task_id,
@@ -687,10 +701,12 @@ class TaskCollection(BaseCollection):
                 ],
             }
         ]
-        self.session.patch(url=url, json=payload)
+        return self._add_blocks(task_id=task_id, payload=payload, wait=wait)[0]
 
     @validate_call
-    def add_blocks(self, *, task_id: TaskId, blocks: list[Block]) -> None:
+    def add_blocks(
+        self, *, task_id: TaskId, blocks: list[Block], wait: bool = True
+    ) -> list[BlockId]:
         """Add multiple Blocks to a Property or Batch task in one call.
 
         Each Block pairs a Data Template (the results/data columns to capture)
@@ -698,23 +714,23 @@ class TaskCollection(BaseCollection):
         [`add_block`][albert.collections.tasks.TaskCollection.add_block]; only
         the block's workflow and data template IDs are used.
 
-        !!! warning "Increased intervals (🧪 Beta)"
-            When increased intervals is enabled for your tenant, adding blocks does not
-            generate their combinations, so the blocks show no rows, even when their
-            workflows have no intervals. Call
-            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
-            for each added block, leaving ``old_workflow_id`` unset.
+        When increased intervals is enabled for your tenant, the interval combinations
+        of every added block are generated before ``add_blocks`` returns, with at least
+        10 seconds between blocks. Pass ``wait=False`` to return as soon as generation
+        has started.
 
         !!! example
             ```python
             from albert.resources.tasks import Block
-            client.tasks.add_blocks(
+            block_ids = client.tasks.add_blocks(
                 task_id="TASFOR1",
                 blocks=[
                     Block(workflow=[{"id": "WFL1"}], Datatemplate=[{"id": "DAT9999999"}]),
                     Block(workflow=[{"id": "WFL2"}], Datatemplate=[{"id": "DAT9999998"}]),
                 ],
             )
+            block_ids
+            # ['BLK2', 'BLK3']
             ```
 
         Parameters
@@ -724,10 +740,24 @@ class TaskCollection(BaseCollection):
         blocks : list[Block]
             The blocks to add. Build each with a single Workflow and a single
             Data Template referenced by ID.
+        wait : bool, default True
+            Whether to wait until the blocks' interval combinations are generated, when
+            increased intervals is enabled for your tenant. If False, returns as soon as
+            generation has started.
 
         Returns
         -------
-        None
+        list[BlockId]
+            The IDs of the added blocks (format ``BLK...``), in the order given. Empty
+            when ``blocks`` is empty.
+
+        Raises
+        ------
+        CombinationGenerationError
+            If combinations could not be generated for one or more blocks. The blocks
+            were added anyway: retry only ``err.failed_blocks`` with
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            rather than adding them again.
 
         See Also
         --------
@@ -735,8 +765,7 @@ class TaskCollection(BaseCollection):
         remove_block : Remove a block from a task.
         """
         if not blocks:
-            return
-        url = f"{self.base_path}/{task_id}"
+            return []
         payload = [
             {
                 "id": task_id,
@@ -759,24 +788,44 @@ class TaskCollection(BaseCollection):
                 ],
             }
         ]
-        self.session.patch(url=url, json=payload)
+        return self._add_blocks(task_id=task_id, payload=payload, wait=wait)
+
+    def _add_blocks(
+        self, *, task_id: TaskId, payload: list[dict[str, Any]], wait: bool
+    ) -> list[BlockId]:
+        """Add blocks to a task, generate their combinations, and return their IDs in order."""
+        response = self.session.patch(
+            url=f"{self.base_path}/{task_id}", json=payload, params={"includeBlocks": "true"}
+        )
+        modes = added_block_modes(
+            data=response.json() if response.content else None, task_id=task_id
+        )
+        block_ids = child_workflow_block_ids(modes=modes)
+        if block_ids:
+            self._run_block_combination_jobs(
+                blocks=[(task_id, block_id) for block_id in block_ids], wait=wait
+            )
+        return list(modes)
 
     @validate_call
     def update_block_workflow(
-        self, *, task_id: TaskId, block_id: BlockId, workflow_id: WorkflowId
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        workflow_id: WorkflowId,
+        wait: bool = True,
     ) -> None:
         """Swap the Workflow assigned to a Block within a task.
 
         Use this to change the conditions a block runs under without removing and
         re-adding the block. The task must be a Property or Batch task.
 
-        !!! warning "Increased intervals (🧪 Beta)"
-            When increased intervals is enabled for your tenant, changing a block's
-            workflow does not regenerate its combinations: the block keeps the
-            combinations of the previous workflow until you call
-            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
-            with ``old_workflow_id`` set to the workflow you replaced. Doing so keeps
-            interval barcodes for unchanged combinations and removes obsolete ones.
+        When increased intervals is enabled for your tenant, the block's interval
+        combinations are regenerated for the new workflow before the method returns.
+        Combinations whose setpoints are unchanged keep their interval barcodes, and
+        combinations the new workflow no longer has are removed. Pass ``wait=False`` to
+        return as soon as regeneration has started.
 
         !!! example
             ```python
@@ -794,6 +843,10 @@ class TaskCollection(BaseCollection):
         workflow_id : WorkflowId
             The new Workflow to assign to the block (format ``WFL...``). When no
             parameter groups apply, use ``WFL1``, the platform default ("No Parameter Group").
+        wait : bool, default True
+            Whether to wait until the block's interval combinations are regenerated, when
+            increased intervals is enabled for your tenant. If False, returns as soon as
+            regeneration has started.
 
         Returns
         -------
@@ -803,6 +856,11 @@ class TaskCollection(BaseCollection):
         ------
         TypeError
             If the task is not a PropertyTask or BatchTask.
+        CombinationGenerationError
+            If the block's combinations could not be regenerated. The workflow was changed
+            anyway: retry with
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations],
+            leaving ``old_workflow_id`` unset.
 
         Notes
         -----
@@ -840,6 +898,10 @@ class TaskCollection(BaseCollection):
             }
         ]
         self.session.patch(url=url, json=patch)
+        if child_workflow_block_ids(modes={block_id: target_block.combinations_mode}):
+            self._run_block_combination_jobs(
+                blocks=[(task_id, block_id)], old_workflow_id=existing_workflow_id, wait=wait
+            )
 
     @validate_call
     def update_task_workflow(self, *, task_id: TaskId, workflow_id: WorkflowId) -> BatchTask:
@@ -919,8 +981,10 @@ class TaskCollection(BaseCollection):
     ) -> Iterator[IntervalCombinationItem]:
         """Get the child-workflow interval combinations of a task block (🧪 Beta).
 
-        Retrieves the combinations generated for a task block by
-        [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+        Retrieves the combinations generated for a task block, for example by
+        [`create`][albert.collections.tasks.TaskCollection.create],
+        [`add_block`][albert.collections.tasks.TaskCollection.add_block],
+        [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
         or [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
 
         Always use this method rather than reading combinations directly from the task
@@ -1253,6 +1317,104 @@ class TaskCollection(BaseCollection):
         return self.get_block_rules(task_id=task_id, block_id=block_id)
 
     @staticmethod
+    def _block_ids_to_generate(*, task: BaseTask) -> list[str]:
+        """Return the IDs of a task's blocks whose combinations must be generated."""
+        blocks = getattr(task, "blocks", None) or []
+        return child_workflow_block_ids(modes={b.id: b.combinations_mode for b in blocks})
+
+    @staticmethod
+    def _set_block_jobs(*, task: BaseTask, jobs: dict[tuple[str, str], WorkerJob]) -> None:
+        """Record each block's generation job on a task's blocks."""
+        for block in getattr(task, "blocks", None) or []:
+            job = jobs.get((task.id, block.id))
+            if job is not None:
+                block.job_id = job.albert_id
+                block.job_state = job.state.value
+
+    def _run_block_combination_jobs(
+        self,
+        *,
+        blocks: list[tuple[str, str]],
+        old_workflow_id: str | None = None,
+        wait: bool,
+        label_with_task: bool = False,
+    ) -> dict[tuple[str, str], WorkerJob]:
+        """Generate combinations for ``(task ID, block ID)`` pairs, in the order given.
+
+        Consecutive generations on the same task start at least
+        ``_BLOCK_COMBINATION_JOB_GAP_SECONDS`` apart. With ``wait``, waits for each to
+        finish. Raises ``CombinationGenerationError`` with the re-fetched tasks when any
+        generation could not be started, failed, or did not finish in time.
+        ``label_with_task`` names failed blocks ``TAS.../BLK...`` in the error.
+        """
+        jobs: dict[tuple[str, str], WorkerJob] = {}
+        job_states: dict[str, str] = {}
+        failed: set[str] = set()
+        last_started: dict[str, float] = {}
+
+        def label(task_id: str, block_id: str) -> str:
+            return f"{task_id}/{block_id}" if label_with_task else block_id
+
+        for task_id, block_id in blocks:
+            if task_id in last_started:
+                elapsed = time.monotonic() - last_started[task_id]
+                if elapsed < _BLOCK_COMBINATION_JOB_GAP_SECONDS:
+                    time.sleep(_BLOCK_COMBINATION_JOB_GAP_SECONDS - elapsed)
+            try:
+                job = self.generate_block_combinations(
+                    task_id=task_id,
+                    block_id=block_id,
+                    old_workflow_id=old_workflow_id,
+                    wait=False,
+                )
+            except (AlbertException, ValueError, requests.RequestException) as e:
+                logger.warning(
+                    "Could not start combination generation for task %s block %s: %s",
+                    task_id,
+                    block_id,
+                    e,
+                )
+                failed.add(label(task_id, block_id))
+                job_states[label(task_id, block_id)] = "failed"
+            else:
+                jobs[(task_id, block_id)] = job
+                job_states[label(task_id, block_id)] = job.state.value
+            last_started[task_id] = time.monotonic()
+
+        if wait:
+            for (task_id, block_id), job in jobs.items():
+                try:
+                    job = poll_worker_job(
+                        session=self.session,
+                        job_id=job.albert_id,
+                        raise_on_failure=False,
+                        job_description=f"Create child workflows for task {task_id} block {block_id}",
+                    )
+                except (TimeoutError, AlbertException):
+                    failed.add(label(task_id, block_id))
+                    job_states[label(task_id, block_id)] = "failed"
+                    continue
+                jobs[(task_id, block_id)] = job
+                job_states[label(task_id, block_id)] = job.state.value
+                if job.state != WorkerJobState.SUCCESSFUL:
+                    failed.add(label(task_id, block_id))
+
+        if failed:
+            failed_blocks = [label(t, b) for t, b in blocks if label(t, b) in failed]
+            tasks = [
+                cast(PropertyTask | BatchTask, self.get_by_id(id=task_id))
+                for task_id in dict.fromkeys(task_id for task_id, _ in blocks)
+            ]
+            raise CombinationGenerationError(
+                f"Combination generation failed for blocks: {', '.join(failed_blocks)}",
+                task=None if label_with_task else tasks[0],
+                tasks=tasks,
+                failed_blocks=failed_blocks,
+                job_states=job_states,
+            )
+        return jobs
+
+    @staticmethod
     def _get_block_current_workflow_id(block: Block) -> str | None:
         """Resolve the active/final workflow ID for a block."""
         new_workflow_id: str | None = None
@@ -1407,8 +1569,9 @@ class TaskCollection(BaseCollection):
             Whether to automatically regenerate child-workflow combinations after saving
             rules. Defaults to True.
         old_workflow_id : WorkflowId, optional
-            Prior workflow ID to pass to the generation job for barcode preservation
-            and voiding obsolete combinations. Defaults to the block's current workflow ID.
+            An earlier workflow of the block whose combinations to carry over
+            (format ``WFL...``). Usually left unset: barcodes are then kept from the
+            block's current combinations, or from the workflow it was switched from.
         wait : bool, default True
             Whether to wait for the background generation worker job to finish when
             ``generate_combinations=True``. If False, returns immediately after submitting
@@ -1504,15 +1667,17 @@ class TaskCollection(BaseCollection):
           persistent interval barcode that remains stable across rule updates as long as the
           parameter setpoints are unchanged.
 
-        How to set ``old_workflow_id`` across common caller scenarios:
+        Combinations are generated automatically when a block is added
+        ([`create`][albert.collections.tasks.TaskCollection.create],
+        [`add_block`][albert.collections.tasks.TaskCollection.add_block]) or its workflow
+        changes ([`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow]).
+        Call this method to retry after a
+        [`CombinationGenerationError`][albert.exceptions.CombinationGenerationError], or
+        to regenerate after saving rules with ``generate_combinations=False``.
 
-        - **First-time generation** (or retrying after a failed create job): leave
-          ``old_workflow_id=None`` (the default).
-        - **Regenerating after updating rules**: pass the block's current workflow ID
-          (e.g. from ``block.workflow[0].id``).
-        - **Regenerating after swapping a workflow**: pass the previous workflow ID
-          that was replaced (the one passed to
-          [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow]).
+        Leave ``old_workflow_id`` unset: Albert keeps interval barcodes and results from
+        the block's earlier combinations, including after a workflow change made in an
+        earlier call. Pass it only to name a specific earlier workflow of the block.
 
         Once generation finishes, retrieve the resulting combinations using
         [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations].
@@ -1550,9 +1715,9 @@ class TaskCollection(BaseCollection):
             The block ID whose combinations to generate (format ``BLK...``), obtained
             from ``task.blocks[i].id`` on a fetched task.
         old_workflow_id : WorkflowId, optional
-            The ID of the workflow being replaced or re-evaluated (format ``WFL...``).
-            Leave None for first-time generation or create retries. Pass the block's
-            current workflow ID when re-evaluating rules on an existing block.
+            An earlier workflow of the block whose combinations to carry over
+            (format ``WFL...``). Usually left unset; Albert then carries over the block's
+            current combinations, or those of the workflow it was switched from.
         wait : bool, default True
             Whether to wait until background generation reaches a terminal state.
             If False, returns immediately after the generation job is submitted.

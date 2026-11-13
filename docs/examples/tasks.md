@@ -14,18 +14,20 @@ Tasks in Albert are a way to manage and track your daily work and collaborate wi
 | Action | Increased intervals not enabled | Increased intervals enabled |
 | --- | --- | --- |
 | Create a General task | `create` | `create` |
-| Create a Property or Batch task with blocks | `create` | `create_with_combinations` |
-| Create several Property or Batch tasks | `create_many` | `create_many`, then `generate_block_combinations` for each block |
-| Add a block | `add_block` / `add_blocks` | Same, then `generate_block_combinations` |
-| Change a block's workflow | `update_block_workflow` | Same, then `generate_block_combinations(old_workflow_id=<previous>)` |
+| Create a Property or Batch task with blocks | `create` | `create`, or `create_with_combinations` to set rules or overrides |
+| Create several Property or Batch tasks | `create_many` | `create_many` |
+| Add a block | `add_block` / `add_blocks` | `add_block` / `add_blocks` |
+| Change a block's workflow | `update_block_workflow` | `update_block_workflow` |
 | Remove a block | `remove_block` | `remove_block` |
 
 When increased intervals is enabled, every Property and Batch task block needs its combinations
-generated before it shows rows, even when its workflow has no intervals.
-[`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
-does this for you. For blocks created or changed any other way, call
+generated before it can hold results, even when its workflow has no intervals. `create`,
+`create_many`, `add_block`, `add_blocks`, and `update_block_workflow` generate them before they
+return; pass `wait=False` to return as soon as generation has started. Call
 [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
-for each block.
+yourself only to retry after a
+[`CombinationGenerationError`][albert.exceptions.CombinationGenerationError] or after saving
+rules with `generate_combinations=False`.
 
 When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] and [`BatchTask`][albert.resources.tasks.BatchTask] blocks, Albert manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
 
@@ -337,7 +339,7 @@ In this workflow:
 
 ## Create an intervalized Batch task
 
-[`BatchTask`][albert.resources.tasks.BatchTask] blocks support combinations the same way Property task blocks do, including `intervals_start_from`, rules, and overrides. Use [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations] instead of `create` so each block gets its combinations.
+[`BatchTask`][albert.resources.tasks.BatchTask] blocks support combinations the same way Property task blocks do, including `intervals_start_from`, rules, and overrides. Use [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations] to set rules or overrides on the blocks; `create` also generates each block's combinations, without them.
 
 !!! example "Create a Batch task with an intervalized workflow"
     ```python
@@ -425,7 +427,7 @@ You can update rules and overrides on an existing task block at any time using [
     - The same convention applies to `overrides`.
 
 !!! note "Workflow replacement (swapping workflows)"
-    If you swap a block's workflow using [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow], pass the **replaced** workflow ID as `old_workflow_id` when calling [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations] so the platform archives the old child workflows and provisions the new ones cleanly.
+    [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] regenerates the block's combinations for the new workflow. Combinations whose setpoints are unchanged keep their barcodes, and combinations the new workflow no longer has are removed. There is no need to pass `old_workflow_id` to [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]: the platform finds the block's earlier workflow itself.
 
 ## Import results
 
