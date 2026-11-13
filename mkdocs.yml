@@ -192,6 +192,7 @@ nav:
           - Smart Datasets (🧪Beta): collections/smart_datasets.md
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
+          - Structures: collections/structures.md
           - Substances: collections/substances.md
           - Substances V4 (🧪 Beta): collections/substances_v4.md
           - Synthesis: collections/synthesis.md
@@ -261,6 +262,7 @@ nav:
           - Smart Projects (🧪Beta): resources/smart_projects.md
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
+          - Structures: resources/structures.md
           - Substances: resources/substances.md
           - Substances V4: resources/substances_v4.md
           - Synthesis: resources/synthesis.md
