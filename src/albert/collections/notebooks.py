@@ -112,7 +112,7 @@ class NotebookCollection(BaseCollection):
         Update the content of a single notebook block in place.
     delete_block(notebook_id, block_id) -> None
         Delete a single block from a notebook.
-    get_versions(notebook_id, max_items=None) -> list[NotebookVersion]
+    get_versions(notebook_id) -> list[NotebookVersion]
         Get the saved versions of a notebook.
     restore_version(notebook_id, version_id) -> Notebook
         Restore a notebook to a saved version.
@@ -650,9 +650,6 @@ class NotebookCollection(BaseCollection):
         ----------
         notebook_id : NotebookId
             The Notebook ID whose versions should be listed (format ``NTB...``).
-        max_items : int, optional
-            Maximum number of versions to return. If None (the default), returns
-            every saved version.
 
         Returns
         -------
@@ -661,8 +658,6 @@ class NotebookCollection(BaseCollection):
         """
         response = self.session.get(f"{self.base_path}/{notebook_id}/versions")
         versions = [NotebookVersion.model_validate(item) for item in response.json()]
-        if max_items is not None:
-            versions = versions[:max_items]
         return versions
 
     @validate_call
