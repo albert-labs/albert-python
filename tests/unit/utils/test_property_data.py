@@ -19,6 +19,7 @@ from albert.resources.property_data import (
     TaskDataColumn,
     TaskPropertyCreate,
     TaskPropertyData,
+    TaskPropertyRecord,
     Trial,
 )
 from albert.resources.tasks import Block, PropertyTask
@@ -43,6 +44,7 @@ from albert.utils.property_data import (
     get_all_columns_used_in_calculations,
     get_columns_used_in_calculation,
     get_on_platform_row,
+    is_child_workflow_interval,
     map_block_final_workflows,
     prepare_new_task_property,
     resolve_data_template_id,
@@ -1120,6 +1122,41 @@ def test_build_interval_setpoint_map_cartesian_combination_includes_fixed_setpoi
     assert result["ROW1XROW3"] == {"Pressure": "1atm", "Temp": "25", "Speed": "100"}
 
 
+def test_build_interval_setpoint_map_resolves_interval_ids_the_workflow_does_not_list():
+    """Test that extra ROW chains resolve when the workflow lists no combinations."""
+    workflow = Workflow(
+        id="WFL1",
+        parameter_group_setpoints=[
+            ParameterGroupSetpoints(
+                id="PRG1",
+                parameter_setpoints=[
+                    ParameterSetpoint(parameter_id="PRM1", name="Pressure", value="1atm"),
+                    ParameterSetpoint(
+                        parameter_id="PRM2",
+                        name="Temp",
+                        intervals=[Interval(value="25", row_id="ROW1")],
+                    ),
+                    ParameterSetpoint(
+                        parameter_id="PRM3",
+                        name="Speed",
+                        intervals=[Interval(value="100", row_id="ROW3")],
+                    ),
+                ],
+            )
+        ],
+        interval_combinations=None,
+    )
+
+    result = build_interval_setpoint_map(workflow=workflow, interval_ids=["ROW1XROW3"])
+
+    assert result == {
+        "default": {"Pressure": "1atm"},
+        "ROW1": {"Pressure": "1atm", "Temp": "25"},
+        "ROW3": {"Pressure": "1atm", "Speed": "100"},
+        "ROW1XROW3": {"Pressure": "1atm", "Temp": "25", "Speed": "100"},
+    }
+
+
 def test_build_interval_setpoint_map_skips_unresolvable_interval_id():
     """Test that an interval id referencing an unknown row is left out of the map."""
     workflow = Workflow(
@@ -1292,6 +1329,114 @@ def test_flatten_task_property_data_produces_one_record_per_column():
 
     # falls back to property_data.value when column.value is None
     assert second.value == "99"
+
+
+def _child_workflow_block(interval_id: str) -> TaskPropertyData:
+    """Build a one-value block whose interval is reported as ``interval_id``."""
+    col = PropertyValue(name="Viscosity", id="DAC1", sequence="COL1", value="5")
+    trial = Trial(trial_number=1, data_columns=[col])
+    interval = DataInterval(interval_combination=interval_id, trials=[trial], name="Raw")
+    return TaskPropertyData(parent_id="TAS1", block_id="BLK1", data=[interval])
+
+
+def _expected_record(**overrides) -> TaskPropertyRecord:
+    """Build the record `_child_workflow_block` flattens to, with ``overrides`` applied."""
+    fields = {
+        "task_id": "TAS1",
+        "block_id": "BLK1",
+        "interval_description": "Raw",
+        "trial_number": 1,
+        "visible_trial_number": 1,
+        "data_column_id": "DAC1",
+        "data_column_name": "Viscosity",
+        "sequence": "COL1",
+        "value": "5",
+        "workflow_id": "WFL1",
+    }
+    return TaskPropertyRecord(**{**fields, **overrides})
+
+
+def test_flatten_task_property_data_maps_child_workflow_interval_to_row_key():
+    """Test that a child workflow interval is reported by ROW chain with its setpoints."""
+    block = _child_workflow_block("WFL1001")
+
+    records = flatten_task_property_data(
+        block=block,
+        task_id="TAS1",
+        workflow_id="WFL1",
+        workflow_name=None,
+        interval_setpoints={"ROW1XROW3": {"Temp": "25", "Speed": "100"}},
+        interval_descriptions={"WFL1001": "Temp: 25, Speed: 100"},
+        interval_row_keys={"WFL1001": "ROW1XROW3"},
+    )
+
+    assert records == [
+        _expected_record(
+            interval_combination="ROW1XROW3",
+            child_workflow_id="WFL1001",
+            parameter_setpoints={"Temp": "25", "Speed": "100"},
+            interval_description="Temp: 25, Speed: 100",
+        )
+    ]
+
+
+def test_flatten_task_property_data_keeps_unmapped_child_workflow_interval():
+    """Test that a child workflow interval with no known ROW chain is reported as is."""
+    block = _child_workflow_block("WFL1002")
+
+    records = flatten_task_property_data(
+        block=block,
+        task_id="TAS1",
+        workflow_id="WFL1",
+        workflow_name=None,
+        interval_setpoints={"ROW1XROW3": {"Temp": "25"}},
+        interval_descriptions={},
+        interval_row_keys={"WFL1001": "ROW1XROW3"},
+    )
+
+    assert records == [
+        _expected_record(interval_combination="WFL1002", child_workflow_id="WFL1002")
+    ]
+
+
+@pytest.mark.parametrize("interval_id", ["ROW1", "default"])
+def test_flatten_task_property_data_sets_no_child_workflow_for_legacy_interval(interval_id):
+    """Test that ROW and default intervals carry no child workflow and keep their setpoints."""
+    block = _child_workflow_block(interval_id)
+
+    records = flatten_task_property_data(
+        block=block,
+        task_id="TAS1",
+        workflow_id="WFL1",
+        workflow_name=None,
+        interval_setpoints={interval_id: {"Temp": "25"}},
+        interval_descriptions={},
+    )
+
+    assert records == [
+        _expected_record(
+            interval_combination=interval_id,
+            child_workflow_id=None,
+            parameter_setpoints={"Temp": "25"},
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("interval_id", "expected"),
+    [
+        pytest.param("WFL413364", True, id="child-workflow"),
+        pytest.param("ROW3XROW6", False, id="row-chain"),
+        pytest.param("default", False, id="default"),
+        pytest.param("OhI8ap0HY", False, id="barcode"),
+        pytest.param("WFLabc", False, id="wfl-prefix-not-an-id"),
+        pytest.param("", False, id="empty"),
+        pytest.param(None, False, id="none"),
+    ],
+)
+def test_is_child_workflow_interval(interval_id, expected):
+    """Test that only child workflow IDs are recognised as child workflow intervals."""
+    assert is_child_workflow_interval(interval_id) is expected
 
 
 def test_flatten_task_property_data_falls_back_to_interval_name_for_description():

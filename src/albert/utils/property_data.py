@@ -9,7 +9,7 @@ import operator
 import re
 import uuid
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -852,22 +852,28 @@ def _setpoint_display_value(value: Any) -> str | None:
     return getattr(value, "name", None) or getattr(value, "id", None) or str(value)
 
 
-def build_interval_setpoint_map(*, workflow: Workflow) -> dict[str, dict[str, str]]:
+def build_interval_setpoint_map(
+    *, workflow: Workflow, interval_ids: Iterable[str] = ()
+) -> dict[str, dict[str, str]]:
     """Map each interval ID of a workflow to the parameter setpoints it represents.
 
     Combines the parameters the interval varies with the workflow's fixed setpoints, so
     each entry is the complete set of conditions for that interval. The ``"default"``
     key holds the fixed setpoints alone, for blocks with no intervalized parameters.
 
-    Only ROW-chain interval IDs are resolved. Tenants running the increased-intervals
-    beta address data by child workflow ID instead, and those IDs do not correspond to
-    the workflow's own interval rows, so they are left out.
+    Only ROW-chain interval IDs are resolved. On tenants with increased intervals, data
+    is addressed by child workflow ID; translate those to their ROW chain first (see
+    [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations]).
 
     Parameters
     ----------
     workflow : Workflow
         A fully populated workflow, as returned by
         [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id].
+    interval_ids : Iterable[str], optional
+        Additional ROW chains to resolve, for combinations the workflow does not list
+        itself (a workflow with more than 2,000 combinations lists none). Defaults to
+        none.
 
     Returns
     -------
@@ -895,9 +901,10 @@ def build_interval_setpoint_map(*, workflow: Workflow) -> dict[str, dict[str, st
     interval_map: dict[str, dict[str, str]] = {"default": dict(fixed)}
 
     # An interval ID is a chain of the row IDs of each varied parameter, joined with "X".
-    interval_ids = {c.interval_id for c in (workflow.interval_combinations or []) if c.interval_id}
-    interval_ids.update(varied)
-    for interval_id in interval_ids:
+    chains = {c.interval_id for c in (workflow.interval_combinations or []) if c.interval_id}
+    chains.update(varied)
+    chains.update(interval_ids)
+    for interval_id in chains:
         setpoints = dict(fixed)
         resolved = True
         for row_id in interval_id.split("X"):
@@ -935,6 +942,18 @@ def map_block_final_workflows(*, task: PropertyTask) -> dict[str, Workflow | Ent
     return mapping
 
 
+_CHILD_WORKFLOW_ID_RE = re.compile(r"^WFL\d+$")
+
+
+def is_child_workflow_interval(interval_id: str | None) -> bool:
+    """Return whether an interval ID is a child workflow ID (``WFL...``).
+
+    Tenants with increased intervals report each interval of an intervalized block as
+    the child workflow holding that combination, instead of its ROW chain.
+    """
+    return bool(interval_id) and _CHILD_WORKFLOW_ID_RE.fullmatch(interval_id) is not None
+
+
 def flatten_task_property_data(
     *,
     block: TaskPropertyData,
@@ -943,16 +962,29 @@ def flatten_task_property_data(
     workflow_name: str | None,
     interval_setpoints: dict[str, dict[str, str]],
     interval_descriptions: dict[str, str],
+    interval_row_keys: dict[str, str] | None = None,
 ) -> list[TaskPropertyRecord]:
-    """Flatten one block's interval/trial tree into one record per measured value."""
+    """Flatten one block's interval/trial tree into one record per measured value.
+
+    ``interval_row_keys`` maps child workflow interval IDs to their ROW chain. A mapped
+    interval is reported, and its setpoints looked up, by ROW chain, with the child
+    workflow ID kept on ``child_workflow_id``. An unmapped interval ID is used as is.
+    """
     data_template = block.data_template
     inventory = block.inventory
+    row_keys = interval_row_keys or {}
 
     records: list[TaskPropertyRecord] = []
     for interval in block.data:
-        interval_id = interval.interval_combination
+        reported_id = interval.interval_combination
+        interval_id = row_keys.get(reported_id, reported_id)
+        child_workflow_id = reported_id if is_child_workflow_interval(reported_id) else None
         setpoints = interval_setpoints.get(interval_id, {})
-        description = interval_descriptions.get(interval_id) or interval.name
+        description = (
+            interval_descriptions.get(interval_id)
+            or interval_descriptions.get(reported_id)
+            or interval.name
+        )
         for trial in interval.trials:
             for column in trial.data_columns:
                 property_data = column.property_data
@@ -986,6 +1018,7 @@ def flatten_task_property_data(
                         calculation=column.calculation,
                         workflow_id=workflow_id,
                         workflow_name=workflow_name,
+                        child_workflow_id=child_workflow_id,
                     )
                 )
     return records

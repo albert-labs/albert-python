@@ -25,7 +25,7 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.shared.models.patch import PatchOperation
 from albert.core.utils import ensure_list, find_stack_level
-from albert.exceptions import AlbertException, NotFoundError
+from albert.exceptions import AlbertException, AlbertHTTPError, NotFoundError
 from albert.resources.property_data import (
     BulkPropertyData,
     CheckPropertyData,
@@ -701,10 +701,10 @@ class PropertyDataCollection(BaseCollection):
         [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties]
         and correlating workflows by hand.
 
-        Setpoints cannot be resolved for tenants running the increased-intervals beta,
-        where results are addressed by child workflow ID rather than by interval row.
-        Those records still carry their values and
-        ``interval_combination``, but ``parameter_setpoints`` is empty.
+        On tenants with increased intervals, ``interval_combination`` is still the ROW
+        chain (as from [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id])
+        and ``child_workflow_id`` names the child workflow of each combination. Resolving
+        them takes one extra lookup per block with intervalized parameters.
 
         Narrow the read with ``inventory_id`` and ``lot_id`` when only part of the task
         is of interest. Combinations that do not match are never requested, so
@@ -759,8 +759,10 @@ class PropertyDataCollection(BaseCollection):
         task = property_data_utils.get_task_from_id(session=self.session, id=task_id)
         block_workflows = property_data_utils.map_block_final_workflows(task=task)
 
-        workflow_cache: dict[str, Workflow] = {}
+        workflow_cache: dict[str, Workflow | None] = {}
+        # Keyed by block: each block resolves its own combinations' ROW chains.
         setpoint_cache: dict[str, dict[str, dict[str, str]]] = {}
+        row_key_cache: dict[str, dict[str, str]] = {}
 
         records: list[TaskPropertyRecord] = []
         for block in blocks:
@@ -768,23 +770,37 @@ class PropertyDataCollection(BaseCollection):
             workflow_id = getattr(workflow_link, "id", None)
             workflow_name = getattr(workflow_link, "name", None)
 
+            # Increased-intervals tenants report intervals by child workflow ID; their
+            # ROW chains come from the block's combinations.
+            if block.block_id not in row_key_cache and any(
+                property_data_utils.is_child_workflow_interval(i.interval_combination)
+                for i in block.data
+            ):
+                row_key_cache[block.block_id] = self._get_interval_row_keys(
+                    task_id=task_id, block_id=block.block_id
+                )
+                setpoint_cache.pop(block.block_id, None)
+            row_keys = row_key_cache.get(block.block_id, {})
+
             interval_map: dict[str, dict[str, str]] = {}
             if workflow_id:
-                if workflow_id not in setpoint_cache:
+                if workflow_id not in workflow_cache:
                     # A block's workflow carries its interval combinations but not the
                     # setpoint values, so the full workflow is needed to name them.
+                    workflow_cache[workflow_id] = None
                     with suppress(AlbertException):
                         workflow_cache[workflow_id] = self._get_workflow(workflow_id=workflow_id)
-                    workflow = workflow_cache.get(workflow_id)
-                    setpoint_cache[workflow_id] = (
-                        property_data_utils.build_interval_setpoint_map(workflow=workflow)
+                workflow = workflow_cache[workflow_id]
+                if block.block_id not in setpoint_cache:
+                    setpoint_cache[block.block_id] = (
+                        property_data_utils.build_interval_setpoint_map(
+                            workflow=workflow, interval_ids=row_keys.values()
+                        )
                         if workflow is not None
                         else {}
                     )
-                    if workflow is not None and workflow.name:
-                        workflow_name = workflow.name
-                interval_map = setpoint_cache[workflow_id]
-                workflow_name = getattr(workflow_cache.get(workflow_id), "name", workflow_name)
+                interval_map = setpoint_cache[block.block_id]
+                workflow_name = getattr(workflow, "name", workflow_name)
 
             descriptions: dict[str, str] = {}
             for c in getattr(workflow_link, "combinations", None) or []:
@@ -803,6 +819,7 @@ class PropertyDataCollection(BaseCollection):
                     workflow_name=workflow_name,
                     interval_setpoints=interval_map,
                     interval_descriptions=descriptions,
+                    interval_row_keys=row_keys,
                 )
             )
         return records
@@ -812,6 +829,30 @@ class PropertyDataCollection(BaseCollection):
         from albert.collections.workflows import WorkflowCollection
 
         return WorkflowCollection(session=self.session).get_by_id(id=workflow_id)
+
+    def _get_interval_row_keys(self, *, task_id: TaskId, block_id: BlockId) -> dict[str, str]:
+        """Map each child workflow combination of a block to its ROW chain.
+
+        The combinations embedded on a task's block carry no ROW chain, so the block's
+        combinations are listed in full. Returns an empty map when they cannot be
+        listed, leaving the child workflow IDs in place.
+        """
+        from albert.collections.tasks import TaskCollection
+
+        combinations = TaskCollection(session=self.session).get_block_combinations(
+            task_id=task_id, block_id=block_id
+        )
+        try:
+            return {c.id: c.interval_row_key for c in combinations if c.id and c.interval_row_key}
+        except AlbertHTTPError as e:
+            logger.warning(
+                "Could not list combinations of block %s on task %s; intervals stay as child "
+                "workflow IDs: %s",
+                block_id,
+                task_id,
+                e,
+            )
+            return {}
 
     @validate_call
     def update_property_on_task(
