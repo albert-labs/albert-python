@@ -374,9 +374,10 @@ class Design(BaseSessionResource):
     Methods
     -------
     group_rows(name, child_row_ids, ...) -> RowGroup
-        Create a named row group within this design.
+        Create a new row group (section) within this design.
     get_groups(refresh=False) -> list[RowGroup]
-        Get all row groups in this design.
+        Get all row groups in this design, including sections nested inside other
+        sections.
     """
 
     state: DesignState | None = Field(default=None)
@@ -2424,9 +2425,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         section_id : str, optional
             The header row ID of an existing section to add the row to (the ``row_id``
             of a [`RowGroup`][albert.resources.sheets.RowGroup] from
-            [`get_groups`][albert.resources.sheets.Design.get_groups]). The row goes at
-            the end of the section, after any section nested inside it. The section
-            must contain at least one row. Cannot be combined with ``position``.
+            [`get_groups`][albert.resources.sheets.Design.get_groups]). A section here
+            is a row group inside the Product Design, not a Design section
+            (``design_id``) such as Results or Process Design. The row goes at the end
+            of the section, after any section nested inside it. The section must
+            contain at least one row. Cannot be combined with ``position``.
 
         Returns
         -------
@@ -2531,10 +2534,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         section_id : str, optional
             The header row ID of an existing section to add the rows to (the
             ``row_id`` of a [`RowGroup`][albert.resources.sheets.RowGroup] from
-            [`get_groups`][albert.resources.sheets.Design.get_groups]). The rows go
-            at the end of the section, after any section nested inside it. The
-            section must contain at least one row. Cannot be combined with
-            ``position``.
+            [`get_groups`][albert.resources.sheets.Design.get_groups]). A section here
+            is a row group inside the Product Design, not a Design section
+            (``design_id``) such as Results or Process Design. The rows go at the end
+            of the section, after any section nested inside it. The section must
+            contain at least one row. Cannot be combined with ``position``.
 
         Returns
         -------
