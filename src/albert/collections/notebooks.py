@@ -632,9 +632,7 @@ class NotebookCollection(BaseCollection):
         self.session.delete(f"{self.base_path}/{notebook_id}/blocks/{block_id}")
 
     @validate_call
-    def get_versions(
-        self, *, notebook_id: NotebookId, max_items: int | None = None
-    ) -> list[NotebookVersion]:
+    def get_versions(self, *, notebook_id: NotebookId) -> list[NotebookVersion]:
         """Get the saved versions of a Notebook.
 
         Each [`NotebookVersion`][albert.resources.notebooks.NotebookVersion]
