@@ -54,6 +54,7 @@ from albert.collections.sds import SDSCollection
 from albert.collections.smart_datasets import SmartDatasetCollection
 from albert.collections.storage_classes import StorageClassesCollection
 from albert.collections.storage_locations import StorageLocationsCollection
+from albert.collections.structures import AsyncStructureCollection, StructureCollection
 from albert.collections.substance import SubstanceCollection
 from albert.collections.substance_v4 import SubstanceV4Collection
 from albert.collections.synthesis import SynthesisCollection
@@ -476,6 +477,10 @@ class Albert:
     def hazards(self) -> HazardsCollection:
         return HazardsCollection(session=self.session)
 
+    @property
+    def structures(self) -> StructureCollection:
+        return StructureCollection(session=self.session)
+
 
 class AsyncAlbert:
     """
@@ -516,6 +521,8 @@ class AsyncAlbert:
         Access to chat folder API methods.
     chat_flags : ChatFlagCollection
         Access to chat flag API methods.
+    structures : AsyncStructureCollection
+        Access to structure lookup API methods.
 
     Examples
     --------
@@ -646,6 +653,10 @@ class AsyncAlbert:
     @property
     def chat_flags(self) -> ChatFlagCollection:
         return ChatFlagCollection(session=self.session)
+
+    @property
+    def structures(self) -> AsyncStructureCollection:
+        return AsyncStructureCollection(session=self.session)
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client."""
