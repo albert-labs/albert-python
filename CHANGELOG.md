@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.74.0](https://github.com/albert-labs/albert-python/compare/v1.73.0...v1.74.0) (2026-11-13)
+
+
+### Features
+
+* **entity-types:** add delete_rule to remove a single rule ([#950](https://github.com/albert-labs/albert-python/issues/950)) ([a37ec42](https://github.com/albert-labs/albert-python/commit/a37ec4273eb119899241d027ad5a34215fd4aad8))
+
+
+### Bug Fixes
+
+* **sheets:** keep ordered new ingredient rows above the Total row ([#946](https://github.com/albert-labs/albert-python/issues/946)) ([7569d36](https://github.com/albert-labs/albert-python/commit/7569d366545f63088ac0e8e8c8bfd2e77a32cefe))
+
+
+### Documentation
+
+* **attributes:** describe wt% as a fraction in formula expressions ([#953](https://github.com/albert-labs/albert-python/issues/953)) ([b7c1483](https://github.com/albert-labs/albert-python/commit/b7c1483d1a54d3c99fc81437e987ca74a2517a24))
+
 ## [1.73.0](https://github.com/albert-labs/albert-python/compare/v1.72.1...v1.73.0) (2026-11-10)
 
 
