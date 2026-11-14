@@ -104,6 +104,7 @@ class CustomFieldCollection(BaseCollection):
     """
 
     _updatable_attributes = {
+        "api",
         "display_name",
         "searchable",
         "hidden",
@@ -373,11 +374,11 @@ class CustomFieldCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``custom_entity_categories``,
-        ``default``, ``display_name``, ``editable``, ``entity_categories``,
-        ``hidden``, ``lookup_column``, ``lookup_row``, ``max``, ``min``,
-        ``multiselect``, ``pattern``, ``required``, ``searchable``,
-        ``ui_components``.
+        The following fields can be updated: ``api``,
+        ``custom_entity_categories``, ``default``, ``display_name``,
+        ``editable``, ``entity_categories``, ``hidden``, ``lookup_column``,
+        ``lookup_row``, ``max``, ``min``, ``multiselect``, ``pattern``,
+        ``required``, ``searchable``, ``ui_components``.
         """
         # fetch current object state
         current_object = self.get_by_id(id=custom_field.id)

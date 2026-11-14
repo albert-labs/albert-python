@@ -5,6 +5,8 @@ import pytest
 from albert.client import Albert
 from albert.resources.custom_fields import (
     CustomField,
+    CustomFieldAPI,
+    CustomFieldApiMethod,
     DateDefault,
     FieldCategory,
     FieldType,
@@ -299,6 +301,42 @@ def test_update_custom_field_type_list(client: Albert):
     finally:
         if custom_field.id is not None:
             client.custom_fields.delete(id=custom_field.id)
+
+
+def test_update_custom_field_api(client: Albert):
+    """Test setting, changing, and clearing the api attribute of a custom field."""
+    custom_field = CustomField(
+        name=f"test_api_{uuid4().hex[:12]}",
+        field_type=FieldType.STRING,
+        service=ServiceType.PROJECTS,
+        display_name="API Update Field",
+    )
+    created = client.custom_fields.create(custom_field=custom_field)
+    try:
+        assert created.api is None
+
+        created.api = CustomFieldAPI(
+            endpoint="/api/v3/lists",
+            method=CustomFieldApiMethod.GET,
+            query_params_field=["listType"],
+        )
+        updated = client.custom_fields.update(custom_field=created)
+        assert updated.api == created.api
+
+        updated.api = CustomFieldAPI(
+            endpoint="/api/v3/params",
+            method=CustomFieldApiMethod.GET,
+            query_params_field=["listType"],
+        )
+        updated = client.custom_fields.update(custom_field=updated)
+        assert updated.api is not None
+        assert updated.api.endpoint == "/api/v3/params"
+
+        updated.api = None
+        cleared = client.custom_fields.update(custom_field=updated)
+        assert cleared.api is None
+    finally:
+        client.custom_fields.delete(id=created.id)
 
 
 def test_update_searchable_on_unset_field(client: Albert):
