@@ -18,8 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Floor, plus the Python used by current Lambda layers.
-        python-version: ["3.11", "3.14"]
+        # Keep in sync with lambda_runtimes in .circleci/config.yml.
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
