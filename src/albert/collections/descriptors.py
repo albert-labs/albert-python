@@ -168,5 +168,5 @@ class DescriptorCollection(BaseCollection):
             descriptor could not be calculated for that molecule.
         """
         payload = _calculate_payload(smiles=smiles, names=names, families=families)
-        response = self.session.post(self.base_path, json=payload)
+        response = self.session.post(self.base_path, json=payload, retry_safe=True)
         return CalculateDescriptorsResponse.model_validate(response.json()).results
