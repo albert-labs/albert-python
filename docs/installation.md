@@ -23,7 +23,7 @@ Albert has a few dependencies:
 - [pydantic](https://pypi.org/project/pydantic/) — For model validation
 - [pandas](https://pypi.org/project/pandas/) — For Data frames
 
-If you’re on Python 3.10+ and already have **pip** or **uv** set up, you’re ready to go!
+If you’re on Python 3.11+ and already have **pip** or **uv** set up, you’re ready to go!
 
 ## Install from repository
 
