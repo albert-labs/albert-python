@@ -160,6 +160,7 @@ nav:
           - Custom Templates: collections/custom_templates.md
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
+          - Descriptors: collections/descriptors.md
           - Design Candidate Sets (🧪Beta): collections/design_candidate_sets.md
           - Design Candidates (🧪Beta): collections/design_candidates.md
           - Design Model Configs (🧪Beta): collections/design_model_configs.md
@@ -221,6 +222,7 @@ nav:
           - Custom Templates: resources/custom_templates.md
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
+          - Descriptors: resources/descriptors.md
           - Design: resources/design.md
           - Design Candidate Sets (🧪Beta): resources/design_candidate_sets.md
           - Design Candidates (🧪Beta): resources/design_candidates.md
