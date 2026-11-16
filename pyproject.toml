@@ -79,7 +79,9 @@ constraint-dependencies = [
 ]
 
 [tool.ruff]
-target-version = "py311"
+# Runtime is 3.11+, but keep the lint target at 3.10 so pyupgrade does not
+# rewrite the existing str-Enum and datetime.timezone.utc usage in this PR.
+target-version = "py310"
 extend-exclude = [".circleci", ".vscode"]
 line-length = 99
 indent-width = 4
