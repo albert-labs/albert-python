@@ -1672,7 +1672,7 @@ class TaskCollection(BaseCollection):
         [`add_block`][albert.collections.tasks.TaskCollection.add_block]) or its workflow
         changes ([`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow]).
         Call this method to retry after a
-        [`CombinationGenerationError`][albert.exceptions.CombinationGenerationError], or
+        `CombinationGenerationError`, or
         to regenerate after saving rules with ``generate_combinations=False``.
 
         Leave ``old_workflow_id`` unset: Albert keeps interval barcodes and results from

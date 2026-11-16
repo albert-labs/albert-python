@@ -26,7 +26,7 @@ generated before it can hold results, even when its workflow has no intervals. `
 return; pass `wait=False` to return as soon as generation has started. Call
 [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
 yourself only to retry after a
-[`CombinationGenerationError`][albert.exceptions.CombinationGenerationError] or after saving
+`CombinationGenerationError` or after saving
 rules with `generate_combinations=False`.
 
 When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] and [`BatchTask`][albert.resources.tasks.BatchTask] blocks, Albert manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
