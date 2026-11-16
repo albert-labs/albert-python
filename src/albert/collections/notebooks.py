@@ -540,7 +540,7 @@ class NotebookCollection(BaseCollection):
             url=f"{self.base_path}/{notebook_id}/blocks/{block.id}",
             json=PostBlockPayload(
                 type=block.type, content=block.content, previous_block_id=previous_block_id
-            ).model_dump(mode="json", by_alias=True, exclude_none=True),
+            ).model_dump(mode="json", by_alias=True),
         )
         if ketcher_action is not None:
             self._synthesis.update_canvas_data(

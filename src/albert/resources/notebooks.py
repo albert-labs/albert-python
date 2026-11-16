@@ -799,6 +799,11 @@ class PostBlockPayload(BaseAlbertModel):
             raise AlbertException(msg)
         return self
 
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        """Serialize the new block while preserving null content values."""
+        base = super().model_dump(**kwargs)
+        return {key: value for key, value in base.items() if value is not None}
+
 
 class NotebookVersion(BaseAlbertModel):
     """A saved version of a [`Notebook`][albert.resources.notebooks.Notebook].

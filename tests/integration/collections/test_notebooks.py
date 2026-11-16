@@ -156,6 +156,15 @@ def test_create_block(client: Albert, seeded_notebook: Notebook):
     assert existing_ids | {created.id} <= {b.id for b in refreshed.blocks}
 
 
+def test_create_block_with_none_text(client: Albert, seeded_notebook: Notebook):
+    """Test creating a paragraph block preserves null text."""
+    new_block = ParagraphBlock(content=ParagraphContent(text=None))
+
+    created = client.notebooks.create_block(notebook_id=seeded_notebook.id, block=new_block)
+
+    assert created.content.text is None
+
+
 def test_create_block_after_a_given_block(client: Albert, seeded_notebook: Notebook):
     """Test creating a block with previous_block_id places it directly after that block."""
     anchor = seeded_notebook.blocks[0]

@@ -253,6 +253,16 @@ def test_post_block_payload_serializes_to_wire_format():
     }
 
 
+def test_post_block_payload_preserves_nested_none_text():
+    """Test PostBlockPayload preserves null text while omitting unset placement."""
+    payload = PostBlockPayload(type=BlockType.PARAGRAPH, content=ParagraphContent(text=None))
+
+    assert payload.model_dump(mode="json", by_alias=True) == {
+        "blockType": "paragraph",
+        "content": {"text": None},
+    }
+
+
 def test_post_block_payload_includes_previous_block_id_when_set():
     """Test PostBlockPayload carries the placement anchor when provided."""
     payload = PostBlockPayload(
