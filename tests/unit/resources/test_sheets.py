@@ -2538,6 +2538,119 @@ def test_add_formulations_ambiguous_inventory_id_fails_before_writing(offline_se
     assert not [c for c in responses.calls if c.request.method in ("POST", "PATCH", "DELETE")]
 
 
+def _register_formula_used_as_ingredient_grid(*, total_first: bool):
+    """A grid where formula B (column COL6, item INVB2) is also an ingredient row.
+
+    The built-in "Inventory ID" column (COL1, type DEF) carries no id in its
+    header cell, so a column parser that borrows the first row's item id links
+    COL1 to INVB2 whenever the INVB2 row sits first (users can move the Total
+    row below the ingredient rows).
+    """
+    formula_b_row = {
+        "rowId": "ROW1",
+        "rowUniqueId": "DES1#ROW1",
+        "name": "Formula B",
+        "type": "INV",
+        "id": "INVB2",
+        "Values": [
+            {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": "B2"},
+            {"colId": "COL6", "type": "INV", "id": "INVB2", "value": "5"},
+        ],
+    }
+    salt_row = {
+        "rowId": "ROW2",
+        "rowUniqueId": "DES1#ROW2",
+        "name": "Salt",
+        "type": "INV",
+        "id": "INVA1",
+        "Values": [
+            {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": "A1"},
+            {"colId": "COL6", "type": "INV", "id": "INVB2", "value": "10"},
+        ],
+    }
+    total_row = {
+        "rowId": "ROW3",
+        "rowUniqueId": "DES1#ROW3",
+        "name": "Total",
+        "type": "TOT",
+        "id": "APP1",
+        "Values": [
+            {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": ""},
+            {
+                "colId": "COL6",
+                "type": "INV",
+                "id": "INVB2",
+                "value": "15",
+                "calculation": "=COL6ROW1+COL6ROW2",
+            },
+        ],
+    }
+    items = (
+        [total_row, formula_b_row, salt_row]
+        if total_first
+        else [formula_b_row, salt_row, total_row]
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": items,
+            "Formulas": [
+                {"colId": "COL1", "name": "Inventory ID", "type": "DEF", "state": {}},
+                {"colId": "COL6", "name": "Formula B", "id": "INVB2", "state": {}},
+            ],
+        },
+    )
+
+
+@responses.activate
+@pytest.mark.parametrize("total_first", [True, False])
+def test_add_formulations_inventory_id_skips_non_formula_columns(offline_session, total_first):
+    """Test inventory_id matching resolves to the formula column at any row order."""
+    sheet = _products_sheet(session=offline_session)
+    _register_formula_used_as_ingredient_grid(total_first=total_first)
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                inventory_id="B2", components=[Component(inventory_id="INVA1", amount=42.0)]
+            )
+        ],
+        clear=True,
+        enforce_order=True,
+    )
+
+    # The formula column was matched: no new column or row is created.
+    assert not [c for c in responses.calls if c.request.method == "POST"]
+    assert [(col.column_id, col.name) for col in columns] == [("COL6", "Formula B")]
+
+    value_patches = [
+        json.loads(c.request.body)
+        for c in responses.calls
+        if c.request.method == "PATCH" and c.request.url.endswith("/values")
+    ]
+    # The matched column's ingredient cells were cleared before the rewrite.
+    assert {
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["operation"])
+        for entry in value_patches[0]
+    } == {("ROW1", "COL6", "delete"), ("ROW2", "COL6", "delete")}
+    assert {
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["newValue"])
+        for entry in value_patches[1]
+    } == {("ROW2", "COL6", "42.0")}
+
+
+@responses.activate
+def test_get_column_by_inventory_id_skips_the_inventory_id_column(offline_session):
+    """Test get_column(inventory_id=...) resolves to the formula column, not COL1."""
+    sheet = _products_sheet(session=offline_session)
+    _register_formula_used_as_ingredient_grid(total_first=False)
+
+    column = sheet.get_column(inventory_id="INVB2")
+
+    assert column.column_id == "COL6"
+
+
 @responses.activate
 def test_add_formulations_duplicate_inventory_ids_fail_before_writing(offline_session):
     """Test two entries sharing an inventory_id raise before any write."""

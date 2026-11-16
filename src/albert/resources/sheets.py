@@ -555,8 +555,8 @@ class Design(BaseSessionResource):
     def _get_columns(self, *, grid_response: dict) -> list[Column]:
         """
         Normalizes inventory IDs (always prefixed "INV"; ingredient basis
-        columns have none) and, for the "Inventory ID" header, falls back to
-        the row's top-level `id` when Values[].id is absent.
+        columns have none). A header cell without an ``id`` (for example the
+        built-in "Inventory ID" column) gets no inventory ID.
 
         Parameters
         ----------
@@ -577,8 +577,6 @@ class Design(BaseSessionResource):
         }
 
         first = items[0]
-        # for the Inventory-ID column fallback
-        row_item_id = first.get("id")
 
         cols: list[Column] = []
         for v in first["Values"]:
@@ -587,9 +585,6 @@ class Design(BaseSessionResource):
                 continue
 
             raw_id = v.get("id")
-            if raw_id is None and v.get("name") == "Inventory ID":
-                raw_id = row_item_id
-
             inv_id = _grid_inventory_id(raw_id, v.get("type"))
             attribute_id = str(raw_id) if raw_id and v.get("type") == CellType.RSL else None
 
@@ -1571,7 +1566,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
             for column in self.columns:
                 if column.name is not None:
                     existing_by_name.setdefault(column.name, column)
-                if column.inventory_id is not None:
+                # Only formulation columns are matchable by inventory_id. Other
+                # columns (lookups, the built-in "Inventory ID" column) may carry
+                # an inventory ID but can never hold a formulation.
+                if column.inventory_id is not None and column.type == CellType.INVENTORY:
                     existing_by_inventory.setdefault(column.inventory_id, []).append(column)
 
         resolved: list[Column | None] = []
