@@ -52,6 +52,8 @@ class StorageLocationsCollection(BaseCollection):
         Create a new storage location.
     get_by_id(id) -> StorageLocation
         Get a single storage location by its Albert ID.
+    get_by_name(name, exact_match=True) -> StorageLocation | None
+        Get a single storage location by name, or None if not found.
     get_all(...) -> Iterator[StorageLocation]
         Iterate over storage locations, optionally filtered by name or location.
     update(storage_location) -> StorageLocation
@@ -98,6 +100,35 @@ class StorageLocationsCollection(BaseCollection):
         path = f"{self.base_path}/{id}"
         response = self.session.get(path)
         return StorageLocation(**response.json())
+
+    def get_by_name(self, *, name: str, exact_match: bool = True) -> StorageLocation | None:
+        """Get a single Storage Location by name.
+
+        Returns the first match, or None if no storage location matches. To look up
+        or create in one step, use [`get_or_create`][albert.collections.storage_locations.StorageLocationsCollection.get_or_create].
+
+        !!! example
+            ```python
+            storage_location = client.storage_locations.get_by_name(name="Freezer A")
+            storage_location.id if storage_location else "not found"
+            # 'STL123'
+            ```
+
+        Parameters
+        ----------
+        name : str
+            The storage location name to look up.
+        exact_match : bool, optional
+            When True (default), requires an exact name match. When False, matches
+            on a substring of the name.
+
+        Returns
+        -------
+        StorageLocation or None
+            The matching storage location, or None if no storage location matches.
+        """
+        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
+        return next(found, None)
 
     def get_all(
         self,

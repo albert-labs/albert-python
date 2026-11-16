@@ -278,7 +278,7 @@ class AttributeCollection(BaseCollection):
                     formula_metadata=[
                         FormulaMetadata(
                             display_name="Solids Share",
-                            expression=f"wt% / sum(wt%) * [{solids_id}]",
+                            expression=f"wt% * [{solids_id}]",
                             expression_type=ExpressionType.INGREDIENT_BASIS,
                             request_inverse=False,
                         ),
@@ -560,6 +560,8 @@ class AttributeCollection(BaseCollection):
         Returns one [`AttributeValuesResponse`][albert.resources.attributes.AttributeValuesResponse]
         per entity when ``scope`` includes child lots. Inventory item values are
         the canonical source for worksheet reference columns.
+        A formula's values can include calculated property values that a worksheet
+        stored; they look like any other value.
 
         Parameters
         ----------

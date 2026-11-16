@@ -8,9 +8,11 @@ from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
+    ParameterCategory,
     ParameterGroup,
     ParameterGroupSearchItem,
     ParameterValue,
+    PGType,
     ValueValidation,
 )
 from albert.resources.tags import Tag
@@ -344,3 +346,39 @@ def test_new_parameter_enum_ids_populated(
     assert len(new_param.validation[0].value) == 2
     for v in new_param.validation[0].value:
         assert v.id is not None, f"Enum value '{v.text}' has no ID"
+
+
+def test_update_keeps_repeated_parameter_rows(
+    client: Albert, seed_prefix: str, static_consumeable_parameter
+):
+    """Test that renaming a group keeps every row of a parameter used more than once."""
+    pg = client.parameter_groups.create(
+        parameter_group=ParameterGroup(
+            name=f"{seed_prefix} - Repeated Rows PG",
+            type=PGType.GENERAL,
+            parameters=[
+                ParameterValue(
+                    parameter=static_consumeable_parameter,
+                    category=ParameterCategory.SPECIAL,
+                    short_name=short_name,
+                )
+                for short_name in ("Mold 1", "Mold 2", "Mold 3")
+            ],
+        )
+    )
+    try:
+        fetched = client.parameter_groups.get_by_id(id=pg.id)
+        before = sorted((p.sequence, p.short_name) for p in fetched.parameters)
+        assert len(before) == 3
+        payload = fetched.model_dump(by_alias=True, exclude_none=True)
+        payload["name"] = f"{seed_prefix} - Repeated Rows PG renamed"
+        resent = ParameterGroup(**payload)
+        assert all(p.sequence is None for p in resent.parameters)
+
+        updated = client.parameter_groups.update(parameter_group=resent)
+
+        assert updated.name == f"{seed_prefix} - Repeated Rows PG renamed"
+        assert sorted((p.sequence, p.short_name) for p in updated.parameters) == before
+    finally:
+        with suppress(NotFoundError):
+            client.parameter_groups.delete(id=pg.id)

@@ -8,5 +8,6 @@ Pick the guide that matches your upgrade path.
 | [Alpha → v1.0](alpha-to-v1.md) | Breaking changes introduced in the v1.0.0 release |
 | [Substances v3 → v4 (🧪Beta)](substances-v4.md) | Adopting the new Substance API ahead of SDK 2.0 |
 | [Specs → Attributes](specs-to-attributes.md) | Replacing `inventory.get_specs` / `add_specs` with the new Attributes API ahead of SDK 2.0 |
+| [Increased Intervals (🧪Beta)](increased-intervals.md) | Generating combinations for Property and Batch task blocks once increased intervals is enabled for your tenant |
 
 If you run into any issues, please open a [GitHub issue](https://github.com/albert-labs/albert-python/issues).

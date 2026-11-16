@@ -126,12 +126,14 @@ class FormulaMetadata(BaseAlbertModel):
     ingredient basis per attribute. Every calculated property shows on the sheet, but
     only the attribute's first one, in sheet order, is saved to the formula's inventory
     and published as the attribute's value, so give a variant that must be saved its own
-    attribute.
+    attribute. To see which ones a sheet shows, use
+    [`get_calculations`][albert.resources.sheets.Sheet.get_calculations].
 
     Expression variables:
 
-    - ``wt%``: the ingredient's weight percent, currently a whole number (40 means
-      40%). Ratios such as ``wt% / sum(wt%)`` give the same result on any scale.
+    - ``wt%``: the ingredient's weight percent as a fraction (40% is 0.4), so
+      expressions never divide it by 100. An expression that does gives values 100
+      times too small.
     - ``parts_mass``: the ingredient's amount.
     - ``[ATR123]``: the ingredient's value for another attribute, always by attribute
       ID. A name such as ``[Solid %]`` reads as 0. Resolve names to IDs with
@@ -158,7 +160,7 @@ class FormulaMetadata(BaseAlbertModel):
     Typical expressions:
 
     - Weighted average (calculated property): ``sum(wt% * [ATR45]) / sum(wt%)``.
-    - Share per ingredient (ingredient basis): ``wt% / sum(wt%) * [ATR45]``, totalled by
+    - Share per ingredient (ingredient basis): ``wt% * [ATR45]``, totalled by
       a calculated property ``sum(ingredient_basis)``.
     - Parts per hundred resin (ingredient basis):
       ``wt% / sum(wt% WHERE Function = "Resin") * 100``.
@@ -170,11 +172,11 @@ class FormulaMetadata(BaseAlbertModel):
     not exist, or a malformed ``WHERE`` saves without error and shows blank values, 0
     or an error on the sheet. Double-check every ``[ATR...]`` ID.
 
-    Saving a formula on the attribute does not change any sheet, and the SDK cannot add
-    one to a sheet. Add it to a sheet with the worksheet's Manage Worksheet option: a
-    calculated property then shows as a row named after its ``display_name`` in the
-    sheet's Calculated Properties section, and an ingredient basis as a column under
-    each formulation column.
+    Saving a formula on the attribute does not change any sheet. Add it to a sheet with
+    [`add_calculation`][albert.resources.sheets.Sheet.add_calculation] or the
+    worksheet's Manage Worksheet option: a calculated property then shows as a row
+    named after its ``display_name`` in the sheet's Calculated Properties section, and
+    an ingredient basis as a column under each formulation column.
 
     Values are computed on the worksheet, not when the formula is saved. To estimate a
     value for another composition, evaluate the expression over the sheet's ingredient

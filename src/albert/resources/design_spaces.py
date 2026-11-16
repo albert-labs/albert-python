@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import ConfigDict, Field, model_serializer, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_serializer, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
@@ -62,6 +62,7 @@ class DesignSpaceViolationCode(StrEnum):
     DUPLICATE_CONSTRAINT_SUBJECT = "duplicate_constraint_subject"
     VARIABLE_NOT_DERIVED = "variable_not_derived"
     INTERNAL = "internal"
+    UNSUPPORTED_OPERAND = "unsupported_operand"
 
 
 class _ParameterConstraintBase(BaseAlbertModel):
@@ -73,7 +74,9 @@ class _ParameterConstraintBase(BaseAlbertModel):
     covers a constraint nested in an operation or passed as an update value.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    # A lenient read instance (a subclass) passed into a request is checked against this
+    # strict model again, so content this version does not model is refused, not dropped.
+    model_config = ConfigDict(extra="forbid", revalidate_instances="subclass-instances")
 
     @model_serializer(mode="wrap")
     def _keep_type_discriminator(self, handler):
@@ -122,6 +125,66 @@ ParameterConstraint = Annotated[
 of numbers, or a set of categories."""
 
 
+_CONSTRAINT_KINDS = frozenset(
+    model.model_fields["type"].default
+    for model in (ContinuousConstraint, DiscreteConstraint, CategoricalConstraint)
+)
+
+
+class UnknownParameterConstraint(BaseAlbertModel):
+    """A parameter constraint of a kind this SDK version does not know yet.
+
+    Only appears in design spaces read from the service: a space written by a newer
+    release parses with this model in place of the constraint instead of failing, and the
+    constraint keeps every key it carried. Requests never accept it.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    type: str
+    """The kind the service reported."""
+
+    @field_validator("type")
+    @classmethod
+    def _only_unknown_kinds(cls, kind: str) -> str:
+        """Refuse a kind this version models: a malformed constraint of it is an error."""
+        if kind in _CONSTRAINT_KINDS:
+            raise ValueError(f"{kind!r} constraint does not match its schema")
+        return kind
+
+
+class _ReadContinuousConstraint(ContinuousConstraint):
+    """A continuous constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadDiscreteConstraint(DiscreteConstraint):
+    """A discrete constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadCategoricalConstraint(CategoricalConstraint):
+    """A categorical constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+ParameterConstraintRead = Annotated[
+    Annotated[
+        _ReadContinuousConstraint | _ReadDiscreteConstraint | _ReadCategoricalConstraint,
+        Field(discriminator="type"),
+    ]
+    | UnknownParameterConstraint,
+    Field(union_mode="left_to_right"),
+]
+"""A parameter constraint as read from the service. A known kind parses to its model (an
+instance of ``ContinuousConstraint``, ``DiscreteConstraint`` or ``CategoricalConstraint``)
+and keeps fields this version does not model; an unknown kind parses to
+``UnknownParameterConstraint``."""
+
+
 class IngredientEntry(BaseAlbertModel):
     """An ingredient dimension of a design space: its action plus fraction bounds."""
 
@@ -158,7 +221,13 @@ class ParameterRef(BaseAlbertModel):
 
 
 class ParameterEntry(BaseAlbertModel):
-    """A parameter dimension of a design space: its identity plus allowed values."""
+    """A parameter dimension of a design space: its identity plus allowed values.
+
+    Read from the service only (requests use ``ParameterAssignment``). Fields this version
+    does not model are kept as extra fields.
+    """
+
+    model_config = ConfigDict(extra="allow")
 
     ref: ParameterRef
     """The parameter's structured identity."""
@@ -166,11 +235,33 @@ class ParameterEntry(BaseAlbertModel):
     data_type: ParameterDataType = Field(alias="dataType")
     """Whether the parameter is numeric or categorical."""
 
-    constraint: ParameterConstraint
-    """The values the parameter may take inside the space."""
+    constraint: ParameterConstraintRead
+    """The values the parameter may take inside the space. A kind this version does not
+    know yet parses to ``UnknownParameterConstraint``."""
 
 
-class DesignSpace(BaseResource):
+class _DesignRecord(BaseResource):
+    """A stored design record read from the service, keeping fields this version does not
+    model as extra fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _keep_the_id_once(cls, data: Any) -> Any:
+        """Keep the ID once, as ``id``: the service sends it as both ``id`` and ``albertId``.
+
+        Without this, ``albertId`` would be kept as an extra field. A record that carries
+        only ``albertId`` gets it as ``id``.
+        """
+        if isinstance(data, dict) and "albertId" in data:
+            data = dict(data)
+            albert_id = data.pop("albertId")
+            data.setdefault("id", albert_id)
+        return data
+
+
+class DesignSpace(_DesignRecord):
     """A design space: the bounded envelope a design run samples formulations from.
 
     Also called the search space or simply the bounds: which ingredients may or must
@@ -180,6 +271,8 @@ class DesignSpace(BaseResource):
     A space is created as a draft, edited with builder operations, checked for
     feasibility, and published. A published space is frozen; editing one means forking
     it into a new draft.
+
+    Fields this version does not model are kept as extra fields when a space is read.
     """
 
     id: DesignSpaceId | None = Field(default=None)
@@ -235,8 +328,9 @@ class DesignSpace(BaseResource):
 class DesignSpaceViolation(BaseAlbertModel):
     """A single design-space validation finding."""
 
-    code: DesignSpaceViolationCode
-    """Machine-readable category of the finding."""
+    code: DesignSpaceViolationCode | str = Field(union_mode="left_to_right")
+    """Machine-readable category of the finding. A code this version does not know yet is
+    kept as a plain string."""
 
     message: str
     """Human-readable explanation of the finding."""
@@ -284,6 +378,10 @@ class DesignSpaceReferences(BaseAlbertModel):
     """What references a component of a design space. Powers safe removal."""
 
     model_config = ConfigDict(extra="allow")
+
+    references: list[str] = Field(default_factory=list)
+    """Component paths (``<collection>/<key>``) that point at the requested component.
+    Empty when nothing does."""
 
 
 class DesignSpaceApplyResponse(BaseAlbertModel):

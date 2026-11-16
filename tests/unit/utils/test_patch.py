@@ -814,6 +814,100 @@ def test_generate_parameter_patches_datatype_switched_to_enum_skips_validation_o
     assert enum_patches == {"1": [{"operation": "add", "text": "A"}]}
 
 
+def _special_rows() -> list[ParameterValue]:
+    return [
+        _pv(id="PRM432", sequence="ROW1", short_name="Viscosimeter"),
+        _pv(id="PRM432", sequence="ROW2", short_name="Temperature unit"),
+        _pv(id="PRM432", sequence="ROW22", short_name="Temperature unit"),
+        _pv(id="PRM431", sequence="ROW3", short_name="Chamber"),
+        _pv(id="PRM49", sequence="ROW4"),
+    ]
+
+
+def _without_sequence(rows: list[ParameterValue]) -> list[ParameterValue]:
+    return [
+        ParameterValue(**row.model_dump(by_alias=True, exclude_none=True), sequence=None)
+        for row in rows
+    ]
+
+
+def test_generate_parameter_patches_unchanged_repeated_rows_without_sequence_is_no_op():
+    """Test that resending every row of a repeated parameter without sequences changes nothing."""
+    patches, new_params, enum_patches = generate_parameter_patches(
+        _special_rows(), _without_sequence(_special_rows()), "parameters"
+    )
+
+    assert patches == []
+    assert new_params == []
+    assert enum_patches == {}
+
+
+def test_generate_parameter_patches_repeated_rows_without_sequence_adopt_their_own_sequence():
+    """Test that each resent row of a repeated parameter keeps a distinct existing sequence."""
+    updated = _without_sequence(_special_rows())
+
+    generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert [p.sequence for p in updated] == ["ROW1", "ROW2", "ROW22", "ROW3", "ROW4"]
+
+
+def test_generate_parameter_patches_repeated_row_value_change_targets_its_own_row():
+    """Test that a value change on one repeated row patches only that row."""
+    updated = _without_sequence(_special_rows())
+    updated[2].value = "Kelvin"
+
+    patches, _, _ = generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert patches == [
+        PGPatchDatum(operation="add", attribute="value", newValue="Kelvin", rowId="ROW22")
+    ]
+
+
+def test_generate_parameter_patches_omitted_repeated_row_deletes_only_that_row():
+    """Test that dropping one repeated row deletes that row and keeps its siblings."""
+    updated = [p for p in _without_sequence(_special_rows()) if p.short_name != "Viscosimeter"]
+
+    patches, new_params, _ = generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert new_params == []
+    assert patches == [PGPatchDatum(operation="delete", attribute="parameters", oldValue=["ROW1"])]
+
+
+def test_generate_parameter_patches_repeated_rows_with_new_short_names_keep_every_row():
+    """Test that repeated rows whose short names changed each claim a distinct existing row."""
+    updated = _without_sequence(_special_rows())
+    updated[0].short_name = "Equipment A"
+    updated[1].short_name = "Equipment B"
+
+    patches, new_params, _ = generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert new_params == []
+    assert [p for p in patches if p.operation == "delete"] == []
+    assert sorted(p.sequence for p in updated[:3]) == ["ROW1", "ROW2", "ROW22"]
+
+
+def test_generate_parameter_patches_extra_repeated_row_is_new():
+    """Test that one more row of a repeated parameter than exists is treated as new."""
+    updated = [*_without_sequence(_special_rows()), _pv(id="PRM432", sequence=None)]
+
+    patches, new_params, _ = generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert patches == []
+    assert [(p.id, p.sequence) for p in new_params] == [("PRM432", None)]
+
+
+def test_generate_parameter_patches_sequence_match_is_not_reused_by_id_match():
+    """Test that a row already matched by sequence is not claimed again by an id-only entry."""
+    initial = [_pv(id="PRM1", sequence="1", value="a"), _pv(id="PRM1", sequence="2", value="b")]
+    updated = [_pv(id="PRM1", sequence=None, value="b"), _pv(id="PRM1", sequence="1", value="a")]
+
+    patches, new_params, _ = generate_parameter_patches(initial, updated)
+
+    assert patches == []
+    assert new_params == []
+    assert [p.sequence for p in updated] == ["2", "1"]
+
+
 # ---------------------------------------------------------------------------
 # handle_tags
 # ---------------------------------------------------------------------------

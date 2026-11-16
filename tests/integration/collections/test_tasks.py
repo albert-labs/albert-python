@@ -17,11 +17,14 @@ from albert.resources.lists import ListItem
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
     BaseTask,
+    BatchSizeUnit,
     BatchTask,
     Block,
     GeneralTask,
     PropertyTask,
     TaskCategory,
+    TaskInventoryInformation,
+    TaskLotAllocation,
     TaskSearchItem,
 )
 from albert.resources.worker_jobs import WorkerJob
@@ -229,6 +232,70 @@ def test_update_partial_leaves_omitted_special_attrs_untouched(
     assert tag.id in {t.id for t in (refetched.tags or [])}
 
 
+def test_allocate_inventory_task_lot(
+    client: Albert,
+    seed_prefix: str,
+    seeded_projects,
+    seeded_inventory,
+    seeded_lots,
+    seeded_locations,
+    seeded_workflows,
+    seeded_data_templates,
+):
+    """Test that allocating the task's own inventory sets its quantity used."""
+    task = client.tasks.create(
+        task=PropertyTask(
+            name=f"{seed_prefix} - Allocate Inventory",
+            category=TaskCategory.PROPERTY,
+            inventory_information=[
+                TaskInventoryInformation(
+                    inventory_id=seeded_inventory[0].id,
+                    lot_id=seeded_lots[0].id,
+                )
+            ],
+            parent_id=seeded_projects[0].id,
+            location=seeded_locations[0],
+            blocks=[
+                Block(
+                    workflow=[seeded_workflows[0]],
+                    data_template=[seeded_data_templates[0]],
+                )
+            ],
+        )
+    )
+    try:
+        updated = client.tasks.allocate_inventory(
+            task_id=task.id,
+            allocations=[
+                TaskLotAllocation(
+                    inventory_id=seeded_inventory[0].id,
+                    lot_id=seeded_lots[0].id,
+                    quantity=0.5,
+                )
+            ],
+        )
+        target = next(
+            info
+            for info in updated.inventory_information
+            if info.inventory_id == seeded_inventory[0].id
+        )
+        assert target.quantity_used == 0.5
+    finally:
+        # Restore the shared lot's quantity before deleting. The platform
+        # stores a 0 quantity as unset, so there is nothing to assert here.
+        client.tasks.allocate_inventory(
+            task_id=task.id,
+            allocations=[
+                TaskLotAllocation(
+                    inventory_id=seeded_inventory[0].id,
+                    lot_id=seeded_lots[0].id,
+                    quantity=0,
+                )
+            ],
+        )
+        client.tasks.delete(id=task.id)
+
+
 def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):
     task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
     starting_blocks = len(task.blocks)
@@ -321,6 +388,42 @@ def test_update_block_workflow_on_batch_task(
     assert len(updated_task.blocks) == starting_blocks
     updated_block = next(block for block in updated_task.blocks if block.id == block_id)
     assert new_workflow.id == _final_workflow_id(updated_block)
+
+
+def test_update_task_workflow(
+    client: Albert,
+    seed_prefix: str,
+    seeded_projects,
+    seeded_products,
+    seeded_locations,
+    seeded_workflows,
+):
+    """Test that the task-level workflow of a batch task can be swapped."""
+    task = client.tasks.create(
+        task=BatchTask(
+            name=f"{seed_prefix} - Update Task Workflow",
+            category=TaskCategory.BATCH,
+            batch_size_unit=BatchSizeUnit.GRAMS,
+            inventory_information=[
+                TaskInventoryInformation(
+                    inventory_id=seeded_products[0].id,
+                    batch_size=50.0,
+                )
+            ],
+            parent_id=seeded_projects[0].id,
+            location=seeded_locations[0],
+            workflows=[seeded_workflows[0]],
+        )
+    )
+    try:
+        updated_task = client.tasks.update_task_workflow(
+            task_id=task.id, workflow_id=seeded_workflows[1].id
+        )
+        final_workflow_ids = [w.id for w in updated_task.workflows if w.category != "INITIAL"]
+        assert final_workflow_ids[0] == seeded_workflows[1].id
+    finally:
+        with suppress(NotFoundError, BadRequestError):
+            client.tasks.delete(id=task.id)
 
 
 def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workflows):
@@ -523,6 +626,32 @@ def test_generate_block_combinations_integration(
 ):
     """Test generating block combinations on a task block."""
     task = next(x for x in seeded_tasks if isinstance(x, PropertyTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    try:
+        job = client.tasks.generate_block_combinations(
+            task_id=task.id,
+            block_id=block.id,
+            wait=False,
+        )
+        assert isinstance(job, WorkerJob)
+        assert job.job_type == "createChildWorkflows"
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_generate_block_combinations_batch_task_integration(
+    client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
+):
+    """Test generating block combinations on a batch task block."""
+    task = next(x for x in seeded_tasks if isinstance(x, BatchTask) and x.blocks is not None)
     task = client.tasks.get_by_id(id=task.id)
     client.tasks.add_block(
         task_id=task.id,

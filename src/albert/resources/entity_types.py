@@ -324,10 +324,13 @@ class EntityTypeRuleAction(BaseAlbertModel):
     """A change applied to a target field when a rule case is triggered."""
 
     target_field_name: str = Field(alias="target_field")
-    """The name of the field this action affects."""
+    """The name of the field this action affects. When ``target_field_id`` is set, this
+    must exactly match the ``name`` of that custom field; a mismatch raises
+    ``BadRequestError``."""
 
     target_field_id: CustomFieldId | None = None
-    """The ID of the target custom field (format ``CTF...``), if known."""
+    """The ID of the target custom field (format ``CTF...``), if known. Must be a custom
+    field available to the entity type's service."""
 
     hidden: bool | None = None
     """Whether the target field is hidden."""
@@ -372,13 +375,21 @@ class EntityTypeRule(BaseResource):
     applies actions to other fields, such as showing, hiding, requiring, or
     setting default options. Rules are read and set via
     [`get_rules`][albert.collections.entity_types.EntityTypeCollection.get_rules] and
-    [`set_rules`][albert.collections.entity_types.EntityTypeCollection.set_rules]."""
+    [`set_rules`][albert.collections.entity_types.EntityTypeCollection.set_rules], and
+    removed via
+    [`delete_rule`][albert.collections.entity_types.EntityTypeCollection.delete_rule].
+
+    The trigger field must be a custom field available to the entity type's service,
+    and multiselect list fields cannot be triggers. Only one rule may exist per
+    trigger field and value pair; adding a duplicate raises ``BadRequestError``."""
 
     id: RuleId | None = Field(default=None)
-    """The unique identifier for the rule (format ``RUL...``)."""
+    """The unique identifier for the rule (format ``RUL...``). Assigned when the rule
+    is registered in Albert."""
 
     custom_field_id: CustomFieldId = Field(alias="customFieldId")
-    """The ID of the trigger custom field the rule watches (format ``CTF...``)."""
+    """The ID of the trigger custom field the rule watches (format ``CTF...``). Cannot
+    be a multiselect list field."""
 
     trigger: EntityTypeRuleTrigger = Field(alias="trigger")
     """The value cases that determine which actions are applied."""

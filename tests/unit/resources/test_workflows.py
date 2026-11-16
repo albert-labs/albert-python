@@ -7,6 +7,7 @@ from albert.resources.workflows import (
     Interval,
     ParameterGroupSetpoints,
     ParameterSetpoint,
+    Workflow,
 )
 
 
@@ -148,3 +149,28 @@ def test_parameter_group_setpoints_accepts_matching_id():
     group = ParameterGroup(albertId="PRG1", name="G")
     setpoints = ParameterGroupSetpoints(parameter_group=group, id="PRG1")
     assert setpoints.id == "PRG1"
+
+
+def test_workflow_excludes_read_only_interval_combinations_from_serialization():
+    """Test that a fetched workflow does not serialize its read-only interval combinations."""
+    workflow = Workflow(
+        albertId="WFL1",
+        name="Interval workflow",
+        ParameterGroups=[
+            {
+                "id": "PRG1",
+                "Parameters": [{"id": "PRM1", "Intervals": [{"value": "25"}]}],
+            }
+        ],
+        IntervalCombinations=[
+            {"interval": "ROW1", "intervalParams": "INT1", "intervalString": "T: 25"}
+        ],
+    )
+    assert workflow.interval_combinations
+
+    body = workflow.model_dump(
+        mode="json", by_alias=True, exclude_none=True, exclude={"created", "updated"}
+    )
+
+    assert "IntervalCombinations" not in body
+    assert body["ParameterGroups"][0]["Parameters"][0]["Intervals"] == [{"value": "25"}]

@@ -351,6 +351,22 @@ class AlbertPaginator(Iterator[ItemType]):
         return {k: convert(v) for k, v in payload.items() if v is not None}
 
 
+class LastKeyCursorPaginator(AlbertPaginator[ItemType]):
+    """KEY-mode paginator for a service that takes its cursor back as ``lastKey``.
+
+    The base KEY mode sends the previous page's ``lastKey`` as ``startKey``; these services
+    read the cursor from a ``lastKey`` query parameter instead.
+    """
+
+    def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
+        last_key = data.get("lastKey")
+        self._last_key = last_key
+        if not last_key:
+            return False
+        self._pagination_params["lastKey"] = last_key
+        return True
+
+
 class MetadataPreservingIterator(Iterator[OutType]):
     """Yield from ``items`` while exposing ``has_more`` / ``total`` from ``source``.
 

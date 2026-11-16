@@ -630,27 +630,45 @@ def generate_parameter_patches(
         updated_parameters = []
 
     initial_seq_map = {p.sequence: p for p in initial_parameters if p.sequence}
-    initial_id_map = {p.id: p for p in initial_parameters}
+    sequence_matched = {
+        p.sequence for p in updated_parameters if p.sequence and p.sequence in initial_seq_map
+    }
+    # A group can hold the same parameter on several rows (e.g. two equipment rows), so
+    # each entry without a matching sequence claims its own existing row of that
+    # parameter: first the row with the same short name, then the next row in order.
+    unmatched_by_id: dict[str | None, list[ParameterValue]] = {}
+    for p in initial_parameters:
+        if p.sequence not in sequence_matched:
+            unmatched_by_id.setdefault(p.id, []).append(p)
+
+    claimed: dict[int, ParameterValue] = {}
+    unresolved = []
+    for index, p_updated in enumerate(updated_parameters):
+        if p_updated.sequence and p_updated.sequence in initial_seq_map:
+            claimed[index] = initial_seq_map[p_updated.sequence]
+            continue
+        candidates = unmatched_by_id.get(p_updated.id, [])
+        same_name = next((c for c in candidates if c.short_name == p_updated.short_name), None)
+        if same_name is not None:
+            candidates.remove(same_name)
+            claimed[index] = same_name
+        else:
+            unresolved.append(index)
+    for index in unresolved:
+        candidates = unmatched_by_id.get(updated_parameters[index].id)
+        if candidates:
+            claimed[index] = candidates.pop(0)
 
     updated_param_pairs = []  # tuple of (initial, updated)
     new_parameters = []
-
-    # Match updated parameters to initial ones
-    for p_updated in updated_parameters:
-        p_initial = None
-        # match by sequence if available
-        if p_updated.sequence and p_updated.sequence in initial_seq_map:
-            p_initial = initial_seq_map[p_updated.sequence]
-        # matching by ID if sequence is missing on the updated param OR if sequence match failed
-        elif p_updated.id in initial_id_map:
-            p_initial = initial_id_map[p_updated.id]
-            if p_initial.sequence:
-                p_updated.sequence = p_initial.sequence
-
-        if p_initial:
-            updated_param_pairs.append((p_initial, p_updated))
-        else:
+    for index, p_updated in enumerate(updated_parameters):
+        p_initial = claimed.get(index)
+        if p_initial is None:
             new_parameters.append(p_updated)
+            continue
+        if p_initial.sequence:
+            p_updated.sequence = p_initial.sequence
+        updated_param_pairs.append((p_initial, p_updated))
 
     updated_matched_sequences = {p_updated.sequence for _, p_updated in updated_param_pairs}
     deleted_parameters = (

@@ -301,6 +301,25 @@ class InventoryMinimum(BaseAlbertModel):
         return self
 
 
+class CalculatedPropertyValue(BaseAlbertModel):
+    """A calculated property value stored on a formula.
+
+    A worksheet computes each calculated property for its formulas and stores the
+    result on the formula, one value per attribute. Read through
+    [`calculated_properties`][albert.resources.inventory.InventoryItem.calculated_properties].
+    Read-only.
+    """
+
+    value: float | str | None = Field(default=None, union_mode="left_to_right")
+    """The calculated value. A stored value that is not a number (e.g. ``#DIV/0!``) is kept as text. None if the stored entry has no value."""
+
+    unit: str | None = None
+    """The display unit of the value (e.g. ``%``), when it has one."""
+
+    updated_at: str | None = Field(default=None, alias="updatedAt")
+    """When the value was last stored (ISO 8601 timestamp)."""
+
+
 class InventoryItem(BaseTaggedResource):
     """A catalog entry for a material tracked in Albert.
 
@@ -412,6 +431,11 @@ class InventoryItem(BaseTaggedResource):
         default=None, alias="recentAttachmentId", exclude=True, frozen=True
     )
     """The ID of the most recent attachment on the item. Read-only."""
+
+    calculated_properties: dict[str, CalculatedPropertyValue] | None = Field(
+        default=None, alias="calculatedProperties", exclude=True, frozen=True
+    )
+    """For a formula, the calculated property values a worksheet stored, keyed by attribute ID. Only [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id] includes them; items from other methods, and formulas with no stored value, have None. Read-only."""
 
     @field_validator("company", mode="before")
     @classmethod

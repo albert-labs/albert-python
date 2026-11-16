@@ -421,6 +421,9 @@ class InventoryCollection(BaseCollection):
         For retrieving many items at once, use [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids]. To find items
         without knowing their IDs, use [`search`][albert.collections.inventory.InventoryCollection.search] or [`get_all`][albert.collections.inventory.InventoryCollection.get_all].
 
+        Only this method includes a formula's stored calculated property values
+        ([`calculated_properties`][albert.resources.inventory.InventoryItem.calculated_properties]).
+
         !!! example
             ```python
             item = client.inventory.get_by_id(id="INVA9999999")
@@ -871,9 +874,8 @@ class InventoryCollection(BaseCollection):
         path = (
             f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
         )
-        # llmsearch has no search_after support; it stays on offset pagination.
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET if match_all_conditions else PaginationMode.SEARCH_AFTER,
+            mode=PaginationMode.SEARCH_AFTER,
             path=path,
             params=query_params,
             session=self.session,
