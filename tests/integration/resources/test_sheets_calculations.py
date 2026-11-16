@@ -53,7 +53,9 @@ class PrivateSheet:
     source: Attribute
     """A numeric attribute the ingredient basis references."""
     attribute: Attribute
-    """The attribute holding the ingredient basis and calculated properties."""
+    """The attribute holding the ingredient basis and the calculated property that reads it."""
+    function_attribute: Attribute
+    """The attribute holding the Function-filtered calculated property."""
     ib_name: str
     cp_name: str
     """A calculated property that reads the ingredient basis."""
@@ -104,7 +106,7 @@ def _private_sheet(client: Albert, seed_prefix: str, label: str) -> Iterator[Pri
         ]
         data_columns = [
             client.data_columns.create(data_column=DataColumn(name=f"{seed_prefix} - {label} {i}"))
-            for i in range(2)
+            for i in range(3)
         ]
         source = client.attributes.create(
             attribute=Attribute(
@@ -135,6 +137,16 @@ def _private_sheet(client: Albert, seed_prefix: str, label: str) -> Iterator[Pri
                         expression_type=ExpressionType.CALCULATED_PROPERTY,
                         request_inverse=False,
                     ),
+                ],
+            )
+        )
+        attributes.append(attribute)
+        function_attribute = client.attributes.create(
+            attribute=Attribute(
+                datacolumn_id=data_columns[2].id,
+                category=AttributeCategory.PROPERTY,
+                validation=[ValidationItem(datatype=DataType.NUMBER)],
+                formula_metadata=[
                     FormulaMetadata(
                         display_name=function_cp_name,
                         expression='sum(wt% WHERE Function = "Resin")',
@@ -144,7 +156,7 @@ def _private_sheet(client: Albert, seed_prefix: str, label: str) -> Iterator[Pri
                 ],
             )
         )
-        attributes.append(attribute)
+        attributes.append(function_attribute)
 
         formulas = sheet.add_formulations(
             formulations=[
@@ -162,6 +174,7 @@ def _private_sheet(client: Albert, seed_prefix: str, label: str) -> Iterator[Pri
             sheet=sheet,
             source=source,
             attribute=attribute,
+            function_attribute=function_attribute,
             ib_name=ib_name,
             cp_name=cp_name,
             function_cp_name=function_cp_name,
@@ -474,9 +487,13 @@ def editable_sheet(client: Albert, seed_prefix: str) -> Iterator[PrivateSheet]:
 
 
 def _clear_calculations(private: PrivateSheet) -> None:
-    """Take the attribute's calculations off the sheet, calculated properties first."""
-    for name in (private.cp_name, private.function_cp_name, private.ib_name):
-        private.sheet.remove_calculation(attribute_id=private.attribute.id, display_name=name)
+    """Take the attributes' calculations off the sheet, calculated properties first."""
+    for attribute_id, name in (
+        (private.attribute.id, private.cp_name),
+        (private.function_attribute.id, private.function_cp_name),
+        (private.attribute.id, private.ib_name),
+    ):
+        private.sheet.remove_calculation(attribute_id=attribute_id, display_name=name)
 
 
 def _calculated_rows(sheet: Sheet) -> dict[str, str]:
@@ -548,7 +565,9 @@ def test_add_calculation_groups_rows_and_adds_a_function_column(editable_sheet: 
     sheet, attribute_id = private.sheet, private.attribute.id
     try:
         sheet.add_calculation(attribute_id=attribute_id, display_name=private.cp_name)
-        sheet.add_calculation(attribute_id=attribute_id, display_name=private.function_cp_name)
+        sheet.add_calculation(
+            attribute_id=private.function_attribute.id, display_name=private.function_cp_name
+        )
 
         rows = _calculated_rows(sheet)
         assert set(rows) == {private.cp_name, private.function_cp_name}
