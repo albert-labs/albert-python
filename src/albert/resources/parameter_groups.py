@@ -104,11 +104,13 @@ class DataType(str, Enum):
 
 
 class Operator(str, Enum):
-    """A comparison operator constraining a numeric parameter value.
+    """A comparison operator constraining a parameter value.
 
     Used by [`ValueValidation`][albert.resources.parameter_groups.ValueValidation] to bound acceptable values. ``between``
     takes ``min`` and ``max``; every single-bound operator takes ``value`` (e.g. ``gte``
-    with ``value="0"`` requires the value to be at least 0).
+    with ``value="0"`` requires the value to be at least 0). Numeric types use ``between``
+    and the comparison operators; ``date`` and ``timestamp`` types use ``between``,
+    ``before`` and ``after``.
 
     Attributes
     ----------
@@ -126,6 +128,10 @@ class Operator(str, Enum):
         Value must equal ``value``.
     NOT_EQUALS : str
         Not accepted by the API for parameter validations.
+    BEFORE : str
+        A ``date`` or ``timestamp`` value must be earlier than ``value``.
+    AFTER : str
+        A ``date`` or ``timestamp`` value must be later than ``value``.
     """
 
     BETWEEN = "between"
@@ -135,6 +141,8 @@ class Operator(str, Enum):
     GREATER_THAN = "gt"
     EQUALS = "eq"
     NOT_EQUALS = "neq"
+    BEFORE = "before"
+    AFTER = "after"
 
 
 class EnumValidationValue(BaseAlbertModel):
@@ -181,7 +189,7 @@ class ValueValidation(BaseAlbertModel):
     """The data type the value must conform to. Required."""
 
     value: str | list[EnumValidationValue] | None = Field(default=None)
-    """For ``ENUM`` types, the list of allowed options (see [`EnumValidationValue`][albert.resources.parameter_groups.EnumValidationValue]); otherwise the bound for single-bound operators (``lt``, ``lte``, ``gt``, ``gte``, ``eq``). For ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
+    """For ``ENUM`` types, the list of allowed options (see [`EnumValidationValue`][albert.resources.parameter_groups.EnumValidationValue]); otherwise the bound for single-bound operators (``lt``, ``lte``, ``gt``, ``gte``, ``eq``, ``before``, ``after``). For ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
 
     min: str | None = Field(default=None)
     """The lower bound, used only with ``operator="between"``. For numeric types, a numeric string; for ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
