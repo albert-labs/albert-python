@@ -702,8 +702,9 @@ def test_create_many_inventory_items(
         assert created[0].tags[0].id == seeded_tags[0].id
         assert created[2].company.id == seeded_companies[0].id
         assert created[3].unit_category == InventoryUnitCategory.VOLUME
-        assert created[3].density is not None
-        assert created[3].density.value == pytest.approx(0.785)
+        refetched_solvent = client.inventory.get_by_id(id=created[3].id)
+        assert refetched_solvent.density is not None
+        assert refetched_solvent.density.value == pytest.approx(0.785)
     finally:
         for item in created:
             with suppress(NotFoundError, BadRequestError):
