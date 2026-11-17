@@ -542,6 +542,8 @@ class InventoryCollection(BaseCollection):
                 chunk_failed = data.get("FailedItems") or []
             created_items.extend(_offset_bulk_result_indices(chunk_created, start))
             failed_items.extend(_offset_bulk_result_indices(chunk_failed, start))
+        created_items.sort(key=lambda entry: entry["index"])
+        failed_items.sort(key=lambda entry: entry["index"])
         if failed_items:
             raise AlbertPartialError(
                 f"Bulk inventory create completed with item failures: "
