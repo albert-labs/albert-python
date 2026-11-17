@@ -253,7 +253,7 @@ class AttributeCollection(BaseCollection):
         ``request_inverse=True``. Only the first calculated property of an attribute, in
         sheet order, is saved to the inventory; give a variant that must be saved its own
         attribute. The SDK rejects malformed ``WHERE`` filters and invented bracket
-        tokens (for example ``[INVFNC]``) before the API call; unknown ``[ATR...]``
+        tokens (for example ``[INVFNC]``) client-side before saving; unknown ``[ATR...]``
         ids may still save and fail on the sheet.
 
         Define the property template once in the attribute catalogue, then assign values to
@@ -334,7 +334,7 @@ class AttributeCollection(BaseCollection):
         combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
         ``request_inverse=True``. Only the first calculated property of an attribute, in
         sheet order, is saved to the inventory; give a variant that must be saved its own
-        attribute. The SDK validates expression syntax before the API call (``WHERE``
+        attribute. The SDK validates expression syntax client-side (``WHERE``
         rules, ``Function`` not ``[INVFNC]``); see
         [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata] for examples.
 
