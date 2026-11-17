@@ -11,6 +11,9 @@ concurrency:
   group: dependency-audit-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/next' }}
 
+permissions:
+  contents: read
+
 jobs:
   pip-audit:
     name: pip-audit (Python ${{ matrix.python-version }})
