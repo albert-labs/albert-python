@@ -307,9 +307,16 @@ class Lot(BaseResource):
     """
     # because quarantined is an allowed Lot status, we need to extend the normal status
 
-    # API-returned fields (read-only)
-    status: LotStatus | None = Field(default=None, exclude=True, frozen=True)
-    """The lot's lifecycle status. Read-only."""
+    status: LotStatus | None = Field(default=None, exclude=True)
+    """The lot's lifecycle status.
+
+    The platform supports changing active lots to quarantined and quarantined lots to
+    active through [`update`][albert.collections.lots.LotCollection.update] and
+    [`update_many`][albert.collections.lots.LotCollection.update_many]. It rejects
+    changing status to inactive through either method. Use
+    [`delete`][albert.collections.lots.LotCollection.delete] to retire a lot. Inactive
+    lots cannot be edited.
+    """
 
     location: SerializeAsEntityLink[Location] | None = Field(
         default=None,

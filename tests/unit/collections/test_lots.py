@@ -345,6 +345,69 @@ def test_workflow_id_unset_emits_no_op(offline_session) -> None:
     assert [d for d in payload.data if d.attribute == "workflowId"] == []
 
 
+# --- status ---
+
+
+def test_status_changed_emits_complete_update(offline_session) -> None:
+    """Test that changing an active lot to quarantined includes its current status."""
+    existing = _lot(status=LotStatus.ACTIVE)
+    updated = _lot(status=LotStatus.ACTIVE)
+    updated.status = LotStatus.QUARANTINED
+
+    payload = LotCollection(session=offline_session)._generate_lots_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True) == {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "status",
+                "oldValue": "active",
+                "newValue": "quarantined",
+            }
+        ]
+    }
+
+
+def test_status_unset_emits_no_op(offline_session) -> None:
+    """Test that an unset status leaves the current status untouched."""
+    existing = _lot(status=LotStatus.ACTIVE)
+    updated = _lot()
+
+    payload = LotCollection(session=offline_session)._generate_lots_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True) == {"data": []}
+
+
+def test_status_unchanged_emits_no_op(offline_session) -> None:
+    """Test that an unchanged status produces no operation."""
+    existing = _lot(status=LotStatus.ACTIVE)
+    updated = _lot(status=LotStatus.ACTIVE)
+
+    payload = LotCollection(session=offline_session)._generate_lots_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True) == {"data": []}
+
+
+def test_status_cleared_preserves_existing_clear_behavior(offline_session) -> None:
+    """Test that explicitly clearing status preserves the existing clear operation."""
+    existing = _lot(status=LotStatus.ACTIVE)
+    updated = _lot(status=None)
+
+    payload = LotCollection(session=offline_session)._generate_lots_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True) == {
+        "data": [{"operation": "delete", "attribute": "status", "oldValue": "active"}]
+    }
+
+
 # --- an ordinary attribute is unaffected by the special-case post-processing ---
 
 
@@ -417,6 +480,30 @@ def test_bulk_update_item_builds_supported_change(offline_session) -> None:
     assert entry["data"][0]["operation"] == PatchOperation.UPDATE
 
 
+def test_bulk_update_item_builds_status_change(offline_session) -> None:
+    """Test that a writable status change produces a complete bulk update item."""
+    existing = _lot(status=LotStatus.ACTIVE)
+    updated = _lot(status=LotStatus.ACTIVE)
+    updated.status = LotStatus.QUARANTINED
+
+    entry = LotCollection(session=offline_session)._generate_bulk_update_item(
+        existing=existing, updated=updated, notes="quarantine lot"
+    )
+
+    assert entry == {
+        "id": "LOT1",
+        "notes": "quarantine lot",
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "status",
+                "oldValue": "active",
+                "newValue": "quarantined",
+            }
+        ],
+    }
+
+
 def test_bulk_update_item_skips_inventory_id_change(offline_session) -> None:
     """Test that an inventory_id change is not applied by bulk update."""
     entry = LotCollection(session=offline_session)._generate_bulk_update_item(
@@ -452,6 +539,16 @@ def test_bulk_update_item_rejects_cleared_field(offline_session) -> None:
         LotCollection(session=offline_session)._generate_bulk_update_item(
             existing=_lot(expiration_date="2030-01-01"),
             updated=_lot(expiration_date=None),
+            notes="n",
+        )
+
+
+def test_bulk_update_item_rejects_cleared_status(offline_session) -> None:
+    """Test that clearing status raises instead of attempting an unsupported clear."""
+    with pytest.raises(ValueError, match="cannot clear status"):
+        LotCollection(session=offline_session)._generate_bulk_update_item(
+            existing=_lot(status=LotStatus.ACTIVE),
+            updated=_lot(status=None),
             notes="n",
         )
 
