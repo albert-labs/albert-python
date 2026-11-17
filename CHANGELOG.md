@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.75.0](https://github.com/albert-labs/albert-python/compare/v1.74.0...v1.75.0) (2026-11-17)
+
+
+### Features
+
+* **inventory:** add create_many for bulk inventory creation ([#911](https://github.com/albert-labs/albert-python/issues/911)) ([2bc7d5c](https://github.com/albert-labs/albert-python/commit/2bc7d5c8ee5137a49feca23d3af79d4f8af95543))
+* **sheets:** validate calculation expressions, atomic batch writes, formula guidance ([#970](https://github.com/albert-labs/albert-python/issues/970)) ([c4e5619](https://github.com/albert-labs/albert-python/commit/c4e56192b66c6ed3e7cb937e64f4cdac695ac0d8))
+
+
+### Bug Fixes
+
+* **notebooks:** parse embedded Artifact blocks ([#966](https://github.com/albert-labs/albert-python/issues/966)) ([c8f695c](https://github.com/albert-labs/albert-python/commit/c8f695c105e9f697e946719d1d95748520f37693))
+* **sheets:** skip ingredient basis columns when pinning ([#952](https://github.com/albert-labs/albert-python/issues/952)) ([6149b95](https://github.com/albert-labs/albert-python/commit/6149b95dd29f8e67048f73dbae660cde291c7886))
+
 ## [1.74.0](https://github.com/albert-labs/albert-python/compare/v1.73.0...v1.74.0) (2026-11-16)
 
 
