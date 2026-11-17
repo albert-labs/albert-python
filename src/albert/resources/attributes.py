@@ -172,7 +172,7 @@ class FormulaMetadata(BaseAlbertModel):
     [`update`][albert.collections.attributes.AttributeCollection.update] validate
     expression syntax client-side (``WHERE`` placement, ``Function`` vs ``[INVFNC]``,
     and similar). An unknown ``[ATR...]`` ID can still save and show errors on the
-    sheet — resolve names with search before writing.
+    sheet. Resolve names with search before writing.
 
     Saving a formula on the attribute does not change any sheet. Add it to a sheet with
     [`add_calculation`][albert.resources.sheets.Sheet.add_calculation] or the

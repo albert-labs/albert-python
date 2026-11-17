@@ -49,7 +49,7 @@ def validate_formula_expression_references(*, expression: str | None) -> None:
     token = match.group(0)
     raise ValueError(
         f'The calculation expression "{expression}" uses {token}, which is not a worksheet '
-        "formula reference. Filter the Function column with Function = \"Core\" "
+        'formula reference. Filter the Function column with Function = "Core" '
         "(unbracketed), not [INVFNC] or column ids. Reference other attributes with "
         "[ATR...], not data columns [DAC...]."
     )

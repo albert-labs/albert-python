@@ -151,9 +151,7 @@ def test_validate_calculation_expression_accepts_quoted_paren_in_coordinate_form
 
 def test_validate_formula_expression_references_rejects_invfnc() -> None:
     with pytest.raises(ValueError, match="INVFNC"):
-        validate_formula_expression_references(
-            expression='sum(wt% WHERE [INVFNC] = "Core")'
-        )
+        validate_formula_expression_references(expression='sum(wt% WHERE [INVFNC] = "Core")')
 
 
 def test_validate_formula_expression_references_allows_atr_and_function() -> None:
