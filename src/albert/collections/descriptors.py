@@ -183,9 +183,9 @@ class DescriptorCollection(BaseCollection):
         Returns
         -------
         list[MoleculeDescriptors]
-            One result per input SMILES, in input order. Each result provides canonical
-            SMILES and the calculated descriptors. A null scalar or list component means
-            that value could not be calculated.
+            One result per input SMILES, in input order. Each result repeats the
+            submitted SMILES and the calculated descriptors. A null scalar or list
+            component means that value could not be calculated.
         """
         payload = _calculate_payload(smiles=smiles, names=names, families=families)
         response = self.session.post(self.base_path, json=payload, retry_safe=True)

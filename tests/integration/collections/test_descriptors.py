@@ -53,11 +53,11 @@ def test_calculate_named_fingerprint_returns_numeric_list(client: Albert) -> Non
     assert isinstance(fingerprint[0].value.value[0], float)
 
 
-def test_calculate_returns_canonical_smiles_in_input_order(client: Albert) -> None:
-    """Test that each result is canonical SMILES in input order."""
+def test_calculate_returns_smiles_in_input_order(client: Albert) -> None:
+    """Test that results keep the submitted SMILES in input order."""
     results = client.descriptors.calculate(smiles=["OCC", "NCC"], names=["MolecularWeight"])
 
-    assert [molecule.smiles for molecule in results] == ["CCO", "CCN"]
+    assert [molecule.smiles for molecule in results] == ["OCC", "NCC"]
     assert [molecule.descriptors[0].name for molecule in results] == [
         "MolecularWeight",
         "MolecularWeight",

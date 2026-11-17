@@ -134,7 +134,7 @@ class MoleculeDescriptors(BaseAlbertModel):
     """Descriptor values for one molecule."""
 
     smiles: str
-    """Canonical SMILES of the molecule that was calculated."""
+    """The submitted SMILES for this result."""
 
     descriptors: list[DescriptorValue]
     """One entry per calculated descriptor."""
