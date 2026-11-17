@@ -24,6 +24,35 @@ _INGREDIENT_DSL = re.compile(
 _FILTER_KEY_ALIASES = {"Function": "function_tag"}
 _QUOTED = re.compile(r'"[^"\n]*"|\'[^\'\n]*\'')
 _TRAILING_OPERATOR = re.compile(r"[+\-*/^=(,]$")
+# ponytail: coarse guard — catches invented column tokens agents hallucinate (INVFNC, DAC…).
+_FORBIDDEN_BRACKET_REF = re.compile(
+    r"\[\s*(?:INVFNC|FNC|COL\d+|DAC\d+)\s*\]",
+    re.IGNORECASE,
+)
+
+
+def validate_formula_expression_references(*, expression: str | None) -> None:
+    """Reject non-attribute bracket references in worksheet formula metadata.
+
+    Bracketed refs must be attributes (``[ATR...]``) or property display names
+    (``[Solid %]``). Column ids, data column ids, and invented Function tags such
+    as ``[INVFNC]`` are not valid and produce ``#VALUE!`` in the UI.
+    """
+    if expression is None:
+        return
+    text = expression.strip()
+    if not text:
+        return
+    match = _FORBIDDEN_BRACKET_REF.search(text)
+    if match is None:
+        return
+    token = match.group(0)
+    raise ValueError(
+        f'The calculation expression "{expression}" uses {token}, which is not a worksheet '
+        "formula reference. Filter the Function column with Function = \"Core\" "
+        "(unbracketed), not [INVFNC] or column ids. Reference other attributes with "
+        "[ATR...], not data columns [DAC...]."
+    )
 
 
 def validate_calculation_expression(*, expression: str | None) -> None:

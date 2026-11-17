@@ -24,6 +24,10 @@ from albert.resources.attributes import (
 )
 from albert.resources.parameter_groups import DataType
 from albert.utils._patch import generate_enum_patches
+from albert.utils.calculations import (
+    validate_calculation_expression,
+    validate_formula_expression_references,
+)
 
 # No documented cap on the attributes /ids id[] param; 300 matches the documented
 # cap of the peer lots/inventory/workflow collections.
@@ -248,8 +252,9 @@ class AttributeCollection(BaseCollection):
         combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
         ``request_inverse=True``. Only the first calculated property of an attribute, in
         sheet order, is saved to the inventory; give a variant that must be saved its own
-        attribute. Expressions are not checked: a name instead of an ID or a malformed
-        ``WHERE`` saves without error and shows blank or 0 on the sheet.
+        attribute. The SDK rejects malformed ``WHERE`` filters and invented bracket
+        tokens (for example ``[INVFNC]``) before the API call; unknown ``[ATR...]``
+        ids may still save and fail on the sheet.
 
         Define the property template once in the attribute catalogue, then assign values to
         inventory items or lots with [`add_values`][albert.collections.attributes.AttributeCollection.add_values].
@@ -329,9 +334,9 @@ class AttributeCollection(BaseCollection):
         combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
         ``request_inverse=True``. Only the first calculated property of an attribute, in
         sheet order, is saved to the inventory; give a variant that must be saved its own
-        attribute. Expressions are not checked: a name instead of an ID or a malformed
-        ``WHERE`` saves without error and shows blank or 0 on the sheet. See
-        [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata] for the full guide.
+        attribute. The SDK validates expression syntax before the API call (``WHERE``
+        rules, ``Function`` not ``[INVFNC]``); see
+        [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata] for examples.
 
         Changes apply to the attribute definition. Inventory items that already
         store reference values keep their assignments; worksheet cells that
@@ -813,8 +818,9 @@ class AttributeCollection(BaseCollection):
 
     @staticmethod
     def _check_formulas(formulas: list[FormulaMetadata]) -> None:
-        # Expressions are never parsed. Only the worksheet's back-solve rule is enforced;
-        # remove once the server enforces it.
+        for formula in formulas:
+            validate_calculation_expression(expression=formula.expression)
+            validate_formula_expression_references(expression=formula.expression)
         inverse = [
             f.display_name
             for f in formulas

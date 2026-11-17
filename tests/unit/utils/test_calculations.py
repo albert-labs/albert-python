@@ -3,7 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from albert.utils.calculations import validate_calculation_expression
+from albert.utils.calculations import (
+    validate_calculation_expression,
+    validate_formula_expression_references,
+)
 
 _CORPUS_PATH = Path(__file__).with_name("calculation_expression_corpus.json")
 
@@ -144,3 +147,16 @@ def test_validate_calculation_expression_rejects_quoted_parenthesis():
 def test_validate_calculation_expression_accepts_quoted_paren_in_coordinate_formula():
     """Test that a quoted parenthesis in a cell-coordinate formula is not examined."""
     validate_calculation_expression(expression='=TEXT(COL5, "(")')
+
+
+def test_validate_formula_expression_references_rejects_invfnc() -> None:
+    with pytest.raises(ValueError, match="INVFNC"):
+        validate_formula_expression_references(
+            expression='sum(wt% WHERE [INVFNC] = "Core")'
+        )
+
+
+def test_validate_formula_expression_references_allows_atr_and_function() -> None:
+    validate_formula_expression_references(
+        expression='sum(wt% WHERE Function = "Core") / sum([ATR3078] WHERE Function = "Shell")'
+    )

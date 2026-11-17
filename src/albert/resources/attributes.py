@@ -168,9 +168,11 @@ class FormulaMetadata(BaseAlbertModel):
     - Ratio (calculated property):
       ``sum(wt% WHERE Function = "Core") / sum(wt% WHERE Function = "Shell")``.
 
-    Expressions are not checked when saved: a name instead of an ID, an ID that does
-    not exist, or a malformed ``WHERE`` saves without error and shows blank values, 0
-    or an error on the sheet. Double-check every ``[ATR...]`` ID.
+    [`create`][albert.collections.attributes.AttributeCollection.create] and
+    [`update`][albert.collections.attributes.AttributeCollection.update] validate
+    expression syntax client-side (``WHERE`` placement, ``Function`` vs ``[INVFNC]``,
+    and similar). An unknown ``[ATR...]`` ID can still save and show errors on the
+    sheet — resolve names with search before writing.
 
     Saving a formula on the attribute does not change any sheet. Add it to a sheet with
     [`add_calculation`][albert.resources.sheets.Sheet.add_calculation] or the
