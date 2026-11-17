@@ -124,7 +124,7 @@ class DescriptorValue(BaseAlbertModel):
     """Registered descriptor name."""
 
     value: DescriptorNumber
-    """The calculated value. A null number means the calculation failed."""
+    """The calculated value. A null scalar or list component means it could not be calculated."""
 
     unit: str | None = Field(default=None)
     """Unit of ``value``, the same as the catalog entry for this descriptor."""
@@ -137,7 +137,7 @@ class MoleculeDescriptors(BaseAlbertModel):
     """Canonical SMILES of the molecule that was calculated."""
 
     descriptors: list[DescriptorValue]
-    """One entry per requested descriptor, in name order."""
+    """One entry per calculated descriptor."""
 
 
 class DescriptorInfoList(BaseAlbertModel):
@@ -151,4 +151,4 @@ class CalculateDescriptorsResponse(BaseAlbertModel):
     """Calculate response."""
 
     results: list[MoleculeDescriptors]
-    """One entry per requested SMILES."""
+    """One entry per input SMILES."""

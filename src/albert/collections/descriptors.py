@@ -104,6 +104,10 @@ class DescriptorCollection(BaseCollection):
     def list_info(self, *, all: bool = True) -> list[DescriptorInfo]:
         """List descriptors in the catalog.
 
+        Use these catalog entries to discover valid descriptor names, feature families,
+        units, and requirements for
+        [`calculate()`][albert.collections.descriptors.DescriptorCollection.calculate].
+
         !!! example
             ```python
             items = client.descriptors.list_info(all=False)
@@ -135,37 +139,53 @@ class DescriptorCollection(BaseCollection):
     ) -> list[MoleculeDescriptors]:
         """Calculate descriptors for each SMILES string.
 
+        Use
+        [`list_info()`][albert.collections.descriptors.DescriptorCollection.list_info]
+        to discover valid descriptor names, feature families, units, and requirements such
+        as 3D conformers.
+
         Pass ``names``, ``families``, or both. The two are combined. When neither is
         given, the service calculates its default descriptors.
 
+        When starting from another platform record, pass its available SMILES field, such
+        as ``cas_smiles`` on a Substance or InventoryItem, in ``smiles``. Descriptors are
+        calculated without being persisted or attached to that record.
+
         !!! example
             ```python
-            from albert.resources.descriptors import DescriptorFamily
+            descriptor_info = client.descriptors.list_info(all=True)
+            names = [item.name for item in descriptor_info if item.default]
 
             results = client.descriptors.calculate(
-                smiles=["CCO"],
-                names=["MolecularWeight"],
-                families=[DescriptorFamily.COMPOSITION],
+                smiles=["CCO", "CCN"],
+                names=names,
             )
-            results[0].descriptors[0].unit
+
+            for molecule in results:
+                values = {
+                    descriptor.name: descriptor.value.value
+                    for descriptor in molecule.descriptors
+                    if descriptor.value.value is not None
+                }
+                print(molecule.smiles, values)
             ```
 
         Parameters
         ----------
         smiles : list[str]
-            Molecules to calculate, as SMILES strings.
+            One or more SMILES strings representing the molecules to calculate.
         names : list[str], optional
-            Registered descriptor names. Unknown names are rejected by the service.
+            Descriptor names from the catalog. Unknown names are rejected.
         families : list[DescriptorFamily], optional
-            Feature families. Each family expands to its descriptors. ``fingerprints_ml``
-            is 2214 values per molecule. ``shape_3d`` embeds a 3D conformer and can
-            return null.
+            Feature families to include. ``fingerprints_ml`` returns many values per
+            molecule. ``shape_3d`` is slower and individual values may be null.
 
         Returns
         -------
         list[MoleculeDescriptors]
-            One result per SMILES, in request order. A null descriptor value means that
-            descriptor could not be calculated for that molecule.
+            One result per input SMILES, in input order. Each result provides canonical
+            SMILES and the calculated descriptors. A null scalar or list component means
+            that value could not be calculated.
         """
         payload = _calculate_payload(smiles=smiles, names=names, families=families)
         response = self.session.post(self.base_path, json=payload, retry_safe=True)
