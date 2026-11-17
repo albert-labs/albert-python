@@ -244,6 +244,22 @@ def _offset_bulk_result_indices(items: list[dict[str, Any]], offset: int) -> lis
     return [{**entry, "index": entry["index"] + offset} for entry in items]
 
 
+def _split_bulk_create_results(
+    results: list[dict[str, Any]] | dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split one group of bulk create results into created entries and failures.
+
+    Both wire shapes are accepted while the operation rolls out: a bare mixed
+    array in request order (failed entries flagged ``failed: true``) or an
+    object carrying ``CreatedItems`` and ``FailedItems`` lists.
+    """
+    if isinstance(results, dict):
+        return results.get("CreatedItems") or [], results.get("FailedItems") or []
+    created = [entry for entry in results if not entry.get("failed")]
+    failed = [entry for entry in results if entry.get("failed")]
+    return created, failed
+
+
 def _split_bulk_patch_operations(
     patch_data: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
