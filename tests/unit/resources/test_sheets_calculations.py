@@ -335,6 +335,38 @@ def test_update_cells_never_sends_calculated_cells(offline_session):
 
 
 @responses.activate
+@pytest.mark.parametrize(
+    "coordinate",
+    [
+        pytest.param(("DES1#ROW14", "COL5#INVMO1-001"), id="calculated-property-row"),
+        pytest.param(("DES1#ROW12", "COL7#Solids Share"), id="ingredient-basis-column"),
+    ],
+)
+def test_update_cells_keeps_refusal_behavior_for_malformed_calculated_cells(
+    offline_session, coordinate
+):
+    """Test a malformed calculation on a calculated cell is refused, not raised."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    grid = sheet.product_design.grid
+    amount = grid.at["DES1#ROW12", "COL5#INVMO1-001"].model_copy(update={"value": "65"})
+    calculated = grid.at[coordinate[0], coordinate[1]].model_copy(
+        update={"calculation": 'sum(wt% WHERE Function = "Core" AND Function = "Shell")'}
+    )
+
+    with pytest.warns(UserWarning, match="1 cell"):
+        updated, failed = sheet.update_cells(refresh=False, cells=[calculated, amount])
+
+    assert (updated, failed) == ([amount], [calculated])
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert [
+        (entry["Id"]["rowId"], entry["Id"]["colId"])
+        for entry in json.loads(patches[0].request.body)
+    ] == [("ROW12", "COL5")]
+
+
+@responses.activate
 def test_update_cells_with_only_calculated_cells_sends_nothing(offline_session):
     """Test that a write of only calculated cells makes no call and fails every cell."""
     sheet = _products_sheet(session=offline_session)

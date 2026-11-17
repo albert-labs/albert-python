@@ -1998,6 +1998,105 @@ def test_update_cells_caches_amounts_the_way_the_sheet_stores_them(offline_sessi
 
 
 @responses.activate
+def test_update_cells_rejects_malformed_where_before_writing(offline_session):
+    """Test a calculation the platform refuses raises before any write is sent."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW1", "COL1#INVF0"]
+    bad = cell.model_copy(
+        update={"calculation": 'sum(wt% WHERE Function = "Core" AND Function = "Shell")'}
+    )
+    with pytest.raises(ValueError, match="AND conditions in WHERE filters are not supported"):
+        sheet.update_cells(cells=[bad])
+
+    assert [c for c in responses.calls if c.request.method == "PATCH"] == []
+
+
+@responses.activate
+def test_update_cells_writes_well_formed_where_filter(offline_session):
+    """Test a calculation with a valid WHERE filter is written."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW1", "COL1#INVF0"]
+    updated, failed = sheet.update_cells(
+        cells=[
+            cell.model_copy(
+                update={"calculation": 'sum(wt% WHERE Function = "Core" OR Function = "Shell")'}
+            )
+        ]
+    )
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert len(patches) == 1
+    body = json.loads(patches[0].request.body)
+    assert [(d["attribute"], d["newValue"]) for d in body[0]["data"]] == [
+        ("calculation", 'sum(wt% WHERE Function = "Core" OR Function = "Shell")')
+    ]
+    assert len(updated) == 1
+    assert failed == []
+
+
+def _two_design_sheet(session=None) -> Sheet:
+    return Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "products", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=session,
+    )
+
+
+@responses.activate
+def test_update_cells_writes_nothing_when_a_calculation_in_another_design_is_malformed(
+    offline_session,
+):
+    """Test one bad calculation leaves the whole batch unwritten and names the cell."""
+    sheet = _two_design_sheet(session=offline_session)
+    _register_products_grid()
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES2/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW7",
+                    "rowUniqueId": "DES2#ROW7",
+                    "name": "Resin",
+                    "type": "INV",
+                    "id": "INVA9",
+                    "Values": [{"colId": "COL1", "value": "3", "id": "INVF0", "type": "INV"}],
+                }
+            ],
+            "Formulas": [{"colId": "COL1", "name": "Existing", "state": {}}],
+        },
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES2/values", status=204)
+
+    good = sheet.designs[0].grid.at["DES1#ROW2", "COL1#INVF0"].model_copy(update={"value": "25"})
+    bad_cell = (
+        sheet.designs[1]
+        .grid.at["DES2#ROW7", "COL1#INVF0"]
+        .model_copy(
+            update={"calculation": 'sum(wt% WHERE Function = "Core" AND Function = "Shell")'}
+        )
+    )
+
+    with pytest.raises(ValueError, match="row ROW7, column COL1"):
+        sheet.update_cells(cells=[good, bad_cell])
+
+    assert [c for c in responses.calls if c.request.method == "PATCH"] == []
+
+
+@responses.activate
 def test_update_cells_refresh_default_discards_the_cache(offline_session):
     """Test a direct write drops the cached grid so the next read reloads it."""
     sheet = _products_sheet(session=offline_session)
