@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from albert import Albert
+from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import ForbiddenError, InternalServerError, NotFoundError
 from albert.resources.attachments import Attachment, AttachmentCategory
@@ -57,8 +58,10 @@ def test_data_template_get_all_basic(client: Albert, seeded_data_templates: list
 def test_data_template_search(
     client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
 ):
-    """Test search with owner, tags, data columns, and additional fields."""
+    """Test search filters and cursor pagination."""
     seeded_ids = {dt.id for dt in seeded_data_templates}
+    search = client.data_templates.search(name=seed_prefix)
+    assert search.mode is PaginationMode.SEARCH_AFTER
     hits = poll_until(
         lambda: [
             dt
