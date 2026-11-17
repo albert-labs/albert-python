@@ -71,6 +71,8 @@ class BlockType(str, Enum):
         A Microsoft PowerPoint presentation (wire value ``mspptx``).
     REPORT : str
         An embedded Albert report.
+    LIVE_CANVAS : str
+        An embedded Artifact (wire value ``liveCanvas``).
     """
 
     PARAGRAPH = "paragraph"
@@ -85,6 +87,7 @@ class BlockType(str, Enum):
     EXCEL = "msxlsx"
     POWERPOINT = "mspptx"
     REPORT = "report"
+    LIVE_CANVAS = "liveCanvas"
 
 
 class NotebookCopyType(str, Enum):
@@ -597,6 +600,48 @@ class ReportBlock(BaseBlock):
     """The report block payload."""
 
 
+class LiveCanvasContent(BaseAlbertModel):
+    """The content of an Artifact block.
+
+    The block points at an Artifact; the Artifact's own content is stored and
+    versioned separately. Unknown fields are preserved on the model so a
+    read-modify-write round trip sends the block back unchanged.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    canvas_id: str | None = Field(default=None, alias="canvasId")
+    """The ID of the embedded Artifact (format ``CNV...``)."""
+
+    share_id: str | None = Field(default=None, alias="shareId")
+    """The ID of the share that places the Artifact in this notebook."""
+
+    title: str | None = Field(default=None)
+    """The Artifact title shown on the block, when cached."""
+
+
+class LiveCanvasBlock(BaseBlock):
+    """An Artifact embedded in a notebook.
+
+    Artifact blocks are placed by sharing an Artifact to a notebook. Read them to
+    find which Artifact is embedded; keep them in the ``blocks`` list unchanged
+    when saving notebook content so the embed is not removed.
+
+    !!! example
+        ```python
+        from albert.resources.notebooks import LiveCanvasBlock
+
+        notebook = client.notebooks.get_by_id(id="NTB123")
+        artifacts = [b for b in notebook.blocks if isinstance(b, LiveCanvasBlock)]
+        ```"""
+
+    type: Literal[BlockType.LIVE_CANVAS] = Field(default=BlockType.LIVE_CANVAS, alias="blockType")
+    """Always [`LIVE_CANVAS`][albert.resources.notebooks.BlockType.LIVE_CANVAS]."""
+
+    content: LiveCanvasContent = Field(default_factory=LiveCanvasContent)
+    """The embedded Artifact reference."""
+
+
 class NotebookSearchItem(BaseAlbertModel):
     """A block-level notebook search hit.
 
@@ -659,6 +704,7 @@ _NotebookBlockUnion = (
     | ExcelBlock
     | PowerPointBlock
     | ReportBlock
+    | LiveCanvasBlock
 )
 NotebookBlock = Annotated[_NotebookBlockUnion, Field(discriminator="type")]
 
@@ -668,7 +714,7 @@ class Notebook(BaseResource):
 
     A Notebook is an ordered document of content blocks (paragraphs, headers,
     checklists, tables, images, attachments, lists, Ketcher chemical drawings,
-    Microsoft Office documents, and embedded reports)
+    Microsoft Office documents, embedded reports, and embedded Artifacts)
     attached to a parent Project, Task, or custom template. Notebooks are created
     empty and then populated block-by-block; see
     [`NotebookCollection`][albert.collections.notebooks.NotebookCollection] for the workflow.
@@ -711,6 +757,7 @@ NotebookContent = (
     | NumberedListContent
     | OfficeContent
     | ReportContent
+    | LiveCanvasContent
 )
 
 allowed_notebook_contents = {
@@ -726,6 +773,7 @@ allowed_notebook_contents = {
     BlockType.EXCEL: OfficeContent,
     BlockType.POWERPOINT: OfficeContent,
     BlockType.REPORT: ReportContent,
+    BlockType.LIVE_CANVAS: LiveCanvasContent,
 }
 
 
