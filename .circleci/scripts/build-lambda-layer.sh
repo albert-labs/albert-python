@@ -58,6 +58,13 @@ if [[ ! "$RUNTIME" =~ ^[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
+RUNTIME_MAJOR="${RUNTIME%%.*}"
+RUNTIME_MINOR="${RUNTIME#*.}"
+if (( RUNTIME_MAJOR < 3 || (RUNTIME_MAJOR == 3 && RUNTIME_MINOR < 11) )); then
+  echo "Lambda layer security constraints require Python >=3.11 (dnspython 2.9.2 does not support 3.10). Got ${RUNTIME}." >&2
+  exit 1
+fi
+
 if [[ "$ARCH" != "x86_64" && "$ARCH" != "arm64" ]]; then
   echo "Invalid --arch. Expected x86_64 or arm64." >&2
   exit 1
@@ -93,6 +100,7 @@ fi
 WHEEL_NAME="$(basename "${WHEELS[0]}")"
 mkdir -p "${TMP_DIR}/wheel"
 cp "${WHEELS[0]}" "${TMP_DIR}/wheel/"
+cp "${ROOT_DIR}/.circleci/lambda-layer-constraints.txt" "${TMP_DIR}/wheel/constraints.txt"
 
 IMAGE="public.ecr.aws/lambda/python:${RUNTIME}"
 PLATFORM="linux/amd64"
@@ -116,7 +124,7 @@ docker run \
   "${IMAGE}" \
   -c "
     set -euo pipefail
-    python -m pip install --no-cache-dir --only-binary numpy,pandas /work/wheel/${WHEEL_NAME} -t /work/python 1>&2
+    python -m pip install --no-cache-dir --only-binary numpy,pandas -c /work/wheel/constraints.txt /work/wheel/${WHEEL_NAME} -t /work/python 1>&2
     PYTHONPATH=/work/python python -c 'import albert; assert albert.__version__ == \"${SDK_VERSION}\", albert.__version__; print(\"albert\", albert.__version__)' 1>&2
   " 1>&2
 

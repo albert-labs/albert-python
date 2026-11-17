@@ -9,7 +9,7 @@ releases, and testing edge cases.
 
 ## Project Basics
 
-- Python: >=3.11 (use modern type hint syntax: `list[str]`, `str | None`).
+- Python: >=3.10 (use modern type hint syntax: `list[str]`, `str | None`).
 - Formatting and linting: Ruff (line length 99).
 - Commit style: Conventional Commits (`type(scope): summary`), enforced by hooks.
   See `OPINIONS.md` for `feat`/`fix`/`docs`/`chore` distinctions and release rules.

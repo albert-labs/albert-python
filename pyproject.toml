@@ -17,7 +17,7 @@ classifiers = [
 keywords = ["SDK", "API", "Albert", "Python"]
 
 dynamic = ["version"]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.27.0,<1",
     "requests>=2.32.3,<3",
@@ -25,11 +25,6 @@ dependencies = [
     "pydantic[email]>=2.8.2,<3",
     "tenacity>=8.2.3",
     "typing_extensions>=4.6.1",
-    # Floors for transitive packages that pip-audit flags. Declared directly so
-    # `pip install albert` and the Lambda layer build pick them up, not only uv.lock.
-    "certifi>=2026.10.18",
-    "dnspython>=2.9.2",
-    "urllib3>=2.8.0",
 ]
 
 [dependency-groups]
@@ -41,8 +36,11 @@ dev = [
     "ruff>=0.16.0,<0.17",
     "mkdocs>=1.5.3",
     "mkdocs-material>=9.5.10",
-    "mkdocstrings>=1.0.7",
-    "pymdown-extensions>=11.0.1",
+    "mkdocstrings>=0.29.1",
+    # mkdocstrings <1.0.7 calls pymdownx.highlight.Highlight without the `md`
+    # argument that pymdown-extensions 10.16 made required, breaking docs builds.
+    # mkdocstrings 1.0.7 needs Python >=3.11, so on 3.10 cap pymdown-extensions.
+    "pymdown-extensions>=10.2,<10.16",
     "mkdocstrings-python>=1.16.12",
     "mkdocs-gen-files>=0.5.0",
     "mkdocs-literate-nav>=0.6.0",
@@ -66,21 +64,7 @@ Issues = "https://github.com/albert-labs/albert-python/issues"
 [tool.hatch.version]
 path = "src/albert/__init__.py"
 
-[tool.uv]
-# Keep dev-only transitive packages above known pip-audit findings.
-constraint-dependencies = [
-    "filelock>=4.2.1",
-    "jupyter-server>=2.21.0",
-    "jupyterlab>=4.6.4",
-    "notebook>=7.6.3",
-    "soupsieve>=4.0.0",
-    "tornado>=6.6.1",
-    "virtualenv>=21.14.9",
-]
-
 [tool.ruff]
-# Runtime is 3.11+, but keep the lint target at 3.10 so pyupgrade does not
-# rewrite the existing str-Enum and datetime.timezone.utc usage in this PR.
 target-version = "py310"
 extend-exclude = [".circleci", ".vscode"]
 line-length = 99

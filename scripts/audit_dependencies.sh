@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve dependencies from pyproject.toml and fail if pip-audit reports any
-# vulnerability for the selected Python. AUDIT_PYTHON overrides marker
-# evaluation (for example "3.14"); otherwise .python-version is used.
+# Resolve the SDK runtime dependencies (no dev extras) and fail if pip-audit
+# reports any vulnerability. This matches what the Lambda layer installs.
+# AUDIT_PYTHON overrides marker evaluation (for example "3.14"); otherwise
+# .python-version is used. The published layer matrix is Python 3.11–3.14.
+# Python 3.10 still resolves dnspython 2.8.0 because 2.9.2 requires 3.11+.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -26,7 +28,7 @@ trap cleanup EXIT
 
 echo "==> Resolving dependencies for ${PYTHON}..."
 # uv.lock is gitignored, so CI resolves from pyproject.toml on each run.
-uv export --python "$PYTHON" --no-hashes --no-emit-project -o "$EXPORT" >/dev/null
+uv export --python "$PYTHON" --no-dev --no-hashes --no-emit-project -o "$EXPORT" >/dev/null
 
 # Marker selection follows AUDIT_PYTHON. pip-audit itself runs on CPython 3.13
 # because some uv-managed interpreters cannot create the temporary env it uses.

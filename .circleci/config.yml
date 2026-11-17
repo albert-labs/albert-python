@@ -38,7 +38,7 @@ jobs:
   validate_version_bump:
     executor:
       name: python/default
-      tag: "3.11.14"
+      tag: "3.10.15"
     parameters:
       base_branch:
         type: string
@@ -58,7 +58,7 @@ jobs:
   validate_release_tag:
     executor:
       name: python/default
-      tag: "3.11.14"
+      tag: "3.10.15"
     steps:
       - checkout
       - run:
@@ -68,7 +68,7 @@ jobs:
   publish:
     executor:
       name: python/default
-      tag: "3.11.14"
+      tag: "3.10.15"
     steps:
       - checkout
       - install_uv
@@ -83,7 +83,7 @@ jobs:
   deploy_docs:
     executor:
       name: python/default
-      tag: "3.11.14"
+      tag: "3.10.15"
     parameters:
       mode:
         type: enum

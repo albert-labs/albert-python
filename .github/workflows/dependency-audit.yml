@@ -30,7 +30,7 @@ jobs:
           version: "latest"
           python-version: ${{ matrix.python-version }}
 
-      - name: Audit locked dependencies
+      - name: Audit runtime dependencies
         env:
           AUDIT_PYTHON: ${{ matrix.python-version }}
         run: bash scripts/audit_dependencies.sh
