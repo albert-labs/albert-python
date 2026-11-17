@@ -3552,8 +3552,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         # Handle calculation change
         if cell.calculation != current_cell.calculation:
-            if cell.calculation:
-                validate_calculation_expression(expression=cell.calculation)
             change = self._generate_attribute_change(
                 new_value=cell.calculation,
                 old_value=current_cell.calculation,
@@ -3773,15 +3771,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
             calculated_row_ids, basis_column_ids = self._calculated_ids(design_id=design_id)
             payload_entries: list[tuple[CellChangePayload, Cell]] = []
             for cell in cell_list:
-                try:
-                    change_dict = self._get_cell_changes(
-                        cell=cell, current_cell=current_cells.get((cell.row_id, cell.column_id))
-                    )
-                except ValueError as error:
-                    raise ValueError(
-                        f"Cell in row {cell.row_id}, column {cell.column_id} of design "
-                        f"{cell.design_id}: {error}"
-                    ) from error
+                change_dict = self._get_cell_changes(
+                    cell=cell, current_cell=current_cells.get((cell.row_id, cell.column_id))
+                )
                 if change_dict is None:
                     continue
                 if self._writes_calculated_value(
@@ -3796,6 +3788,19 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         failed.append(cell)
                         refused += 1
                     continue
+                # Validate a changed calculation only once the cell is known to
+                # be writable, so cells the sheet computes keep their refusal
+                # behavior and never raise here.
+                if cell.calculation and any(
+                    datum.attribute == "calculation" for datum in change_dict["data"]
+                ):
+                    try:
+                        validate_calculation_expression(expression=cell.calculation)
+                    except ValueError as error:
+                        raise ValueError(
+                            f"Cell in row {cell.row_id}, column {cell.column_id} of design "
+                            f"{cell.design_id}: {error}"
+                        ) from error
 
                 # The value-update schema allows at most 2 data changes per
                 # entry (worksheet.yaml Values data maxItems), and the worksheet
