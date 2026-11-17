@@ -499,16 +499,17 @@ class InventoryCollection(BaseCollection):
         Raises
         ------
         AlbertPartialError
-            If only some items could be created. The error carries the succeeded
-            (``created_items``) and failed (``failed_items``) entries; each
-            entry's ``index`` is the item's position in ``inventory_items``. A
-            failed entry with ``needsCleanup`` set may have left a partially
-            created record under its ``id``; delete it before retrying that item.
+            If one or more items could not be created. The error carries the
+            succeeded (``created_items``) and failed (``failed_items``) entries;
+            each entry's ``index`` is the item's position in
+            ``inventory_items``. A failed entry with ``needsCleanup`` set may
+            have left a partially created record under its ``id``; delete it
+            before retrying that item.
 
         Notes
         -----
-        Items are created in groups of up to 300. Already-created items are not
-        rolled back when other items fail. A call that times out may still have
+        Large input lists are supported. Already-created items are not rolled back
+        when other items fail. A call that times out may still have
         created items, so do not blindly resend a timed-out load; reconcile
         which items exist first, then resend only the missing ones.
         """
@@ -542,7 +543,7 @@ class InventoryCollection(BaseCollection):
             failed_items.extend(_offset_bulk_result_indices(chunk_failed, start))
         if failed_items:
             raise AlbertPartialError(
-                f"Bulk inventory create partially succeeded: "
+                f"Bulk inventory create completed with item failures: "
                 f"{len(failed_items)} item(s) failed. Failures: {failed_items}",
                 created_items=created_items,
                 failed_items=failed_items,

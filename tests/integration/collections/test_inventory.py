@@ -747,6 +747,29 @@ def test_create_many_inventory_items_partial_failure(
                 client.inventory.delete(id=created_id)
 
 
+def test_create_many_inventory_items_all_failed(
+    client: Albert,
+    seed_prefix: str,
+):
+    """Test that an all-failed bulk create reports every failure against its input position."""
+    items = [
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Missing Company {index}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=Company(id="COM0_DOES_NOT_EXIST", name="Missing"),
+        )
+        for index in range(301)
+    ]
+
+    with pytest.raises(AlbertPartialError) as exc_info:
+        client.inventory.create_many(inventory_items=items)
+
+    error = exc_info.value
+    assert error.created_items == []
+    assert [entry["index"] for entry in error.failed_items] == list(range(301))
+    assert "partially succeeded" not in str(error)
+
+
 def test_update_rejects_unit_category_change_to_volume(
     client: Albert,
     seed_prefix: str,
