@@ -3,7 +3,7 @@ import uuid
 import pytest
 
 from albert.client import Albert
-from albert.resources.parameters import Parameter
+from albert.resources.parameters import Parameter, ParameterSearchItem
 from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
@@ -35,12 +35,33 @@ def test_parameter_get_all_by_ids(client: Albert, seeded_parameters: list[Parame
     ids = [x.id for x in seeded_parameters]
     results = poll_until(
         lambda: [p for p in client.parameters.get_all(ids=ids, max_items=10) if p.id in set(ids)],
-        predicate=lambda results: len(results) == len(ids),
+        predicate=lambda results: {p.id for p in results} == set(ids),
         timeout=15.0,
         interval=1.0,
     )
     assert len(results) == len(ids)
     assert {x.id for x in results} == set(ids)
+
+
+def test_parameter_search(client: Albert, seed_prefix: str, seeded_parameters: list[Parameter]):
+    """Test search finds seeded parameters and hydrates full Parameter resources."""
+    seeded_ids = {parameter.id for parameter in seeded_parameters}
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.parameters.search(text=seed_prefix, max_items=50)
+            if item.id in seeded_ids
+        ]
+    )
+
+    assert hits, "Expected seeded parameters in search results"
+    hit = hits[0]
+    assert isinstance(hit, ParameterSearchItem)
+    assert hit.id in seeded_ids
+
+    hydrated = hit.hydrate()
+    assert isinstance(hydrated, Parameter)
+    assert hydrated.id == hit.id
 
 
 def test_get(client: Albert, seeded_parameters: list[Parameter]):
