@@ -2,7 +2,7 @@ import pytest
 
 from albert.client import Albert
 from albert.exceptions import BadRequestError
-from albert.resources.descriptors import DescriptorFamily
+from albert.resources.descriptors import DescriptorFamily, NumericListDescriptorValue
 
 
 def test_list_descriptor_info_includes_families_and_units(client: Albert) -> None:
@@ -39,6 +39,29 @@ def test_calculate_named_descriptor_returns_its_unit(client: Albert) -> None:
     assert weight.name == "MolecularWeight"
     assert weight.unit == "Da"
     assert isinstance(weight.value.value, float)
+
+
+def test_calculate_named_fingerprint_returns_numeric_list(client: Albert) -> None:
+    """Test that a named fingerprint is returned as a numeric list."""
+    results = client.descriptors.calculate(smiles=["CCO"], names=["MACCSKeys"])
+
+    assert len(results) == 1
+    fingerprint = results[0].descriptors
+    assert len(fingerprint) == 1
+    assert fingerprint[0].name == "MACCSKeys"
+    assert isinstance(fingerprint[0].value, NumericListDescriptorValue)
+    assert isinstance(fingerprint[0].value.value[0], float)
+
+
+def test_calculate_returns_canonical_smiles_in_input_order(client: Albert) -> None:
+    """Test that each result is canonical SMILES in input order."""
+    results = client.descriptors.calculate(smiles=["OCC", "NCC"], names=["MolecularWeight"])
+
+    assert [molecule.smiles for molecule in results] == ["CCO", "CCN"]
+    assert [molecule.descriptors[0].name for molecule in results] == [
+        "MolecularWeight",
+        "MolecularWeight",
+    ]
 
 
 def test_calculate_unknown_name_is_rejected(client: Albert) -> None:
