@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Shared contract corpus for the ingredient expression language: expressions the platform calculation engine accepts or refuses. Mirrored from the platform calc-engine (invent-core packages/libs/calc-engine/src/formula/engine/normalization/calculationExpressionCorpus.json), whose contract spec compiles every entry against a real FormulaEngine; this SDK's client-side validator asserts the same verdicts. When the language changes (new functions, WHERE at ingredient basis, multi-select Function), update both files together.",
+  "description": "Mirrors the shared platform calculation-expression contract corpus: expressions the platform calculation engine accepts or refuses, asserted here by this SDK's client-side validator against the same verdicts. When the language changes (new functions, WHERE at ingredient basis, multi-select Function), update both copies together.",
   "fields": {
     "expression": "The raw, display-name expression as a user writes it.",
     "platform": "accepted | rejected: the platform's end verdict on the expression.",
@@ -87,6 +87,16 @@
       "note": "Filter keys are case-sensitive: a lowercase key compiles but silently matches nothing. Function is the exact spelling."
     },
     {
+      "expression": "sum(wt% WHERE Function = \"Core\" OR function_tag = \"Shell\")",
+      "platform": "accepted",
+      "note": "Function and its alias resolve to the same filter key, so the branches share one key."
+    },
+    {
+      "expression": "harmonicMean(sum(wt% WHERE Function = \"Resin\"), [Density])",
+      "platform": "accepted",
+      "note": "The WHERE filter belongs to the nested sum, not to harmonicMean."
+    },
+    {
       "expression": "sum(wt%",
       "platform": "rejected",
       "stage": "normalize",
@@ -97,6 +107,13 @@
       "platform": "rejected",
       "stage": "normalize",
       "rule": "unmatched-parentheses"
+    },
+    {
+      "expression": "sum(wt% WHERE Function = \"(\")",
+      "platform": "rejected",
+      "stage": "normalize",
+      "rule": "unmatched-parentheses",
+      "note": "Known limitation: a parenthesis inside a quoted value breaks the platform's own parenthesis scan, so the platform refuses it."
     },
     {
       "expression": "sum(wt% WHERE Function = \"Core\" AND Function = \"Shell\")",
@@ -211,6 +228,26 @@
       "stage": "evaluate",
       "rule": "trailing-operator",
       "note": "A trailing operator does not parse."
+    },
+    {
+      "expression": "wt% ^",
+      "platform": "rejected",
+      "stage": "evaluate",
+      "rule": "trailing-operator"
+    },
+    {
+      "expression": "sum(wt%))",
+      "platform": "rejected",
+      "stage": "evaluate",
+      "rule": "unmatched-parentheses",
+      "note": "A closing parenthesis without a matching opening does not parse."
+    },
+    {
+      "expression": "sum(wt% +)",
+      "platform": "rejected",
+      "stage": "evaluate",
+      "rule": "missing-operand",
+      "note": "A missing operand inside an aggregation does not parse."
     },
     {
       "expression": "sum(WHERE Function = \"Core\")",

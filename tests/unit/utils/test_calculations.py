@@ -69,10 +69,17 @@ def test_validate_calculation_expression_passes_through_non_engine_expressions(e
         pytest.param("SUM(wt%)", id="uppercase-sum"),
         pytest.param("Sum(parts_mass)", id="mixed-case-sum"),
         pytest.param("HARMONICMEAN(wt%, [Density])", id="uppercase-harmonicmean"),
+        pytest.param("SUM(ingredient_basis)", id="uppercase-sum-over-basis"),
+        pytest.param("sum(SUM(wt%))", id="nested-uppercase-sum"),
     ],
 )
 def test_validate_calculation_expression_rejects_cased_aggregations_over_ingredients(expression):
-    """Test that a non-lowercase aggregation over ingredient variables is rejected."""
+    """Test that a non-lowercase aggregation over ingredient variables is rejected.
+
+    The platform compiles these (aggregation names are not symbol-checked) and
+    refuses them at evaluation, so the shared compile-time corpus cannot pin
+    them; the SDK rejects them before anything is saved.
+    """
     with pytest.raises(ValueError, match="spelled in lowercase"):
         validate_calculation_expression(expression=expression)
 
@@ -126,3 +133,14 @@ def test_validate_calculation_expression_rejects_trailing_operator():
     """Test that a trailing operator outside quotes is rejected."""
     with pytest.raises(ValueError, match="ends with the operator"):
         validate_calculation_expression(expression="wt% * [Solid %] / 100 =")
+
+
+def test_validate_calculation_expression_rejects_quoted_parenthesis():
+    """Test that a parenthesis inside a quoted value is rejected."""
+    with pytest.raises(ValueError, match="parenthesis inside a quoted value"):
+        validate_calculation_expression(expression='sum(wt% WHERE Function = "(")')
+
+
+def test_validate_calculation_expression_accepts_quoted_paren_in_coordinate_formula():
+    """Test that a quoted parenthesis in a cell-coordinate formula is not examined."""
+    validate_calculation_expression(expression='=TEXT(COL5, "(")')
