@@ -48,8 +48,12 @@ def test_storage_location_get_all_with_filters(
     )
 
 
-def test_get_by_name(client: Albert, seeded_storage_locations: list[StorageLocation]):
-    """Test get_by_name returns the seeded match and None for an unknown name."""
+def test_get_by_name(
+    client: Albert,
+    seeded_storage_locations: list[StorageLocation],
+    seeded_locations: list[Location],
+):
+    """Test get_by_name returns matches and None when no match exists."""
     seeded = seeded_storage_locations[0]
 
     found = poll_until(
@@ -58,6 +62,24 @@ def test_get_by_name(client: Albert, seeded_storage_locations: list[StorageLocat
 
     assert isinstance(found, StorageLocation)
     assert found.id == seeded.id
+
+    found_at_location = poll_until(
+        lambda: client.storage_locations.get_by_name(
+            name=seeded.name,
+            exact_match=True,
+            location=seeded_locations[0],
+        ),
+    )
+
+    assert isinstance(found_at_location, StorageLocation)
+    assert found_at_location.id == seeded.id
+
+    wrong_location = client.storage_locations.get_by_name(
+        name=seeded.name,
+        exact_match=True,
+        location=seeded_locations[1],
+    )
+    assert wrong_location is None
 
     missing = client.storage_locations.get_by_name(name=f"TEST - {uuid.uuid4()}")
     assert missing is None
