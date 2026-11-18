@@ -293,7 +293,7 @@ class Cell(BaseResource):
     id (``"LST..."``). Resolve allowed Function tags with
     [`get_all`][albert.collections.lists.ListsCollection.get_all] and
     ``list_type="inventoryFunction"``. A display name such as ``"Dry"`` is not a
-    reference: the platform may store it as plain text or a JSON array of strings
+    reference: the platform may store it as plain text or a list of strings
     without linking to a list item. That differs from a **calculation** on the same
     cell or row, where ``WHERE Function = "Dry"`` uses quoted names inside the
     expression string (see ``calculation`` and
