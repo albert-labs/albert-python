@@ -53,7 +53,10 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
     email: str
 
     proxies: dict[str, str] | None = Field(default=None)
-    """Static proxy URLs keyed by scheme, applied to login and token refresh calls."""
+    """Static proxy URLs keyed by scheme, applied to login and token refresh calls.
+
+    Ignored when `pac_url` is set, since the PAC file decides the proxy per call.
+    """
 
     pac_url: str | None = Field(default=None)
     """URL of a PAC file deciding the proxy per call. Requires the optional ``pac`` extra."""

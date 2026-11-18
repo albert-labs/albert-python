@@ -709,6 +709,16 @@ def test_pac_proxy_rule_overrides_environment_and_static_proxies(
     )
 
 
+def test_pac_url_with_static_proxies_warns_that_static_are_ignored(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    """Test that combining static proxies with a PAC file logs that the PAC file wins."""
+    with caplog.at_level("WARNING"):
+        _pac_session(monkeypatch, proxies={"https": "http://static:9999"})
+
+    assert any("static proxies are ignored" in record.message for record in caplog.records)
+
+
 def test_client_entry_points_forward_proxy_configuration(monkeypatch: pytest.MonkeyPatch):
     """Test that the client helpers hand proxy configuration to the session and login."""
     from pypac.parser import PACFile

@@ -12,6 +12,7 @@ from urllib3.util.retry import Retry
 import albert
 from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import AlbertSSOClient
+from albert.core.logging import logger
 from albert.exceptions import handle_http_errors
 
 if TYPE_CHECKING:
@@ -161,6 +162,11 @@ class AlbertSession(requests.Session):
         self._pac_proxy_resolver = (
             _load_pac_proxy_resolver(pac_url) if pac_url is not None else None
         )
+        if proxies and self._pac_proxy_resolver is not None:
+            logger.warning(
+                "Both `proxies` and `pac_url` were provided. The PAC file decides the "
+                "proxy for each call, so the static proxies are ignored."
+            )
         self.headers.update(
             {
                 "Content-Type": "application/json",
