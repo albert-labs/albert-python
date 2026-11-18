@@ -159,3 +159,19 @@ def test_unit_family_patch_sends_only_name_and_description():
 
     untouched = UnitFamilyV4(id="UNF1", name="Mass", type=UnitFamilyV4Type.CONVERTIBLE)
     assert UnitFamilyV4Collection._generate_merge_patch(existing=existing, updated=untouched) == {}
+
+
+def test_unit_update_requires_fetched_unit(offline_session):
+    """Test that updating a unit that was never read raises before any request."""
+    unit = UnitV4(id="UNI1", name="Grams", symbol="g", type=UnitV4Type.CONVERTIBLE)
+
+    with pytest.raises(ValueError, match="get_by_id"):
+        UnitV4Collection(session=offline_session).update(unit=unit)
+
+
+def test_unit_family_update_requires_fetched_family(offline_session):
+    """Test that updating a family that was never read raises before any request."""
+    family = UnitFamilyV4(id="UNF1", name="Mass", type=UnitFamilyV4Type.CONVERTIBLE)
+
+    with pytest.raises(ValueError, match="get_by_id"):
+        UnitFamilyV4Collection(session=offline_session).update(unit_family=family)

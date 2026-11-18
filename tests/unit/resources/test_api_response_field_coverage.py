@@ -704,8 +704,8 @@ def test_substance_info_tolerates_wider_v3_field_types():
     assert substance.stot_route_of_exposure == {"route": "oral"}
 
 
-# Payloads below mirror the Swagger examples published by the master-data service
-# (invent-core services/master-data/src/units/examples, unit-families/examples).
+# Payloads below mirror the published API examples for the v4 units and
+# unit-families endpoints.
 _AUDIT = {"at": "2024-01-15T10:30:00.000Z", "by": "user-uuid-123", "byName": "Jane Smith"}
 
 UNIT_V4_CONVERTIBLE_PAYLOAD = {

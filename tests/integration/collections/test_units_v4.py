@@ -16,13 +16,15 @@ from albert.resources.units_v4 import (
 )
 from tests.utils.wait import poll_until
 
-pytestmark = pytest.mark.skip(
-    reason="The v4 units API (master-data) is not yet available in the test environment."
-)
-
 
 def _suffix() -> str:
     return uuid.uuid4().hex[:8]
+
+
+def _get_unit_or_empty(client: Albert, id: str) -> list:
+    with suppress(NotFoundError):
+        return [client.units_v4.get_by_id(id=id)]
+    return []
 
 
 def test_create_get_update_delete_convertible(client: Albert, seed_prefix: str):
@@ -44,7 +46,7 @@ def test_create_get_update_delete_convertible(client: Albert, seed_prefix: str):
         assert unit.si_value is not None
         assert unit.unit_families
 
-        fetched = poll_until(lambda: [client.units_v4.get_by_id(id=unit.id)])
+        fetched = poll_until(lambda: _get_unit_or_empty(client, unit.id))
         assert fetched and fetched[0].id == unit.id
 
         fetched[0].description = "Updated by the SDK test suite"
@@ -98,7 +100,7 @@ def test_update_convertible_rejects_family_change(client: Albert, seed_prefix: s
         )
     )
     try:
-        fetched = poll_until(lambda: [client.units_v4.get_by_id(id=unit.id)])[0]
+        fetched = poll_until(lambda: _get_unit_or_empty(client, unit.id))[0]
         fetched.unit_families = [UnitFamilyV4Ref(id="UNF-does-not-matter")]
         with pytest.raises(ValueError):
             client.units_v4.update(unit=fetched)

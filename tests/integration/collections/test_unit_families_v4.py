@@ -1,8 +1,6 @@
 import uuid
 from contextlib import suppress
 
-import pytest
-
 from albert.client import Albert
 from albert.exceptions import NotFoundError
 from albert.resources.unit_families_v4 import (
@@ -14,13 +12,15 @@ from albert.resources.unit_families_v4 import (
 )
 from tests.utils.wait import poll_until
 
-pytestmark = pytest.mark.skip(
-    reason="The v4 unit families API (master-data) is not yet available in the test environment."
-)
-
 
 def _suffix() -> str:
     return uuid.uuid4().hex[:8]
+
+
+def _get_family_or_empty(client: Albert, id: str) -> list:
+    with suppress(NotFoundError):
+        return [client.unit_families_v4.get_by_id(id=id)]
+    return []
 
 
 def test_create_get_update_delete_convertible(client: Albert, seed_prefix: str):
@@ -38,7 +38,7 @@ def test_create_get_update_delete_convertible(client: Albert, seed_prefix: str):
         assert family.si_unit == "kg"
         assert family.dimension
 
-        fetched = poll_until(lambda: [client.unit_families_v4.get_by_id(id=family.id)])
+        fetched = poll_until(lambda: _get_family_or_empty(client, family.id))
         assert fetched and fetched[0].id == family.id
         assert fetched[0].units is not None
 
