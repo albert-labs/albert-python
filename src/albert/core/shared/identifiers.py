@@ -164,7 +164,6 @@ SearchInventoryId = Annotated[str, AfterValidator(ensure_search_inventory_id)]
 
 
 _ROW_CHAIN_RE = re.compile(r"^ROW\d+(?:XROW\d+)*$")
-_INTERVAL_BARCODE_LEN = 9
 
 
 def ensure_interval_id(id: str) -> str:
@@ -174,26 +173,15 @@ def ensure_interval_id(id: str) -> str:
     if id.lower() == "default":
         return "default"
 
-    # ROW chains and WFL ids follow Albert ID uppercasing. Barcodes are
-    # case-sensitive and must not be folded.
+    # ROW chains and WFL ids follow Albert ID uppercasing.
     upper = id.upper()
-    if _ROW_CHAIN_RE.fullmatch(upper):
+    if _ROW_CHAIN_RE.fullmatch(upper) or upper.startswith("WFL"):
         return upper
 
-    if upper.startswith("WFL"):
-        return upper
-
-    # Platform-generated combination barcodes are 9-character case-sensitive alphanumeric
-    # nanoids (e.g. "OhI8ap0HY", "V1a9Km2xL") that lack an identifying prefix. Matching
-    # solely on length is permissive (accepting any 9-character string), but unavoidable
-    # given barcode unpredictability across tenants while preserving exact case.
-    if len(id) == _INTERVAL_BARCODE_LEN:
-        return id
-
-    raise ValueError(
-        f"IntervalId {id} is invalid. Must be a ROW chain (ROW# or ROW#XROW#...), "
-        "a WFL id, a 9-character barcode, or 'default'"
-    )
+    # Any other form (a case-sensitive barcode, or a form Albert adds later) is passed
+    # through unchanged, not rejected. Albert owns the format of interval IDs, and this
+    # type also reads workflows, so rejecting an unknown form would break reads.
+    return id
 
 
 IntervalId = Annotated[str, AfterValidator(ensure_interval_id)]
