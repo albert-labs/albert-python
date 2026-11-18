@@ -176,7 +176,7 @@ All v4 models live in `albert.resources.units_v4` and
 | `UnitV4Lookup` | `lookup` | `exists` flag plus `similar_matches` |
 | `UnitV4Compatible` | `get_compatible` | Resolved SI mapping, dimension and compatible families |
 | `UnitFamilyV4` | `unit_families_v4.create`, `get_by_id`, `update` | Full unit family record, including linked unit symbols |
-| `UnitFamilyV4SearchItem` | `unit_families_v4.search`, `get_by_ids` | Family record without the computed `units` and `same_si_basis_families` fields |
+| `UnitFamilyV4SearchItem` | `unit_families_v4.search`, `get_by_ids` | Family search result; use `get_by_id` for the computed `units` and `same_si_basis_families` fields |
 | `UnitFamilyV4Type`, `UnitFamilyV4Origin` | `UnitFamilyV4`, `search` | Family type and origin enums |
 | `UnitFamilyV4Lookup` | `unit_families_v4.lookup` | `exists` flag plus `similar_matches` |
 
