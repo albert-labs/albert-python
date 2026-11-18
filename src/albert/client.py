@@ -101,6 +101,18 @@ class Albert:
         float (applied to both connect and read) or a ``(connect, read)`` tuple.
         Defaults to ``DEFAULT_TIMEOUT`` (10 s connect, 300 s read). Pass ``None``
         for no timeout. Ignored if `session` is provided.
+    headers : Mapping[str, str], optional
+        Extra headers applied to every call. Ignored if `session` is provided.
+    proxies : Mapping[str, str], optional
+        Static proxy URLs keyed by scheme, for example
+        ``{"https": "http://proxy.company.com:8080"}``. Applied to every call,
+        including file uploads. Ignored if `session` is provided.
+    pac_url : str, optional
+        URL of a PAC (Proxy Auto-Configuration) file used to decide, for each
+        call, which proxy to use. Pass ``"auto"`` to discover the PAC
+        configuration from the operating system proxy settings or network
+        auto-discovery. Requires the optional ``pac`` extra
+        (``pip install albert[pac]``). Ignored if `session` is provided.
     session : AlbertSession, optional
         A fully configured session instance. If provided, `base_url`, `token`, and `auth_manager`
         are all ignored.
@@ -134,6 +146,8 @@ class Albert:
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
+        proxies: Mapping[str, str] | None = None,
+        pac_url: str | None = None,
         session: AlbertSession | None = None,
     ):
         if auth_manager and base_url and base_url != auth_manager.base_url:
@@ -152,6 +166,8 @@ class Albert:
             retries=retries,
             timeout=timeout,
             headers=headers,
+            proxies=proxies,
+            pac_url=pac_url,
         )
 
     @classmethod
