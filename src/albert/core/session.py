@@ -190,9 +190,15 @@ class AlbertSession(requests.Session):
                 "PUT",
                 url,
                 data=data,
-                headers={"Content-Type": content_type},
+                headers={"Content-Type": content_type, "Authorization": None},
                 timeout=self._timeout,
             )
+            if response.status_code >= 400:
+                # A signed URL carries temporary access material in its query, and the
+                # body may be the uploaded file; keep both out of errors and logs.
+                response.url = response.url.partition("?")[0]
+                response.request.url = response.request.url.partition("?")[0]
+                response.request.body = None
             response.raise_for_status()
 
     def _encode_query_params(self, params: dict) -> dict:
