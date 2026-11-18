@@ -52,6 +52,12 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
     base_url: str = Field(default_factory=default_albert_base_url)
     email: str
 
+    proxies: dict[str, str] | None = Field(default=None)
+    """Static proxy URLs keyed by scheme, applied to login and token refresh calls."""
+
+    pac_url: str | None = Field(default=None)
+    """URL of a PAC file deciding the proxy per call. Requires the optional ``pac`` extra."""
+
     def authenticate(
         self,
         minimum_port: int = 5000,
@@ -128,6 +134,7 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
                 self.refresh_token_url,
                 json={"refreshtoken": self._token_info.refresh_token},
                 headers={"Content-Type": "application/json"},
+                proxies=self._proxies_for(self.refresh_token_url),
             )
             response.raise_for_status()
             tokens = response.json()
@@ -214,7 +221,12 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         url = f"{urljoin(self.base_url, path)}?{urlencode(params)}"
 
         try:
-            response = requests.get(url, allow_redirects=False, timeout=_VALIDATE_EMAIL_TIMEOUT)
+            response = requests.get(
+                url,
+                allow_redirects=False,
+                timeout=_VALIDATE_EMAIL_TIMEOUT,
+                proxies=self._proxies_for(url),
+            )
         except requests.RequestException as e:
             raise AlbertAuthError(f"SSO Login failed: {e}") from e
 

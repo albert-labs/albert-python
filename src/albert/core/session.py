@@ -71,6 +71,24 @@ def _load_pac_proxy_resolver(pac_url: str) -> "ProxyResolver":
     return ProxyResolver(pac)
 
 
+_PAC_DIRECT_PROXIES: dict[str, None] = {"http": None, "https": None, "all": None}
+"""Explicit no-proxy mapping for a PAC DIRECT decision.
+
+``requests`` backfills proxies from the environment and the session's static
+configuration unless every scheme key is already present, so a DIRECT decision
+is expressed as ``None`` values (which the merge drops) rather than an empty
+mapping.
+"""
+
+
+def _pac_proxies_for(resolver: "ProxyResolver", url: str) -> dict[str, str | None]:
+    """Return the PAC proxy decision for a call, with DIRECT overriding inherited proxies."""
+    proxies = resolver.get_proxy_for_requests(url)
+    if any(proxies.values()):
+        return proxies
+    return dict(_PAC_DIRECT_PROXIES)
+
+
 class AlbertSession(requests.Session):
     """
     A session that has a base URL, which is prefixed to all request URLs.
@@ -198,7 +216,7 @@ class AlbertSession(requests.Session):
             qs = urlencode(params, doseq=True, quote_via=quote)
             full_url = f"{full_url}?{qs}"
         if self._pac_proxy_resolver is not None:
-            kwargs["proxies"] = self._pac_proxy_resolver.get_proxy_for_requests(full_url)
+            kwargs["proxies"] = _pac_proxies_for(self._pac_proxy_resolver, full_url)
 
         marker = _retry_safe_request.set(retry_safe)
         try:
@@ -240,7 +258,7 @@ class AlbertSession(requests.Session):
         """
         proxies = None
         if self._pac_proxy_resolver is not None:
-            proxies = self._pac_proxy_resolver.get_proxy_for_requests(url)
+            proxies = _pac_proxies_for(self._pac_proxy_resolver, url)
         try:
             with handle_http_errors():
                 response = super().request(

@@ -594,7 +594,7 @@ _INLINE_PAC_JS = (
 )
 
 
-def _pac_session(monkeypatch: pytest.MonkeyPatch) -> AlbertSession:
+def _pac_session(monkeypatch: pytest.MonkeyPatch, **kwargs) -> AlbertSession:
     """Build a session whose PAC routing comes from an inline PAC file (no network)."""
     from pypac.parser import PACFile
     from pypac.resolver import ProxyResolver
@@ -603,7 +603,9 @@ def _pac_session(monkeypatch: pytest.MonkeyPatch) -> AlbertSession:
         "albert.core.session._load_pac_proxy_resolver",
         lambda pac_url: ProxyResolver(PACFile(_INLINE_PAC_JS)),
     )
-    return AlbertSession(base_url=UNIT_BASE_URL, token="t", pac_url="https://proxy.corp/x.pac")
+    return AlbertSession(
+        base_url=UNIT_BASE_URL, token="t", pac_url="https://proxy.corp/x.pac", **kwargs
+    )
 
 
 def _capture_send(monkeypatch: pytest.MonkeyPatch) -> dict:
@@ -657,6 +659,93 @@ def test_pac_proxies_apply_to_signed_url_uploads(monkeypatch: pytest.MonkeyPatch
         "http": "http://proxy.corp:8080",
         "https": "http://proxy.corp:8080",
     }
+
+
+def test_pac_direct_rule_bypasses_environment_proxies(monkeypatch: pytest.MonkeyPatch):
+    """Test that a PAC DIRECT decision ignores proxy settings inherited from the environment."""
+    monkeypatch.setenv("HTTP_PROXY", "http://env-proxy:3128")
+    monkeypatch.setenv("HTTPS_PROXY", "http://env-proxy:3128")
+    monkeypatch.setenv("ALL_PROXY", "http://env-all:3128")
+    captured = _capture_send(monkeypatch)
+    session = _pac_session(monkeypatch)
+
+    session.get("/api/v3/x")
+
+    assert not captured["proxies"]
+
+
+def test_pac_direct_rule_bypasses_static_proxies(monkeypatch: pytest.MonkeyPatch):
+    """Test that a PAC DIRECT decision ignores the session's static proxies."""
+    captured = _capture_send(monkeypatch)
+    session = _pac_session(
+        monkeypatch,
+        proxies={"https": "http://static:9999", "all": "http://static-all:9999"},
+    )
+
+    session.get("/api/v3/x")
+
+    assert not captured["proxies"]
+
+
+def test_pac_proxy_rule_overrides_environment_and_static_proxies(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test that a PAC proxy decision wins over environment and static session proxies."""
+    from requests.utils import select_proxy
+
+    monkeypatch.setenv("HTTPS_PROXY", "http://env-proxy:3128")
+    monkeypatch.setenv("ALL_PROXY", "http://env-all:3128")
+    captured = _capture_send(monkeypatch)
+    session = _pac_session(
+        monkeypatch,
+        proxies={"https": "http://static:9999", "all": "http://static-all:9999"},
+    )
+
+    session.get("https://proxied.example/api/v3/x")
+
+    assert (
+        select_proxy("https://proxied.example/api/v3/x", captured["proxies"])
+        == "http://proxy.corp:8080"
+    )
+
+
+def test_client_entry_points_forward_proxy_configuration(monkeypatch: pytest.MonkeyPatch):
+    """Test that the client helpers hand proxy configuration to the session and login."""
+    from pypac.parser import PACFile
+    from pypac.resolver import ProxyResolver
+
+    from albert import Albert
+    from albert.core.auth.sso import AlbertSSOClient
+
+    monkeypatch.setattr(
+        "albert.core.session._load_pac_proxy_resolver",
+        lambda pac_url: ProxyResolver(PACFile(_INLINE_PAC_JS)),
+    )
+    monkeypatch.setattr(AlbertSSOClient, "authenticate", lambda self, **kwargs: None)
+
+    static = {"https": "http://proxy.corp:8080"}
+    pac_url = "https://proxy.corp/x.pac"
+    clients = [
+        Albert.from_token(base_url=UNIT_BASE_URL, token="t", proxies=static, pac_url=pac_url),
+        Albert.from_client_credentials(
+            base_url=UNIT_BASE_URL,
+            client_id="i",
+            client_secret="s",
+            proxies=static,
+            pac_url=pac_url,
+        ),
+        Albert.from_sso(
+            base_url=UNIT_BASE_URL, email="u@example.com", proxies=static, pac_url=pac_url
+        ),
+    ]
+
+    for client in clients:
+        assert client.session.proxies["https"] == "http://proxy.corp:8080"
+        assert client.session._pac_proxy_resolver is not None
+        auth_manager = client.session._auth_manager
+        if auth_manager is not None:
+            assert auth_manager.proxies == static
+            assert auth_manager.pac_url == pac_url
 
 
 # --- retry configuration on the mounted adapter -------------------------------

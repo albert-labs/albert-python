@@ -1,10 +1,14 @@
 import threading
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+
+if TYPE_CHECKING:
+    from pypac.resolver import ProxyResolver
 
 
 class OAuthTokenInfo(BaseAlbertModel):
@@ -26,6 +30,23 @@ class AuthManager(ABC):
     _refresh_time: datetime | None = None
     # Class-level lock: serializes token refresh across threads sharing a manager
     _refresh_lock: threading.Lock = threading.Lock()
+    _pac_proxy_resolver: "ProxyResolver | None" = None
+
+    def _proxies_for(self, url: str) -> dict[str, str | None] | None:
+        """Return the proxy configuration for a call to the given URL.
+
+        A PAC file decides per call; otherwise the manager's static proxies apply.
+        """
+        pac_url = getattr(self, "pac_url", None)
+        if pac_url is None:
+            proxies = getattr(self, "proxies", None)
+            return dict(proxies) if proxies else None
+        # Deferred: albert.core.session imports the auth managers for typing.
+        from albert.core.session import _load_pac_proxy_resolver, _pac_proxies_for
+
+        if self._pac_proxy_resolver is None:
+            self._pac_proxy_resolver = _load_pac_proxy_resolver(pac_url)
+        return _pac_proxies_for(self._pac_proxy_resolver, url)
 
     def _requires_refresh(self) -> bool:
         return (

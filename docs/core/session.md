@@ -2,7 +2,7 @@
 
 Every `Albert` client communicates through an `AlbertSession`, which owns the transport behavior for everything the SDK does: authentication, retries, timeouts, and proxy routing. This includes file uploads to pre-signed storage URLs, so transport configuration applies uniformly.
 
-Most users never construct a session directly; the `Albert` client builds one and forwards `retries`, `timeout`, `headers`, `proxies`, and `pac_url` to it. Construct an `AlbertSession` yourself only when you need full control, then pass it to `Albert(session=...)`.
+Most users never construct a session directly; the `Albert` client builds one and forwards `retries`, `timeout`, `headers`, `proxies`, and `pac_url` to it. The `Albert.from_token`, `Albert.from_sso`, and `Albert.from_client_credentials` helpers accept the same options, and apply them to the sign-in and token refresh calls as well. Construct an `AlbertSession` yourself only when you need full control, then pass it to `Albert(session=...)`.
 
 ::: albert.core.session.AlbertSession
     options:

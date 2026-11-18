@@ -47,6 +47,12 @@ class AlbertClientCredentials(BaseAlbertModel, AuthManager):
     secret: SecretStr
     base_url: str = Field(default_factory=default_albert_base_url)
 
+    proxies: dict[str, str] | None = Field(default=None)
+    """Static proxy URLs keyed by scheme, applied to login and token refresh calls."""
+
+    pac_url: str | None = Field(default=None)
+    """URL of a PAC file deciding the proxy per call. Requires the optional ``pac`` extra."""
+
     @property
     def oauth_token_url(self) -> str:
         """Return the full URL to the OAuth token endpoint."""
@@ -106,6 +112,7 @@ class AlbertClientCredentials(BaseAlbertModel, AuthManager):
                 self.oauth_token_url,
                 data=payload.model_dump(mode="json"),
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
+                proxies=self._proxies_for(self.oauth_token_url),
             )
             response.raise_for_status()
         self._token_info = OAuthTokenInfo(**response.json())
