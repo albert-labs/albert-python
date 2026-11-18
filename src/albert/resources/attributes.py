@@ -131,8 +131,9 @@ class FormulaMetadata(BaseAlbertModel):
 
     Expression variables:
 
-    - ``wt%``: the ingredient's weight percent, currently a whole number (40 means
-      40%). Ratios such as ``wt% / sum(wt%)`` give the same result on any scale.
+    - ``wt%``: the ingredient's weight percent as a fraction (40% is 0.4), so
+      expressions never divide it by 100. An expression that does gives values 100
+      times too small.
     - ``parts_mass``: the ingredient's amount.
     - ``[ATR123]``: the ingredient's value for another attribute, always by attribute
       ID. A name such as ``[Solid %]`` reads as 0. Resolve names to IDs with
@@ -159,7 +160,7 @@ class FormulaMetadata(BaseAlbertModel):
     Typical expressions:
 
     - Weighted average (calculated property): ``sum(wt% * [ATR45]) / sum(wt%)``.
-    - Share per ingredient (ingredient basis): ``wt% / sum(wt%) * [ATR45]``, totalled by
+    - Share per ingredient (ingredient basis): ``wt% * [ATR45]``, totalled by
       a calculated property ``sum(ingredient_basis)``.
     - Parts per hundred resin (ingredient basis):
       ``wt% / sum(wt% WHERE Function = "Resin") * 100``.
