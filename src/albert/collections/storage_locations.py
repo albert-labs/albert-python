@@ -140,8 +140,37 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation or None
             The matching storage location, or None if no storage location matches.
         """
-        found = self.get_all(name=name, exact_match=exact_match, location=location, max_items=1)
+        if location is None:
+            found = self.get_all(name=name, exact_match=exact_match, max_items=1)
+            return next(found, None)
+
+        found = (
+            storage_location
+            for storage_location in self.get_all(
+                name=name, exact_match=exact_match, location=location
+            )
+            if self._matches_name_and_location(
+                storage_location,
+                name=name,
+                exact_match=exact_match,
+                location=location,
+            )
+        )
         return next(found, None)
+
+    @staticmethod
+    def _matches_name_and_location(
+        storage_location: StorageLocation,
+        *,
+        name: str,
+        exact_match: bool,
+        location: Location,
+    ) -> bool:
+        if storage_location.location.id != location.id:
+            return False
+        if exact_match:
+            return storage_location.name.lower() == name.lower()
+        return name.lower() in storage_location.name.lower()
 
     def get_all(
         self,
