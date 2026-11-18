@@ -153,20 +153,9 @@ chains. Stop matching on `ROW` strings in that data, or switch to
 
 ### Writing, voiding and checking results
 
-Writing, voiding, unvoiding and checking results accept a `ROW` chain, a child workflow ID
-or an interval barcode, so code that writes by `ROW` chain keeps working. The interval
-check methods report the interval back as its child workflow ID.
-
-### Workflows with more than 2,000 combinations
-
-`Workflow.get_interval_id` cannot resolve combinations of a workflow with more than 2,000
-of them: the workflow lists none, and the lookup raises. Use the IDs from
-`get_block_combinations` instead:
-
-```python
-for combo in client.tasks.get_block_combinations(task_id="TAS123", block_id="BLK1"):
-    print(combo.id, combo.interval_row_key, combo.name, combo.interval_barcode)
-```
+Writing, voiding and unvoiding results accept a `ROW` chain, a child workflow ID or an
+interval barcode, so code that writes by `ROW` chain keeps working. Interval checks accept a
+`ROW` chain or child workflow ID and report the interval back as its child workflow ID.
 
 ### Scripts that parse import metadata
 
@@ -256,7 +245,6 @@ when you create a task or add a block; Albert rejects them.
 - [ ] Rules and overrides applied with `create_with_combinations` or `set_block_rules`
 - [ ] Beta code that matched `WFL` IDs in `interval_combination` moved to `child_workflow_id`
 - [ ] Raw reads (`get_all_task_properties`, `get_task_block_properties`) no longer matched on `ROW` strings
-- [ ] Workflows over 2,000 combinations addressed by IDs from `get_block_combinations`
 
 ## Troubleshooting
 
@@ -266,7 +254,6 @@ when you create a task or add a block; Albert rejects them.
 | `CombinationGenerationError` after `create` | Generation failed on one or more blocks; the task exists | Retry `err.failed_blocks` with `generate_block_combinations` |
 | `create_with_combinations` rejects the task | Increased intervals is not enabled for the tenant | Use `create` |
 | `TypeError` from a combination method | The task is a General task | Combinations apply to Property and Batch tasks only |
-| `get_interval_id` raises for a valid value | The workflow has more than 2,000 combinations | Use IDs from `get_block_combinations` |
 | Generation fails above 2,000 combinations | The block exceeds the cap | Add rules or overrides to reduce combinations |
 | Interval IDs are `WFL...` in raw property data | Raw reads return child workflow IDs | Use `get_task_property_records`, or match on child workflow IDs |
 
