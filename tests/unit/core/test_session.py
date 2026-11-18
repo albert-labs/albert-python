@@ -374,6 +374,68 @@ def test_successful_response_is_returned_without_raising():
     assert response.json() == {"ok": True}
 
 
+# --- uploads to pre-signed storage URLs ---------------------------------------
+
+
+@responses.activate
+def test_upload_to_signed_url_sends_no_authorization_header():
+    """Test that storage uploads never carry the session's Albert credentials."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="abc123")
+    responses.put("https://storage.example/signed-upload", status=200)
+
+    session.upload_to_signed_url(
+        url="https://storage.example/signed-upload", data=b"contents", content_type="text/csv"
+    )
+
+    request = responses.calls[0].request
+    assert "Authorization" not in request.headers
+    assert request.headers["Content-Type"] == "text/csv"
+    assert request.body == b"contents"
+
+
+def test_upload_to_signed_url_applies_session_timeout(monkeypatch: pytest.MonkeyPatch):
+    """Test that storage uploads use the session default timeout, not no timeout."""
+    captured = {}
+
+    def fake_send(self, request, **kwargs):
+        captured.update(kwargs)
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b""
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    session.upload_to_signed_url(
+        url="https://storage.example/signed-upload", data=b"x", content_type="text/csv"
+    )
+
+    assert captured["timeout"] == DEFAULT_TIMEOUT
+
+
+@responses.activate
+def test_upload_to_signed_url_raises_on_error_status():
+    """Test that a rejected storage upload raises instead of passing silently."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    responses.put("https://storage.example/signed-upload", status=403)
+
+    with pytest.raises(ForbiddenError):
+        session.upload_to_signed_url(
+            url="https://storage.example/signed-upload", data=b"x", content_type="text/csv"
+        )
+
+
+def test_upload_to_signed_url_uses_mounted_adapter():
+    """Test that storage uploads go through the adapter carrying the retry policy."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    adapter = session.get_adapter("https://storage.example")
+
+    assert adapter.max_retries.total == 3
+
+
 # --- retry configuration on the mounted adapter -------------------------------
 
 
