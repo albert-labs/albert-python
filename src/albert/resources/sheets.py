@@ -286,7 +286,18 @@ class Cell(BaseResource):
     Writing a bare ``"INV..."`` id is accepted by the API but stored as unlinked
     plain text, so the UI shows the raw id instead of the linked item. On reads,
     a linked cell's value is a dict of the form ``{"id": "INVB90948", "name":
-    "B90948 || Copper Coupon"}``."""
+    "B90948 || Copper Coupon"}``.
+
+    For **list-backed sheet columns** (the built-in Function column, type ``FNC``,
+    and lookup columns tied to enum custom fields), set ``value`` to the list item
+    id (``"LST..."``). Resolve allowed Function tags with
+    [`get_all`][albert.collections.lists.ListsCollection.get_all] and
+    ``list_type="inventoryFunction"``. A display name such as ``"Dry"`` is not a
+    reference: the platform may store it as plain text or a JSON array of strings
+    without linking to a list item. That differs from a **calculation** on the same
+    cell or row, where ``WHERE Function = "Dry"`` uses quoted names inside the
+    expression string (see ``calculation`` and
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells])."""
 
     min_value: str | None = Field(default=None, alias="minValue")
     """The minimum allowed value for inventory cells. Optional."""
@@ -3793,6 +3804,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         in ``failed``, and a ``UserWarning`` says how many; unlike cells that fail from
         concurrent writes, retrying will not write them. Formatting changes on them, and
         all other cells, are written as usual.
+
+        **Writing list-backed cell values.** Cells in a Function (``FNC``) column or
+        an enum lookup column store list item references. Set ``Cell.value`` to the
+        list item id (``"LST..."``), not the display name. Resolve Function tags with
+        [`get_all`][albert.collections.lists.ListsCollection.get_all] and
+        ``list_type="inventoryFunction"``. Quoted names in ``WHERE Function = "..."``
+        belong only in ``calculation`` strings, not in ``value``.
 
         **Writing calculations.** Totals and row arithmetic reference grid
         coordinates and start with ``=``, e.g. ``"=COL5ROW12+COL6ROW12"``.
