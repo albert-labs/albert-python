@@ -543,13 +543,13 @@ def test_upload_to_signed_url_connection_failure_omits_signed_query(
 
     monkeypatch.setattr(HTTPConnectionPool, "_make_request", always_fail)
     session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    # Kept out of the call statement: Python 3.13+ tracebacks render the full
+    # span of a multi-line call, so an inline literal would appear in the test's
+    # own frame regardless of what the SDK raises.
+    signed_url = "https://storage.example/signed-upload?X-Amz-Signature=secret-credential"
 
     with pytest.raises(requests.ConnectionError) as excinfo:
-        session.upload_to_signed_url(
-            url="https://storage.example/signed-upload?X-Amz-Signature=secret-credential",
-            data=b"x",
-            content_type="text/csv",
-        )
+        session.upload_to_signed_url(url=signed_url, data=b"x", content_type="text/csv")
 
     assert "secret-credential" not in str(excinfo.value)
     assert "secret-credential" not in "".join(traceback.format_exception(excinfo.value))
