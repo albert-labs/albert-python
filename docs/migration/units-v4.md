@@ -66,7 +66,7 @@ Migrating now means your code is ready for 2.0 with only a rename.
 # v3
 unit = client.units.get_by_id(id="UNI123")
 
-# v4: IDs may be a UUID or a legacy UNI... ID
+# v4: Albert-managed units have UUID IDs; your units use UNI... IDs
 unit = client.units_v4.get_by_id(id="UNI123")
 units = client.units_v4.get_by_ids(ids=["UNI123", "UNI456"])
 ```

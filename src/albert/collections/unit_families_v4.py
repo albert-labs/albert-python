@@ -138,7 +138,7 @@ class UnitFamilyV4Collection(BaseCollection):
         Parameters
         ----------
         id : UnitFamilyV4Id
-            The unit family ID: a UUID, or a legacy ``UNF...`` ID.
+            The unit family ID: a UUID (Albert-managed) or a ``UNF...`` ID (tenant-created).
 
         Returns
         -------

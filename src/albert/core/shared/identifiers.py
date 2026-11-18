@@ -77,9 +77,9 @@ def _is_uuid(id: str) -> bool:
 def _ensure_uuid_or_albert_id(id: str, id_type: str) -> str:
     """Accept a UUID unchanged, otherwise apply the prefixed Albert ID rules.
 
-    v4 master-data IDs are either bare UUIDs or carry the legacy prefix in front of
-    a UUID (for example ``UNI<uuid>``). Only the prefix is normalized to upper case;
-    the remainder is preserved so UUID hex digits keep their case.
+    Albert-managed records use a bare UUID; tenant-created records carry the prefix
+    (for example ``UNI...``). Only the prefix is normalized to upper case; the
+    remainder is preserved so UUID hex digits keep their case.
     """
     if not id:
         raise ValueError(f"{id_type} cannot be empty")
@@ -422,7 +422,7 @@ def ensure_unit_v4_id(id: str) -> str:
 
 
 UnitV4Id = Annotated[str, AfterValidator(ensure_unit_v4_id)]
-"""A v4 unit ID: a UUID, or a legacy ``UNI...`` ID (bare IDs are prefixed)."""
+"""A v4 unit ID: a UUID (Albert-managed) or a ``UNI...`` ID (tenant-created). Bare IDs are prefixed."""
 
 
 def ensure_unit_family_id(id: str) -> str:
@@ -437,7 +437,7 @@ def ensure_unit_family_v4_id(id: str) -> str:
 
 
 UnitFamilyV4Id = Annotated[str, AfterValidator(ensure_unit_family_v4_id)]
-"""A v4 unit family ID: a UUID, or a legacy ``UNF...`` ID (bare IDs are prefixed)."""
+"""A v4 unit family ID: a UUID (Albert-managed) or a ``UNF...`` ID (tenant-created). Bare IDs are prefixed."""
 
 
 def ensure_workflow_id(id: str) -> str:

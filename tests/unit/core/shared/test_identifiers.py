@@ -330,10 +330,10 @@ _UUID = "3643d5a5-32c1-43c3-9f3e-aea810d21fc9"
         (ensure_unit_family_v4_id, "UNF", "UnitFamilyId cannot be empty"),
     ],
 )
-def test_ensure_v4_id_accepts_uuid_or_legacy_id(
+def test_ensure_v4_id_accepts_uuid_or_prefixed_id(
     ensure_func: Callable[[str], str], prefix: str, error_msg: str
 ):
-    """v4 master-data IDs are UUIDs or legacy prefixed IDs; UUID case is preserved."""
+    """v4 master-data IDs are bare UUIDs or prefixed IDs; UUID case is preserved."""
     assert ensure_func(_UUID) == _UUID
     assert ensure_func(_UUID.upper()) == _UUID.upper()
     assert ensure_func(f"{prefix}{_UUID}") == f"{prefix}{_UUID}"

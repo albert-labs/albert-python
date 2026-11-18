@@ -161,7 +161,7 @@ class UnitV4Collection(BaseCollection):
         Parameters
         ----------
         id : UnitV4Id
-            The unit ID: a UUID, or a legacy ``UNI...`` ID.
+            The unit ID: a UUID (Albert-managed) or a ``UNI...`` ID (tenant-created).
 
         Returns
         -------
