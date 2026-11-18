@@ -6360,7 +6360,7 @@ automatic fomatting and import sorting on-save using the
 <li><strong>The tag triggers the CircleCI <code>release</code> workflow</strong> (<code>.circleci/config.yml</code>), which:<ul>
 <li>Validates the tag matches <code>__version__</code> in <code>src/albert/__init__.py</code> (<code>scripts/validate_release_tag.py</code>)</li>
 <li>Builds and publishes the package to PyPI</li>
-<li>Publishes the public AWS Lambda layers across the runtime/architecture/region matrix and appends their ARNs to the GitHub Release (see <code>docs/lambda.md</code>)</li>
+<li>Publishes the public AWS Lambda layers across the runtime/architecture/region matrix, appends their ARNs to the GitHub Release, and refreshes the catalog documented in <code>docs/lambda.md</code></li>
 <li>Deploys the versioned documentation with <code>mike deploy &lt;version&gt; latest</code> (see <a href="#deploying-documentation">Deploying Documentation</a>)</li>
 </ul>
 </li>
