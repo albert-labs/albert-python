@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.76.0](https://github.com/albert-labs/albert-python/compare/v1.75.0...v1.76.0) (2026-11-18)
+
+
+### Features
+
+* **descriptors:** add client.descriptors collection ([#963](https://github.com/albert-labs/albert-python/issues/963)) ([5881ffd](https://github.com/albert-labs/albert-python/commit/5881ffda2356f00c3fa720cca92a093edb90bfee))
+* **notebooks:** add single-block and version-history methods ([#954](https://github.com/albert-labs/albert-python/issues/954)) ([ca47dec](https://github.com/albert-labs/albert-python/commit/ca47dec41ac22c1083a4135a49df052fe6b46c7c))
+* **sheets:** add inventory rows to an existing section ([#932](https://github.com/albert-labs/albert-python/issues/932)) ([9561f0e](https://github.com/albert-labs/albert-python/commit/9561f0e0d1f82119e98acb18102b3fbb2448124b))
+
+
+### Bug Fixes
+
+* **lambda:** restore layer catalog publishing ([#976](https://github.com/albert-labs/albert-python/issues/976)) ([b2c7dd4](https://github.com/albert-labs/albert-python/commit/b2c7dd48acf2be930a279a2d03bceb8d8520fe15))
+* **parameter-groups:** accept the before and after validation operators ([#964](https://github.com/albert-labs/albert-python/issues/964)) ([307e1aa](https://github.com/albert-labs/albert-python/commit/307e1aa27faf6dd8f92872fee5cf08d0005a3bf0))
+* route signed-URL storage uploads through the session transport ([#974](https://github.com/albert-labs/albert-python/issues/974)) ([116b0a6](https://github.com/albert-labs/albert-python/commit/116b0a6b8e0d8e222fcd921e6e29abda32159fda))
+* **users:** skip the update call when nothing changed ([#981](https://github.com/albert-labs/albert-python/issues/981)) ([13b1539](https://github.com/albert-labs/albert-python/commit/13b15395bd0ee7c603249df9e8da3278e40b5f7d))
+
 ## [1.75.0](https://github.com/albert-labs/albert-python/compare/v1.74.0...v1.75.0) (2026-11-17)
 
 
