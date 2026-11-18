@@ -75,8 +75,7 @@ class UnitFamilyV4Collection(BaseCollection):
         Check whether a unit family name is already in use.
     """
 
-    _api_version = "v4.0"
-    _updatable_attributes = {"name", "description"}
+    _api_version = "v4"
 
     def __init__(self, *, session: AlbertSession):
         """Initialize a UnitFamilyV4Collection.
@@ -146,21 +145,19 @@ class UnitFamilyV4Collection(BaseCollection):
         UnitFamilyV4
             The fully populated unit family, including linked unit symbols.
         """
-        unit_family, _ = self._get_with_version(id=id)
-        return unit_family
-
-    def _get_with_version(self, *, id: str) -> tuple[UnitFamilyV4, str | None]:
-        """Fetch a unit family together with its current version, needed to update it."""
         response = self.session.get(f"{self.base_path}/{id}")
-        return UnitFamilyV4(**response.json()), response.headers.get("ETag")
+        unit_family = UnitFamilyV4(**response.json())
+        unit_family._etag = response.headers.get("ETag")
+        unit_family._snapshot = unit_family.model_copy(deep=True)
+        return unit_family
 
     @validate_call
     def get_by_ids(self, *, ids: list[UnitFamilyV4Id]) -> list[UnitFamilyV4SearchItem]:
         """Get many unit families by their IDs.
 
         IDs are fetched in batches, so arbitrarily long lists are supported. The
-        returned records omit the computed ``units`` and ``same_si_basis_families``
-        fields; use
+        returned records are search items, which do not map the computed ``units``
+        and ``same_si_basis_families`` fields; use
         [`get_by_id`][albert.collections.unit_families_v4.UnitFamilyV4Collection.get_by_id]
         when you need them.
 
@@ -276,7 +273,9 @@ class UnitFamilyV4Collection(BaseCollection):
         Fetch a family (e.g. via
         [`get_by_id`][albert.collections.unit_families_v4.UnitFamilyV4Collection.get_by_id]),
         modify the updatable fields on the returned object, then pass it here. The
-        family is matched by its ``id``. Only fields you changed are sent.
+        family is matched by its ``id``. Only fields you changed since the read are
+        sent. If another writer changes the family between your read and this call,
+        the update is rejected instead of overwriting their change.
 
         !!! example
             ```python
@@ -295,6 +294,14 @@ class UnitFamilyV4Collection(BaseCollection):
         UnitFamilyV4
             The updated unit family.
 
+        Raises
+        ------
+        ValueError
+            If the family has no ``id`` or was not fetched from Albert first.
+        albert.exceptions.PreconditionFailedError
+            If the family was modified after it was fetched. Fetch it again and
+            reapply the changes.
+
         Notes
         -----
         The following fields can be updated: ``name``, ``description``. The type and
@@ -302,16 +309,21 @@ class UnitFamilyV4Collection(BaseCollection):
         """
         if unit_family.id is None:
             raise ValueError("The unit family must have an id to be updated.")
+        if unit_family._etag is None or unit_family._snapshot is None:
+            raise ValueError(
+                "Fetch the family with get_by_id() before updating it, so changed "
+                "fields can be detected and concurrent edits rejected."
+            )
         family_id = ensure_unit_family_v4_id(unit_family.id)
-        existing, version = self._get_with_version(id=family_id)
-        patch = self._generate_merge_patch(existing=existing, updated=unit_family)
+        patch = self._generate_merge_patch(existing=unit_family._snapshot, updated=unit_family)
         if not patch:
-            return existing
-        headers = dict(_MERGE_PATCH_HEADERS)
-        if version is not None:
-            headers["If-Match"] = version
+            return unit_family
+        headers = {**_MERGE_PATCH_HEADERS, "If-Match": unit_family._etag}
         response = self.session.patch(f"{self.base_path}/{family_id}", json=patch, headers=headers)
-        return UnitFamilyV4(**response.json())
+        updated = UnitFamilyV4(**response.json())
+        updated._etag = response.headers.get("ETag")
+        updated._snapshot = updated.model_copy(deep=True)
+        return updated
 
     @staticmethod
     def _generate_merge_patch(*, existing: UnitFamilyV4, updated: UnitFamilyV4) -> dict[str, Any]:

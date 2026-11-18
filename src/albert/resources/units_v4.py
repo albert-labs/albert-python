@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, PrivateAttr
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
@@ -139,6 +139,9 @@ class UnitV4(BaseResource):
     unit_families: list[UnitFamilyV4Ref] | None = Field(default=None, alias="unitFamilies")
     """The unit families this unit belongs to. Resolved by Albert for convertible units;
     provide the family IDs for non-convertible units."""
+
+    _etag: str | None = PrivateAttr(default=None)
+    _snapshot: "UnitV4 | None" = PrivateAttr(default=None)
 
 
 class UnitV4Lookup(BaseAlbertModel):

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
@@ -94,12 +94,16 @@ class UnitFamilyV4(BaseResource):
     )
     """Other unit families that share the same SI unit. Read-only."""
 
+    _etag: str | None = PrivateAttr(default=None)
+    _snapshot: "UnitFamilyV4 | None" = PrivateAttr(default=None)
+
 
 class UnitFamilyV4SearchItem(BaseResource):
     """A unit family record from a search result.
 
-    Search results omit the computed ``units`` and ``same_si_basis_families`` fields.
-    Use [`get_by_id`][albert.collections.unit_families_v4.UnitFamilyV4Collection.get_by_id]
+    Search results carry ``units`` and ``same_si_basis_families`` in a lighter shape
+    than the full record, so they are not mapped here. Use
+    [`get_by_id`][albert.collections.unit_families_v4.UnitFamilyV4Collection.get_by_id]
     for the fully populated family.
     """
 

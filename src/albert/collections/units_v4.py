@@ -91,8 +91,7 @@ class UnitV4Collection(BaseCollection):
         Merge units into a parent unit as a background job, optionally waiting for completion.
     """
 
-    _api_version = "v4.0"
-    _updatable_attributes = {"name", "description", "symbol", "synonyms", "unit_families"}
+    _api_version = "v4"
 
     def __init__(self, *, session: AlbertSession):
         """Initialize a UnitV4Collection.
@@ -169,13 +168,11 @@ class UnitV4Collection(BaseCollection):
         UnitV4
             The fully populated unit.
         """
-        unit, _ = self._get_with_version(id=id)
-        return unit
-
-    def _get_with_version(self, *, id: str) -> tuple[UnitV4, str | None]:
-        """Fetch a unit together with its current version, needed to update it."""
         response = self.session.get(f"{self.base_path}/{id}")
-        return UnitV4(**response.json()), response.headers.get("ETag")
+        unit = UnitV4(**response.json())
+        unit._etag = response.headers.get("ETag")
+        unit._snapshot = unit.model_copy(deep=True)
+        return unit
 
     @validate_call
     def get_by_ids(self, *, ids: list[UnitV4Id]) -> list[UnitV4]:
@@ -289,8 +286,10 @@ class UnitV4Collection(BaseCollection):
 
         Fetch a unit (e.g. via [`get_by_id`][albert.collections.units_v4.UnitV4Collection.get_by_id]),
         modify the updatable fields on the returned object, then pass it here. The unit
-        is matched by its ``id``. Only fields you changed are sent; everything else is
-        left untouched.
+        is matched by its ``id``. Only fields you changed since the read are sent;
+        everything else is left untouched. If another writer changes the unit between
+        your read and this call, the update is rejected instead of overwriting their
+        change.
 
         !!! example
             ```python
@@ -324,10 +323,13 @@ class UnitV4Collection(BaseCollection):
         Raises
         ------
         ValueError
-            If the unit has no ``id``, if ``unit_families`` is changed on a
-            convertible unit (families of convertible units are derived from the SI
-            mapping and cannot be edited), or if ``type`` is changed on a unit that
-            is already set up.
+            If the unit has no ``id``, if it was not fetched from Albert first, if
+            ``unit_families`` is changed on a convertible unit (families of
+            convertible units are derived from the SI mapping and cannot be edited),
+            or if ``type`` is changed on a unit that is already set up.
+        albert.exceptions.PreconditionFailedError
+            If the unit was modified after it was fetched. Fetch it again and
+            reapply the changes.
 
         Notes
         -----
@@ -344,16 +346,21 @@ class UnitV4Collection(BaseCollection):
         """
         if unit.id is None:
             raise ValueError("The unit must have an id to be updated.")
+        if unit._etag is None or unit._snapshot is None:
+            raise ValueError(
+                "Fetch the unit with get_by_id() before updating it, so changed "
+                "fields can be detected and concurrent edits rejected."
+            )
         unit_id = ensure_unit_v4_id(unit.id)
-        existing, version = self._get_with_version(id=unit_id)
-        patch = self._generate_merge_patch(existing=existing, updated=unit)
+        patch = self._generate_merge_patch(existing=unit._snapshot, updated=unit)
         if not patch:
-            return existing
-        headers = dict(_MERGE_PATCH_HEADERS)
-        if version is not None:
-            headers["If-Match"] = version
+            return unit
+        headers = {**_MERGE_PATCH_HEADERS, "If-Match": unit._etag}
         response = self.session.patch(f"{self.base_path}/{unit_id}", json=patch, headers=headers)
-        return UnitV4(**response.json())
+        updated = UnitV4(**response.json())
+        updated._etag = response.headers.get("ETag")
+        updated._snapshot = updated.model_copy(deep=True)
+        return updated
 
     @staticmethod
     def _generate_merge_patch(*, existing: UnitV4, updated: UnitV4) -> dict[str, Any]:
