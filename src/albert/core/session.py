@@ -2,7 +2,7 @@ import contextvars
 import json
 from collections.abc import Mapping
 from enum import Enum
-from typing import IO
+from typing import IO, TYPE_CHECKING
 from urllib.parse import quote, urlencode, urljoin
 
 import requests
@@ -13,6 +13,9 @@ import albert
 from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import AlbertSSOClient
 from albert.exceptions import handle_http_errors
+
+if TYPE_CHECKING:
+    from pypac.resolver import ProxyResolver
 
 DEFAULT_TIMEOUT = (10, 300)
 """Default (connect, read) timeout in seconds applied to every call."""
@@ -49,6 +52,25 @@ class _AlbertRetry(Retry):
         return super().is_retry(method, status_code, has_retry_after)
 
 
+def _load_pac_proxy_resolver(pac_url: str) -> "ProxyResolver":
+    """Build a per-call PAC proxy resolver, importing the optional dependency lazily."""
+    try:
+        from pypac import get_pac
+        from pypac.resolver import ProxyResolver
+    except ImportError:
+        raise ImportError(
+            "PAC proxy support requires the optional 'pac' extra. "
+            "Install it with: pip install albert[pac]"
+        ) from None
+    pac = get_pac(url=None if pac_url == "auto" else pac_url)
+    if pac is None:
+        raise ValueError(
+            f"No PAC configuration found for pac_url={pac_url!r}. "
+            "Pass the explicit URL of the PAC file, or configure PAC in the system proxy settings."
+        )
+    return ProxyResolver(pac)
+
+
 class AlbertSession(requests.Session):
     """
     A session that has a base URL, which is prefixed to all request URLs.
@@ -81,6 +103,24 @@ class AlbertSession(requests.Session):
         rather than being sent alongside it. ``Authorization`` is set per
         request from the session's own credentials and cannot be overridden
         here.
+    proxies : Mapping[str, str], optional
+        Static proxy URLs keyed by scheme, for example
+        ``{"https": "http://proxy.company.com:8080"}``. Applied to every call
+        made through this session, including file uploads. When `pac_url` is
+        set, the PAC file's per-call decision takes precedence.
+    pac_url : str, optional
+        URL of a PAC (Proxy Auto-Configuration) file used to decide, for each
+        call, which proxy to use. Pass ``"auto"`` to discover the PAC
+        configuration from the operating system proxy settings or network
+        auto-discovery. Requires the optional ``pac`` extra
+        (``pip install albert[pac]``).
+
+    Raises
+    ------
+    ImportError
+        If `pac_url` is set without the ``pac`` extra installed.
+    ValueError
+        If `pac_url` is set but no PAC configuration can be found.
     """
 
     def __init__(
@@ -92,10 +132,17 @@ class AlbertSession(requests.Session):
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
+        proxies: Mapping[str, str] | None = None,
+        pac_url: str | None = None,
     ):
         super().__init__()
         self.base_url = base_url
         self._timeout = timeout
+        if proxies:
+            self.proxies.update(proxies)
+        self._pac_proxy_resolver = (
+            _load_pac_proxy_resolver(pac_url) if pac_url is not None else None
+        )
         self.headers.update(
             {
                 "Content-Type": "application/json",
@@ -150,6 +197,8 @@ class AlbertSession(requests.Session):
         if params:
             qs = urlencode(params, doseq=True, quote_via=quote)
             full_url = f"{full_url}?{qs}"
+        if self._pac_proxy_resolver is not None:
+            kwargs["proxies"] = self._pac_proxy_resolver.get_proxy_for_requests(full_url)
 
         marker = _retry_safe_request.set(retry_safe)
         try:
@@ -164,8 +213,9 @@ class AlbertSession(requests.Session):
         """Upload file contents to a pre-signed storage URL.
 
         The URL is self-authenticating, so no Albert credentials are sent with
-        the upload. The session's retry and timeout configuration applies, and
-        an error is raised if the storage service rejects the upload.
+        the upload. The session's retry, timeout, and proxy configuration
+        applies, and an error is raised if the storage service rejects the
+        upload.
 
         Parameters
         ----------
@@ -188,6 +238,9 @@ class AlbertSession(requests.Session):
             If the upload cannot be delivered after the configured retries. The
             message omits the signed URL's query.
         """
+        proxies = None
+        if self._pac_proxy_resolver is not None:
+            proxies = self._pac_proxy_resolver.get_proxy_for_requests(url)
         try:
             with handle_http_errors():
                 response = super().request(
@@ -196,6 +249,7 @@ class AlbertSession(requests.Session):
                     data=data,
                     headers={"Content-Type": content_type, "Authorization": None},
                     timeout=self._timeout,
+                    proxies=proxies,
                 )
                 if response.status_code >= 400:
                     # A signed URL carries temporary access material in its query, and the
