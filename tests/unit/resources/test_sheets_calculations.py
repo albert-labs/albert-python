@@ -565,7 +565,7 @@ def _formula(name: str, expression: str, kind: ExpressionType | str) -> FormulaM
     )
 
 
-def _ib(name: str = "Solids Share", expression: str = "wt% * [ATR9] / 100") -> FormulaMetadata:
+def _ib(name: str = "Solids Share", expression: str = "wt% * [ATR9]") -> FormulaMetadata:
     return _formula(name, expression, ExpressionType.INGREDIENT_BASIS)
 
 
