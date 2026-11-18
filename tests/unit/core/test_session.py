@@ -529,6 +529,33 @@ def test_upload_to_signed_url_retries_transient_connection_failures(
     assert attempts["count"] == 3
 
 
+def test_upload_to_signed_url_connection_failure_omits_signed_query(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test that an exhausted connection failure leaks neither the signed query nor its traceback."""
+    import http.client
+    import traceback
+
+    from urllib3.connectionpool import HTTPConnectionPool
+
+    def always_fail(self, conn, method, url, **kwargs):
+        raise http.client.RemoteDisconnected("Remote end closed connection without response")
+
+    monkeypatch.setattr(HTTPConnectionPool, "_make_request", always_fail)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    with pytest.raises(requests.ConnectionError) as excinfo:
+        session.upload_to_signed_url(
+            url="https://storage.example/signed-upload?X-Amz-Signature=secret-credential",
+            data=b"x",
+            content_type="text/csv",
+        )
+
+    assert "secret-credential" not in str(excinfo.value)
+    assert "secret-credential" not in "".join(traceback.format_exception(excinfo.value))
+    assert "https://storage.example/signed-upload" in str(excinfo.value)
+
+
 # --- retry configuration on the mounted adapter -------------------------------
 
 
