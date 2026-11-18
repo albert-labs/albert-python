@@ -480,14 +480,33 @@ def test_changed_formula_metadata_raises_on_field_rule(offline_session) -> None:
         ),
         pytest.param([_cp(expression="sum(wt% * [Viscosity]) / sum(wt%)")], id="name-reference"),
         pytest.param(
-            [_cp(expression='sum(wt% WHERE Function = Core AND Function = "Shell")')],
-            id="malformed-where",
+            [
+                _cp(
+                    expression=(
+                        'sum(wt% WHERE Function = "Core") / sum(wt% WHERE Function = "Shell")'
+                    )
+                )
+            ],
+            id="core-shell-ratio",
         ),
     ],
 )
 def test_check_formulas_accepts(formulas) -> None:
-    """Test that formulas within the field rules pass, whatever their expressions say."""
+    """Test that formulas within the field rules pass."""
     AttributeCollection._check_formulas(formulas)
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        pytest.param('sum(wt% WHERE Function = Core AND Function = "Shell")', id="where-and"),
+        pytest.param('sum(wt% WHERE [INVFNC] = "Core")', id="invfnc-bracket"),
+        pytest.param("wt% * [DAC44559]", id="dac-bracket"),
+    ],
+)
+def test_check_formulas_rejects_invalid_expressions(expression: str) -> None:
+    with pytest.raises(ValueError):
+        AttributeCollection._check_formulas([_cp(expression=expression)])
 
 
 def test_check_formulas_rejects_back_solved_calculated_properties() -> None:

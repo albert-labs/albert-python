@@ -22,6 +22,7 @@ from albert.core.utils import find_stack_level
 from albert.exceptions import AlbertException, AlbertHTTPError, AlbertPartialError
 from albert.resources.attributes import Attribute, ExpressionType, FormulaMetadata
 from albert.resources.inventory import InventoryItem
+from albert.utils.calculations import validate_calculation_expression
 
 # Define forward references
 Row = ForwardRef("Row")
@@ -303,7 +304,17 @@ class Cell(BaseResource):
     """The name of the cell. Optional. Default is None."""
 
     calculation: str = ""
-    """The formula backing the cell, if any (e.g. a total). Default is ``""``."""
+    """The formula backing the cell, if any (e.g. a total). Default is ``""``.
+
+    Totals reference grid coordinates (``"=COL5ROW12+COL6ROW12"``). Calculated
+    properties and ingredient bases use the ingredient expression language:
+    ``wt%``, ``parts_mass``, ``Function``, and bracketed attributes such as
+    ``[Solid %]``; aggregate with ``sum(expr)`` or
+    ``sum(expr WHERE Function = "Core")`` (quoted values, ``OR`` between values
+    of one key, never ``AND``). Use an ingredient basis when the value must be
+    back-solved; a calculated property is read-only. The full rule set lives on
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells]. Malformed
+    expressions raise ``ValueError`` before anything is saved."""
 
     design_id: str
     """The ID of the Design (Sheet section) this cell is in."""
@@ -3637,6 +3648,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
         such as [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] and [`recolor_cells`][albert.resources.sheets.Column.recolor_cells] call this
         for you; use it directly when editing cells obtained from the grid.
 
+        All changes across all designs are computed and validated before
+        anything is written, so one malformed calculation means nothing is
+        written; the ``ValueError`` names the offending cell's row and column.
+
         Edits of any size are accepted; large edits are split to stay within
         platform limits. If the same sheet is being written elsewhere
         concurrently, some edits can fail and come back in ``failed``; read the
@@ -3649,6 +3664,55 @@ class Sheet(BaseSessionResource):  # noqa:F811
         in ``failed``, and a ``UserWarning`` says how many; unlike cells that fail from
         concurrent writes, retrying will not write them. Formatting changes on them, and
         all other cells, are written as usual.
+
+        **Writing calculations.** Totals and row arithmetic reference grid
+        coordinates and start with ``=``, e.g. ``"=COL5ROW12+COL6ROW12"``.
+        Calculated properties and ingredient bases instead use the ingredient
+        expression language:
+
+        - Variables: ``wt%`` (the ingredient's weight percent), ``parts_mass``
+          (the ingredient's amount), ``Function`` (the ingredient's Function
+          tag; usable only in ``WHERE`` filters), and ``ingredient_basis`` (the
+          per-ingredient result of a linked basis, usable inside aggregations,
+          e.g. ``sum(ingredient_basis WHERE Function = "Resin")``; either
+          casing of the variable compiles, but the platform's authored form is
+          lowercase). Beyond the built-ins, any property attribute of the
+          ingredient works in brackets, by name or ID, e.g. ``[Solid %]`` or
+          ``[ATR66]``; find them through
+          [`AttributeCollection`][albert.collections.attributes.AttributeCollection]
+          (``client.attributes``). Combine variables with ``+ - * /``,
+          parentheses, and numbers, e.g. ``wt% * [Solid %] / 100``.
+        - ``sum(expr)`` sums an expression over every ingredient.
+        - ``sum(expr WHERE Function = "Core")`` sums over only the ingredients
+          whose Function tag matches. ``OR`` adds more values of the same key:
+          ``sum(wt% WHERE Function = "Core" OR Function = "Shell")``. ``AND``
+          is not supported (an ingredient carries one Function value), values
+          must be quoted, and one ``WHERE`` filter reads one key. A text
+          property attribute in brackets can filter instead of ``Function``,
+          e.g. ``sum(parts_mass WHERE [Resin Type] = "Epoxy")``. Filter keys
+          are case-sensitive: ``Function`` is the exact spelling, and another
+          casing compiles but silently matches nothing.
+        - ``harmonicMean(weight, attr)`` is the weighted harmonic mean across
+          all ingredients, e.g. ``harmonicMean(wt%, [Density])``. ``WHERE``
+          filters are supported only inside ``sum(...)``, not in
+          ``harmonicMean(...)``.
+        - Aggregations are spelled in lowercase: ``SUM(...)`` or ``Sum(...)``
+          over ingredient variables does not compile. Plain column totals such
+          as ``=SUM(COL5:COL9)`` are a different formula language and are
+          unaffected.
+
+        Choosing between an ingredient basis and a calculated property: an
+        ingredient basis computes one value per ingredient and is the only form
+        that supports back-solving (entering a target result and letting the
+        platform solve for the ingredient amount). A calculated property
+        computes a single aggregate result per formulation as a read-only
+        output and cannot be back-solved; the platform refuses a back-solve
+        configuration on a calculated property (the SDK does not check this,
+        since back-solve configuration has no SDK surface), so when
+        back-solving is needed, model the value as an ingredient basis.
+        Back-solving supports plain per-ingredient expressions and share-of-sum
+        shapes such as ``wt% / sum(wt% WHERE Function = "Resin") * 100``
+        (parts per hundred resin); other aggregations cannot be back-solved.
 
         !!! example
             ```python
@@ -3697,6 +3761,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
             else:
                 request_path_dict[c.design_id].append(c)
 
+        # Compute and validate every change for every design before writing
+        # anything, so one malformed cell leaves the whole batch unwritten.
+        planned: list[tuple[str, list[tuple[CellChangePayload, Cell]]]] = []
         for design_id, cell_list in request_path_dict.items():
             # Diff every cell against one snapshot of this design's grid rather
             # than rescanning the grid per cell.
@@ -3721,6 +3788,19 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         failed.append(cell)
                         refused += 1
                     continue
+                # Validate a changed calculation only once the cell is known to
+                # be writable, so cells the sheet computes keep their refusal
+                # behavior and never raise here.
+                if cell.calculation and any(
+                    datum.attribute == "calculation" for datum in change_dict["data"]
+                ):
+                    try:
+                        validate_calculation_expression(expression=cell.calculation)
+                    except ValueError as error:
+                        raise ValueError(
+                            f"Cell in row {cell.row_id}, column {cell.column_id} of design "
+                            f"{cell.design_id}: {error}"
+                        ) from error
 
                 # The value-update schema allows at most 2 data changes per
                 # entry (worksheet.yaml Values data maxItems), and the worksheet
@@ -3742,6 +3822,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         }
                         payload_entries.append((single_change, cell))
 
+            planned.append((design_id, payload_entries))
+
+        for design_id, payload_entries in planned:
             if not payload_entries:
                 continue
 
@@ -4210,6 +4293,29 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         self.grid = None
 
+    def _without_basis_columns(self, *, col_ids: list[str], action: str) -> list[str]:
+        """``col_ids`` without ingredient basis columns, warning about any left out.
+
+        An ingredient basis column is pinned and unpinned only with its formulation
+        column, as in Albert. Pinned alone, it is split from that column and shows twice
+        on the sheet.
+        """
+        if not col_ids:
+            return []
+        # Read the columns again so an ingredient basis added since the last read is caught.
+        self.grid = None
+        basis = {c.column_id for c in self.columns if c.type == CellType.INGREDIENT_BASIS}
+        skipped = [col_id for col_id in col_ids if col_id in basis]
+        if skipped:
+            warnings.warn(
+                f"Ingredient basis column(s) {', '.join(skipped)} were not {action}: an "
+                f"ingredient basis column is {action} together with its formulation column, "
+                "so pass that column instead.",
+                UserWarning,
+                stacklevel=find_stack_level(),
+            )
+        return [col_id for col_id in col_ids if col_id not in basis]
+
     @validate_call
     def pin_columns(
         self,
@@ -4219,6 +4325,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
     ) -> None:
         """Pin one or more columns to the left or right edge of the sheet.
 
+        Pinning a formulation column pins its ingredient basis columns
+        ([`INGREDIENT_BASIS`][albert.resources.sheets.CellType.INGREDIENT_BASIS]) with it,
+        as in Albert. An ingredient basis column cannot be pinned on its own: its ID is
+        skipped with a ``UserWarning`` and the other columns are still pinned. To pin an
+        ingredient basis column, pin its formulation column.
+
         !!! example
             ```python
             sheet.pin_columns(col_ids=["COL9999999", "COL2"], side="left")
@@ -4227,14 +4339,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Parameters
         ----------
         col_ids : list[str]
-            The column IDs to pin.
+            The column IDs to pin. Ingredient basis column IDs are skipped.
         side : "left" or "right"
             Which edge to pin to.
 
         Returns
         -------
         None
+
+        Warns
+        -----
+        UserWarning
+            If ``col_ids`` includes an ingredient basis column, which is left unpinned.
         """
+        col_ids = self._without_basis_columns(col_ids=col_ids, action="pinned")
+        if not col_ids:
+            return
         payload = {
             "data": [
                 {
@@ -4252,6 +4372,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def unpin_columns(self, *, col_ids: list[str]) -> None:
         """Unpin one or more columns.
 
+        Unpinning a formulation column unpins its ingredient basis columns
+        ([`INGREDIENT_BASIS`][albert.resources.sheets.CellType.INGREDIENT_BASIS]) with it,
+        as in Albert. An ingredient basis column cannot be unpinned on its own: its ID is
+        skipped with a ``UserWarning`` and the other columns are still unpinned. To unpin
+        an ingredient basis column, unpin its formulation column.
+
         !!! example
             ```python
             sheet.unpin_columns(col_ids=["COL9999999", "COL2"])
@@ -4260,12 +4386,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Parameters
         ----------
         col_ids : list[str]
-            The column IDs to unpin.
+            The column IDs to unpin. Ingredient basis column IDs are skipped.
 
         Returns
         -------
         None
+
+        Warns
+        -----
+        UserWarning
+            If ``col_ids`` includes an ingredient basis column, which is left as it is.
         """
+        col_ids = self._without_basis_columns(col_ids=col_ids, action="unpinned")
+        if not col_ids:
+            return
         payload = {
             "data": [
                 {

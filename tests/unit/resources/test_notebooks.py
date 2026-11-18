@@ -9,6 +9,8 @@ from albert.resources.notebooks import (
     ChecklistContent,
     ChecklistItem,
     ExcelBlock,
+    LiveCanvasBlock,
+    LiveCanvasContent,
     Notebook,
     NotebookCopyACL,
     NotebookCopyInfo,
@@ -210,6 +212,47 @@ def test_put_datum_accepts_office_and_report_content():
             operation=PutOperation.UPDATE,
         )
         assert datum.content is block.content
+
+
+def test_notebook_parses_artifact_block():
+    """Test a notebook with an embedded Artifact block parses and keeps its reference."""
+    payload = {
+        "albertId": "NTB123",
+        "parentId": "PRO123",
+        "blocks": [
+            {"id": "b1", "blockType": "paragraph", "content": {"text": "Notes"}},
+            {
+                "id": "b2",
+                "blockType": "liveCanvas",
+                "content": {"canvasId": "CNV123", "shareId": "CNS123", "title": "DOE overview"},
+            },
+        ],
+    }
+
+    notebook = Notebook(**payload)
+
+    block = notebook.blocks[1]
+    assert isinstance(block, LiveCanvasBlock)
+    assert block.content.canvas_id == "CNV123"
+    assert block.content.share_id == "CNS123"
+    assert block.content.title == "DOE overview"
+
+
+def test_artifact_block_round_trips_unchanged():
+    """Test an Artifact block is sent back with the same wire content, unknown keys included."""
+    content = {"canvasId": "CNV123", "shareId": "CNS123", "title": "DOE overview", "pinned": True}
+    block = LiveCanvasBlock(id="b2", content=LiveCanvasContent(**content))
+
+    datum = PutBlockDatum(
+        id=block.id,
+        type=block.type,
+        content=block.content,
+        operation=PutOperation.UPDATE,
+    )
+    dumped = datum.model_dump(mode="json", by_alias=True)
+
+    assert dumped["blockType"] == "liveCanvas"
+    assert dumped["content"] == content
 
 
 def test_copy_info_serializes_acl():
