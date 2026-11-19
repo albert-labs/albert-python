@@ -73,3 +73,33 @@ def test_entity_type_field_options_without_values_skips_conversion():
     """Test that EntityTypeFieldOptions omitting 'values' does not attempt any conversion."""
     options = EntityTypeFieldOptions(type=EntityTypeOptionType.STRING)
     assert options.values is None
+
+
+def test_entity_type_parses_custom_fields_that_omit_hidden():
+    """Test that EntityType keeps customFields entries when Albert omits hidden.
+
+    Inventory (and lot) entity-type payloads sometimes omit ``hidden`` on
+    ``customFields``. A required ``hidden`` made ``get_all(service=inventories)``
+    fail validation for every item and yield nothing.
+    """
+    entity_type = EntityType.model_validate(
+        {
+            "albertId": "ETT1",
+            "label": "Raw Material Type",
+            "service": "inventories",
+            "category": "RawMaterials",
+            "customFields": [
+                {
+                    "id": "CTF1",
+                    "name": "Grade",
+                    "section": "top",
+                }
+            ],
+        }
+    )
+    assert entity_type.custom_fields is not None
+    assert len(entity_type.custom_fields) == 1
+    assert entity_type.custom_fields[0].id == "CTF1"
+    assert entity_type.custom_fields[0].hidden is None
+    # Same construction path EntityTypeCollection.get_all uses.
+    assert EntityType(**entity_type.model_dump(by_alias=True)).custom_fields[0].hidden is None
