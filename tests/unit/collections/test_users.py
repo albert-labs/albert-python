@@ -9,11 +9,13 @@ location warns instead of building a patch the platform would reject.
 import warnings
 
 import pytest
+import responses
 
 from albert.collections.users import UserCollection
 from albert.core.shared.models.base import EntityLink
 from albert.resources.roles import Role
 from albert.resources.users import User, UserClass
+from tests.unit.conftest import UNIT_BASE_URL
 
 
 def _existing() -> User:
@@ -33,6 +35,38 @@ def _patches(offline_session, *, updated: User, existing: User | None = None) ->
         existing=existing or _existing(), updated=updated
     )
     return payload.model_dump(mode="json", by_alias=True)["data"]
+
+
+@responses.activate
+def test_get_by_id_returns_user_with_placeholder_email(offline_session):
+    """Test that a user with a placeholder email value can be retrieved."""
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/users/USR634",
+        json={"albertId": "USR634", "name": "Test User", "email": "Email 634"},
+    )
+
+    user = UserCollection(session=offline_session).get_by_id(id="USR634")
+
+    assert (user.id, user.name, user.email) == ("USR634", "Test User", "Email 634")
+
+
+@responses.activate
+def test_search_returns_user_with_placeholder_email(offline_session):
+    """Test that user search retains a user with a placeholder email value."""
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/users/search",
+        json={
+            "Items": [{"albertId": "USR634", "name": "Test User", "email": "Email 634"}],
+            "total": 1,
+        },
+    )
+    responses.post(f"{UNIT_BASE_URL}/api/v3/users/search", json={"Items": [], "total": 1})
+
+    users = list(UserCollection(session=offline_session).search(max_items=1))
+
+    assert [(user.id, user.name, user.email) for user in users] == [
+        ("USR634", "Test User", "Email 634")
+    ]
 
 
 @pytest.mark.parametrize(

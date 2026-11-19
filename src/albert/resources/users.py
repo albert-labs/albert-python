@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import EmailStr, Field
+from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import UserId
@@ -78,8 +78,8 @@ class User(BaseResource):
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
     """The user's home location."""
 
-    email: EmailStr = Field(default=None, alias="email")
-    """The user's email address."""
+    email: str | None = Field(default=None, alias="email")
+    """The user's email address or placeholder value."""
 
     roles: list[SerializeAsEntityLink[Role]] = Field(
         max_length=1, default_factory=list, alias="Roles"
@@ -129,8 +129,8 @@ class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
     id: UserId | None = Field(None, alias="albertId")
     """The Albert User ID (format ``USR...``)."""
 
-    email: EmailStr | None = Field(default=None, alias="email")
-    """The user's email address."""
+    email: str | None = Field(default=None, alias="email")
+    """The user's email address or placeholder value."""
 
     user_class: UserClass = Field(default=UserClass.STANDARD, alias="userClass")
     """The ACL class level of the user (broad permission tier)."""
