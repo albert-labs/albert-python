@@ -1,12 +1,12 @@
 import warnings
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from typing import Any
 
-from pydantic import validate_call
+from pydantic import ValidationError, validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator, MappedPaginator
+from albert.core.pagination import DEFAULT_LIMIT, AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import UserId
@@ -251,6 +251,11 @@ class UserCollection(BaseCollection):
         -------
         Iterator[UserSearchItem]
             An iterator of partial users matching the filters.
+
+        Raises
+        ------
+        ValueError
+            If a user search result cannot be parsed.
         """
         params = {
             "text": text,
@@ -274,15 +279,19 @@ class UserCollection(BaseCollection):
             "offset": offset,
         }
 
-        deserialize = lambda items: [
-            UserSearchItem(**item)._bind_collection(self) for item in items
-        ]
+        def deserialize(items: Iterable[dict[str, Any]]) -> list[UserSearchItem]:
+            try:
+                return [UserSearchItem(**item)._bind_collection(self) for item in items]
+            except ValidationError as exc:
+                raise ValueError("User search returned an invalid user") from exc
 
         payload: dict[str, Any] = {**params}
         if metadata_filters is not None:
             payload["metadataFilters"] = {"metadata": metadata_filters}
         if custom_fields is not None:
             payload["customFields"] = {"metadata": custom_fields}
+        if max_items is not None and max_items > 0:
+            payload["limit"] = min(max_items, DEFAULT_LIMIT)
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,

@@ -6,6 +6,7 @@ that values carried along unchanged send nothing, and that clearing a role or
 location warns instead of building a patch the platform would reject.
 """
 
+import json
 import warnings
 
 import pytest
@@ -64,9 +65,27 @@ def test_search_returns_user_with_placeholder_email(offline_session):
 
     users = list(UserCollection(session=offline_session).search(max_items=1))
 
+    assert json.loads(responses.calls[0].request.body) == {
+        "order": "desc",
+        "offset": 0,
+        "limit": 1,
+    }
     assert [(user.id, user.name, user.email) for user in users] == [
         ("USR634", "Test User", "Email 634")
     ]
+
+
+@responses.activate
+def test_search_rejects_a_user_that_cannot_be_parsed(offline_session):
+    """Test that user search does not silently discard an invalid result."""
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/users/search",
+        json={"Items": [{"albertId": "USR634"}], "total": 1},
+    )
+    responses.post(f"{UNIT_BASE_URL}/api/v3/users/search", json={"Items": [], "total": 1})
+
+    with pytest.raises(ValueError, match="User search returned an invalid user"):
+        list(UserCollection(session=offline_session).search(max_items=1))
 
 
 @pytest.mark.parametrize(
