@@ -797,9 +797,19 @@ class TaskCollection(BaseCollection):
         response = self.session.patch(
             url=f"{self.base_path}/{task_id}", json=payload, params={"includeBlocks": "true"}
         )
-        modes = added_block_modes(
-            data=response.json() if response.content else None, task_id=task_id
-        )
+        try:
+            modes = added_block_modes(
+                data=response.json() if response.content else None, task_id=task_id
+            )
+        except AlbertException as e:
+            # The blocks exist, so raise the error callers handle without adding them again.
+            task = cast(PropertyTask | BatchTask, self.get_by_id(id=task_id))
+            raise CombinationGenerationError(
+                f"{e} Do not add them again: find them on the task and generate their "
+                "combinations with generate_block_combinations.",
+                task=task,
+                tasks=[task],
+            ) from e
         block_ids = child_workflow_block_ids(modes=modes)
         if block_ids:
             self._run_block_combination_jobs(
