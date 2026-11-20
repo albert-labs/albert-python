@@ -1,9 +1,14 @@
 from enum import Enum
+from typing import Any
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import Status
+from albert.core.shared.identifiers import ParameterId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem
+from albert.resources._mixins import HydrationMixin
 
 
 class SpecialParameterType(str, Enum):
@@ -111,3 +116,68 @@ class Parameter(BaseResource):
 
     required: bool | None = Field(default=None, exclude=True)
     """Whether this parameter must be filled in within a Parameter Group."""
+
+
+class ParameterSearchItemLink(BaseAlbertModel):
+    """A lightweight data template or parameter group reference in a parameter search result."""
+
+    id: str | None = None
+    """The Albert ID of the linked resource."""
+
+    name: str | None = None
+    """The display name of the linked resource."""
+
+    status: Status | None = None
+    """The lifecycle status of the linked resource."""
+
+
+class ParameterSearchItem(BaseAlbertModel, HydrationMixin[Parameter]):
+    """A lightweight, partially populated parameter from search results.
+
+    Returned by
+    [`search`][albert.collections.parameters.ParameterCollection.search]. Call
+    ``hydrate()`` to fetch the fully populated
+    [`Parameter`][albert.resources.parameters.Parameter].
+    """
+
+    id: ParameterId | None = Field(
+        default=None,
+        alias="albertId",
+        validation_alias=AliasChoices("albertId", "id"),
+    )
+    """The Albert ID of the parameter (format ``PRM...``). ``None`` when omitted from the result."""
+
+    name: str | None = None
+    """The name of the parameter."""
+
+    status: Status | None = None
+    """The lifecycle status of the parameter."""
+
+    created_by: str | None = Field(default=None, alias="createdBy")
+    """The ID of the user who created the parameter."""
+
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    """The display name of the user who created the parameter."""
+
+    created_at: str | None = Field(default=None, alias="createdAt")
+    """ISO 8601 timestamp of when the parameter was created."""
+
+    updated_at: str | None = Field(default=None, alias="updatedAt")
+    """ISO 8601 timestamp of when the parameter was last updated."""
+
+    metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
+    """Custom metadata attached to the parameter."""
+
+    parameter_groups: list[ParameterSearchItemLink] | None = Field(
+        default=None,
+        alias="parameterGroups",
+        validation_alias=AliasChoices("parameterGroups", "ParameterGroups"),
+    )
+    """Parameter groups linked to the parameter."""
+
+    data_templates: list[ParameterSearchItemLink] | None = Field(
+        default=None,
+        alias="dataTemplates",
+        validation_alias=AliasChoices("dataTemplates", "DataTemplates"),
+    )
+    """Data templates linked to the parameter."""
