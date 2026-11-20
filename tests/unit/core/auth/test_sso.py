@@ -232,6 +232,29 @@ def test_request_access_token_raises_mapped_exception_on_http_error():
         client._request_access_token()
 
 
+def test_request_access_token_uses_static_proxies(monkeypatch: pytest.MonkeyPatch):
+    """Test that the refresh call goes through the configured static proxy."""
+    captured = {}
+
+    def fake_send(self, request, **kwargs):
+        captured.update(kwargs)
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = (
+            b'[{"jwt": "jwt1", "exp": 3600, "refreshToken": "rt2", "tenantId": "TEN1"}]'
+        )
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    client = _client(proxies={"https": "http://proxy.corp:8080"})
+    client._token_info = OAuthTokenInfo(refresh_token="rt1")
+
+    client._request_access_token()
+
+    assert captured["proxies"] == {"https": "http://proxy.corp:8080"}
+
+
 # --- get_access_token ---------------------------------------------------------------
 
 

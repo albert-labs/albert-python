@@ -137,6 +137,7 @@ nav:
       - Clients:
           - Albert Client: albert.md
           - AsyncAlbert Client: async_albert.md
+          - Session: core/session.md
       - Authentication:
           - Albert Client Credentials: credentials.md
           - Albert SSO Client: sso.md

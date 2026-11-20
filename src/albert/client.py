@@ -101,6 +101,18 @@ class Albert:
         float (applied to both connect and read) or a ``(connect, read)`` tuple.
         Defaults to ``DEFAULT_TIMEOUT`` (10 s connect, 300 s read). Pass ``None``
         for no timeout. Ignored if `session` is provided.
+    headers : Mapping[str, str], optional
+        Extra headers applied to every call. Ignored if `session` is provided.
+    proxies : Mapping[str, str], optional
+        Static proxy URLs keyed by scheme, for example
+        ``{"https": "http://proxy.company.com:8080"}``. Applied to every call,
+        including file uploads. Ignored if `session` is provided.
+    pac_url : str, optional
+        URL of a PAC (Proxy Auto-Configuration) file used to decide, for each
+        call, which proxy to use. Pass ``"auto"`` to discover the PAC
+        configuration from the operating system proxy settings or network
+        auto-discovery. Requires the optional ``pac`` extra
+        (``pip install albert[pac]``). Ignored if `session` is provided.
     session : AlbertSession, optional
         A fully configured session instance. If provided, `base_url`, `token`, and `auth_manager`
         are all ignored.
@@ -134,6 +146,8 @@ class Albert:
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
+        proxies: Mapping[str, str] | None = None,
+        pac_url: str | None = None,
         session: AlbertSession | None = None,
     ):
         if auth_manager and base_url and base_url != auth_manager.base_url:
@@ -152,6 +166,8 @@ class Albert:
             retries=retries,
             timeout=timeout,
             headers=headers,
+            proxies=proxies,
+            pac_url=pac_url,
         )
 
     @classmethod
@@ -162,9 +178,42 @@ class Albert:
         token: str,
         timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
+        proxies: Mapping[str, str] | None = None,
+        pac_url: str | None = None,
     ) -> Albert:
-        """Create an Albert client using a static token for authentication."""
-        return cls(base_url=base_url, token=token, timeout=timeout, headers=headers)
+        """Create an Albert client using a static token for authentication.
+
+        Parameters
+        ----------
+        base_url : str | None
+            The base URL of the Albert API. Defaults to the ``ALBERT_BASE_URL`` environment
+            variable or "https://app.albertinvent.com".
+        token : str
+            The static token used for authentication.
+        timeout : float | tuple[float, float] | None, optional
+            Default timeout in seconds applied to every call.
+        headers : Mapping[str, str] | None, optional
+            Extra headers applied to every call.
+        proxies : Mapping[str, str] | None, optional
+            Static proxy URLs keyed by scheme, applied to every call.
+        pac_url : str | None, optional
+            URL of a PAC file used to decide, for each call, which proxy to use.
+            Pass ``"auto"`` for system discovery. Requires the optional ``pac``
+            extra (``pip install albert[pac]``).
+
+        Returns
+        -------
+        Albert
+            An authenticated Albert client.
+        """
+        return cls(
+            base_url=base_url,
+            token=token,
+            timeout=timeout,
+            headers=headers,
+            proxies=proxies,
+            pac_url=pac_url,
+        )
 
     @classmethod
     def from_sso(
@@ -177,6 +226,8 @@ class Albert:
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
+        proxies: Mapping[str, str] | None = None,
+        pac_url: str | None = None,
         login_timeout: int = DEFAULT_LOGIN_TIMEOUT,
     ) -> Albert:
         """Create an Albert client using interactive OAuth2 SSO login.
@@ -199,6 +250,13 @@ class Albert:
             Does not affect the SSO login; use `login_timeout` for that.
         headers : Mapping[str, str] | None, optional
             Extra headers sent with every request.
+        proxies : Mapping[str, str] | None, optional
+            Static proxy URLs keyed by scheme, applied to every call, including
+            the SSO login and token refresh calls.
+        pac_url : str | None, optional
+            URL of a PAC file used to decide, for each call, which proxy to use.
+            Pass ``"auto"`` for system discovery. Requires the optional ``pac``
+            extra (``pip install albert[pac]``).
         login_timeout : int, optional
             Seconds to wait for the user to complete the browser login (default is 120).
 
@@ -208,9 +266,18 @@ class Albert:
             An authenticated Albert client.
         """
         resolved_base_url = base_url or default_albert_base_url()
-        oauth = AlbertSSOClient(base_url=resolved_base_url, email=email)
+        oauth = AlbertSSOClient(
+            base_url=resolved_base_url, email=email, proxies=proxies, pac_url=pac_url
+        )
         oauth.authenticate(minimum_port=port, tenant_id=tenant_id, timeout=login_timeout)
-        return cls(auth_manager=oauth, retries=retries, timeout=timeout, headers=headers)
+        return cls(
+            auth_manager=oauth,
+            retries=retries,
+            timeout=timeout,
+            headers=headers,
+            proxies=proxies,
+            pac_url=pac_url,
+        )
 
     @classmethod
     def from_client_credentials(
@@ -222,15 +289,55 @@ class Albert:
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
+        proxies: Mapping[str, str] | None = None,
+        pac_url: str | None = None,
     ) -> Albert:
-        """Create an Albert client using client credentials authentication."""
+        """Create an Albert client using client credentials authentication.
+
+        Parameters
+        ----------
+        base_url : str | None
+            The base URL of the Albert API. Defaults to the ``ALBERT_BASE_URL`` environment
+            variable or "https://app.albertinvent.com".
+        client_id : str
+            The client ID used for authentication.
+        client_secret : str
+            The client secret used for authentication.
+        retries : int | None, optional
+            Maximum number of retries for failed HTTP requests.
+        timeout : float | tuple[float, float] | None, optional
+            Default timeout in seconds applied to every call.
+        headers : Mapping[str, str] | None, optional
+            Extra headers applied to every call.
+        proxies : Mapping[str, str] | None, optional
+            Static proxy URLs keyed by scheme, applied to every call, including
+            token refresh calls.
+        pac_url : str | None, optional
+            URL of a PAC file used to decide, for each call, which proxy to use.
+            Pass ``"auto"`` for system discovery. Requires the optional ``pac``
+            extra (``pip install albert[pac]``).
+
+        Returns
+        -------
+        Albert
+            An authenticated Albert client.
+        """
         resolved_base_url = base_url or default_albert_base_url()
         creds = AlbertClientCredentials(
             id=client_id,
             secret=SecretStr(client_secret),
             base_url=resolved_base_url,
+            proxies=proxies,
+            pac_url=pac_url,
         )
-        return cls(auth_manager=creds, retries=retries, timeout=timeout, headers=headers)
+        return cls(
+            auth_manager=creds,
+            retries=retries,
+            timeout=timeout,
+            headers=headers,
+            proxies=proxies,
+            pac_url=pac_url,
+        )
 
     @property
     def projects(self) -> ProjectCollection:

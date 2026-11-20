@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs
 
 import pytest
+import requests
 import responses
 from pydantic import SecretStr
 
@@ -192,3 +193,64 @@ def test_get_access_token_skips_refresh_if_another_caller_already_did(
     token = creds.get_access_token()
 
     assert token == "cached"
+
+
+# --- proxy configuration on the token call ---------------------------------------
+
+
+def _capture_send_kwargs(monkeypatch: pytest.MonkeyPatch) -> dict:
+    """Capture the merged kwargs handed to the transport, faking a token response."""
+    captured = {}
+
+    def fake_send(self, request, **kwargs):
+        captured.update(kwargs)
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b'{"access_token": "tok1", "refresh_token": "r1", "expires_in": 3600}'
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    return captured
+
+
+def test_request_access_token_uses_static_proxies(monkeypatch: pytest.MonkeyPatch):
+    """Test that the token call goes through the configured static proxy."""
+    creds = AlbertClientCredentials(
+        id="my-client-id",
+        secret=SecretStr("my-client-secret"),
+        base_url=UNIT_BASE_URL,
+        proxies={"https": "http://proxy.corp:8080"},
+    )
+    captured = _capture_send_kwargs(monkeypatch)
+
+    creds._request_access_token()
+
+    assert captured["proxies"] == {"https": "http://proxy.corp:8080"}
+
+
+def test_request_access_token_uses_pac_decision(monkeypatch: pytest.MonkeyPatch):
+    """Test that the token call honors the PAC file's proxy decision."""
+    from pypac.parser import PACFile
+    from pypac.resolver import ProxyResolver
+
+    monkeypatch.setattr(
+        "albert.core.session._load_pac_proxy_resolver",
+        lambda pac_url: ProxyResolver(
+            PACFile('function FindProxyForURL(url, host) { return "PROXY proxy.corp:8080"; }')
+        ),
+    )
+    creds = AlbertClientCredentials(
+        id="my-client-id",
+        secret=SecretStr("my-client-secret"),
+        base_url=UNIT_BASE_URL,
+        pac_url="https://proxy.corp/x.pac",
+    )
+    captured = _capture_send_kwargs(monkeypatch)
+
+    creds._request_access_token()
+
+    assert captured["proxies"] == {
+        "http": "http://proxy.corp:8080",
+        "https": "http://proxy.corp:8080",
+    }
