@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from pydantic import validate_call
-from requests.exceptions import RetryError
+from requests.exceptions import RequestException, RetryError
 
 from albert.collections.attachments import AttachmentCollection
 from albert.collections.base import BaseCollection
@@ -1366,7 +1366,7 @@ class TaskCollection(BaseCollection):
                     old_workflow_id=old_workflow_id,
                     wait=False,
                 )
-            except (AlbertException, ValueError, requests.RequestException) as e:
+            except (AlbertException, ValueError, RequestException) as e:
                 logger.warning(
                     "Could not start combination generation for task %s block %s: %s",
                     task_id,
