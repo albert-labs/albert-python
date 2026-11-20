@@ -1357,7 +1357,7 @@ def _expected_record(**overrides) -> TaskPropertyRecord:
 
 
 def test_flatten_task_property_data_maps_child_workflow_interval_to_row_key():
-    """Test that a child workflow interval is reported by ROW chain with its setpoints."""
+    """Test that a child workflow interval keeps its ID and gains its ROW chain and setpoints."""
     block = _child_workflow_block("WFL1001")
 
     records = flatten_task_property_data(
@@ -1372,8 +1372,8 @@ def test_flatten_task_property_data_maps_child_workflow_interval_to_row_key():
 
     assert records == [
         _expected_record(
-            interval_combination="ROW1XROW3",
-            child_workflow_id="WFL1001",
+            interval_combination="WFL1001",
+            interval_row_key="ROW1XROW3",
             parameter_setpoints={"Temp": "25", "Speed": "100"},
             interval_description="Temp: 25, Speed: 100",
         )
@@ -1381,7 +1381,7 @@ def test_flatten_task_property_data_maps_child_workflow_interval_to_row_key():
 
 
 def test_flatten_task_property_data_keeps_unmapped_child_workflow_interval():
-    """Test that a child workflow interval with no known ROW chain is reported as is."""
+    """Test that a child workflow interval with no known ROW chain gets no row key."""
     block = _child_workflow_block("WFL1002")
 
     records = flatten_task_property_data(
@@ -1394,14 +1394,19 @@ def test_flatten_task_property_data_keeps_unmapped_child_workflow_interval():
         interval_row_keys={"WFL1001": "ROW1XROW3"},
     )
 
-    assert records == [
-        _expected_record(interval_combination="WFL1002", child_workflow_id="WFL1002")
-    ]
+    assert records == [_expected_record(interval_combination="WFL1002", interval_row_key=None)]
 
 
-@pytest.mark.parametrize("interval_id", ["ROW1", "default"])
-def test_flatten_task_property_data_sets_no_child_workflow_for_legacy_interval(interval_id):
-    """Test that ROW and default intervals carry no child workflow and keep their setpoints."""
+@pytest.mark.parametrize(
+    ("interval_id", "row_key"),
+    [
+        pytest.param("ROW1", "ROW1", id="row-chain"),
+        pytest.param("ROW1XROW3", "ROW1XROW3", id="row-chain-pair"),
+        pytest.param("default", None, id="default"),
+    ],
+)
+def test_flatten_task_property_data_row_key_for_legacy_interval(interval_id, row_key):
+    """Test that a ROW chain is its own row key, default has none, and setpoints are kept."""
     block = _child_workflow_block(interval_id)
 
     records = flatten_task_property_data(
@@ -1416,7 +1421,7 @@ def test_flatten_task_property_data_sets_no_child_workflow_for_legacy_interval(i
     assert records == [
         _expected_record(
             interval_combination=interval_id,
-            child_workflow_id=None,
+            interval_row_key=row_key,
             parameter_setpoints={"Temp": "25"},
         )
     ]

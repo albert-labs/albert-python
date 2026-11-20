@@ -871,9 +871,8 @@ def build_interval_setpoint_map(
         A fully populated workflow, as returned by
         [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id].
     interval_ids : Iterable[str], optional
-        Additional ROW chains to resolve, for combinations the workflow does not list
-        itself (a workflow with more than 2,000 combinations lists none). Defaults to
-        none.
+        Additional ROW chains to resolve when the workflow does not include its
+        combinations, or returns an empty combination list. Defaults to none.
 
     Returns
     -------
@@ -943,6 +942,7 @@ def map_block_final_workflows(*, task: PropertyTask) -> dict[str, Workflow | Ent
 
 
 _CHILD_WORKFLOW_ID_RE = re.compile(r"^WFL\d+$")
+_ROW_CHAIN_RE = re.compile(r"^ROW\d+(?:XROW\d+)*$")
 
 
 def is_child_workflow_interval(interval_id: str | None) -> bool:
@@ -966,9 +966,10 @@ def flatten_task_property_data(
 ) -> list[TaskPropertyRecord]:
     """Flatten one block's interval/trial tree into one record per measured value.
 
-    ``interval_row_keys`` maps child workflow interval IDs to their ROW chain. A mapped
-    interval is reported, and its setpoints looked up, by ROW chain, with the child
-    workflow ID kept on ``child_workflow_id``. An unmapped interval ID is used as is.
+    Each record keeps the interval ID as reported in ``interval_combination``.
+    ``interval_row_keys`` maps child workflow interval IDs to their ROW chain; the ROW
+    chain goes on ``interval_row_key`` and is used to look up the setpoints. A reported
+    ROW chain is its own row key, and an unmapped child workflow ID gets none.
     """
     data_template = block.data_template
     inventory = block.inventory
@@ -977,11 +978,16 @@ def flatten_task_property_data(
     records: list[TaskPropertyRecord] = []
     for interval in block.data:
         reported_id = interval.interval_combination
-        interval_id = row_keys.get(reported_id, reported_id)
-        child_workflow_id = reported_id if is_child_workflow_interval(reported_id) else None
-        setpoints = interval_setpoints.get(interval_id, {})
+        if is_child_workflow_interval(reported_id):
+            row_key = row_keys.get(reported_id)
+        elif reported_id and _ROW_CHAIN_RE.fullmatch(reported_id):
+            row_key = reported_id
+        else:
+            row_key = None
+        lookup_id = row_key or reported_id
+        setpoints = interval_setpoints.get(lookup_id, {})
         description = (
-            interval_descriptions.get(interval_id)
+            interval_descriptions.get(lookup_id)
             or interval_descriptions.get(reported_id)
             or interval.name
         )
@@ -1000,7 +1006,7 @@ def flatten_task_property_data(
                         data_template_name=getattr(data_template, "name", None),
                         inventory_id=getattr(inventory, "inventory_id", None),
                         lot_id=getattr(inventory, "lot_id", None),
-                        interval_combination=interval_id,
+                        interval_combination=reported_id,
                         interval_description=description.strip() if description else None,
                         parameter_setpoints=dict(setpoints),
                         trial_number=trial.trial_number,
@@ -1018,7 +1024,7 @@ def flatten_task_property_data(
                         calculation=column.calculation,
                         workflow_id=workflow_id,
                         workflow_name=workflow_name,
-                        child_workflow_id=child_workflow_id,
+                        interval_row_key=row_key,
                     )
                 )
     return records
