@@ -522,7 +522,7 @@ class TaskPropertyRecord(BaseAlbertModel):
     """The lot the value applies to, if any (format ``LOT...``)."""
 
     interval_combination: str | None = Field(default=None)
-    """The interval this value was measured under (e.g. ``"default"``, ``"ROW1"``, ``"ROW1XROW2"``), as returned by [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]. On tenants with increased intervals this is still the ROW chain, with the child workflow in [`child_workflow_id`][albert.resources.property_data.TaskPropertyRecord.child_workflow_id]; it is the child workflow ID only when the combination has no ROW chain."""
+    """The interval this value was measured under, as Albert stores it (e.g. ``"default"``, ``"ROW1"``, ``"ROW1XROW2"``). On tenants with increased intervals this is the child workflow of the combination (format ``WFL...``); its ROW chain is in [`interval_row_key`][albert.resources.property_data.TaskPropertyRecord.interval_row_key]."""
 
     interval_description: str | None = Field(default=None)
     """Human-readable form of the interval (e.g. ``"Condition: Wet"``), when the platform supplies one."""
@@ -569,8 +569,8 @@ class TaskPropertyRecord(BaseAlbertModel):
     workflow_name: str | None = Field(default=None)
     """The workflow name."""
 
-    child_workflow_id: WorkflowId | None = Field(default=None)
-    """On tenants with increased intervals, the child workflow holding this value's interval combination (format ``WFL...``). Also accepted wherever an interval ID is. ``None`` otherwise."""
+    interval_row_key: str | None = Field(default=None)
+    """The ROW chain of the interval (e.g. ``"ROW1XROW2"``), as returned by [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id], on every tenant. ``None`` for blocks without intervalized parameters (``"default"``) and when the ROW chain could not be resolved."""
 
     @classmethod
     def to_dataframe(cls, *, records: list[TaskPropertyRecord]) -> pd.DataFrame:

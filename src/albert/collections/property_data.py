@@ -702,10 +702,11 @@ class PropertyDataCollection(BaseCollection):
         [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties]
         and correlating workflows by hand.
 
-        On tenants with increased intervals, ``interval_combination`` is still the ROW
-        chain (as from [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id])
-        and ``child_workflow_id`` names the child workflow of each combination. Resolving
-        them takes one extra lookup per block with intervalized parameters.
+        On tenants with increased intervals, ``interval_combination`` is the child workflow
+        of each combination (``WFL...``), as Albert stores it. On every tenant,
+        ``interval_row_key`` gives the ROW chain (as from
+        [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]) and
+        ``parameter_setpoints`` names the conditions.
 
         Narrow the read with ``inventory_id`` and ``lot_id`` when only part of the task
         is of interest. Combinations that do not match are never requested, so
@@ -836,7 +837,7 @@ class PropertyDataCollection(BaseCollection):
 
         The combinations embedded on a task's block carry no ROW chain, so the block's
         combinations are listed in full. Returns an empty map when they cannot be
-        listed, leaving the child workflow IDs in place.
+        listed, leaving those records without a ROW chain or setpoints.
         """
         from albert.collections.tasks import TaskCollection
 
@@ -847,8 +848,8 @@ class PropertyDataCollection(BaseCollection):
             return {c.id: c.interval_row_key for c in combinations if c.id and c.interval_row_key}
         except AlbertHTTPError as e:
             logger.warning(
-                "Could not list combinations of block %s on task %s; intervals stay as child "
-                "workflow IDs: %s",
+                "Could not list combinations of block %s on task %s; their records have no "
+                "ROW chain or setpoints: %s",
                 block_id,
                 task_id,
                 e,

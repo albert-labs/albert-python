@@ -868,7 +868,7 @@ def test_get_task_property_records_resolves_child_workflow_intervals(
     seeded_data_templates: list[DataTemplate],
     seeded_workflows,
 ):
-    """Test increased-intervals records carry the ROW chain, child workflow and setpoints."""
+    """Test increased-intervals records keep the child workflow and add the ROW chain and setpoints."""
     inventory_id = seeded_inventory[0].id
     data_template = client.data_templates.get_by_id(id=seeded_data_templates[0].id)
     task_id = None
@@ -913,8 +913,8 @@ def test_get_task_property_records_resolves_child_workflow_intervals(
         ]
 
         assert records != []
-        assert {(r.interval_combination, r.child_workflow_id) for r in records} == {
-            (combo.interval_row_key, combo.id)
+        assert {(r.interval_combination, r.interval_row_key) for r in records} == {
+            (combo.id, combo.interval_row_key)
         }
         setpoints = records[0].parameter_setpoints
         # The combination's interval value, plus the workflow's fixed setpoints.
