@@ -185,11 +185,11 @@ def handle_http_errors() -> Iterator[None]:
 
 
 class AlbertPartialError(AlbertException):
-    """Raised when a bulk operation partially succeeds (HTTP 206) with failed items.
+    """Raised when a bulk operation completes with one or more failed items.
 
-    Some bulk endpoints answer a request where only some items succeeded with a
-    partial-success response carrying the created items and per-item failure details.
-    This error surfaces those failures instead of letting them pass silently.
+    A bulk operation can fail for some or all of its items. This error carries
+    the succeeded items and the per-item failure details, surfacing the failures
+    instead of letting them pass silently.
 
     Attributes
     ----------

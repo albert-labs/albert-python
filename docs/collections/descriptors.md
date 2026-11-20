@@ -1,0 +1,1 @@
+::: albert.collections.descriptors.DescriptorCollection

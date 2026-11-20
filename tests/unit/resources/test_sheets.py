@@ -836,6 +836,153 @@ def test_row_config_invalid_value_coerced_to_none():
     assert row.config is None
 
 
+# --- Design._parse_row_groups ---
+
+
+def test_parse_row_groups_reads_top_level_groups():
+    """Test that grouped rows become groups and ungrouped rows do not."""
+    sequence = [
+        {"rowId": "ROW5", "ChildRows": [{"rowId": "ROW2"}, {"rowId": "ROW3"}]},
+        {"rowId": "ROW4"},
+        {"rowId": "ROW1"},
+    ]
+
+    groups = Design._parse_row_groups(sequence=sequence)
+
+    assert groups == [RowGroup(rowId="ROW5", child_row_ids=["ROW2", "ROW3"])]
+
+
+def test_parse_row_groups_includes_nested_groups_in_sheet_order():
+    """Test that a group nested inside another follows its parent, listed by header in it."""
+    sequence = [
+        {
+            "rowId": "ROW7",
+            "ChildRows": [
+                {"rowId": "ROW2"},
+                {"rowId": "ROW6", "ChildRows": [{"rowId": "ROW3"}, {"rowId": "ROW4"}]},
+            ],
+        },
+        {"rowId": "ROW8", "ChildRows": [{"rowId": "ROW5"}]},
+        {"rowId": "ROW1"},
+    ]
+
+    groups = Design._parse_row_groups(sequence=sequence)
+
+    assert groups == [
+        RowGroup(rowId="ROW7", child_row_ids=["ROW2", "ROW6"]),
+        RowGroup(rowId="ROW6", child_row_ids=["ROW3", "ROW4"]),
+        RowGroup(rowId="ROW8", child_row_ids=["ROW5"]),
+    ]
+
+
+def test_parse_row_groups_keeps_a_repeated_group_once():
+    """Test that a group listed twice in the sequence is returned once, at its first place."""
+    inner = {"rowId": "ROW6", "ChildRows": [{"rowId": "ROW3"}, {"rowId": "ROW4"}]}
+    sequence = [
+        inner,
+        {"rowId": "ROW7", "ChildRows": [{"rowId": "ROW2"}, inner]},
+        {"rowId": "ROW1"},
+    ]
+
+    groups = Design._parse_row_groups(sequence=sequence)
+
+    assert groups == [
+        RowGroup(rowId="ROW6", child_row_ids=["ROW3", "ROW4"]),
+        RowGroup(rowId="ROW7", child_row_ids=["ROW2", "ROW6"]),
+    ]
+
+
+def test_parse_row_groups_returns_empty_for_empty_sequence():
+    """Test that an empty row sequence has no groups."""
+    assert Design._parse_row_groups(sequence=[]) == []
+
+
+# --- Sheet._position_at_end_of_section ---
+
+_NESTED_SEQUENCE = [
+    {
+        "rowId": "ROW7",
+        "ChildRows": [
+            {"rowId": "ROW2"},
+            {"rowId": "ROW6", "ChildRows": [{"rowId": "ROW3"}, {"rowId": "ROW4"}]},
+        ],
+    },
+    {"rowId": "ROW8", "ChildRows": [{"rowId": "ROW5"}]},
+    {"rowId": "ROW9"},
+    {"rowId": "ROW1"},
+]
+
+
+@pytest.mark.parametrize(
+    ("section_id", "reference_id"),
+    [
+        pytest.param("ROW8", "ROW5", id="last-child-is-a-row"),
+        pytest.param("ROW6", "ROW4", id="nested-section"),
+        pytest.param("ROW7", "ROW6", id="last-child-is-a-nested-section"),
+    ],
+)
+def test_position_at_end_of_section_places_below_last_direct_child(section_id, reference_id):
+    """Test that rows for a section go below its last direct child."""
+    position = Sheet._position_at_end_of_section(sequence=_NESTED_SEQUENCE, section_id=section_id)
+
+    assert position == {"reference_id": reference_id, "position": "below"}
+
+
+@pytest.mark.parametrize(
+    "section_id",
+    [
+        pytest.param("ROW9", id="ungrouped-row"),
+        pytest.param("ROW3", id="row-inside-a-section"),
+        pytest.param("ROW99", id="unknown-row"),
+    ],
+)
+def test_position_at_end_of_section_rejects_a_row_that_is_not_a_section(section_id):
+    """Test that a row ID that is not a section with rows is refused."""
+    with pytest.raises(AlbertException, match="is not a section with rows"):
+        Sheet._position_at_end_of_section(sequence=_NESTED_SEQUENCE, section_id=section_id)
+
+
+@responses.activate
+def test_add_inventory_rows_to_section_places_rows_below_its_last_child(offline_session):
+    """Test that rows added to a section are sent below the section's last direct child."""
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows/sequence", json=_NESTED_SEQUENCE
+    )
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/design/DES1/rows",
+        json=[{"rowId": "ROW10", "id": "INVA1", "type": "INV", "name": "Water"}],
+    )
+    sheet = _process_sheet(offline_session)
+
+    sheet.add_inventory_rows(inventory_ids=["INVA1"], section_id="ROW7")
+
+    assert json.loads(responses.calls[1].request.body) == [
+        {"type": "INV", "id": "INVA1", "referenceId": "ROW6", "position": "below"}
+    ]
+
+
+def test_add_inventory_row_rejects_position_with_section_id():
+    """Test that add_inventory_row refuses a position combined with a section."""
+    sheet = Sheet(**_PROCESS_SHEET)
+    with pytest.raises(AlbertException, match="either position or section_id"):
+        sheet.add_inventory_row(
+            inventory_id="INVA1",
+            position={"reference_id": "ROW2", "position": "below"},
+            section_id="ROW7",
+        )
+
+
+def test_add_inventory_rows_rejects_position_with_section_id():
+    """Test that add_inventory_rows refuses a position combined with a section."""
+    sheet = Sheet(**_PROCESS_SHEET)
+    with pytest.raises(AlbertException, match="either position or section_id"):
+        sheet.add_inventory_rows(
+            inventory_ids=["INVA1"],
+            position={"reference_id": "ROW2", "position": "below"},
+            section_id="ROW7",
+        )
+
+
 def test_move_rows_payload_whole_shape():
     """Test the row-move payload for multiple rows moved below a reference row."""
     assert Sheet._move_rows_payload(
@@ -1998,6 +2145,105 @@ def test_update_cells_caches_amounts_the_way_the_sheet_stores_them(offline_sessi
 
 
 @responses.activate
+def test_update_cells_rejects_malformed_where_before_writing(offline_session):
+    """Test a calculation the platform refuses raises before any write is sent."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW1", "COL1#INVF0"]
+    bad = cell.model_copy(
+        update={"calculation": 'sum(wt% WHERE Function = "Core" AND Function = "Shell")'}
+    )
+    with pytest.raises(ValueError, match="AND conditions in WHERE filters are not supported"):
+        sheet.update_cells(cells=[bad])
+
+    assert [c for c in responses.calls if c.request.method == "PATCH"] == []
+
+
+@responses.activate
+def test_update_cells_writes_well_formed_where_filter(offline_session):
+    """Test a calculation with a valid WHERE filter is written."""
+    sheet = _products_sheet(session=offline_session)
+    _register_products_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    cell = sheet.product_design.grid.at["DES1#ROW1", "COL1#INVF0"]
+    updated, failed = sheet.update_cells(
+        cells=[
+            cell.model_copy(
+                update={"calculation": 'sum(wt% WHERE Function = "Core" OR Function = "Shell")'}
+            )
+        ]
+    )
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert len(patches) == 1
+    body = json.loads(patches[0].request.body)
+    assert [(d["attribute"], d["newValue"]) for d in body[0]["data"]] == [
+        ("calculation", 'sum(wt% WHERE Function = "Core" OR Function = "Shell")')
+    ]
+    assert len(updated) == 1
+    assert failed == []
+
+
+def _two_design_sheet(session=None) -> Sheet:
+    return Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "products", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=session,
+    )
+
+
+@responses.activate
+def test_update_cells_writes_nothing_when_a_calculation_in_another_design_is_malformed(
+    offline_session,
+):
+    """Test one bad calculation leaves the whole batch unwritten and names the cell."""
+    sheet = _two_design_sheet(session=offline_session)
+    _register_products_grid()
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES2/products/grid",
+        json={
+            "Items": [
+                {
+                    "rowId": "ROW7",
+                    "rowUniqueId": "DES2#ROW7",
+                    "name": "Resin",
+                    "type": "INV",
+                    "id": "INVA9",
+                    "Values": [{"colId": "COL1", "value": "3", "id": "INVF0", "type": "INV"}],
+                }
+            ],
+            "Formulas": [{"colId": "COL1", "name": "Existing", "state": {}}],
+        },
+    )
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES2/values", status=204)
+
+    good = sheet.designs[0].grid.at["DES1#ROW2", "COL1#INVF0"].model_copy(update={"value": "25"})
+    bad_cell = (
+        sheet.designs[1]
+        .grid.at["DES2#ROW7", "COL1#INVF0"]
+        .model_copy(
+            update={"calculation": 'sum(wt% WHERE Function = "Core" AND Function = "Shell")'}
+        )
+    )
+
+    with pytest.raises(ValueError, match="row ROW7, column COL1"):
+        sheet.update_cells(cells=[good, bad_cell])
+
+    assert [c for c in responses.calls if c.request.method == "PATCH"] == []
+
+
+@responses.activate
 def test_update_cells_refresh_default_discards_the_cache(offline_session):
     """Test a direct write drops the cached grid so the next read reloads it."""
     sheet = _products_sheet(session=offline_session)
@@ -2536,6 +2782,119 @@ def test_add_formulations_ambiguous_inventory_id_fails_before_writing(offline_se
         )
 
     assert not [c for c in responses.calls if c.request.method in ("POST", "PATCH", "DELETE")]
+
+
+def _register_formula_used_as_ingredient_grid(*, total_first: bool):
+    """A grid where formula B (column COL6, item INVB2) is also an ingredient row.
+
+    The built-in "Inventory ID" column (COL1, type DEF) carries no id in its
+    header cell, so a column parser that borrows the first row's item id links
+    COL1 to INVB2 whenever the INVB2 row sits first (users can move the Total
+    row below the ingredient rows).
+    """
+    formula_b_row = {
+        "rowId": "ROW1",
+        "rowUniqueId": "DES1#ROW1",
+        "name": "Formula B",
+        "type": "INV",
+        "id": "INVB2",
+        "Values": [
+            {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": "B2"},
+            {"colId": "COL6", "type": "INV", "id": "INVB2", "value": "5"},
+        ],
+    }
+    salt_row = {
+        "rowId": "ROW2",
+        "rowUniqueId": "DES1#ROW2",
+        "name": "Salt",
+        "type": "INV",
+        "id": "INVA1",
+        "Values": [
+            {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": "A1"},
+            {"colId": "COL6", "type": "INV", "id": "INVB2", "value": "10"},
+        ],
+    }
+    total_row = {
+        "rowId": "ROW3",
+        "rowUniqueId": "DES1#ROW3",
+        "name": "Total",
+        "type": "TOT",
+        "id": "APP1",
+        "Values": [
+            {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": ""},
+            {
+                "colId": "COL6",
+                "type": "INV",
+                "id": "INVB2",
+                "value": "15",
+                "calculation": "=COL6ROW1+COL6ROW2",
+            },
+        ],
+    }
+    items = (
+        [total_row, formula_b_row, salt_row]
+        if total_first
+        else [formula_b_row, salt_row, total_row]
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid",
+        json={
+            "Items": items,
+            "Formulas": [
+                {"colId": "COL1", "name": "Inventory ID", "type": "DEF", "state": {}},
+                {"colId": "COL6", "name": "Formula B", "id": "INVB2", "state": {}},
+            ],
+        },
+    )
+
+
+@responses.activate
+@pytest.mark.parametrize("total_first", [True, False])
+def test_add_formulations_inventory_id_skips_non_formula_columns(offline_session, total_first):
+    """Test inventory_id matching resolves to the formula column at any row order."""
+    sheet = _products_sheet(session=offline_session)
+    _register_formula_used_as_ingredient_grid(total_first=total_first)
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+
+    columns = sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                inventory_id="B2", components=[Component(inventory_id="INVA1", amount=42.0)]
+            )
+        ],
+        clear=True,
+        enforce_order=True,
+    )
+
+    # The formula column was matched: no new column or row is created.
+    assert not [c for c in responses.calls if c.request.method == "POST"]
+    assert [(col.column_id, col.name) for col in columns] == [("COL6", "Formula B")]
+
+    value_patches = [
+        json.loads(c.request.body)
+        for c in responses.calls
+        if c.request.method == "PATCH" and c.request.url.endswith("/values")
+    ]
+    # The matched column's ingredient cells were cleared before the rewrite.
+    assert {
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["operation"])
+        for entry in value_patches[0]
+    } == {("ROW1", "COL6", "delete"), ("ROW2", "COL6", "delete")}
+    assert {
+        (entry["Id"]["rowId"], entry["Id"]["colId"], entry["data"][0]["newValue"])
+        for entry in value_patches[1]
+    } == {("ROW2", "COL6", "42.0")}
+
+
+@responses.activate
+def test_get_column_by_inventory_id_skips_the_inventory_id_column(offline_session):
+    """Test get_column(inventory_id=...) resolves to the formula column, not COL1."""
+    sheet = _products_sheet(session=offline_session)
+    _register_formula_used_as_ingredient_grid(total_first=False)
+
+    column = sheet.get_column(inventory_id="INVB2")
+
+    assert column.column_id == "COL6"
 
 
 @responses.activate

@@ -439,12 +439,16 @@ class UserCollection(BaseCollection):
         ``name``, ``roles``, ``status``, ``user_class``, ``witnesser``. A user has at
         most one role. A role or location can be changed but not removed; clearing
         ``roles`` or ``location`` on a user that has one is ignored with a warning.
+        A call where nothing changed returns the current user unchanged.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=user.id)
 
         # Generate the PATCH payload
         payload = self._generate_patch_payload(existing=current_object, updated=user)
+
+        if not payload.data:
+            return current_object
 
         url = f"{self.base_path}/{user.id}"
         self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))

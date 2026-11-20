@@ -116,6 +116,42 @@ def test_get_columns_keeps_ingredient_basis_columns_without_inventory_id():
     ]
 
 
+@pytest.mark.parametrize(
+    ("first_row_id", "first_row_type", "first_row_item_id"),
+    [("ROW1", "TOT", "APP1"), ("ROW2", "INV", "INVA1")],
+)
+def test_get_columns_inventory_id_column_never_borrows_a_row_item_id(
+    first_row_id, first_row_type, first_row_item_id
+):
+    """Test the built-in Inventory ID column has no inventory ID at any row order."""
+    grid = {
+        "Formulas": [
+            {"colId": "COL1", "name": "Inventory ID", "type": "DEF", "state": {}},
+            {"colId": "COL6", "name": "Formula B", "type": "INV", "id": "INVB2", "state": {}},
+        ],
+        "Items": [
+            {
+                "rowId": first_row_id,
+                "rowUniqueId": f"DES1#{first_row_id}",
+                "type": first_row_type,
+                "id": first_row_item_id,
+                "name": "First",
+                "Values": [
+                    {"colId": "COL1", "type": "DEF", "name": "Inventory ID", "value": ""},
+                    {"colId": "COL6", "type": "INV", "id": "INVB2", "value": "5"},
+                ],
+            }
+        ],
+    }
+
+    columns = _products_sheet().product_design._get_columns(grid_response=grid)
+
+    assert [(c.column_id, c.type, c.inventory_id) for c in columns] == [
+        ("COL1", "DEF", None),
+        ("COL6", CellType.INVENTORY, "INVB2"),
+    ]
+
+
 def test_get_columns_reads_cp_reference_values_and_leaves_absent_ones_none():
     """Test that each formulation column carries its calculated property reference values."""
     sheet = _products_sheet()
@@ -296,6 +332,38 @@ def test_update_cells_never_sends_calculated_cells(offline_session):
     cached = sheet.product_design.grid
     assert cached.at["DES1#ROW14", "COL5#INVMO1-001"].value == "42.5"
     assert cached.at["DES1#ROW12", "COL7#Solids Share"].value == "30"
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "coordinate",
+    [
+        pytest.param(("DES1#ROW14", "COL5#INVMO1-001"), id="calculated-property-row"),
+        pytest.param(("DES1#ROW12", "COL7#Solids Share"), id="ingredient-basis-column"),
+    ],
+)
+def test_update_cells_keeps_refusal_behavior_for_malformed_calculated_cells(
+    offline_session, coordinate
+):
+    """Test a malformed calculation on a calculated cell is refused, not raised."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    grid = sheet.product_design.grid
+    amount = grid.at["DES1#ROW12", "COL5#INVMO1-001"].model_copy(update={"value": "65"})
+    calculated = grid.at[coordinate[0], coordinate[1]].model_copy(
+        update={"calculation": 'sum(wt% WHERE Function = "Core" AND Function = "Shell")'}
+    )
+
+    with pytest.warns(UserWarning, match="1 cell"):
+        updated, failed = sheet.update_cells(refresh=False, cells=[calculated, amount])
+
+    assert (updated, failed) == ([amount], [calculated])
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert [
+        (entry["Id"]["rowId"], entry["Id"]["colId"])
+        for entry in json.loads(patches[0].request.body)
+    ] == [("ROW12", "COL5")]
 
 
 @responses.activate
@@ -989,3 +1057,85 @@ def test_add_calculation_rerun_after_a_failed_save_does_not_duplicate_property_c
     assert added["count"] == 1
     assert [c.attribute_id for c in calculations.ingredient_bases] == ["ATR1"]
     assert [a.id for a in calculations.attributes] == ["ATR9"]
+
+
+# --- Sheet.pin_columns / Sheet.unpin_columns ---
+
+_COLUMNS_URL = f"{UNIT_BASE_URL}/api/v3/worksheet/sheet/SHEET1/columns"
+
+_PIN_CALLS = [
+    pytest.param(lambda sheet, ids: sheet.pin_columns(col_ids=ids, side="left"), "left", id="pin"),
+    pytest.param(lambda sheet, ids: sheet.unpin_columns(col_ids=ids), False, id="unpin"),
+]
+
+
+def _pinned_body(col_ids: list[str], new_value: str | bool) -> dict:
+    return {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "pinned",
+                "colIds": col_ids,
+                "newValue": new_value,
+            }
+        ]
+    }
+
+
+@pytest.mark.parametrize(("call", "new_value"), _PIN_CALLS)
+@responses.activate
+def test_pinning_skips_ingredient_basis_columns(offline_session, call, new_value):
+    """Test that ingredient basis columns are left out of a pin change, with a warning."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+    responses.patch(_COLUMNS_URL, status=204)
+
+    with pytest.warns(UserWarning, match="COL7, COL8") as record:
+        call(sheet, ["COL7", "COL5", "COL8", "COL1"])
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert [json.loads(c.request.body) for c in patches] == [
+        _pinned_body(["COL5", "COL1"], new_value)
+    ]
+    assert record[0].filename == __file__
+
+
+@pytest.mark.parametrize(("call", "new_value"), _PIN_CALLS)
+@responses.activate
+def test_pinning_only_ingredient_basis_columns_changes_nothing(offline_session, call, new_value):
+    """Test that a pin change of only ingredient basis columns changes nothing."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+
+    with pytest.warns(UserWarning, match="COL7"):
+        call(sheet, ["COL7"])
+
+    assert [c.request.method for c in responses.calls] == ["GET"]
+
+
+@pytest.mark.parametrize(("call", "new_value"), _PIN_CALLS)
+@responses.activate
+def test_pinning_ordinary_columns_does_not_warn(offline_session, recwarn, call, new_value):
+    """Test that a pin change without ingredient basis columns sends every column, silently."""
+    sheet = _products_sheet(session=offline_session)
+    _register_calculations_grid()
+    responses.patch(_COLUMNS_URL, status=204)
+
+    call(sheet, ["COL5", "COL1"])
+
+    patches = [c for c in responses.calls if c.request.method == "PATCH"]
+    assert [json.loads(c.request.body) for c in patches] == [
+        _pinned_body(["COL5", "COL1"], new_value)
+    ]
+    assert [w for w in recwarn if issubclass(w.category, UserWarning)] == []
+
+
+@pytest.mark.parametrize(("call", "new_value"), _PIN_CALLS)
+@responses.activate
+def test_pinning_no_columns_changes_nothing(offline_session, call, new_value):
+    """Test that a pin change with no column IDs changes nothing."""
+    sheet = _products_sheet(session=offline_session)
+
+    call(sheet, [])
+
+    assert len(responses.calls) == 0
