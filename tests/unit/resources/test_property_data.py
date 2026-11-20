@@ -107,6 +107,103 @@ def test_property_data_search_item_parameter_group_id_defaults_to_none():
     assert item.workflow[0].parameter_group_id is None
 
 
+def _property_data_search_item_row():
+    return {
+        "id": "PTD1",
+        "category": "task",
+        "workflow": [{"name": "Temperature", "id": "PRM1"}],
+        "result": {"name": "Result", "id": "DAC1"},
+        "dataTemplateId": "DAT1",
+        "workflowName": "Workflow",
+        "parentId": "TAS1",
+        "dataTemplateName": "Template",
+        "createdBy": "USR1",
+        "inventoryId": "INV1",
+        "projectId": "PRO1",
+        "workflowId": "WFL1",
+        "taskId": "TAS1",
+        "void": False,
+    }
+
+
+def test_property_data_search_item_complete_row_parses():
+    """Test that a property data search row with every field parses unchanged."""
+    row = _property_data_search_item_row()
+
+    item = PropertyDataSearchItem.model_validate(row)
+
+    assert item.model_dump(by_alias=True, mode="json", exclude_none=True) == row
+
+
+@pytest.mark.parametrize(
+    ("key", "attribute"),
+    [
+        ("workflow", "workflow"),
+        ("dataTemplateId", "data_template_id"),
+        ("dataTemplateName", "data_template_name"),
+        ("workflowId", "workflow_id"),
+    ],
+)
+def test_property_data_search_item_allows_omitted_context_field(key, attribute):
+    """Test that an omitted optional context field parses as an unset None value."""
+    row = _property_data_search_item_row()
+    row.pop(key)
+
+    item = PropertyDataSearchItem.model_validate(row)
+
+    assert getattr(item, attribute) is None
+    assert attribute not in item.model_fields_set
+
+
+@pytest.mark.parametrize(
+    ("key", "attribute"),
+    [
+        ("workflow", "workflow"),
+        ("dataTemplateId", "data_template_id"),
+        ("dataTemplateName", "data_template_name"),
+        ("workflowId", "workflow_id"),
+    ],
+)
+def test_property_data_search_item_allows_null_context_field(key, attribute):
+    """Test that an explicitly null optional context field parses as None."""
+    row = _property_data_search_item_row()
+    row[key] = None
+
+    item = PropertyDataSearchItem.model_validate(row)
+
+    assert getattr(item, attribute) is None
+    assert attribute in item.model_fields_set
+
+
+def test_property_data_search_item_allows_all_context_fields_omitted():
+    """Test that a property data search row parses without any optional context fields."""
+    row = _property_data_search_item_row()
+    row.pop("workflow")
+    row.pop("dataTemplateId")
+    row.pop("dataTemplateName")
+    row.pop("workflowId")
+
+    item = PropertyDataSearchItem.model_validate(row)
+
+    assert (
+        item.workflow,
+        item.data_template_id,
+        item.data_template_name,
+        item.workflow_id,
+    ) == (None, None, None, None)
+
+
+def test_property_data_search_item_preserves_explicit_empty_workflow():
+    """Test that an empty workflow list remains distinct from an omitted workflow."""
+    row = _property_data_search_item_row()
+    row["workflow"] = []
+
+    item = PropertyDataSearchItem.model_validate(row)
+
+    assert item.workflow == []
+    assert "workflow" in item.model_fields_set
+
+
 @pytest.mark.parametrize(
     "model",
     [
