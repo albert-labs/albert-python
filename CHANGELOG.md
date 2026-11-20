@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.77.0](https://github.com/albert-labs/albert-python/compare/v1.76.1...v1.77.0) (2026-11-20)
+
+
+### Features
+
+* **lots:** add reactivate for deleted lots ([#984](https://github.com/albert-labs/albert-python/issues/984)) ([7d5ae27](https://github.com/albert-labs/albert-python/commit/7d5ae27467562d62f267a25c18ba54adff11ed44))
+* **property-data:** fill interval setpoints and add interval_row_key on increased-intervals tenants ([#956](https://github.com/albert-labs/albert-python/issues/956)) ([4307f4b](https://github.com/albert-labs/albert-python/commit/4307f4b2c9dad5b89d1ec370fce29f63e1e6c42c))
+* **storage_locations:** filter get_by_name by location ([#982](https://github.com/albert-labs/albert-python/issues/982)) ([baa1a3c](https://github.com/albert-labs/albert-python/commit/baa1a3cbe99a3f902f746c98a72797d44d3e8603))
+* **tasks:** generate block combinations automatically on increased-intervals tenants ([#959](https://github.com/albert-labs/albert-python/issues/959)) ([efa613b](https://github.com/albert-labs/albert-python/commit/efa613bfb163a366d1a0aad621efe7d8ac71985f))
+
+
+### Bug Fixes
+
+* **intervals:** accept any interval ID form and rewrite the migration guide ([#962](https://github.com/albert-labs/albert-python/issues/962)) ([f84efcc](https://github.com/albert-labs/albert-python/commit/f84efcc0820b58cba2d55bf38b090f4cab9b73d8))
+
+
+### Documentation
+
+* **sheets:** document LST ids for list-backed cell writes ([#980](https://github.com/albert-labs/albert-python/issues/980)) ([6d5eadd](https://github.com/albert-labs/albert-python/commit/6d5eadd9f911ee09d718bc0f550a61229ce6d86e))
+
 ## [1.76.1](https://github.com/albert-labs/albert-python/compare/v1.76.0...v1.76.1) (2026-11-19)
 
 
