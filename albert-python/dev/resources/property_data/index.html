@@ -5930,6 +5930,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#albert.resources.property_data.TaskPropertyRecord.interval_row_key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        interval_row_key
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.property_data.TaskPropertyRecord.to_dataframe" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -9511,6 +9522,17 @@
     <span class="md-ellipsis">
       
         workflow_name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.property_data.TaskPropertyRecord.interval_row_key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        interval_row_key
       
     </span>
   </a>
@@ -34528,7 +34550,7 @@ result with the conditions it was measured under needs no further calls.</p>
 </span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-83"><a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The interval this value was measured under (e.g. ``\"default\"``, ``\"ROW1\"``, ``\"ROW1XROW2\"``)."</span><span class="p">,</span>
+</span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The interval this value was measured under, as Albert stores it (e.g. ``\"default\"``, ``\"ROW1\"``, ``\"ROW1XROW2\"``). On tenants with increased intervals this is the child workflow of the combination (format ``WFL...``); its ROW chain is in [`interval_row_key`][albert.resources.property_data.TaskPropertyRecord.interval_row_key]."</span><span class="p">,</span>
 </span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Interval Combination"</span>
 </span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-87"><a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a><span class="w">    </span><span class="nt">"interval_description"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -34713,14 +34735,27 @@ result with the conditions it was measured under needs no further calls.</p>
 </span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266" href="#__codelineno-0-266"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 </span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267" href="#__codelineno-0-267"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The workflow name."</span><span class="p">,</span>
 </span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268" href="#__codelineno-0-268"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Workflow Name"</span>
-</span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269" href="#__codelineno-0-269"></a><span class="w">    </span><span class="p">}</span>
-</span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270" href="#__codelineno-0-270"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271" href="#__codelineno-0-271"></a><span class="w">  </span><span class="nt">"required"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-0-272"><a id="__codelineno-0-272" name="__codelineno-0-272" href="#__codelineno-0-272"></a><span class="w">    </span><span class="s2">"task_id"</span>
-</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273" href="#__codelineno-0-273"></a><span class="w">  </span><span class="p">],</span>
-</span><span id="__span-0-274"><a id="__codelineno-0-274" name="__codelineno-0-274" href="#__codelineno-0-274"></a><span class="w">  </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"TaskPropertyRecord"</span><span class="p">,</span>
-</span><span id="__span-0-275"><a id="__codelineno-0-275" name="__codelineno-0-275" href="#__codelineno-0-275"></a><span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
-</span><span id="__span-0-276"><a id="__codelineno-0-276" name="__codelineno-0-276" href="#__codelineno-0-276"></a><span class="p">}</span>
+</span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269" href="#__codelineno-0-269"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270" href="#__codelineno-0-270"></a><span class="w">    </span><span class="nt">"interval_row_key"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271" href="#__codelineno-0-271"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-0-272"><a id="__codelineno-0-272" name="__codelineno-0-272" href="#__codelineno-0-272"></a><span class="w">        </span><span class="p">{</span>
+</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273" href="#__codelineno-0-273"></a><span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
+</span><span id="__span-0-274"><a id="__codelineno-0-274" name="__codelineno-0-274" href="#__codelineno-0-274"></a><span class="w">        </span><span class="p">},</span>
+</span><span id="__span-0-275"><a id="__codelineno-0-275" name="__codelineno-0-275" href="#__codelineno-0-275"></a><span class="w">        </span><span class="p">{</span>
+</span><span id="__span-0-276"><a id="__codelineno-0-276" name="__codelineno-0-276" href="#__codelineno-0-276"></a><span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"null"</span>
+</span><span id="__span-0-277"><a id="__codelineno-0-277" name="__codelineno-0-277" href="#__codelineno-0-277"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-0-278"><a id="__codelineno-0-278" name="__codelineno-0-278" href="#__codelineno-0-278"></a><span class="w">      </span><span class="p">],</span>
+</span><span id="__span-0-279"><a id="__codelineno-0-279" name="__codelineno-0-279" href="#__codelineno-0-279"></a><span class="w">      </span><span class="nt">"default"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+</span><span id="__span-0-280"><a id="__codelineno-0-280" name="__codelineno-0-280" href="#__codelineno-0-280"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The ROW chain of the interval (e.g. ``\"ROW1XROW2\"``), as returned by [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id], on every tenant. ``None`` for blocks without intervalized parameters (``\"default\"``) and when the ROW chain could not be resolved."</span><span class="p">,</span>
+</span><span id="__span-0-281"><a id="__codelineno-0-281" name="__codelineno-0-281" href="#__codelineno-0-281"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Interval Row Key"</span>
+</span><span id="__span-0-282"><a id="__codelineno-0-282" name="__codelineno-0-282" href="#__codelineno-0-282"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-0-283"><a id="__codelineno-0-283" name="__codelineno-0-283" href="#__codelineno-0-283"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-0-284"><a id="__codelineno-0-284" name="__codelineno-0-284" href="#__codelineno-0-284"></a><span class="w">  </span><span class="nt">"required"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-0-285"><a id="__codelineno-0-285" name="__codelineno-0-285" href="#__codelineno-0-285"></a><span class="w">    </span><span class="s2">"task_id"</span>
+</span><span id="__span-0-286"><a id="__codelineno-0-286" name="__codelineno-0-286" href="#__codelineno-0-286"></a><span class="w">  </span><span class="p">],</span>
+</span><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287" href="#__codelineno-0-287"></a><span class="w">  </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"TaskPropertyRecord"</span><span class="p">,</span>
+</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288" href="#__codelineno-0-288"></a><span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
+</span><span id="__span-0-289"><a id="__codelineno-0-289" name="__codelineno-0-289" href="#__codelineno-0-289"></a><span class="p">}</span>
 </span></code></pre></div>
       </details>
     
@@ -34813,6 +34848,10 @@ result with the conditions it was measured under needs no further calls.</p>
             </li>
             <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.property_data.TaskPropertyRecord.workflow_name">workflow_name</a></code>
+                (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | None</code>)
+            </li>
+            <li>
+              <code><a class="autorefs autorefs-internal" href="#albert.resources.property_data.TaskPropertyRecord.interval_row_key">interval_row_key</a></code>
                 (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | None</code>)
             </li>
         </ul>
@@ -34962,7 +35001,7 @@ result with the conditions it was measured under needs no further calls.</p>
 
     <div class="doc doc-contents ">
 
-        <p>The interval this value was measured under (e.g. <code>"default"</code>, <code>"ROW1"</code>, <code>"ROW1XROW2"</code>).</p>
+        <p>The interval this value was measured under, as Albert stores it (e.g. <code>"default"</code>, <code>"ROW1"</code>, <code>"ROW1XROW2"</code>). On tenants with increased intervals this is the child workflow of the combination (format <code>WFL...</code>); its ROW chain is in <a class="autorefs autorefs-internal" href="#albert.resources.property_data.TaskPropertyRecord.interval_row_key"><code>interval_row_key</code></a>.</p>
 
     </div>
 
@@ -35268,6 +35307,26 @@ result with the conditions it was measured under needs no further calls.</p>
 
 </div>
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.property_data.TaskPropertyRecord.interval_row_key" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">interval_row_key</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">interval_row_key</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The ROW chain of the interval (e.g. <code>"ROW1XROW2"</code>), as returned by <a class="autorefs autorefs-internal" href="../workflows/#albert.resources.workflows.Workflow.get_interval_id"><code>get_interval_id</code></a>, on every tenant. <code>None</code> for blocks without intervalized parameters (<code>"default"</code>) and when the ROW chain could not be resolved.</p>
+
+    </div>
+
+</div>
+
 
 
 
@@ -35354,10 +35413,7 @@ result with the conditions it was measured under needs no further calls.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/property_data.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-572">572</a></span>
-<span class="normal"><a href="#__codelineno-0-573">573</a></span>
-<span class="normal"><a href="#__codelineno-0-574">574</a></span>
-<span class="normal"><a href="#__codelineno-0-575">575</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-575">575</a></span>
 <span class="normal"><a href="#__codelineno-0-576">576</a></span>
 <span class="normal"><a href="#__codelineno-0-577">577</a></span>
 <span class="normal"><a href="#__codelineno-0-578">578</a></span>
@@ -35384,37 +35440,40 @@ result with the conditions it was measured under needs no further calls.</p>
 <span class="normal"><a href="#__codelineno-0-599">599</a></span>
 <span class="normal"><a href="#__codelineno-0-600">600</a></span>
 <span class="normal"><a href="#__codelineno-0-601">601</a></span>
-<span class="normal"><a href="#__codelineno-0-602">602</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-572"><a id="__codelineno-0-572" name="__codelineno-0-572"></a><span class="nd">@classmethod</span>
-</span><span id="__span-0-573"><a id="__codelineno-0-573" name="__codelineno-0-573"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TaskPropertyRecord</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-</span><span id="__span-0-574"><a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="w">    </span><span class="sd">"""Convert records to a DataFrame, one row per record.</span>
-</span><span id="__span-0-575"><a id="__codelineno-0-575" name="__codelineno-0-575"></a>
-</span><span id="__span-0-576"><a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">    Each parameter setpoint is expanded into its own column, prefixed with</span>
-</span><span id="__span-0-577"><a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">    ``setpoint.``, so conditions can be filtered and grouped directly.</span>
+<span class="normal"><a href="#__codelineno-0-602">602</a></span>
+<span class="normal"><a href="#__codelineno-0-603">603</a></span>
+<span class="normal"><a href="#__codelineno-0-604">604</a></span>
+<span class="normal"><a href="#__codelineno-0-605">605</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-575"><a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-576"><a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TaskPropertyRecord</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+</span><span id="__span-0-577"><a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="w">    </span><span class="sd">"""Convert records to a DataFrame, one row per record.</span>
 </span><span id="__span-0-578"><a id="__codelineno-0-578" name="__codelineno-0-578"></a>
-</span><span id="__span-0-579"><a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">    !!! example</span>
-</span><span id="__span-0-580"><a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-581"><a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">        df = TaskPropertyRecord.to_dataframe(records=records)</span>
-</span><span id="__span-0-582"><a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">        df.columns</span>
-</span><span id="__span-0-583"><a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">        # [..., 'value', 'unit_name', 'setpoint.Condition']</span>
-</span><span id="__span-0-584"><a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">        ```</span>
-</span><span id="__span-0-585"><a id="__codelineno-0-585" name="__codelineno-0-585"></a>
-</span><span id="__span-0-586"><a id="__codelineno-0-586" name="__codelineno-0-586"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-587"><a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-588"><a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="sd">    records : list[TaskPropertyRecord]</span>
-</span><span id="__span-0-589"><a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">        The records to convert.</span>
-</span><span id="__span-0-590"><a id="__codelineno-0-590" name="__codelineno-0-590"></a>
-</span><span id="__span-0-591"><a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-592"><a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="sd">    -------</span>
-</span><span id="__span-0-593"><a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">    pd.DataFrame</span>
-</span><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">        The records as a table. Empty input gives an empty DataFrame.</span>
-</span><span id="__span-0-595"><a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="sd">    """</span>
-</span><span id="__span-0-596"><a id="__codelineno-0-596" name="__codelineno-0-596"></a>    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="__span-0-597"><a id="__codelineno-0-597" name="__codelineno-0-597"></a>    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
-</span><span id="__span-0-598"><a id="__codelineno-0-598" name="__codelineno-0-598"></a>        <span class="n">row</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude</span><span class="o">=</span><span class="p">{</span><span class="s2">"parameter_setpoints"</span><span class="p">})</span>
-</span><span id="__span-0-599"><a id="__codelineno-0-599" name="__codelineno-0-599"></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">record</span><span class="o">.</span><span class="n">parameter_setpoints</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="__span-0-600"><a id="__codelineno-0-600" name="__codelineno-0-600"></a>            <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">"setpoint.</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-</span><span id="__span-0-601"><a id="__codelineno-0-601" name="__codelineno-0-601"></a>        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
-</span><span id="__span-0-602"><a id="__codelineno-0-602" name="__codelineno-0-602"></a>    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</span><span id="__span-0-579"><a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">    Each parameter setpoint is expanded into its own column, prefixed with</span>
+</span><span id="__span-0-580"><a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">    ``setpoint.``, so conditions can be filtered and grouped directly.</span>
+</span><span id="__span-0-581"><a id="__codelineno-0-581" name="__codelineno-0-581"></a>
+</span><span id="__span-0-582"><a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">    !!! example</span>
+</span><span id="__span-0-583"><a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">        ```python</span>
+</span><span id="__span-0-584"><a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">        df = TaskPropertyRecord.to_dataframe(records=records)</span>
+</span><span id="__span-0-585"><a id="__codelineno-0-585" name="__codelineno-0-585"></a><span class="sd">        df.columns</span>
+</span><span id="__span-0-586"><a id="__codelineno-0-586" name="__codelineno-0-586"></a><span class="sd">        # [..., 'value', 'unit_name', 'setpoint.Condition']</span>
+</span><span id="__span-0-587"><a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="sd">        ```</span>
+</span><span id="__span-0-588"><a id="__codelineno-0-588" name="__codelineno-0-588"></a>
+</span><span id="__span-0-589"><a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-590"><a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-591"><a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">    records : list[TaskPropertyRecord]</span>
+</span><span id="__span-0-592"><a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="sd">        The records to convert.</span>
+</span><span id="__span-0-593"><a id="__codelineno-0-593" name="__codelineno-0-593"></a>
+</span><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-595"><a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="sd">    -------</span>
+</span><span id="__span-0-596"><a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">    pd.DataFrame</span>
+</span><span id="__span-0-597"><a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">        The records as a table. Empty input gives an empty DataFrame.</span>
+</span><span id="__span-0-598"><a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">    """</span>
+</span><span id="__span-0-599"><a id="__codelineno-0-599" name="__codelineno-0-599"></a>    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-0-600"><a id="__codelineno-0-600" name="__codelineno-0-600"></a>    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+</span><span id="__span-0-601"><a id="__codelineno-0-601" name="__codelineno-0-601"></a>        <span class="n">row</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude</span><span class="o">=</span><span class="p">{</span><span class="s2">"parameter_setpoints"</span><span class="p">})</span>
+</span><span id="__span-0-602"><a id="__codelineno-0-602" name="__codelineno-0-602"></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">record</span><span class="o">.</span><span class="n">parameter_setpoints</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="__span-0-603"><a id="__codelineno-0-603" name="__codelineno-0-603"></a>            <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">"setpoint.</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</span><span id="__span-0-604"><a id="__codelineno-0-604" name="__codelineno-0-604"></a>        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span><span id="__span-0-605"><a id="__codelineno-0-605" name="__codelineno-0-605"></a>    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -37125,21 +37184,21 @@ the identifiers are typically read off an existing block returned by
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/property_data.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-752">752</a></span>
-<span class="normal"><a href="#__codelineno-0-753">753</a></span>
-<span class="normal"><a href="#__codelineno-0-754">754</a></span>
-<span class="normal"><a href="#__codelineno-0-755">755</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-755">755</a></span>
 <span class="normal"><a href="#__codelineno-0-756">756</a></span>
 <span class="normal"><a href="#__codelineno-0-757">757</a></span>
 <span class="normal"><a href="#__codelineno-0-758">758</a></span>
-<span class="normal"><a href="#__codelineno-0-759">759</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-752"><a id="__codelineno-0-752" name="__codelineno-0-752"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"value"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
-</span><span id="__span-0-753"><a id="__codelineno-0-753" name="__codelineno-0-753"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_string_value</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
-</span><span id="__span-0-754"><a id="__codelineno-0-754" name="__codelineno-0-754"></a><span class="w">    </span><span class="sd">"""</span>
-</span><span id="__span-0-755"><a id="__codelineno-0-755" name="__codelineno-0-755"></a><span class="sd">    Converts a string to TaskPropertyValue if the input is a string.</span>
-</span><span id="__span-0-756"><a id="__codelineno-0-756" name="__codelineno-0-756"></a><span class="sd">    """</span>
-</span><span id="__span-0-757"><a id="__codelineno-0-757" name="__codelineno-0-757"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-</span><span id="__span-0-758"><a id="__codelineno-0-758" name="__codelineno-0-758"></a>        <span class="k">return</span> <span class="n">TaskPropertyValue</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
-</span><span id="__span-0-759"><a id="__codelineno-0-759" name="__codelineno-0-759"></a>    <span class="k">return</span> <span class="n">v</span>
+<span class="normal"><a href="#__codelineno-0-759">759</a></span>
+<span class="normal"><a href="#__codelineno-0-760">760</a></span>
+<span class="normal"><a href="#__codelineno-0-761">761</a></span>
+<span class="normal"><a href="#__codelineno-0-762">762</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-755"><a id="__codelineno-0-755" name="__codelineno-0-755"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"value"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
+</span><span id="__span-0-756"><a id="__codelineno-0-756" name="__codelineno-0-756"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_string_value</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+</span><span id="__span-0-757"><a id="__codelineno-0-757" name="__codelineno-0-757"></a><span class="w">    </span><span class="sd">"""</span>
+</span><span id="__span-0-758"><a id="__codelineno-0-758" name="__codelineno-0-758"></a><span class="sd">    Converts a string to TaskPropertyValue if the input is a string.</span>
+</span><span id="__span-0-759"><a id="__codelineno-0-759" name="__codelineno-0-759"></a><span class="sd">    """</span>
+</span><span id="__span-0-760"><a id="__codelineno-0-760" name="__codelineno-0-760"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-0-761"><a id="__codelineno-0-761" name="__codelineno-0-761"></a>        <span class="k">return</span> <span class="n">TaskPropertyValue</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
+</span><span id="__span-0-762"><a id="__codelineno-0-762" name="__codelineno-0-762"></a>    <span class="k">return</span> <span class="n">v</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -41542,21 +41601,21 @@ CurvePropertyValue : Value input for curve data columns.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/property_data.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-884">884</a></span>
-<span class="normal"><a href="#__codelineno-0-885">885</a></span>
-<span class="normal"><a href="#__codelineno-0-886">886</a></span>
-<span class="normal"><a href="#__codelineno-0-887">887</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-887">887</a></span>
 <span class="normal"><a href="#__codelineno-0-888">888</a></span>
 <span class="normal"><a href="#__codelineno-0-889">889</a></span>
 <span class="normal"><a href="#__codelineno-0-890">890</a></span>
-<span class="normal"><a href="#__codelineno-0-891">891</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-884"><a id="__codelineno-0-884" name="__codelineno-0-884"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"value"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
-</span><span id="__span-0-885"><a id="__codelineno-0-885" name="__codelineno-0-885"></a><span class="nd">@classmethod</span>
-</span><span id="__span-0-886"><a id="__codelineno-0-886" name="__codelineno-0-886"></a><span class="k">def</span><span class="w"> </span><span class="nf">coerce_numeric_value</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
-</span><span id="__span-0-887"><a id="__codelineno-0-887" name="__codelineno-0-887"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
-</span><span id="__span-0-888"><a id="__codelineno-0-888" name="__codelineno-0-888"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Boolean values are not supported for TaskPropertyCreate.value."</span><span class="p">)</span>
-</span><span id="__span-0-889"><a id="__codelineno-0-889" name="__codelineno-0-889"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">):</span>
-</span><span id="__span-0-890"><a id="__codelineno-0-890" name="__codelineno-0-890"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-</span><span id="__span-0-891"><a id="__codelineno-0-891" name="__codelineno-0-891"></a>    <span class="k">return</span> <span class="n">v</span>
+<span class="normal"><a href="#__codelineno-0-891">891</a></span>
+<span class="normal"><a href="#__codelineno-0-892">892</a></span>
+<span class="normal"><a href="#__codelineno-0-893">893</a></span>
+<span class="normal"><a href="#__codelineno-0-894">894</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-887"><a id="__codelineno-0-887" name="__codelineno-0-887"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"value"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"before"</span><span class="p">)</span>
+</span><span id="__span-0-888"><a id="__codelineno-0-888" name="__codelineno-0-888"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-889"><a id="__codelineno-0-889" name="__codelineno-0-889"></a><span class="k">def</span><span class="w"> </span><span class="nf">coerce_numeric_value</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+</span><span id="__span-0-890"><a id="__codelineno-0-890" name="__codelineno-0-890"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+</span><span id="__span-0-891"><a id="__codelineno-0-891" name="__codelineno-0-891"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Boolean values are not supported for TaskPropertyCreate.value."</span><span class="p">)</span>
+</span><span id="__span-0-892"><a id="__codelineno-0-892" name="__codelineno-0-892"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">):</span>
+</span><span id="__span-0-893"><a id="__codelineno-0-893" name="__codelineno-0-893"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+</span><span id="__span-0-894"><a id="__codelineno-0-894" name="__codelineno-0-894"></a>    <span class="k">return</span> <span class="n">v</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -41579,21 +41638,21 @@ CurvePropertyValue : Value input for curve data columns.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/property_data.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-893">893</a></span>
-<span class="normal"><a href="#__codelineno-0-894">894</a></span>
-<span class="normal"><a href="#__codelineno-0-895">895</a></span>
-<span class="normal"><a href="#__codelineno-0-896">896</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-896">896</a></span>
 <span class="normal"><a href="#__codelineno-0-897">897</a></span>
 <span class="normal"><a href="#__codelineno-0-898">898</a></span>
 <span class="normal"><a href="#__codelineno-0-899">899</a></span>
-<span class="normal"><a href="#__codelineno-0-900">900</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-893"><a id="__codelineno-0-893" name="__codelineno-0-893"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
-</span><span id="__span-0-894"><a id="__codelineno-0-894" name="__codelineno-0-894"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_visible_trial_number</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskPropertyCreate</span><span class="p">:</span>
-</span><span id="__span-0-895"><a id="__codelineno-0-895" name="__codelineno-0-895"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_trial_number</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-896"><a id="__codelineno-0-896" name="__codelineno-0-896"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_number</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-897"><a id="__codelineno-0-897" name="__codelineno-0-897"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">visible_trial_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_number</span>
-</span><span id="__span-0-898"><a id="__codelineno-0-898" name="__codelineno-0-898"></a>        <span class="k">else</span><span class="p">:</span>
-</span><span id="__span-0-899"><a id="__codelineno-0-899" name="__codelineno-0-899"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">visible_trial_number</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span id="__span-0-900"><a id="__codelineno-0-900" name="__codelineno-0-900"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-900">900</a></span>
+<span class="normal"><a href="#__codelineno-0-901">901</a></span>
+<span class="normal"><a href="#__codelineno-0-902">902</a></span>
+<span class="normal"><a href="#__codelineno-0-903">903</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-896"><a id="__codelineno-0-896" name="__codelineno-0-896"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
+</span><span id="__span-0-897"><a id="__codelineno-0-897" name="__codelineno-0-897"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_visible_trial_number</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskPropertyCreate</span><span class="p">:</span>
+</span><span id="__span-0-898"><a id="__codelineno-0-898" name="__codelineno-0-898"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_trial_number</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-899"><a id="__codelineno-0-899" name="__codelineno-0-899"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_number</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-900"><a id="__codelineno-0-900" name="__codelineno-0-900"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">visible_trial_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trial_number</span>
+</span><span id="__span-0-901"><a id="__codelineno-0-901" name="__codelineno-0-901"></a>        <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-0-902"><a id="__codelineno-0-902" name="__codelineno-0-902"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">visible_trial_number</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span id="__span-0-903"><a id="__codelineno-0-903" name="__codelineno-0-903"></a>    <span class="k">return</span> <span class="bp">self</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
