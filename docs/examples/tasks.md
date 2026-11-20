@@ -427,7 +427,7 @@ You can update rules and overrides on an existing task block at any time using [
     - The same convention applies to `overrides`.
 
 !!! note "Workflow replacement (swapping workflows)"
-    [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] regenerates the block's combinations for the new workflow. Combinations whose setpoints are unchanged keep their barcodes, and combinations the new workflow no longer has are removed. There is no need to pass `old_workflow_id` to [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]: the platform finds the block's earlier workflow itself.
+    [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] regenerates the block's combinations for the new workflow. Each combination of the new workflow keeps the interval barcode and results of its best-matching combination in the replaced workflow. Old combinations that are not carried forward are removed. There is no need to pass `old_workflow_id` to [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]: the platform finds the block's earlier workflow itself.
 
 ## Import results
 

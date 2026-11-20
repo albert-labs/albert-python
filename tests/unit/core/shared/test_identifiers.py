@@ -181,14 +181,11 @@ def test_ensure_interval_id():
 
     assert ensure_row_id("row123Xrow456") == "ROW123XROW456"
 
-    with pytest.raises(ValueError, match="Must be a ROW chain"):
-        ensure_interval_id("123")
 
-    with pytest.raises(ValueError, match="Must be a ROW chain"):
-        ensure_interval_id("123X456")
-
-    with pytest.raises(ValueError, match="Must be a ROW chain"):
-        ensure_interval_id("ROW123XROW456X")
+@pytest.mark.parametrize("interval_id", ["INNR4wxUsM0", "123", "123X456", "ROW123XROW456X"])
+def test_ensure_interval_id_passes_unrecognized_forms_through_unchanged(interval_id):
+    """Test that interval IDs in a form the SDK does not recognize are kept as given."""
+    assert ensure_interval_id(interval_id) == interval_id
 
 
 @pytest.mark.parametrize(

@@ -583,8 +583,9 @@ class PropertyDataCollection(BaseCollection):
         task_id : TaskId
             The task the block belongs to (format ``TAS...``).
         interval_id : IntervalId
-            The interval combination to check (e.g. ``"ROW1"``, ``"ROW1XROW2"``,
-            a child workflow id, a barcode, or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
+            The interval combination to check: a ``ROW`` chain (e.g. ``"ROW1"``,
+            ``"ROW1XROW2"``), a child workflow ID (``WFL...``), or ``"default"``. Interval
+            barcodes are not supported here. See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
 
         Returns
         -------

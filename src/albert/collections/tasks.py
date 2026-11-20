@@ -833,9 +833,10 @@ class TaskCollection(BaseCollection):
 
         When increased intervals is enabled for your tenant, the block's interval
         combinations are regenerated for the new workflow before the method returns.
-        Combinations whose setpoints are unchanged keep their interval barcodes, and
-        combinations the new workflow no longer has are removed. Pass ``wait=False`` to
-        return as soon as regeneration has started.
+        Each combination of the new workflow keeps the interval barcode and results of its
+        best-matching combination in the replaced workflow. Old combinations that are not
+        carried forward are removed. Pass ``wait=False`` to return as soon as regeneration
+        has started.
 
         !!! example
             ```python
