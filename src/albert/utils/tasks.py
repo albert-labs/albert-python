@@ -3,6 +3,8 @@ from itertools import zip_longest
 from pathlib import Path
 from typing import Any, Literal
 
+from requests.exceptions import RequestException
+
 from albert.collections.attachments import AttachmentCollection
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
@@ -117,14 +119,19 @@ def wait_for_block_jobs(
     """Wait for each block's generation job, in order, and return the finished jobs.
 
     ``jobs`` maps ``(task ID, block ID)`` pairs to their started jobs, and ``wait`` waits
-    for one of them to finish. A block whose wait raises maps to ``None``, and the
-    remaining blocks are still waited for.
+    for one of them to finish. A block whose wait times out, fails, or loses its
+    connection maps to ``None``, and the remaining blocks are still waited for.
     """
     finished: dict[tuple[str, str], WorkerJob | None] = {}
     for key, job in jobs.items():
         try:
             finished[key] = wait(key, job)
-        except (TimeoutError, AlbertException):
+        except (TimeoutError, AlbertException, RequestException) as e:
+            logger.warning(
+                "Could not wait for combination generation for task %s block %s: %s",
+                *key,
+                e,
+            )
             finished[key] = None
     return finished
 

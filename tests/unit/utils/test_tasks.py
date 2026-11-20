@@ -11,6 +11,7 @@ from __future__ import annotations
 import types
 
 import pytest
+import requests
 import responses
 
 from albert.collections.tasks import TaskCollection
@@ -280,6 +281,7 @@ def test_wait_for_block_jobs_returns_finished_jobs_in_order():
     [
         pytest.param(TimeoutError("still running"), id="timeout"),
         pytest.param(AlbertException("not found"), id="albert-error"),
+        pytest.param(requests.ConnectionError("connection dropped"), id="connection-error"),
     ],
 )
 def test_wait_for_block_jobs_keeps_waiting_after_a_block_raises(error: Exception):
