@@ -132,24 +132,27 @@ See [Intervals, Rules, and Overrides](../examples/tasks.md) for examples.
 
 ### Reading results
 
-`property_data.get_task_property_records` returns the `ROW` chain in
-`interval_combination` and fills `parameter_setpoints`, as it does without the feature.
-Each record also carries the interval's child workflow (`WFL...`) in `child_workflow_id`.
+With increased intervals, Albert stores each result under its combination's child workflow
+(`WFL...`), so reads report the interval as that child workflow ID, not as a `ROW` chain.
+This applies to `interval_combination` from `property_data.get_task_property_records` and
+to the raw reads, `property_data.get_all_task_properties` and
+`property_data.get_task_block_properties`. Code that matches results on `ROW` chains finds
+none.
+
+`get_task_property_records` also gives every record its `ROW` chain in `interval_row_key`,
+on every tenant, and fills `parameter_setpoints`:
 
 ```python
 records = client.property_data.get_task_property_records(task_id="TAS123")
 for record in records:
-    print(record.interval_combination, record.child_workflow_id, record.parameter_setpoints)
-# ROW3XROW6 WFL999 {'Temperature': '25', 'Time': '60'}
+    print(record.interval_combination, record.interval_row_key, record.parameter_setpoints)
+# WFL999 ROW3XROW6 {'Temperature': '25', 'Time': '60'}
 ```
 
-If you wrote code against the beta that matches `WFL` IDs in `interval_combination`, read
-`child_workflow_id` instead.
-
-`property_data.get_all_task_properties` and `property_data.get_task_block_properties`
-return results as Albert stores them: interval IDs there are child workflow IDs, not `ROW`
-chains. Stop matching on `ROW` strings in that data, or switch to
-`get_task_property_records`.
+- If your code matches results by `ROW` chain, match on `interval_row_key` instead of
+  `interval_combination`. It works on tenants with and without the feature.
+- If your code already matches child workflow IDs in `interval_combination`, as the beta
+  guide advised, it keeps working.
 
 ### Writing, voiding and checking results
 
@@ -207,7 +210,9 @@ These are optional and need increased intervals. They are not part of the migrat
   order given. Both returned `None` before.
 - `CombinationGenerationError` is raised by the methods above when generation fails or
   cannot be started. It carries `task`, `tasks`, `failed_blocks` and `job_states`.
-- `TaskPropertyRecord.child_workflow_id` names the child workflow of a record's interval.
+- `TaskPropertyRecord.interval_row_key` gives the `ROW` chain of a record's interval on
+  every tenant, and `parameter_setpoints` is now filled on tenants with increased
+  intervals. `interval_combination` is unchanged.
 - `Block.combinations_mode` (`"child_workflows"` or `"legacy"`) and
   `Block.previous_workflow_id` are new read-only fields.
 - `update_block_workflow` and `generate_block_combinations` work on blocks that use the
@@ -243,7 +248,7 @@ when you create a task or add a block; Albert rejects them.
 - [ ] `wait` decided for each `create`, `create_many`, `add_block`, `add_blocks` and `update_block_workflow` call
 - [ ] `CombinationGenerationError` handled, with retries limited to the failed blocks
 - [ ] Rules and overrides applied with `create_with_combinations` or `set_block_rules`
-- [ ] Beta code that matched `WFL` IDs in `interval_combination` moved to `child_workflow_id`
+- [ ] Code that matches results by `ROW` chain reads `interval_row_key` from `get_task_property_records`
 - [ ] Raw reads (`get_all_task_properties`, `get_task_block_properties`) no longer matched on `ROW` strings
 
 ## Troubleshooting
@@ -255,6 +260,6 @@ when you create a task or add a block; Albert rejects them.
 | `create_with_combinations` rejects the task | Increased intervals is not enabled for the tenant | Use `create` |
 | `TypeError` from a combination method | The task is a General task | Combinations apply to Property and Batch tasks only |
 | Generation fails above 2,000 combinations | The block exceeds the cap | Add rules or overrides to reduce combinations |
-| Interval IDs are `WFL...` in raw property data | Raw reads return child workflow IDs | Use `get_task_property_records`, or match on child workflow IDs |
+| Interval IDs are `WFL...`, not `ROW` chains | Results are stored by child workflow | Match on `interval_row_key` from `get_task_property_records`, or on the child workflow ID |
 
 If you run into any issues, please open a [GitHub issue](https://github.com/albert-labs/albert-python/issues).
