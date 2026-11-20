@@ -139,7 +139,7 @@ def test_reaction_read_only_fields_excluded_from_dump():
     assert "Location" not in row_dump
 
 
-# Mirrors a block of GET /api/v3/tasks/multi/{id} on a tenant with increased intervals.
+# Mirrors task-block data returned by the platform with increased intervals enabled.
 CHILD_WORKFLOWS_BLOCK_PAYLOAD = {
     "id": "BLK1",
     "Datatemplate": [{"id": "DAT1", "name": "Viscosity"}],
