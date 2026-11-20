@@ -32,6 +32,7 @@ from albert.resources.tasks import (
     TaskParameterAllocation,
     TaskState,
 )
+from albert.resources.worker_jobs import WorkerJob, WorkerJobState
 from albert.resources.workflows import ParameterGroupSetpoints, ParameterSetpoint, Workflow
 from albert.utils.tasks import (
     added_block_modes,
@@ -53,6 +54,7 @@ from albert.utils.tasks import (
     resolve_task_block,
     resolve_task_lot_target,
     resolve_unassigned_task_state,
+    wait_for_block_jobs,
 )
 from tests.unit.conftest import UNIT_BASE_URL
 
@@ -243,6 +245,59 @@ def test_interleave_task_blocks_keeps_a_single_task_in_order():
 def test_interleave_task_blocks_returns_empty_for_no_tasks():
     """Test that no tasks give no blocks."""
     assert interleave_task_blocks(block_ids={}) == []
+
+
+# ---------------------------------------------------------------------------
+# wait_for_block_jobs
+# ---------------------------------------------------------------------------
+
+
+def _job(job_id: str, state: WorkerJobState) -> WorkerJob:
+    return WorkerJob(albert_id=job_id, job_type="createChildWorkflows", metadata={}, state=state)
+
+
+def test_wait_for_block_jobs_returns_finished_jobs_in_order():
+    """Test that each block maps to its finished job, in the order given."""
+    started = {
+        ("TAS1", "BLK1"): _job("JOB1", WorkerJobState.SUBMITTED),
+        ("TAS1", "BLK2"): _job("JOB2", WorkerJobState.SUBMITTED),
+    }
+    done = {
+        "JOB1": _job("JOB1", WorkerJobState.SUCCESSFUL),
+        "JOB2": _job("JOB2", WorkerJobState.FAILED),
+    }
+
+    finished = wait_for_block_jobs(jobs=started, wait=lambda key, job: done[job.albert_id])
+
+    assert list(finished.items()) == [
+        (("TAS1", "BLK1"), done["JOB1"]),
+        (("TAS1", "BLK2"), done["JOB2"]),
+    ]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(TimeoutError("still running"), id="timeout"),
+        pytest.param(AlbertException("not found"), id="albert-error"),
+    ],
+)
+def test_wait_for_block_jobs_keeps_waiting_after_a_block_raises(error: Exception):
+    """Test that a block whose wait raises maps to None and later blocks are still waited for."""
+    started = {
+        ("TAS1", "BLK1"): _job("JOB1", WorkerJobState.SUBMITTED),
+        ("TAS1", "BLK2"): _job("JOB2", WorkerJobState.SUBMITTED),
+    }
+    done = _job("JOB2", WorkerJobState.SUCCESSFUL)
+
+    def wait(key: tuple[str, str], job: WorkerJob) -> WorkerJob:
+        if job.albert_id == "JOB1":
+            raise error
+        return done
+
+    finished = wait_for_block_jobs(jobs=started, wait=wait)
+
+    assert finished == {("TAS1", "BLK1"): None, ("TAS1", "BLK2"): done}
 
 
 def _payload(offline_session, *, existing: GeneralTask, updated: GeneralTask):

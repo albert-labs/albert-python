@@ -92,6 +92,7 @@ from albert.utils.tasks import (
     resolve_attachment,
     resolve_task_block,
     resolve_unassigned_task_state,
+    wait_for_block_jobs,
 )
 from albert.utils.worker_jobs import poll_worker_job
 
@@ -1381,21 +1382,24 @@ class TaskCollection(BaseCollection):
             last_started[task_id] = time.monotonic()
 
         if wait:
-            for (task_id, block_id), job in jobs.items():
-                try:
-                    job = poll_worker_job(
-                        session=self.session,
-                        job_id=job.albert_id,
-                        raise_on_failure=False,
-                        job_description=f"Create child workflows for task {task_id} block {block_id}",
-                    )
-                except (TimeoutError, AlbertException):
+
+            def wait_for_job(key: tuple[str, str], job: WorkerJob) -> WorkerJob:
+                return poll_worker_job(
+                    session=self.session,
+                    job_id=job.albert_id,
+                    raise_on_failure=False,
+                    job_description=f"Create child workflows for task {key[0]} block {key[1]}",
+                )
+
+            finished = wait_for_block_jobs(jobs=jobs, wait=wait_for_job)
+            for (task_id, block_id), finished_job in finished.items():
+                if finished_job is None:
                     failed.add(label(task_id, block_id))
                     job_states[label(task_id, block_id)] = "failed"
                     continue
-                jobs[(task_id, block_id)] = job
-                job_states[label(task_id, block_id)] = job.state.value
-                if job.state != WorkerJobState.SUCCESSFUL:
+                jobs[(task_id, block_id)] = finished_job
+                job_states[label(task_id, block_id)] = finished_job.state.value
+                if finished_job.state != WorkerJobState.SUCCESSFUL:
                     failed.add(label(task_id, block_id))
 
         if failed:
