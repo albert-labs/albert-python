@@ -15,6 +15,9 @@ from albert.exceptions import AlbertException
 from albert.resources.notebooks import (
     AttachesBlock,
     AttachesContent,
+    ChecklistBlock,
+    ChecklistContent,
+    ChecklistItem,
     HeaderBlock,
     HeaderContent,
     ImageBlock,
@@ -135,10 +138,9 @@ def test_generate_put_block_payload_deletes_blocks_removed_from_notebook(offline
 def test_prepare_file_block_builds_nested_key_and_infers_format_from_existing_key(offline_session):
     """Test that a bare file_key is namespaced under notebook/block and format is inferred."""
     collection = NotebookCollection(session=offline_session)
-    notebook = Notebook(id="NTB1", parent_id="PRO1")
     block = AttachesBlock(id="B1", content=AttachesContent(file_key="results.csv"))
 
-    collection._prepare_file_block(notebook=notebook, block=block)
+    collection._prepare_file_block(notebook_id="NTB1", block=block)
 
     assert block.content.file_key == "NTB1/B1/results.csv"
     assert block.content.format == "text/csv"
@@ -148,12 +150,11 @@ def test_prepare_file_block_builds_nested_key_and_infers_format_from_existing_ke
 def test_prepare_file_block_keeps_already_nested_file_key(offline_session):
     """Test that a file_key already containing a '/' is left untouched, custom title kept."""
     collection = NotebookCollection(session=offline_session)
-    notebook = Notebook(id="NTB1", parent_id="PRO1")
     block = AttachesBlock(
         id="B1", content=AttachesContent(file_key="already/nested/key.csv", title="Custom")
     )
 
-    collection._prepare_file_block(notebook=notebook, block=block)
+    collection._prepare_file_block(notebook_id="NTB1", block=block)
 
     assert block.content.file_key == "already/nested/key.csv"
     assert block.content.title == "Custom"
@@ -162,10 +163,9 @@ def test_prepare_file_block_keeps_already_nested_file_key(offline_session):
 def test_prepare_file_block_noop_when_no_file_path_or_key(offline_session):
     """Test that a block with neither file_path nor file_key is left unchanged."""
     collection = NotebookCollection(session=offline_session)
-    notebook = Notebook(id="NTB1", parent_id="PRO1")
     block = ImageBlock(id="B1", content=ImageContent())
 
-    collection._prepare_file_block(notebook=notebook, block=block)
+    collection._prepare_file_block(notebook_id="NTB1", block=block)
 
     assert block.content.file_key is None
     assert block.content.format is None
@@ -175,7 +175,6 @@ def test_prepare_file_block_noop_when_no_file_path_or_key(offline_session):
 def test_prepare_file_block_uploads_local_file_and_sets_key(offline_session, tmp_path):
     """Test that a local file_path is uploaded and the block's file_key/format/title are set."""
     collection = NotebookCollection(session=offline_session)
-    notebook = Notebook(id="NTB1", parent_id="PRO1")
     file_path = tmp_path / "spectrum.pdf"
     file_path.write_bytes(b"content")
     block = AttachesBlock(id="B1", content=AttachesContent(file_path=str(file_path)))
@@ -186,7 +185,7 @@ def test_prepare_file_block_uploads_local_file_and_sets_key(offline_session, tmp
     )
     responses.put("https://upload.example.com/put", status=200)
 
-    collection._prepare_file_block(notebook=notebook, block=block)
+    collection._prepare_file_block(notebook_id="NTB1", block=block)
 
     assert block.content.file_key == "NTB1/B1/spectrum.pdf"
     assert block.content.format == "application/pdf"
@@ -198,7 +197,6 @@ def test_prepare_file_block_uploads_local_file_and_sets_key(offline_session, tmp
 def test_prepare_file_block_uploads_with_caller_supplied_file_key(offline_session, tmp_path):
     """Test that a caller-supplied bare file_key alongside file_path is namespaced, not replaced."""
     collection = NotebookCollection(session=offline_session)
-    notebook = Notebook(id="NTB1", parent_id="PRO1")
     file_path = tmp_path / "spectrum.pdf"
     file_path.write_bytes(b"content")
     block = AttachesBlock(
@@ -211,7 +209,7 @@ def test_prepare_file_block_uploads_with_caller_supplied_file_key(offline_sessio
     )
     responses.put("https://upload.example.com/put", status=200)
 
-    collection._prepare_file_block(notebook=notebook, block=block)
+    collection._prepare_file_block(notebook_id="NTB1", block=block)
 
     assert block.content.file_key == "NTB1/B1/customkey.pdf"
     assert block.content.title == "customkey.pdf"
@@ -225,14 +223,13 @@ def test_prepare_file_block_uploads_with_caller_supplied_file_key(offline_sessio
 def test_prepare_ketcher_block_reuses_existing_synthesis_without_creating(offline_session):
     """Test that an existing synthesis_id skips creating a new synthesis record."""
     collection = NotebookCollection(session=offline_session)
-    notebook = Notebook(id="NTB1", parent_id="PRO1")
     block = KetcherBlock(
         id="B1",
         content=KetcherContent(synthesis_id="SYN1", smiles="CCO", data="rawdata", png="pngdata"),
     )
 
     # No responses registered: any HTTP call here would raise, proving no I/O occurs.
-    action = collection._prepare_ketcher_block(notebook=notebook, block=block)
+    action = collection._prepare_ketcher_block(notebook_id="NTB1", block=block)
 
     assert action.synthesis_id == "SYN1"
     assert action.smiles == "CCO"
@@ -246,18 +243,16 @@ def test_prepare_ketcher_block_reuses_existing_synthesis_without_creating(offlin
 def test_prepare_ketcher_block_raises_when_no_smiles_and_no_synthesis(offline_session):
     """Test that a new Ketcher block with no SMILES and no synthesis_id raises."""
     collection = NotebookCollection(session=offline_session)
-    notebook = Notebook(id="NTB1", parent_id="PRO1")
     block = KetcherBlock(id="B1", content=KetcherContent())
 
     with pytest.raises(AlbertException, match="smiles is required"):
-        collection._prepare_ketcher_block(notebook=notebook, block=block)
+        collection._prepare_ketcher_block(notebook_id="NTB1", block=block)
 
 
 @responses.activate
 def test_prepare_ketcher_block_creates_synthesis_when_none_exists(offline_session):
     """Test that a new Ketcher block with a SMILES string creates a synthesis record."""
     collection = NotebookCollection(session=offline_session)
-    notebook = Notebook(id="NTB1", parent_id="PRO1")
     block = KetcherBlock(id="B1", content=KetcherContent(smiles="CCO"))
 
     responses.post(
@@ -269,7 +264,7 @@ def test_prepare_ketcher_block_creates_synthesis_when_none_exists(offline_sessio
         },
     )
 
-    action = collection._prepare_ketcher_block(notebook=notebook, block=block)
+    action = collection._prepare_ketcher_block(notebook_id="NTB1", block=block)
 
     assert action.synthesis_id == "SYN1"
     assert action.data == "canvas-data"
@@ -277,3 +272,112 @@ def test_prepare_ketcher_block_creates_synthesis_when_none_exists(offline_sessio
     assert block.content.synthesis_id == "SYN1"
     assert block.content.s3_key == "s3/key"
     assert block.content.smiles == "CCO"
+
+
+# ---------------------------------------------------------------------------
+# _prepare_block_for_create
+# ---------------------------------------------------------------------------
+
+
+def test_prepare_block_for_create_returns_none_for_text_blocks(offline_session):
+    """Test that a text block needs no preparation and triggers no I/O."""
+    collection = NotebookCollection(session=offline_session)
+    block = ParagraphBlock(id="B1", content=ParagraphContent(text="hi"))
+
+    # No responses registered: any HTTP call here would raise, proving no I/O occurs.
+    action = collection._prepare_block_for_create(notebook_id="NTB1", block=block)
+
+    assert action is None
+
+
+def test_prepare_block_for_create_namespaces_file_key_for_file_blocks(offline_session):
+    """Test that an attachment block's bare file_key is namespaced under notebook/block."""
+    collection = NotebookCollection(session=offline_session)
+    block = AttachesBlock(id="B1", content=AttachesContent(file_key="results.csv"))
+
+    action = collection._prepare_block_for_create(notebook_id="NTB1", block=block)
+
+    assert action is None
+    assert block.content.file_key == "NTB1/B1/results.csv"
+
+
+@responses.activate
+def test_prepare_block_for_create_returns_ketcher_action(offline_session):
+    """Test that a new Ketcher block creates its synthesis and returns the follow-up action."""
+    collection = NotebookCollection(session=offline_session)
+    block = KetcherBlock(id="B1", content=KetcherContent(smiles="CCO"))
+
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/synthesis",
+        json={
+            "albertId": "SYN1",
+            "s3Key": "s3/key",
+            "canvasData": {"data": "canvas-data", "png": "canvas-png"},
+        },
+    )
+
+    action = collection._prepare_block_for_create(notebook_id="NTB1", block=block)
+
+    assert action.synthesis_id == "SYN1"
+    assert block.content.synthesis_id == "SYN1"
+
+
+# ---------------------------------------------------------------------------
+# _generate_block_patch_payload
+# ---------------------------------------------------------------------------
+
+
+def test_generate_block_patch_payload_raises_when_block_type_changes():
+    """Test that reusing a block id with a different block type raises."""
+    existing = ParagraphBlock(id="B1", content=ParagraphContent(text="old"))
+    updated = HeaderBlock(id="B1", content=HeaderContent(level=1, text="new"))
+
+    with pytest.raises(AlbertException, match="Cannot convert an existing block type"):
+        NotebookCollection._generate_block_patch_payload(existing=existing, updated=updated)
+
+
+def test_generate_block_patch_payload_returns_empty_when_content_unchanged():
+    """Test that identical content produces no update operations."""
+    existing = ParagraphBlock(id="B1", content=ParagraphContent(text="same"))
+    updated = ParagraphBlock(id="B1", content=ParagraphContent(text="same"))
+
+    payload = NotebookCollection._generate_block_patch_payload(existing=existing, updated=updated)
+
+    assert payload.model_dump(mode="json", by_alias=True) == {"data": []}
+
+
+def test_generate_block_patch_payload_builds_content_update():
+    """Test that a content change produces a single update operation with old and new values."""
+    existing = ParagraphBlock(id="B1", content=ParagraphContent(text="old"))
+    updated = ParagraphBlock(id="B1", content=ParagraphContent(text="new"))
+
+    payload = NotebookCollection._generate_block_patch_payload(existing=existing, updated=updated)
+
+    assert payload.model_dump(mode="json", by_alias=True) == {
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "content",
+                "newValue": {"text": "new"},
+                "oldValue": {"text": "old"},
+            }
+        ]
+    }
+
+
+def test_generate_block_patch_payload_serializes_nested_content():
+    """Test that nested block content is serialized to plain values in the update operation."""
+    existing = ChecklistBlock(
+        id="B1",
+        content=ChecklistContent(items=[ChecklistItem(text="a", checked=False)]),
+    )
+    updated = ChecklistBlock(
+        id="B1",
+        content=ChecklistContent(items=[ChecklistItem(text="a", checked=True)]),
+    )
+
+    payload = NotebookCollection._generate_block_patch_payload(existing=existing, updated=updated)
+    datum = payload.model_dump(mode="json", by_alias=True)["data"][0]
+
+    assert datum["newValue"] == {"items": [{"text": "a", "checked": True}]}
+    assert datum["oldValue"] == {"items": [{"text": "a", "checked": False}]}

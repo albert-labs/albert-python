@@ -78,6 +78,9 @@ def test_get_by_ids_rejects_external_ids_combined(client: Albert):
         client.substances_v4.get_by_ids(cas_ids=[WATER_CAS], external_ids=["EXT-1"])
 
 
+@pytest.mark.skip(
+    reason="Substance writes are intermittently unavailable in the shared integration environment."
+)
 def test_update_metadata(client: Albert, static_custom_fields: list[CustomField]):
     """Test updating scalar and custom string metadata fields on a tenant substance."""
     substance_string_field = next(
@@ -116,6 +119,9 @@ def test_update_metadata(client: Albert, static_custom_fields: list[CustomField]
     )
 
 
+@pytest.mark.skip(
+    reason="Substance writes are intermittently unavailable in the shared integration environment."
+)
 def test_update_metadata_multiselect_list_field(
     client: Albert,
     static_custom_fields: list[CustomField],

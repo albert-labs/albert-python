@@ -291,7 +291,7 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 4. **The tag triggers the CircleCI `release` workflow** (`.circleci/config.yml`), which:
     * Validates the tag matches `__version__` in `src/albert/__init__.py` (`scripts/validate_release_tag.py`)
     * Builds and publishes the package to PyPI
-    * Publishes the public AWS Lambda layers across the runtime/architecture/region matrix and appends their ARNs to the GitHub Release (see `docs/lambda.md`)
+    * Publishes the public AWS Lambda layers across the runtime/architecture/region matrix, appends their ARNs to the GitHub Release, and refreshes the catalog documented in `docs/lambda.md`
     * Deploys the versioned documentation with `mike deploy <version> latest` (see [Deploying Documentation](#deploying-documentation))
 
 ### Prereleases from the `next` branch

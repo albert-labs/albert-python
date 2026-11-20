@@ -22,6 +22,7 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
+from albert.collections.descriptors import DescriptorCollection
 from albert.collections.design_candidate_sets import DesignCandidateSetCollection
 from albert.collections.design_candidates import DesignCandidateCollection
 from albert.collections.design_model_configs import DesignModelConfigCollection
@@ -319,6 +320,10 @@ class Albert:
     @property
     def data_templates(self) -> DataTemplateCollection:
         return DataTemplateCollection(session=self.session)
+
+    @property
+    def descriptors(self) -> DescriptorCollection:
+        return DescriptorCollection(session=self.session)
 
     @property
     def un_numbers(self) -> UnNumberCollection:

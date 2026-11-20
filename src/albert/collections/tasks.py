@@ -7,7 +7,6 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any, Literal, cast
 
-import requests
 from pydantic import validate_call
 from requests.exceptions import RetryError
 
@@ -1800,12 +1799,11 @@ class TaskCollection(BaseCollection):
                 payload_bytes = combinations_payload.model_dump_json(
                     by_alias=True, exclude_none=True
                 ).encode("utf-8")
-                s3_resp = requests.put(
-                    signed_url,
+                self.session.upload_to_signed_url(
+                    url=signed_url,
                     data=payload_bytes,
-                    headers={"Content-Type": "application/json"},
+                    content_type="application/json",
                 )
-                s3_resp.raise_for_status()
                 s3_url = file_key
 
         worker_metadata = WorkerJobMetadata(
