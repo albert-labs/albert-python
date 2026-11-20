@@ -30,7 +30,7 @@ Need the layer in another region? [Open an issue](https://github.com/albert-labs
 
 ## Available layer versions
 
-AWS does not let other accounts browse or search our layers, so every public layer version is listed here. Filter by SDK version, Python runtime, architecture, and your function's region, then copy the ARN:
+Albert refreshes this catalog after every SDK release. AWS does not let other accounts browse or search our layers, so this catalog lists every public layer version. Filter by SDK version, Python runtime, architecture, and your function's region, then copy the ARN:
 
 <div id="lambda-layer-catalog">
 <p>Loading layer versions. If this does not load, download <a href="https://docs.developer.albertinvent.com/albert-python/lambda-layers.json">lambda-layers.json</a> directly.</p>

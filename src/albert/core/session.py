@@ -2,6 +2,7 @@ import contextvars
 import json
 from collections.abc import Mapping
 from enum import Enum
+from typing import IO
 from urllib.parse import quote, urlencode, urljoin
 
 import requests
@@ -158,6 +159,55 @@ class AlbertSession(requests.Session):
                 return response
         finally:
             _retry_safe_request.reset(marker)
+
+    def upload_to_signed_url(self, *, url: str, data: IO | bytes, content_type: str) -> None:
+        """Upload file contents to a pre-signed storage URL.
+
+        The URL is self-authenticating, so no Albert credentials are sent with
+        the upload. The session's retry and timeout configuration applies, and
+        an error is raised if the storage service rejects the upload.
+
+        Parameters
+        ----------
+        url : str
+            The pre-signed upload URL.
+        data : IO | bytes
+            The file contents, as an open binary file-like object or raw bytes.
+        content_type : str
+            The MIME type of the file (e.g. ``"text/csv"``).
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AlbertHTTPError
+            If the storage service rejects the upload.
+        requests.ConnectionError
+            If the upload cannot be delivered after the configured retries. The
+            message omits the signed URL's query.
+        """
+        try:
+            with handle_http_errors():
+                response = super().request(
+                    "PUT",
+                    url,
+                    data=data,
+                    headers={"Content-Type": content_type, "Authorization": None},
+                    timeout=self._timeout,
+                )
+                if response.status_code >= 400:
+                    # A signed URL carries temporary access material in its query, and the
+                    # body may be the uploaded file; keep both out of errors and logs.
+                    response.url = response.url.partition("?")[0]
+                    response.request.url = response.request.url.partition("?")[0]
+                    response.request.body = None
+                response.raise_for_status()
+        except requests.ConnectionError:
+            raise requests.ConnectionError(
+                f"Connection failed for {url.partition('?')[0]}"
+            ) from None
 
     def _encode_query_params(self, params: dict) -> dict:
         """Encode and clean up query parameters for the request."""

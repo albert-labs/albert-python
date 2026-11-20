@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.76.1](https://github.com/albert-labs/albert-python/compare/v1.76.0...v1.76.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **entity-types:** allow omitted customFields.hidden ([#983](https://github.com/albert-labs/albert-python/issues/983)) ([493d0d8](https://github.com/albert-labs/albert-python/commit/493d0d8042ba535c6d4d5aa52a1094327e1fcd45))
+
+## [1.76.0](https://github.com/albert-labs/albert-python/compare/v1.75.0...v1.76.0) (2026-11-18)
+
+
+### Features
+
+* **descriptors:** add client.descriptors collection ([#963](https://github.com/albert-labs/albert-python/issues/963)) ([5881ffd](https://github.com/albert-labs/albert-python/commit/5881ffda2356f00c3fa720cca92a093edb90bfee))
+* **notebooks:** add single-block and version-history methods ([#954](https://github.com/albert-labs/albert-python/issues/954)) ([ca47dec](https://github.com/albert-labs/albert-python/commit/ca47dec41ac22c1083a4135a49df052fe6b46c7c))
+* **sheets:** add inventory rows to an existing section ([#932](https://github.com/albert-labs/albert-python/issues/932)) ([9561f0e](https://github.com/albert-labs/albert-python/commit/9561f0e0d1f82119e98acb18102b3fbb2448124b))
+
+
+### Bug Fixes
+
+* **lambda:** restore layer catalog publishing ([#976](https://github.com/albert-labs/albert-python/issues/976)) ([b2c7dd4](https://github.com/albert-labs/albert-python/commit/b2c7dd48acf2be930a279a2d03bceb8d8520fe15))
+* **parameter-groups:** accept the before and after validation operators ([#964](https://github.com/albert-labs/albert-python/issues/964)) ([307e1aa](https://github.com/albert-labs/albert-python/commit/307e1aa27faf6dd8f92872fee5cf08d0005a3bf0))
+* route signed-URL storage uploads through the session transport ([#974](https://github.com/albert-labs/albert-python/issues/974)) ([116b0a6](https://github.com/albert-labs/albert-python/commit/116b0a6b8e0d8e222fcd921e6e29abda32159fda))
+* **users:** skip the update call when nothing changed ([#981](https://github.com/albert-labs/albert-python/issues/981)) ([13b1539](https://github.com/albert-labs/albert-python/commit/13b15395bd0ee7c603249df9e8da3278e40b5f7d))
+
+## [1.75.0](https://github.com/albert-labs/albert-python/compare/v1.74.0...v1.75.0) (2026-11-17)
+
+
+### Features
+
+* **inventory:** add create_many for bulk inventory creation ([#911](https://github.com/albert-labs/albert-python/issues/911)) ([2bc7d5c](https://github.com/albert-labs/albert-python/commit/2bc7d5c8ee5137a49feca23d3af79d4f8af95543))
+* **sheets:** validate calculation expressions, atomic batch writes, formula guidance ([#970](https://github.com/albert-labs/albert-python/issues/970)) ([c4e5619](https://github.com/albert-labs/albert-python/commit/c4e56192b66c6ed3e7cb937e64f4cdac695ac0d8))
+
+
+### Bug Fixes
+
+* **notebooks:** parse embedded Artifact blocks ([#966](https://github.com/albert-labs/albert-python/issues/966)) ([c8f695c](https://github.com/albert-labs/albert-python/commit/c8f695c105e9f697e946719d1d95748520f37693))
+* **sheets:** skip ingredient basis columns when pinning ([#952](https://github.com/albert-labs/albert-python/issues/952)) ([6149b95](https://github.com/albert-labs/albert-python/commit/6149b95dd29f8e67048f73dbae660cde291c7886))
+
+## [1.74.0](https://github.com/albert-labs/albert-python/compare/v1.73.0...v1.74.0) (2026-11-16)
+
+
+### Features
+
+* **entity-types:** add delete_rule to remove a single rule ([#950](https://github.com/albert-labs/albert-python/issues/950)) ([a37ec42](https://github.com/albert-labs/albert-python/commit/a37ec4273eb119899241d027ad5a34215fd4aad8))
+
+
+### Bug Fixes
+
+* **sheets:** keep ordered new ingredient rows above the Total row ([#946](https://github.com/albert-labs/albert-python/issues/946)) ([7569d36](https://github.com/albert-labs/albert-python/commit/7569d366545f63088ac0e8e8c8bfd2e77a32cefe))
+* **sheets:** match formulations by inventory_id only against formula columns ([#955](https://github.com/albert-labs/albert-python/issues/955)) ([e1d03c9](https://github.com/albert-labs/albert-python/commit/e1d03c96b94a09e00697dd73c87e27a0b073fd1c))
+
+
+### Documentation
+
+* **attributes:** describe wt% as a fraction in formula expressions ([#953](https://github.com/albert-labs/albert-python/issues/953)) ([b7c1483](https://github.com/albert-labs/albert-python/commit/b7c1483d1a54d3c99fc81437e987ca74a2517a24))
+
 ## [1.73.0](https://github.com/albert-labs/albert-python/compare/v1.72.1...v1.73.0) (2026-11-10)
 
 

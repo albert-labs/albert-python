@@ -374,6 +374,188 @@ def test_successful_response_is_returned_without_raising():
     assert response.json() == {"ok": True}
 
 
+# --- uploads to pre-signed storage URLs ---------------------------------------
+
+
+@responses.activate
+def test_upload_to_signed_url_sends_no_authorization_header():
+    """Test that storage uploads never carry the session's Albert credentials."""
+    session = AlbertSession(
+        base_url=UNIT_BASE_URL, token="abc123", headers={"Authorization": "Bearer from-headers"}
+    )
+    responses.put("https://storage.example/signed-upload", status=200)
+
+    session.upload_to_signed_url(
+        url="https://storage.example/signed-upload", data=b"contents", content_type="text/csv"
+    )
+
+    request = responses.calls[0].request
+    assert "Authorization" not in request.headers
+    assert request.headers["Content-Type"] == "text/csv"
+    assert request.body == b"contents"
+
+
+@responses.activate
+def test_upload_to_signed_url_error_excludes_signed_query_and_body():
+    """Test that a rejected upload's error omits the URL credentials and file contents."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    responses.put("https://storage.example/signed-upload", status=400)
+
+    with pytest.raises(BadRequestError) as excinfo:
+        session.upload_to_signed_url(
+            url="https://storage.example/signed-upload?X-Amz-Signature=secret-credential",
+            data=b"secret file contents",
+            content_type="text/csv",
+        )
+
+    message = str(excinfo.value)
+    assert "secret-credential" not in message
+    assert "secret file contents" not in message
+    assert "https://storage.example/signed-upload" in message
+
+
+def test_upload_to_signed_url_applies_session_timeout(monkeypatch: pytest.MonkeyPatch):
+    """Test that storage uploads use the session default timeout, not no timeout."""
+    captured = {}
+
+    def fake_send(self, request, **kwargs):
+        captured.update(kwargs)
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b""
+        return resp
+
+    monkeypatch.setattr(requests.Session, "send", fake_send)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    session.upload_to_signed_url(
+        url="https://storage.example/signed-upload", data=b"x", content_type="text/csv"
+    )
+
+    assert captured["timeout"] == DEFAULT_TIMEOUT
+
+
+@responses.activate
+def test_upload_to_signed_url_raises_on_error_status():
+    """Test that a rejected storage upload raises instead of passing silently."""
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    responses.put("https://storage.example/signed-upload", status=403)
+
+    with pytest.raises(ForbiddenError):
+        session.upload_to_signed_url(
+            url="https://storage.example/signed-upload", data=b"x", content_type="text/csv"
+        )
+
+
+def test_upload_to_signed_url_dispatches_through_mounted_adapter(monkeypatch: pytest.MonkeyPatch):
+    """Test that the upload helper dispatches through the session's mounted adapter."""
+    seen = {}
+
+    def fake_send(self, request, **kwargs):
+        seen["adapter"] = self
+        resp = requests.Response()
+        resp.status_code = 200
+        resp.request = request
+        resp._content = b""
+        return resp
+
+    monkeypatch.setattr("requests.adapters.HTTPAdapter.send", fake_send)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    session.upload_to_signed_url(
+        url="https://storage.example/signed-upload", data=b"x", content_type="text/csv"
+    )
+
+    assert seen["adapter"] is session.get_adapter("https://storage.example")
+    assert seen["adapter"].max_retries.total == 3
+
+
+class _FakeUploadResponse:
+    """Minimal urllib3-level response for exercising the real retry machinery offline."""
+
+    status = 200
+    version = 11
+    reason = "OK"
+    headers = {}
+    msg = {}
+    decode_content = False
+
+    def get_redirect_location(self):
+        return False
+
+    def getheader(self, name, default=None):
+        return default
+
+    def stream(self, chunk_size, decode_content=True):
+        return iter([b""])
+
+    def read(self, *args, **kwargs):
+        return b""
+
+    def drain_conn(self):
+        pass
+
+    def release_conn(self):
+        pass
+
+    def close(self):
+        pass
+
+
+def test_upload_to_signed_url_retries_transient_connection_failures(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test that a dropped connection mid-upload is retried by the session policy."""
+    import http.client
+
+    from urllib3.connectionpool import HTTPConnectionPool
+
+    attempts = {"count": 0}
+
+    def fail_twice_then_succeed(self, conn, method, url, **kwargs):
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            raise http.client.RemoteDisconnected("Remote end closed connection without response")
+        return _FakeUploadResponse()
+
+    monkeypatch.setattr(HTTPConnectionPool, "_make_request", fail_twice_then_succeed)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+
+    session.upload_to_signed_url(
+        url="https://storage.example/signed-upload", data=b"x", content_type="text/csv"
+    )
+
+    assert attempts["count"] == 3
+
+
+def test_upload_to_signed_url_connection_failure_omits_signed_query(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test that an exhausted connection failure leaks neither the signed query nor its traceback."""
+    import http.client
+    import traceback
+
+    from urllib3.connectionpool import HTTPConnectionPool
+
+    def always_fail(self, conn, method, url, **kwargs):
+        raise http.client.RemoteDisconnected("Remote end closed connection without response")
+
+    monkeypatch.setattr(HTTPConnectionPool, "_make_request", always_fail)
+    session = AlbertSession(base_url=UNIT_BASE_URL, token="t")
+    # Kept out of the call statement: Python 3.13+ tracebacks render the full
+    # span of a multi-line call, so an inline literal would appear in the test's
+    # own frame regardless of what the SDK raises.
+    signed_url = "https://storage.example/signed-upload?X-Amz-Signature=secret-credential"
+
+    with pytest.raises(requests.ConnectionError) as excinfo:
+        session.upload_to_signed_url(url=signed_url, data=b"x", content_type="text/csv")
+
+    assert "secret-credential" not in str(excinfo.value)
+    assert "secret-credential" not in "".join(traceback.format_exception(excinfo.value))
+    assert "https://storage.example/signed-upload" in str(excinfo.value)
+
+
 # --- retry configuration on the mounted adapter -------------------------------
 
 

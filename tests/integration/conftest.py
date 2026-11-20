@@ -16,6 +16,7 @@ from albert.exceptions import (
     AlbertServerError,
     BadRequestError,
     ForbiddenError,
+    InternalServerError,
     NotFoundError,
 )
 from albert.resources.attachments import Attachment
@@ -920,9 +921,10 @@ def _create_entity_type(client: Albert, entity_type: EntityType) -> EntityType:
     for prefix in candidates:
         entity_type.prefix = prefix
         # Concurrent xdist workers create entity types referencing the same shared
-        # custom fields, and the service rejects colliding creates, mislabeling the
-        # conflict as "customCategory already exist". The create is atomic, so
-        # nothing is written on a conflict and a backoff retry is safe.
+        # custom fields. The service may reject colliding creates as
+        # "customCategory already exist" (400) or as a transaction conflict (500).
+        # The create is atomic, so nothing is written on a conflict and a backoff
+        # retry is safe.
         for attempt in range(4):
             try:
                 return client.entity_types.create(entity_type=entity_type)
@@ -936,6 +938,10 @@ def _create_entity_type(client: Albert, entity_type: EntityType) -> EntityType:
                     raise
                 last_error = err
                 break
+            except InternalServerError as err:
+                if "TransactionConflict" not in str(err) or attempt == 3:
+                    raise
+                time.sleep(2**attempt + random.random())
     if last_error is not None:
         raise last_error
     raise ValueError(f"No prefix candidates for category {entity_type.category}")
