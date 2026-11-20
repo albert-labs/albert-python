@@ -226,8 +226,10 @@ def test_create_generates_block_combinations(
             ],
             return_scope="none",
         )
+        # interval_combination is the child workflow on tenants with increased intervals;
+        # interval_row_key is the ROW chain on every tenant.
         records = [
-            (r.value, r.interval_combination)
+            (r.value, r.interval_row_key)
             for r in client.property_data.get_task_property_records(task_id=task.id)
             if r.block_id == interval_block_id and r.value == "7.5"
         ]
