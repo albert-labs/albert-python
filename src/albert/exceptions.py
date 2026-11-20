@@ -262,7 +262,9 @@ class CombinationGenerationError(AlbertException):
         Every task holding a block that was generated, fully populated.
     failed_blocks : list[str]
         Block IDs (format ``BLK...``) whose combination generation failed. When raised by
-        ``create_many``, each entry also names its task (``TAS.../BLK...``).
+        ``create_many``, each entry also names its task (``TAS.../BLK...``). Empty when
+        ``add_block`` or ``add_blocks`` could not identify the added blocks; find them in
+        ``task.blocks``.
     job_states : dict[str, str]
         Final generation state of each block, keyed like ``failed_blocks`` (e.g.
         ``{"BLK1": "successful", "BLK2": "failed"}``).

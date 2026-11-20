@@ -1,7 +1,9 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from itertools import zip_longest
 from pathlib import Path
 from typing import Any, Literal
+
+from requests.exceptions import RequestException
 
 from albert.collections.attachments import AttachmentCollection
 from albert.collections.base import BaseCollection
@@ -34,6 +36,7 @@ from albert.resources.tasks import (
     TaskPatchPayload,
     TaskState,
 )
+from albert.resources.worker_jobs import WorkerJob
 from albert.resources.workflows import ParameterSetpoint, Workflow
 
 CSV_EXTENSIONS: set[str] = {"csv"}
@@ -106,6 +109,31 @@ def interleave_task_blocks(*, block_ids: Mapping[str, list[str]]) -> list[tuple[
     """
     rounds = zip_longest(*([(task_id, b) for b in ids] for task_id, ids in block_ids.items()))
     return [pair for round_ in rounds for pair in round_ if pair is not None]
+
+
+def wait_for_block_jobs(
+    *,
+    jobs: Mapping[tuple[str, str], WorkerJob],
+    wait: Callable[[tuple[str, str], WorkerJob], WorkerJob],
+) -> dict[tuple[str, str], WorkerJob | None]:
+    """Wait for each block's generation job, in order, and return the finished jobs.
+
+    ``jobs`` maps ``(task ID, block ID)`` pairs to their started jobs, and ``wait`` waits
+    for one of them to finish. A block whose wait times out, fails, or loses its
+    connection maps to ``None``, and the remaining blocks are still waited for.
+    """
+    finished: dict[tuple[str, str], WorkerJob | None] = {}
+    for key, job in jobs.items():
+        try:
+            finished[key] = wait(key, job)
+        except (TimeoutError, AlbertException, RequestException) as e:
+            logger.warning(
+                "Could not wait for combination generation for task %s block %s: %s",
+                *key,
+                e,
+            )
+            finished[key] = None
+    return finished
 
 
 def build_property_payload(

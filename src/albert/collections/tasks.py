@@ -92,6 +92,7 @@ from albert.utils.tasks import (
     resolve_attachment,
     resolve_task_block,
     resolve_unassigned_task_state,
+    wait_for_block_jobs,
 )
 from albert.utils.worker_jobs import poll_worker_job
 
@@ -796,9 +797,19 @@ class TaskCollection(BaseCollection):
         response = self.session.patch(
             url=f"{self.base_path}/{task_id}", json=payload, params={"includeBlocks": "true"}
         )
-        modes = added_block_modes(
-            data=response.json() if response.content else None, task_id=task_id
-        )
+        try:
+            modes = added_block_modes(
+                data=response.json() if response.content else None, task_id=task_id
+            )
+        except AlbertException as e:
+            # The blocks exist, so raise the error callers handle without adding them again.
+            task = cast(PropertyTask | BatchTask, self.get_by_id(id=task_id))
+            raise CombinationGenerationError(
+                f"{e} Do not add them again: find them on the task and generate their "
+                "combinations with generate_block_combinations.",
+                task=task,
+                tasks=[task],
+            ) from e
         block_ids = child_workflow_block_ids(modes=modes)
         if block_ids:
             self._run_block_combination_jobs(
@@ -1382,21 +1393,24 @@ class TaskCollection(BaseCollection):
             last_started[task_id] = time.monotonic()
 
         if wait:
-            for (task_id, block_id), job in jobs.items():
-                try:
-                    job = poll_worker_job(
-                        session=self.session,
-                        job_id=job.albert_id,
-                        raise_on_failure=False,
-                        job_description=f"Create child workflows for task {task_id} block {block_id}",
-                    )
-                except (TimeoutError, AlbertException):
+
+            def wait_for_job(key: tuple[str, str], job: WorkerJob) -> WorkerJob:
+                return poll_worker_job(
+                    session=self.session,
+                    job_id=job.albert_id,
+                    raise_on_failure=False,
+                    job_description=f"Create child workflows for task {key[0]} block {key[1]}",
+                )
+
+            finished = wait_for_block_jobs(jobs=jobs, wait=wait_for_job)
+            for (task_id, block_id), finished_job in finished.items():
+                if finished_job is None:
                     failed.add(label(task_id, block_id))
                     job_states[label(task_id, block_id)] = "failed"
                     continue
-                jobs[(task_id, block_id)] = job
-                job_states[label(task_id, block_id)] = job.state.value
-                if job.state != WorkerJobState.SUCCESSFUL:
+                jobs[(task_id, block_id)] = finished_job
+                job_states[label(task_id, block_id)] = finished_job.state.value
+                if finished_job.state != WorkerJobState.SUCCESSFUL:
                     failed.add(label(task_id, block_id))
 
         if failed:
