@@ -171,9 +171,12 @@ received it.
 
 ## Workflow changes and barcodes
 
-- When you change a block's workflow, combinations whose parameter setpoints exist in both
-  workflows keep their interval barcodes and their results. Combinations the new workflow
-  no longer has are removed, and their results are voided.
+- When you change a block's workflow, each combination of the new workflow keeps the
+  interval barcode and results of its best-matching combination in the replaced workflow.
+  Old combinations that are not carried forward are removed, and their results are voided.
+- The best match can differ in setpoints the new workflow fixes or no longer varies. For
+  example, a result measured at Volume 25 can land on a combination where Volume is fixed
+  at 30. Check carried-over results after a workflow change.
 - Generating a block's combinations again, for example after a rules change, keeps the
   barcodes of combinations that remain.
 - You no longer pass `old_workflow_id` to `generate_block_combinations` or
