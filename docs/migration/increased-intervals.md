@@ -7,7 +7,20 @@ not have the feature, nothing here applies and your existing code keeps working.
 ## Do you need to do anything?
 
 Upgrade to SDK version **1.77.0** or later. It is the minimum version for tenants with
-increased intervals.
+increased intervals. Upgrade the package in your Python environment yourself; enabling
+increased intervals does not upgrade the SDK automatically.
+
+=== "pip"
+
+    ```bash
+    pip install --upgrade "albert>=1.77.0"
+    ```
+
+=== "uv"
+
+    ```bash
+    uv add "albert>=1.77.0"
+    ```
 
 With increased intervals, every block of a Property or Batch task needs its interval
 **combinations** generated before it can show rows or take results. Older SDK versions do
