@@ -87,6 +87,13 @@ def test_hydrate_user(client: Albert):
         pytest.skip("No search hits could be hydrated (stale index IDs)")
 
 
+def test_user_update_no_changes(client: Albert, static_user: User):
+    """Test that updating a user without changes returns the current user."""
+    updated = client.users.update(user=static_user)
+    assert updated.id == static_user.id
+    assert updated.name == static_user.name
+
+
 def test_user_delete_non_existent(client: Albert):
     """Test deleting a non-existent user raises NotFoundError."""
     with pytest.raises(NotFoundError):

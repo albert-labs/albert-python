@@ -122,6 +122,8 @@ class LotCollection(BaseCollection):
         Delete a lot by its ID.
     delete_many(ids) -> None
         Delete multiple lots by their IDs.
+    reactivate(id) -> Lot
+        Reactivate a deleted lot by its ID.
     """
 
     _api_version = "v3"
@@ -383,6 +385,33 @@ class LotCollection(BaseCollection):
             return
         for i in range(0, len(ids), _DELETE_MAX_IDS):
             self.session.delete(self.base_path, params={"id": ids[i : i + _DELETE_MAX_IDS]})
+
+    @validate_call
+    def reactivate(self, *, id: LotId) -> Lot:
+        """Reactivate a deleted lot by its ID.
+
+        Restores a lot previously deleted with
+        [`delete`][albert.collections.lots.LotCollection.delete].
+
+        !!! example
+            ```python
+            lot = client.lots.reactivate(id="LOTA1")
+            lot.status
+            # 'active'
+            ```
+
+        Parameters
+        ----------
+        id : LotId
+            The Lot ID to reactivate (format ``LOT...``).
+
+        Returns
+        -------
+        Lot
+            The fully populated reactivated Lot.
+        """
+        self.session.patch(f"{self.base_path}/reactivate", params={"id": id})
+        return self.get_by_id(id=id)
 
     @validate_call
     def search(
