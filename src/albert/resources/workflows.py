@@ -587,7 +587,7 @@ class Workflow(BaseResource):
 
     @validate_call
     def get_override_key(self, *, parameter_values: dict[str, Any]) -> str:
-        """Build the compound override key for a set of parameter values (🧪 Beta).
+        """Build the compound override key for a set of parameter values.
 
         Matches each given parameter name and value against the workflow's intervalized
         parameters and assembles the compound key in the format
@@ -610,12 +610,6 @@ class Workflow(BaseResource):
         interval value of ``"25"``. Matching on parameter name checks both the parameter's
         name and short name (case-insensitive). Segments are ordered in the canonical
         order that the parameters appear in the workflow.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -684,17 +678,11 @@ class Workflow(BaseResource):
         unit: str | Unit | None = None,
         group: str | None = None,
     ) -> RuleCondition:
-        """Build a rule condition from a parameter name, short name, or ID and value (🧪 Beta).
+        """Build a rule condition from a parameter name, short name, or ID and value.
 
         Resolves the parameter's group ID, parameter ID, row ID, and unit ID from
         this workflow's defined setpoints, avoiding the need to manually lookup
         internal IDs.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -870,7 +858,7 @@ class Workflow(BaseResource):
         unit: str | Unit | None = None,
         group: str | None = None,
     ) -> ExclusionRule:
-        """Build a rule from conditions or parameter criteria (🧪 Beta).
+        """Build a rule from conditions or parameter criteria.
 
         Convenience builder that constructs a named [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule]
         using human-readable parameter names and values rather than internal IDs.
@@ -889,12 +877,6 @@ class Workflow(BaseResource):
             combination satisfying all conditions is pruned/excluded from the task block.
           - In Include Mode (``"none"``): The rule acts as an inclusion rule. Combinations
             satisfying all conditions are kept/included in the task block.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -1014,7 +996,7 @@ class Workflow(BaseResource):
         action: OverrideAction | str = OverrideAction.SKIP,
         is_manual: bool | None = None,
     ) -> CombinationOverride:
-        """Build a combination override from parameter values (🧪 Beta).
+        """Build a combination override from parameter values.
 
         Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
         targeting a single specific combination variant by its exact parameter values,
@@ -1034,12 +1016,6 @@ class Workflow(BaseResource):
         - **Manual Cherry-Picking (`is_manual=True`)**: In Include Mode (``intervals_start_from="none"``),
           setting ``is_manual=True`` designates a manually cherry-picked combination from an
           otherwise empty baseline.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python

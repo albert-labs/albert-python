@@ -2,12 +2,7 @@
 
 Tasks in Albert are a way to manage and track your daily work and collaborate with colleagues. There are three types of tasks: Batch Tasks, Property Tasks, and General Tasks.
 
-## Intervals, Rules, and Overrides Overview (🧪 Beta)
-
-!!! warning "Beta Feature!"
-    Increased intervals combination support is currently in beta and behind a platform feature flag.
-    Please do not use in production or without explicit guidance from Albert. This feature currently
-    falls outside of the Albert support contract, but we'd love your feedback!
+## Intervals, Rules, and Overrides Overview
 
 ### Which method should I use?
 

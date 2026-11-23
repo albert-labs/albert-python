@@ -1,10 +1,8 @@
-# Increased Intervals (🧪Beta)
+# Increased Intervals
 
 This guide is for you if increased intervals is enabled for your tenant and you create or
 edit **Property tasks** or **Batch tasks** with the Albert Python SDK. If your tenant does
 not have the feature, nothing here applies and your existing code keeps working.
-
-Increased intervals and the combination methods described here remain in beta in SDK 1.77.0.
 
 ## Do you need to do anything?
 
@@ -166,8 +164,7 @@ for record in records:
 - For raw reads, match the child workflow ID against `id` from `get_block_combinations`.
   The matching combination's `interval_row_key` gives its ROW chain. Alternatively, use
   `get_task_property_records`, which does this mapping for you.
-- If your code already matches child workflow IDs in `interval_combination`, as the beta
-  guide advised, it keeps working.
+- If your code already matches child workflow IDs in `interval_combination`, it keeps working.
 
 ### Writing, voiding and checking results
 

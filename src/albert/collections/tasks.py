@@ -169,7 +169,7 @@ class TaskCollection(BaseCollection):
         Create a PropertyTask, BatchTask, or GeneralTask.
     create_many(tasks, wait=True) -> list[BaseTask]
         Create multiple tasks in a single call.
-    create_with_combinations(task, wait=True) -> PropertyTask | BatchTask (🧪 Beta)
+    create_with_combinations(task, wait=True) -> PropertyTask | BatchTask
         Create a Property or Batch task and generate its block combinations (increased intervals).
     get_by_id(id) -> BaseTask
         Get a single fully populated task by its ID.
@@ -193,17 +193,17 @@ class TaskCollection(BaseCollection):
         Swap the Workflow assigned to a Block.
     update_task_workflow(task_id, workflow_id) -> BatchTask
         Swap the Workflow assigned to a batch task.
-    get_block_combinations(task_id, block_id, max_items=None) -> Iterator[IntervalCombinationItem] (🧪 Beta)
+    get_block_combinations(task_id, block_id, max_items=None) -> Iterator[IntervalCombinationItem]
         Get the child-workflow combinations of a block.
-    get_block_rules(task_id, block_id) -> BlockRules (🧪 Beta)
+    get_block_rules(task_id, block_id) -> BlockRules
         Get combination rules and overrides for a block.
-    set_block_rules(task_id, block_id, rules=None, overrides=None, generate_combinations=True, old_workflow_id=None, wait=True) -> BlockRules (🧪 Beta)
+    set_block_rules(task_id, block_id, rules=None, overrides=None, generate_combinations=True, old_workflow_id=None, wait=True) -> BlockRules
         Set combination rules and overrides for a block, automatically regenerating combinations.
-    add_block_inventory_exclusions(task_id, block_id, exclusions) -> BlockRules (🧪 Beta)
+    add_block_inventory_exclusions(task_id, block_id, exclusions) -> BlockRules
         Mask inventory x combination pairs on a block.
-    remove_block_inventory_exclusions(task_id, block_id, exclusion_ids) -> BlockRules (🧪 Beta)
+    remove_block_inventory_exclusions(task_id, block_id, exclusion_ids) -> BlockRules
         Unmask inventory x combination pairs on a block.
-    generate_block_combinations(task_id, block_id, old_workflow_id=None, wait=True) -> WorkerJob (🧪 Beta)
+    generate_block_combinations(task_id, block_id, old_workflow_id=None, wait=True) -> WorkerJob
         Generate child-workflow interval combinations for a task block.
     import_results(...) -> BaseTask
         Import measured results into a Property task from a file or attachment.
@@ -439,7 +439,7 @@ class TaskCollection(BaseCollection):
         task: PropertyTask | BatchTask,
         wait: bool = True,
     ) -> PropertyTask | BatchTask:
-        """Create a Property or Batch task and generate interval combinations across all its blocks (🧪 Beta).
+        """Create a Property or Batch task and generate interval combinations across all its blocks.
 
         Use this method to create a Property or Batch task whose blocks need combination
         rules or overrides, or workflows defined inline, when increased intervals is
@@ -501,12 +501,6 @@ class TaskCollection(BaseCollection):
         To update rules or regenerate combinations on an existing task later, use
         [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] and
         [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -990,7 +984,7 @@ class TaskCollection(BaseCollection):
     def get_block_combinations(
         self, *, task_id: TaskId, block_id: BlockId, max_items: int | None = None
     ) -> Iterator[IntervalCombinationItem]:
-        """Get the child-workflow interval combinations of a task block (🧪 Beta).
+        """Get the child-workflow interval combinations of a task block.
 
         Retrieves the combinations generated for a task block, for example by
         [`create`][albert.collections.tasks.TaskCollection.create],
@@ -1005,12 +999,6 @@ class TaskCollection(BaseCollection):
         Results are returned as a lazily paginated iterator. Do not infer the end
         of results from page size: a page can under-return while more combinations
         remain.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -1060,7 +1048,7 @@ class TaskCollection(BaseCollection):
         task_id: TaskId,
         block_id: BlockId,
     ) -> BlockRules:
-        """Get combination rules and overrides for a task block (🧪 Beta).
+        """Get combination rules and overrides for a task block.
 
         Returns the rules ([`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule])
         and overrides ([`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride])
@@ -1074,12 +1062,6 @@ class TaskCollection(BaseCollection):
         Use this method to inspect existing rules before updating them with
         [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]
         (which automatically regenerates child-workflow combinations by default).
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -1140,7 +1122,7 @@ class TaskCollection(BaseCollection):
         block_id: BlockId,
         exclusions: list[InventoryExclusion],
     ) -> BlockRules:
-        """Add inventory x combination exclusions ("masks") to a task block (🧪 Beta).
+        """Add inventory x combination exclusions ("masks") to a task block.
 
         Each exclusion marks one task-level inventory tuple
         (``inv_lot_unique_id``, occurrence included) as excluded from one interval
@@ -1152,12 +1134,6 @@ class TaskCollection(BaseCollection):
         twice is rejected. Additions are idempotent-safe via
         [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]:
         check ``inventory_exclusions`` first if re-running a script.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example "Masking an inventory x combination pair"
             ```python
@@ -1239,16 +1215,10 @@ class TaskCollection(BaseCollection):
         block_id: BlockId,
         exclusion_ids: list[str],
     ) -> BlockRules:
-        """Remove inventory x combination exclusions ("masks") from a task block (🧪 Beta).
+        """Remove inventory x combination exclusions ("masks") from a task block.
 
         Unmasks previously excluded inventory x combination pairs; the pairs render
         again on property-data grids.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example "Unmasking pairs"
             ```python
@@ -1464,7 +1434,7 @@ class TaskCollection(BaseCollection):
         old_workflow_id: WorkflowId | None = None,
         wait: bool = True,
     ) -> BlockRules:
-        """Set combination rules and overrides for a task block (🧪 Beta).
+        """Set combination rules and overrides for a task block.
 
         Configures or replaces rules and overrides on the specified block, and
         by default immediately recomputes and regenerates child-workflow combinations on
@@ -1504,12 +1474,6 @@ class TaskCollection(BaseCollection):
         [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override]
         on the block's parent workflow. Override keys can also be computed directly using
         [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key].
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -1663,7 +1627,7 @@ class TaskCollection(BaseCollection):
         old_workflow_id: WorkflowId | None = None,
         wait: bool = True,
     ) -> WorkerJob:
-        """Generate child-workflow interval combinations for a task block (🧪 Beta).
+        """Generate child-workflow interval combinations for a task block.
 
         Calculates combination variants from the block's workflow, rules, and overrides,
         then launches a background generation job to materialize the child workflows
@@ -1695,12 +1659,6 @@ class TaskCollection(BaseCollection):
 
         Once generation finishes, retrieve the resulting combinations using
         [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations].
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
