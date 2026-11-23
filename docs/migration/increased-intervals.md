@@ -4,32 +4,31 @@ This guide is for you if increased intervals is enabled for your tenant and you 
 edit **Property tasks** or **Batch tasks** with the Albert Python SDK. If your tenant does
 not have the feature, nothing here applies and your existing code keeps working.
 
-<!-- TODO before merging: replace X.Y.Z with the first release that generates block combinations automatically. -->
-
 ## Do you need to do anything?
 
-Upgrade to SDK version **X.Y.Z** or later. It is the minimum version for tenants with
+Upgrade to SDK version **1.77.0** or later. It is the minimum version for tenants with
 increased intervals.
 
 With increased intervals, every block of a Property or Batch task needs its interval
 **combinations** generated before it can show rows or take results. Older SDK versions do
 not generate them when you call `create`, `create_many`, `add_block`, `add_blocks` or
 `update_block_workflow`: the block is saved, but it stays on "Loading data" in Albert and
-no error is raised. From version X.Y.Z, these methods generate the combinations of the
+no error is raised. From version 1.77.0, these methods generate the combinations of the
 blocks they add or change before they return.
 
-- **None of your tasks use intervalized parameters:** upgrade, and you're done. No code
-  changes.
+- **None of your tasks use intervalized parameters:** no call-site changes for new tasks.
+  Still check the existing-block warning below.
 - **Your tasks use intervals:** upgrade, then read [If you use intervals](#if-you-use-intervals).
 
 General tasks hold no blocks and are not affected.
 
 !!! note "Creating tasks and changing blocks takes longer"
     `create`, `create_many`, `add_block`, `add_blocks` and `update_block_workflow` now wait
-    until the combinations of each block are generated, and the blocks of one task are
-    generated at least 10 seconds apart. Pass `wait=False` to return as soon as generation
-    has started. The blocks of tasks returned by `create` and `create_many` carry `job_id`
-    and `job_state` so you can follow them.
+    until the combinations of each block are generated. Generation jobs for multiple blocks
+    of one task start at least 10 seconds apart. Pass `wait=False` to return after the
+    generation jobs have been submitted. A failure that happens later is not raised by that
+    call, so track the jobs. The blocks of tasks returned by `create` and `create_many`
+    carry `job_id` and `job_state` so you can follow them.
 
 !!! warning "Blocks created with an older SDK version"
     Upgrading does not repair blocks that an older version already created on your tenant.
@@ -63,10 +62,17 @@ General tasks hold no blocks and are not affected.
 
 ## Handle generation failures
 
-When generation fails on any block, `create`, `create_many`, `create_with_combinations`,
+When generation cannot be started, or with `wait=True` when a job fails, does not finish
+in time or cannot be monitored, `create`, `create_many`, `create_with_combinations`,
 `add_block`, `add_blocks` and `update_block_workflow` raise `CombinationGenerationError`
-after trying every block. The task or block already exists, so retry only the failed
-blocks with `generate_block_combinations`. It keeps interval barcodes.
+after trying every selected block. With `wait=False`, only failures to start generation
+are included; later job failures are not. The task or block already exists, so retry only
+the failed blocks with `generate_block_combinations`. It keeps interval barcodes. If
+waiting times out or monitoring fails, the job may still be running; check it before
+retrying.
+
+If `err.failed_blocks` is empty after `add_block` or `add_blocks`, find the added block
+IDs on `err.task.blocks`.
 
 ```python
 import time
@@ -119,8 +125,10 @@ results by it. Most of that code keeps working; the changes are below.
 
 ### Rules and overrides
 
-`create` and `add_block` generate every combination of the block's workflow, with no rules
-or overrides. To apply rules or overrides:
+By default, `create`, `create_many`, `add_block` and `add_blocks` generate combinations
+without adding rules or overrides. `create` and `create_many` preserve the block's
+`intervals_start_from` baseline. `add_block` and `add_blocks` use the new block's baseline,
+which defaults to `"all"`. To apply rules or overrides:
 
 - When you create the task, use `create_with_combinations`, with the rules and overrides on
   the blocks.
@@ -139,8 +147,8 @@ to the raw reads, `property_data.get_all_task_properties` and
 `property_data.get_task_block_properties`. Code that matches results on `ROW` chains finds
 none.
 
-`get_task_property_records` also gives every record its `ROW` chain in `interval_row_key`,
-on every tenant, and fills `parameter_setpoints`:
+`get_task_property_records` adds `interval_row_key` on every tenant and resolves
+`parameter_setpoints` when it can map the interval to the workflow:
 
 ```python
 records = client.property_data.get_task_property_records(task_id="TAS123")
@@ -150,22 +158,35 @@ for record in records:
 ```
 
 - If your code matches results by `ROW` chain, match on `interval_row_key` instead of
-  `interval_combination`. It works on tenants with and without the feature.
+  `interval_combination`. It works on tenants with and without the feature. The value is
+  `None` for `"default"` and when the ROW chain cannot be resolved; `parameter_setpoints`
+  is empty when the setpoints cannot be resolved.
+- For raw reads, match the child workflow ID against `id` from `get_block_combinations`.
+  The matching combination's `interval_row_key` gives its ROW chain. Alternatively, use
+  `get_task_property_records`, which does this mapping for you.
 - If your code already matches child workflow IDs in `interval_combination`, as the beta
   guide advised, it keeps working.
 
 ### Writing, voiding and checking results
 
-Writing, voiding and unvoiding results accept a `ROW` chain, a child workflow ID or an
-interval barcode, so code that writes by `ROW` chain keeps working. Interval checks accept a
-`ROW` chain or child workflow ID and report the interval back as its child workflow ID.
+Writing new results, voiding and unvoiding accept a `ROW` chain, a child workflow ID or an
+interval barcode, so code that writes new results by `ROW` chain keeps working. Interval
+checks accept a `ROW` chain or child workflow ID and report the interval back as its child
+workflow ID.
+
+!!! note "Updating existing trials"
+    For `update_or_create_task_properties` on an existing increased-intervals trial, use
+    the child workflow ID reported in `interval_combination` or listed as `id` by
+    `get_block_combinations`. The SDK uses that stored ID to find the existing trial; a
+    `ROW` chain or barcode does not match it during this lookup.
 
 ### Scripts that parse import metadata
 
-`import_results` switches to the newer metadata format on its own for blocks with
-increased intervals, so your calls don't change. Scripts that read that metadata
-themselves have a separate migration. Ask your Albert representative if you have not
-received it.
+For Property tasks, `import_results` with `mode=ImportMode.SCRIPT` switches to the newer
+metadata format on its own for blocks with increased intervals, so your calls don't change.
+`import_results` does not support Batch tasks; use `batch_data` for those. Scripts that read
+the metadata themselves have a separate migration. Ask your Albert representative if you
+have not received it.
 
 ---
 
@@ -179,13 +200,17 @@ received it.
   at 30. Check carried-over results after a workflow change.
 - Generating a block's combinations again, for example after a rules change, keeps the
   barcodes of combinations that remain.
-- You no longer pass `old_workflow_id` to `generate_block_combinations` or
-  `set_block_rules`. Albert finds the block's earlier workflow itself, also when the
-  workflow was changed in another script or by an older SDK version. Pass it only to name a
-  specific earlier workflow.
 - If generation fails after a workflow change, run `generate_block_combinations` for the
   block soon. Barcodes are kept, but results entered before the change may not move to the
   new combinations; check them and enter any that are missing again.
+
+!!! note "Usually leave `old_workflow_id` unset"
+    `update_block_workflow` supplies the replaced workflow automatically, and direct
+    `generate_block_combinations` calls can use the previous workflow recorded on the
+    block, including when another script or an older SDK version changed it.
+    `set_block_rules` uses the block's current workflow when regenerating rules. Pass
+    `old_workflow_id` to `generate_block_combinations` or `set_block_rules` only when you
+    need to select a specific earlier workflow yourself.
 
 ---
 
@@ -196,8 +221,10 @@ These are optional and need increased intervals. They are not part of the migrat
 - Rules and overrides decide which combinations a block keeps: `create_with_combinations`,
   `set_block_rules`, `get_block_rules`, and the `Workflow.build_rule`,
   `Workflow.build_rule_condition` and `Workflow.build_override` helpers.
-- Inventory exclusions leave combinations out for selected inventory:
-  `add_block_inventory_exclusions` and `remove_block_inventory_exclusions`.
+- Inventory exclusions omit selected inventory-and-combination pairs from property-data
+  grids, exports and data-completeness checks: `add_block_inventory_exclusions` and
+  `remove_block_inventory_exclusions`. They do not reduce the number of combinations
+  generated for the block.
 - Every combination has a persistent interval barcode, listed by `get_block_combinations`.
 - A block holds at most **2,000** combinations after rules and overrides. Above that,
   generation fails.
@@ -213,9 +240,10 @@ These are optional and need increased intervals. They are not part of the migrat
   order given. Both returned `None` before.
 - `CombinationGenerationError` is raised by the methods above when generation fails or
   cannot be started. It carries `task`, `tasks`, `failed_blocks` and `job_states`.
-- `TaskPropertyRecord.interval_row_key` gives the `ROW` chain of a record's interval on
-  every tenant, and `parameter_setpoints` is now filled on tenants with increased
-  intervals. `interval_combination` is unchanged.
+- `TaskPropertyRecord.interval_row_key` gives the resolved `ROW` chain of a record's
+  interval on every tenant, and `parameter_setpoints` is now filled on tenants with
+  increased intervals when the setpoints can be resolved. `interval_combination` is
+  unchanged.
 - `Block.combinations_mode` (`"child_workflows"` or `"legacy"`) and
   `Block.previous_workflow_id` are new read-only fields.
 - `update_block_workflow` and `generate_block_combinations` work on blocks that use the
@@ -246,13 +274,13 @@ when you create a task or add a block; Albert rejects them.
 
 ## Migration checklist
 
-- [ ] SDK upgraded to X.Y.Z or later
+- [ ] SDK upgraded to 1.77.0 or later
 - [ ] Combinations generated once for blocks an older SDK version created on your tenant
 - [ ] `wait` decided for each `create`, `create_many`, `add_block`, `add_blocks` and `update_block_workflow` call
 - [ ] `CombinationGenerationError` handled, with retries limited to the failed blocks
 - [ ] Rules and overrides applied with `create_with_combinations` or `set_block_rules`
 - [ ] Code that matches results by `ROW` chain reads `interval_row_key` from `get_task_property_records`
-- [ ] Raw reads (`get_all_task_properties`, `get_task_block_properties`) no longer matched on `ROW` strings
+- [ ] Raw reads (`get_all_task_properties`, `get_task_block_properties`) use child workflow IDs, mapped through `get_block_combinations` when a ROW chain is needed
 
 ## Troubleshooting
 
