@@ -550,3 +550,16 @@ def test_delete_many(
     deleted = client.lots.get_by_ids(ids=ids)
     assert {lot.id for lot in deleted} == set(ids)
     assert all(lot.status == LotStatus.INACTIVE for lot in deleted)
+
+
+def test_reactivate_lot(client: Albert, seeded_lot: Lot):
+    """Test reactivating a deleted lot restores it to active status."""
+    client.lots.delete(id=seeded_lot.id)
+    deleted = client.lots.get_by_ids(ids=[seeded_lot.id])
+    assert len(deleted) == 1
+    assert deleted[0].status == LotStatus.INACTIVE
+
+    reactivated = client.lots.reactivate(id=seeded_lot.id)
+
+    assert reactivated.id == seeded_lot.id
+    assert reactivated.status == LotStatus.ACTIVE
