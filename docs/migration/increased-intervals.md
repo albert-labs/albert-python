@@ -71,8 +71,9 @@ the failed blocks with `generate_block_combinations`. It keeps interval barcodes
 waiting times out or monitoring fails, the job may still be running; check it before
 retrying.
 
-If `err.failed_blocks` is empty after `add_block` or `add_blocks`, find the added block
-IDs on `err.task.blocks`.
+`err.failed_blocks` is empty after `add_block` or `add_blocks` only when Albert did not
+report which blocks were added. Generate combinations for the blocks on `err.task.blocks`
+that were not on the task before the call.
 
 ```python
 import time
@@ -168,16 +169,11 @@ for record in records:
 
 ### Writing, voiding and checking results
 
-Writing new results, voiding and unvoiding accept a `ROW` chain, a child workflow ID or an
-interval barcode, so code that writes new results by `ROW` chain keeps working. Interval
-checks accept a `ROW` chain or child workflow ID and report the interval back as its child
-workflow ID.
-
-!!! note "Updating existing trials"
-    For `update_or_create_task_properties` on an existing increased-intervals trial, use
-    the child workflow ID reported in `interval_combination` or listed as `id` by
-    `get_block_combinations`. The SDK uses that stored ID to find the existing trial; a
-    `ROW` chain or barcode does not match it during this lookup.
+Writing and updating results, voiding and unvoiding accept a `ROW` chain, a child workflow
+ID or an interval barcode, so code that writes or updates results by `ROW` chain keeps
+working. `update_or_create_task_properties` finds an existing trial whichever form you pass.
+Interval checks accept a `ROW` chain or child workflow ID and report the interval back as
+its child workflow ID.
 
 ### Scripts that parse import metadata
 
@@ -242,6 +238,8 @@ These are optional and need increased intervals. They are not part of the migrat
 - `TaskPropertyRecord.interval_row_key` gives the resolved `ROW` chain of a record's
   interval, and `parameter_setpoints` is now filled when the setpoints can be resolved.
   `interval_combination` is unchanged.
+- `update_or_create_task_properties` updates the existing trial when its interval is given
+  as a `ROW` chain or interval barcode, instead of adding a new trial.
 - `Block.combinations_mode` (`"child_workflows"` or `"legacy"`) and
   `Block.previous_workflow_id` are new read-only fields.
 - `update_block_workflow` and `generate_block_combinations` work on blocks that use the

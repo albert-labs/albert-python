@@ -705,8 +705,9 @@ class PropertyDataCollection(BaseCollection):
         On tenants with increased intervals, ``interval_combination`` is the child workflow
         of each combination (``WFL...``), as Albert stores it. On every tenant,
         ``interval_row_key`` gives the ROW chain (as from
-        [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]) and
-        ``parameter_setpoints`` names the conditions.
+        [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]) when it
+        can be resolved, and ``None`` for ``"default"``. ``parameter_setpoints`` names the
+        conditions when they can be resolved.
 
         Narrow the read with ``inventory_id`` and ``lot_id`` when only part of the task
         is of interest. Combinations that do not match are never requested, so
