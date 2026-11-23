@@ -1,10 +1,12 @@
 from contextlib import suppress
 from pathlib import Path
+from uuid import uuid4
 
 import pandas as pd
 import pytest
 
 from albert import Albert
+from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import ForbiddenError, InternalServerError, NotFoundError
 from albert.resources.attachments import Attachment, AttachmentCategory
@@ -57,7 +59,7 @@ def test_data_template_get_all_basic(client: Albert, seeded_data_templates: list
 def test_data_template_search(
     client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
 ):
-    """Test search with owner, tags, data columns, and additional fields."""
+    """Test search filters and additional fields."""
     seeded_ids = {dt.id for dt in seeded_data_templates}
     hits = poll_until(
         lambda: [
@@ -110,6 +112,49 @@ def test_data_template_search(
         )
     )
     assert_valid_data_template_items(results, DataTemplateSearchItem)
+
+
+def test_data_template_search_uses_cursor_pagination(
+    client: Albert, seed_prefix: str, monkeypatch: pytest.MonkeyPatch
+):
+    """Test search returns scoped matches exactly once across cursor pages."""
+    monkeypatch.setattr("albert.core.pagination.DEFAULT_LIMIT", 1)
+    search_token = uuid4().hex
+    data_templates = []
+    try:
+        for suffix in ("first", "second"):
+            data_templates.append(
+                client.data_templates.create(
+                    data_template=DataTemplate(
+                        name=f"{seed_prefix}-{search_token}-cursor-{suffix}"
+                    )
+                )
+            )
+        template_ids = [template.id for template in data_templates]
+
+        def search_all_matches():
+            results = client.data_templates.search(name=search_token)
+            matches = list(results)
+            assert results.mode == PaginationMode.SEARCH_AFTER
+            assert results.json["limit"] == 1
+            scoped_matches = [item for item in matches if item.id in template_ids]
+            return scoped_matches, results.has_more, results.json["searchAfter"]
+
+        matches, has_more, final_cursor = poll_until(
+            search_all_matches,
+            predicate=lambda result: sorted(item.id for item in result[0]) == sorted(template_ids),
+        )
+        assert sorted(item.id for item in matches) == sorted(template_ids)
+        assert not has_more
+        assert final_cursor
+
+        early_results = client.data_templates.search(name=search_token, max_items=1)
+        assert len(list(early_results)) == 1
+        assert early_results.has_more
+    finally:
+        for template in data_templates:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=template.id)
 
 
 def test_data_template_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
