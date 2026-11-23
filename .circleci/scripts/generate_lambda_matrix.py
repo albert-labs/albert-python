@@ -162,13 +162,22 @@ def build_catalog_job(regions: str) -> dict:
         "steps": [
             "checkout",
             {"add_ssh_keys": {"fingerprints": [DOCS_DEPLOY_KEY_FINGERPRINT]}},
-            {"run": {"name": "Install boto3", "command": "python -m pip install --quiet boto3"}},
+            {
+                "run": {
+                    "name": "Install boto3",
+                    "command": (
+                        'PYENV_VERSION="$PYTHON_VERSION" '
+                        "pyenv exec python -m pip install --quiet boto3"
+                    ),
+                }
+            },
             {
                 "run": {
                     "name": "Build Lambda layer catalog",
                     "command": (
                         "set -euo pipefail\n"
-                        "python .circleci/scripts/lambda_layer_catalog.py \\\n"
+                        'PYENV_VERSION="$PYTHON_VERSION" pyenv exec python '
+                        ".circleci/scripts/lambda_layer_catalog.py \\\n"
                         f'  --regions "{",".join(catalog_regions)}" \\\n'
                         f'  --output  "{catalog_path}"'
                     ),
@@ -187,6 +196,7 @@ def build_catalog_job(regions: str) -> dict:
                         "set -euo pipefail\n"
                         'git config --global user.name "CircleCI"\n'
                         'git config --global user.email "circleci@users.noreply.github.com"\n'
+                        'PYENV_VERSION="$PYTHON_VERSION" '
                         ".circleci/scripts/publish-lambda-layer-catalog.sh \\\n"
                         f'  --file "{catalog_path}"'
                     ),
