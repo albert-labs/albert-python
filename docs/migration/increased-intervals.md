@@ -27,8 +27,8 @@ General tasks hold no blocks and are not affected.
     until the combinations of each block are generated. Generation jobs for multiple blocks
     of one task start at least 10 seconds apart. Pass `wait=False` to return after the
     generation jobs have been submitted. A failure that happens later is not raised by that
-    call, so track the jobs. The blocks of tasks returned by `create` and `create_many`
-    carry `job_id` and `job_state` so you can follow them.
+    call. The blocks of tasks returned by `create` and `create_many` carry the submitted
+    job's `job_id` and `job_state`.
 
 !!! warning "Blocks created with an older SDK version"
     Upgrading does not repair blocks that an older version already created on your tenant.
@@ -147,8 +147,8 @@ to the raw reads, `property_data.get_all_task_properties` and
 `property_data.get_task_block_properties`. Code that matches results on `ROW` chains finds
 none.
 
-`get_task_property_records` adds `interval_row_key` on every tenant and resolves
-`parameter_setpoints` when it can map the interval to the workflow:
+`get_task_property_records` adds `interval_row_key` and resolves `parameter_setpoints`
+when it can map the interval to the workflow:
 
 ```python
 records = client.property_data.get_task_property_records(task_id="TAS123")
@@ -158,9 +158,8 @@ for record in records:
 ```
 
 - If your code matches results by `ROW` chain, match on `interval_row_key` instead of
-  `interval_combination`. It works on tenants with and without the feature. The value is
-  `None` for `"default"` and when the ROW chain cannot be resolved; `parameter_setpoints`
-  is empty when the setpoints cannot be resolved.
+  `interval_combination`. The value is `None` for `"default"` and when the ROW chain cannot
+  be resolved; `parameter_setpoints` is empty when the setpoints cannot be resolved.
 - For raw reads, match the child workflow ID against `id` from `get_block_combinations`.
   The matching combination's `interval_row_key` gives its ROW chain. Alternatively, use
   `get_task_property_records`, which does this mapping for you.
@@ -241,9 +240,8 @@ These are optional and need increased intervals. They are not part of the migrat
 - `CombinationGenerationError` is raised by the methods above when generation fails or
   cannot be started. It carries `task`, `tasks`, `failed_blocks` and `job_states`.
 - `TaskPropertyRecord.interval_row_key` gives the resolved `ROW` chain of a record's
-  interval on every tenant, and `parameter_setpoints` is now filled on tenants with
-  increased intervals when the setpoints can be resolved. `interval_combination` is
-  unchanged.
+  interval, and `parameter_setpoints` is now filled when the setpoints can be resolved.
+  `interval_combination` is unchanged.
 - `Block.combinations_mode` (`"child_workflows"` or `"legacy"`) and
   `Block.previous_workflow_id` are new read-only fields.
 - `update_block_workflow` and `generate_block_combinations` work on blocks that use the
