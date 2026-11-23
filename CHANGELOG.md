@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.78.0](https://github.com/albert-labs/albert-python/compare/v1.77.0...v1.78.0) (2026-11-23)
+
+
+### Features
+
+* **data-templates:** use cursor pagination for search ([#971](https://github.com/albert-labs/albert-python/issues/971)) ([052df4b](https://github.com/albert-labs/albert-python/commit/052df4b7cfd10de2a5bbbc65679387aefc79d2ee))
+
+
+### Documentation
+
+* **migration:** restructure the increased intervals guide ([#995](https://github.com/albert-labs/albert-python/issues/995)) ([2d19545](https://github.com/albert-labs/albert-python/commit/2d195451b8eba06d5a8015b05732dce6f077cab1))
+
 ## [1.77.0](https://github.com/albert-labs/albert-python/compare/v1.76.1...v1.77.0) (2026-11-23)
 
 
