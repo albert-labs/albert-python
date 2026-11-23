@@ -26,6 +26,7 @@ from albert.core.shared.models.patch import PatchOperation
 from albert.core.utils import find_stack_level
 from albert.resources.data_templates import CurveDBMetadata, ImportMode, StorageKeyReference
 from albert.resources.files import FileNamespace
+from albert.resources.interval_combinations import IntervalCombinationItem
 from albert.resources.property_data import (
     CurvePropertyValue,
     CurvePropertyValuePayload,
@@ -398,6 +399,62 @@ def _df_to_task_prop_create_list(
                 )
             )
     return task_prop_create_list
+
+
+def _stored_intervals(*, existing_data_rows: TaskPropertyData) -> set[str]:
+    return {interval.interval_combination for interval in existing_data_rows.data}
+
+
+def needs_stored_interval_ids(
+    *, properties: list[TaskPropertyCreate], existing_data_rows: TaskPropertyData
+) -> bool:
+    """Return whether any property may name a stored child workflow by another form.
+
+    True when the block stores its intervals by child workflow ID (``WFL...``) and a
+    property gives an interval that is not stored and is not itself a child workflow ID,
+    such as a ROW chain or an interval barcode.
+    """
+    stored = _stored_intervals(existing_data_rows=existing_data_rows)
+    if not any(is_child_workflow_interval(interval) for interval in stored):
+        return False
+    return any(
+        prop.interval_combination not in stored
+        and not is_child_workflow_interval(prop.interval_combination)
+        for prop in properties
+    )
+
+
+def use_stored_interval_ids(
+    *,
+    properties: list[TaskPropertyCreate],
+    existing_data_rows: TaskPropertyData,
+    combinations: Iterable[IntervalCombinationItem],
+) -> list[TaskPropertyCreate]:
+    """Give each property the interval ID its block stores, so existing trials match.
+
+    A property whose interval is a ROW chain or interval barcode of one of
+    ``combinations`` gets that combination's child workflow ID, when the block stores
+    results under it. Other properties are returned unchanged.
+    """
+    stored = _stored_intervals(existing_data_rows=existing_data_rows)
+    child_workflow_ids: dict[str, str] = {}
+    for combination in combinations:
+        if not combination.id or combination.id not in stored:
+            continue
+        for other_form in (combination.interval_row_key, combination.interval_barcode):
+            if other_form:
+                child_workflow_ids[other_form] = combination.id
+
+    resolved = []
+    for prop in properties:
+        interval = prop.interval_combination
+        if interval not in stored:
+            # ROW chains follow Albert ID uppercasing; barcodes are case-sensitive.
+            key = interval.upper() if _ROW_CHAIN_RE.fullmatch(interval.upper()) else interval
+            if key in child_workflow_ids:
+                prop = prop.model_copy(update={"interval_combination": child_workflow_ids[key]})
+        resolved.append(prop)
+    return resolved
 
 
 def form_existing_row_value_patches(

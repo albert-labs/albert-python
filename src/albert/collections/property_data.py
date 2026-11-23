@@ -1566,11 +1566,27 @@ class PropertyDataCollection(BaseCollection):
         To target an existing trial, set ``trial_number`` on the
         ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
         trials one call at a time (loop for many) to avoid unexpected behavior.
+        With increased intervals, an existing trial is found whether its interval is
+        given as a ROW chain, a child workflow ID (``WFL...``) or an interval barcode.
         """
 
         existing_data_rows = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
+        if property_data_utils.needs_stored_interval_ids(
+            properties=properties, existing_data_rows=existing_data_rows
+        ):
+            # Results are stored by child workflow, so a ROW chain or barcode would not
+            # match an existing trial and the value would be added as a new trial.
+            from albert.collections.tasks import TaskCollection
+
+            properties = property_data_utils.use_stored_interval_ids(
+                properties=properties,
+                existing_data_rows=existing_data_rows,
+                combinations=TaskCollection(session=self.session).get_block_combinations(
+                    task_id=task_id, block_id=block_id
+                ),
+            )
         update_patches, new_values = property_data_utils.form_existing_row_value_patches(
             session=self.session,
             task_id=task_id,
