@@ -4,7 +4,7 @@ from contextlib import suppress
 import pytest
 
 from albert.client import Albert
-from albert.exceptions import ConflictError, NotFoundError
+from albert.exceptions import AlbertClientError, ConflictError, NotFoundError
 from albert.resources.design_spaces import (
     DesignSpace,
     DesignSpaceApplyResponse,
@@ -13,8 +13,13 @@ from albert.resources.design_spaces import (
     DesignSpaceState,
     DesignSpaceValidationResponse,
     IngredientEntry,
+    LabelConstraint,
+    LabelDefinition,
+    SetConstraintOperation,
     SetIngredientOperation,
+    SetLabelOperation,
 )
+from albert.resources.inventory import InventoryItem
 from albert.resources.projects import Project
 from albert.resources.smart_datasets import SmartDataset
 from tests.utils.wait import poll_until
@@ -225,6 +230,76 @@ def test_get_references_returns_a_reference_set(
     try:
         references = client.design_spaces.get_references(id=space.id, component="ingredients/INV1")
         assert isinstance(references, DesignSpaceReferences)
+    finally:
+        with suppress(NotFoundError):
+            client.design_spaces.delete(id=space.id)
+
+
+@ignore_in_ten0
+def test_apply_adds_a_label_and_a_label_constraint(
+    client: Albert, seeded_projects: list[Project], seeded_inventory: list[InventoryItem]
+) -> None:
+    """Test that a local label and a label constraint apply, persist and show as references."""
+    member = seeded_inventory[0].id
+    space = _create_space(client, seeded_projects[0].id, "beta label")
+    try:
+        result = client.design_spaces.apply(
+            id=space.id,
+            operations=[
+                SetIngredientOperation(
+                    key=member,
+                    value=IngredientEntry(action="mayInclude", max=0.5, rationale="SDK test"),
+                ),
+                SetLabelOperation(
+                    key="local:sdkTest", value=LabelDefinition(name="SDK test", members=[member])
+                ),
+                SetConstraintOperation(
+                    value=LabelConstraint(
+                        label="local:sdkTest", action="mayInclude", max_fraction=0.3
+                    )
+                ),
+            ],
+        )
+        (constraint_key,) = result.design_space.constraints
+        assert constraint_key.startswith("CONLB")
+        assert isinstance(result.design_space.constraints[constraint_key], LabelConstraint)
+        assert result.design_space.labels["local:sdkTest"].members == [member]
+        assert result.design_space.ingredients[member].rationale == "SDK test"
+
+        stored = client.design_spaces.get_by_id(id=space.id)
+        assert stored.constraints[constraint_key].max_fraction == 0.3
+        assert "labels/local:sdkTest" in stored.component_index[member]
+
+        by_ingredient = client.design_spaces.get_references(
+            id=space.id, component=f"ingredients/{member}"
+        )
+        by_label = client.design_spaces.get_references(
+            id=space.id, component="labels/local:sdkTest"
+        )
+        assert by_ingredient.references == ["labels/local:sdkTest"]
+        assert by_label.references == [f"constraints/{constraint_key}"]
+    finally:
+        with suppress(NotFoundError):
+            client.design_spaces.delete(id=space.id)
+
+
+@ignore_in_ten0
+def test_apply_rejects_a_label_with_an_unknown_member(
+    client: Albert, seeded_projects: list[Project]
+) -> None:
+    """Test that a label naming an inventory item that does not exist is refused."""
+    space = _create_space(client, seeded_projects[0].id, "beta unknown member")
+    try:
+        with pytest.raises(AlbertClientError, match="unknown_reference|do not exist"):
+            client.design_spaces.apply(
+                id=space.id,
+                operations=[
+                    SetLabelOperation(
+                        key="local:ghost",
+                        value=LabelDefinition(name="Ghost", members=["INVDOESNOTEXIST1"]),
+                    )
+                ],
+            )
     finally:
         with suppress(NotFoundError):
             client.design_spaces.delete(id=space.id)

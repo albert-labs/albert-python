@@ -82,11 +82,14 @@ class ParameterOperand(TypedDesignModel):
     """The composite parameter key, ``{DAT|PRG}#PRM[#UNI]``."""
 
 
-class PropertyAggregationOperand(TypedDesignModel):
-    """An aggregation of one inventory property over a scope of ingredients."""
+class PropertyAggregation(BaseAlbertModel):
+    """An aggregation of one inventory property over a scope of ingredients.
 
-    type: Literal["propertyAggregation"] = "propertyAggregation"
-    """Descriptor kind; fixed to ``propertyAggregation``."""
+    The body of a ``property`` constraint and of each side of a ``propertyRatio``
+    constraint. The ``propertyAggregation`` descriptor carries the same fields.
+    """
+
+    model_config = ConfigDict(extra="forbid", revalidate_instances="subclass-instances")
 
     basis: AggregationBasis
     """How the member values combine: ``mean`` or ``sum``."""
@@ -100,6 +103,53 @@ class PropertyAggregationOperand(TypedDesignModel):
     impute: bool | float | None = Field(default=None)
     """How missing property values are handled: ``True`` fills the column mean, a number
     fills that constant, ``False`` fails on a sparse table. Omit to leave it unstated."""
+
+    use_reciprocal: bool | None = Field(default=None, alias="useReciprocal")
+    """Aggregate the reciprocal of the property instead. Omit to leave it unstated."""
+
+
+class PropertyAggregationOperand(TypedDesignModel, PropertyAggregation):
+    """An aggregation of one inventory property over a scope of ingredients."""
+
+    type: Literal["propertyAggregation"] = "propertyAggregation"
+    """Descriptor kind; fixed to ``propertyAggregation``."""
+
+
+class LabelCountOperand(TypedDesignModel):
+    """How many of a label's member ingredients a formulation contains. Constraints only."""
+
+    type: Literal["labelCount"] = "labelCount"
+    """Descriptor kind; fixed to ``labelCount``."""
+
+    label: str | None = Field(default=None)
+    """Count only this label's members (``TAG...`` or ``local:...``). Omit to count every
+    ingredient."""
+
+
+class PriceAggregationOperand(TypedDesignModel):
+    """An aggregation of ingredient price over the formulation. Constraints only."""
+
+    type: Literal["priceAggregation"] = "priceAggregation"
+    """Descriptor kind; fixed to ``priceAggregation``."""
+
+    basis: AggregationBasis
+    """How the member prices combine. Only ``sum`` can be a weighted-sum term."""
+
+    location: str | None = Field(default=None)
+    """Pricing location. Omit for any location."""
+
+    impute: bool | float | None = Field(default=None)
+    """How missing prices are handled, as on a property aggregation."""
+
+
+class ConstantOperand(TypedDesignModel):
+    """A constant term of a weighted sum. Constraints only."""
+
+    type: Literal["constant"] = "constant"
+    """Descriptor kind; fixed to ``constant``."""
+
+    value: float
+    """The constant."""
 
 
 QuantityOperand = Annotated[
@@ -167,6 +217,30 @@ class _ReadPropertyAggregationOperand(PropertyAggregationOperand):
     model_config = ConfigDict(extra="allow")
 
 
+class _ReadPropertyAggregation(PropertyAggregation):
+    """A property aggregation read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadLabelCountOperand(LabelCountOperand):
+    """A label-count descriptor read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadPriceAggregationOperand(PriceAggregationOperand):
+    """A price-aggregation descriptor read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadConstantOperand(ConstantOperand):
+    """A constant descriptor read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
 QuantityOperandRead = Annotated[
     Annotated[
         _ReadIngredientAmountOperand
@@ -182,3 +256,89 @@ QuantityOperandRead = Annotated[
 model (an instance of ``IngredientAmountOperand``, ``LabelFractionOperand``,
 ``ParameterOperand`` or ``PropertyAggregationOperand``) and keeps fields this version
 does not model; an unknown kind parses to ``UnknownDescriptor``."""
+
+
+ConstraintOperand = Annotated[
+    IngredientAmountOperand
+    | LabelFractionOperand
+    | LabelCountOperand
+    | ParameterOperand
+    | PropertyAggregationOperand
+    | PriceAggregationOperand
+    | ConstantOperand,
+    Field(discriminator="type"),
+]
+"""A constraint operand: any quantity descriptor, plus a label count, a price aggregation
+or a constant. Which kinds a constraint accepts is checked when the constraint is
+applied, and a kind the service does not support yet is refused there
+(``unsupported_operand``)."""
+
+
+_CONSTRAINT_OPERAND_KINDS = frozenset(
+    model.model_fields["type"].default
+    for model in (
+        IngredientAmountOperand,
+        LabelFractionOperand,
+        LabelCountOperand,
+        ParameterOperand,
+        PropertyAggregationOperand,
+        PriceAggregationOperand,
+        ConstantOperand,
+    )
+)
+
+
+class UnknownConstraintOperand(UnknownDescriptor):
+    """A constraint operand of a kind this SDK version does not know yet.
+
+    Only appears in design spaces read from the service, and keeps every key it carried.
+    Requests never accept it.
+    """
+
+    @field_validator("type")
+    @classmethod
+    def _only_unknown_kinds(cls, kind: str) -> str:
+        """Refuse a kind this version models: a malformed operand of it is an error."""
+        if kind in _CONSTRAINT_OPERAND_KINDS:
+            raise ValueError(f"{kind!r} operand does not match its schema")
+        return kind
+
+
+ConstraintOperandRead = Annotated[
+    Annotated[
+        _ReadIngredientAmountOperand
+        | _ReadLabelFractionOperand
+        | _ReadLabelCountOperand
+        | _ReadParameterOperand
+        | _ReadPropertyAggregationOperand
+        | _ReadPriceAggregationOperand
+        | _ReadConstantOperand,
+        Field(discriminator="type"),
+    ]
+    | UnknownConstraintOperand,
+    Field(union_mode="left_to_right"),
+]
+"""A constraint operand as read from the service. A known kind parses to its descriptor
+model and keeps fields this version does not model; an unknown kind parses to
+``UnknownConstraintOperand``."""
+
+
+class LinearTerm(BaseAlbertModel):
+    """One ``coefficient * operand`` term of a weighted sum."""
+
+    model_config = ConfigDict(extra="forbid", revalidate_instances="subclass-instances")
+
+    coefficient: float
+    """The weight of the operand."""
+
+    operand: ConstraintOperand
+    """The quantity the coefficient weights."""
+
+
+class _ReadLinearTerm(LinearTerm):
+    """A weighted-sum term read from the service, keeping unknown fields and kinds."""
+
+    model_config = ConfigDict(extra="allow")
+
+    operand: ConstraintOperandRead
+    """The quantity the coefficient weights."""

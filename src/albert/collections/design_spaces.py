@@ -281,7 +281,7 @@ class DesignSpaceCollection(BaseCollection):
 
         Operations apply atomically and in the order given; if one cannot apply (for
         example an unknown reference or an invalid constraint) nothing is applied. The
-        five operations:
+        seven operations:
 
         - [`SetIngredientOperation`][albert.resources.design_spaces.SetIngredientOperation]:
           upsert an ingredient. Its value carries the three-way action (must include,
@@ -294,6 +294,16 @@ class DesignSpaceCollection(BaseCollection):
           remove an ingredient or parameter by its path.
         - [`UpdateComponentOperation`][albert.resources.design_spaces.UpdateComponentOperation]:
           change one field of a component in place.
+        - [`SetLabelOperation`][albert.resources.design_spaces.SetLabelOperation]:
+          define or replace a local label (a named group of ingredients, keyed
+          ``local:...``). Every member must be an existing inventory item.
+        - [`SetConstraintOperation`][albert.resources.design_spaces.SetConstraintOperation]:
+          create a constraint (label, ratio, property, property ratio, price, or weighted
+          sum), or replace one by its key. A new constraint's key (``CONLB001``,
+          ``CONRT001``, ...) is in the result's ``design_space.constraints``. A kind of
+          operand the service does not support yet is refused (``unsupported_operand``),
+          and a second constraint on the same thing is applied with a
+          ``duplicate_constraint_subject`` warning.
 
         Ingredient bounds are checked as they are applied: ``min`` greater than ``max``
         is rejected for any action, and ``mustInclude`` with a ``max`` of 0 is rejected.
@@ -534,7 +544,9 @@ class DesignSpaceCollection(BaseCollection):
 
         Powers safe removal: check whether anything still points at the component
         before removing it with
-        [`apply`][albert.collections.design_spaces.DesignSpaceCollection.apply].
+        [`apply`][albert.collections.design_spaces.DesignSpaceCollection.apply]. Labels
+        and constraints can point at ingredients and labels; nothing points at a
+        constraint, so a constraint's references are always empty.
 
         !!! example
             ```python
