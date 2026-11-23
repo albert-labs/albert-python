@@ -1,5 +1,6 @@
 {
   "release-type": "python",
+  "changelog-type": "github",
   "packages": {
     ".": {
       "package-name": "albert",
