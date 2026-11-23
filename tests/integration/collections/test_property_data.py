@@ -926,6 +926,84 @@ def test_get_task_property_records_resolves_child_workflow_intervals(
                 client.tasks.delete(id=task_id)
 
 
+@pytest.mark.parametrize("interval_form", ["interval_row_key", "interval_barcode"])
+def test_update_or_create_task_properties_updates_child_workflow_trial_by_other_forms(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_locations,
+    seeded_projects,
+    seeded_data_templates: list[DataTemplate],
+    seeded_workflows,
+    interval_form: str,
+):
+    """Test an upsert by ROW chain or barcode updates the existing trial instead of adding one."""
+    inventory_id = seeded_inventory[0].id
+    data_template = client.data_templates.get_by_id(id=seeded_data_templates[0].id)
+    column = TaskDataColumn(
+        data_column_id=data_template.data_column_values[0].data_column_id,
+        column_sequence=data_template.data_column_values[0].sequence,
+    )
+    task_id = None
+    try:
+        # Workflow 2: fixed setpoints plus one normal parameter intervalized over 1.1 and 2.2.
+        task = client.tasks.create(
+            task=PropertyTask(
+                name=f"{seed_prefix} - upsert by {interval_form} task",
+                category=TaskCategory.PROPERTY,
+                inventory_information=[TaskInventoryInformation(inventory_id=inventory_id)],
+                parent_id=inventory_id,
+                location=seeded_locations[0],
+                project=seeded_projects[0],
+                blocks=[Block(workflow=[seeded_workflows[1]], data_template=[data_template])],
+            )
+        )
+        task_id = task.id
+        block_id = task.blocks[0].id
+        combo = next(client.tasks.get_block_combinations(task_id=task_id, block_id=block_id))
+        client.property_data.add_properties_to_task(
+            task_id=task_id,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            properties=[
+                TaskPropertyCreate(
+                    data_template=data_template,
+                    data_column=column,
+                    value="1",
+                    interval_combination=combo.id,
+                )
+            ],
+            return_scope="none",
+        )
+
+        client.property_data.update_or_create_task_properties(
+            task_id=task_id,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            properties=[
+                TaskPropertyCreate(
+                    data_template=data_template,
+                    data_column=column,
+                    value="2",
+                    trial_number=1,
+                    interval_combination=getattr(combo, interval_form),
+                )
+            ],
+            return_scope="none",
+        )
+
+        trials = [
+            (r.trial_number, r.value)
+            for r in client.property_data.get_task_property_records(task_id=task_id)
+            if r.interval_combination == combo.id and r.value is not None and not r.void
+        ]
+        assert trials == [(1, "2")]
+    finally:
+        if task_id:
+            with suppress(NotFoundError):
+                client.tasks.delete(id=task_id)
+
+
 def test_image_upload_onto_partially_filled_trial(
     client: Albert,
     seed_prefix: str,

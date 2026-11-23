@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from albert.core.shared.models.patch import PatchOperation
+from albert.resources.interval_combinations import IntervalCombinationItem
 from albert.resources.property_data import (
     DataInterval,
     ImagePropertyValue,
@@ -46,11 +47,13 @@ from albert.utils.property_data import (
     get_on_platform_row,
     is_child_workflow_interval,
     map_block_final_workflows,
+    needs_stored_interval_ids,
     prepare_new_task_property,
     resolve_data_template_id,
     resolve_return_scope,
     resolve_trial_number,
     trial_has_recorded_data,
+    use_stored_interval_ids,
     warn_on_duplicate_task_property_targets,
 )
 
@@ -374,6 +377,87 @@ def test_df_to_task_prop_create_list_raises_for_missing_column():
         _df_to_task_prop_create_list(
             dataframe=df, column_map=column_map, data_template_id="DAT1", interval="default"
         )
+
+
+# ---------------------------------------------------------------------------
+# needs_stored_interval_ids / use_stored_interval_ids
+# ---------------------------------------------------------------------------
+
+
+def _block_storing(*intervals: str) -> TaskPropertyData:
+    data = [
+        DataInterval(interval_combination=interval, trials=[Trial(trial_number=1)])
+        for interval in intervals
+    ]
+    return TaskPropertyData(parent_id="TAS1", block_id="BLK1", data=data)
+
+
+_COMBINATIONS = [
+    IntervalCombinationItem(
+        id="WFL11", interval_row_key="ROW1XROW3", interval_barcode="INab12CD34e"
+    ),
+    IntervalCombinationItem(
+        id="WFL12", interval_row_key="ROW2XROW3", interval_barcode="INzz99YY88x"
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("stored", "interval", "expected"),
+    [
+        pytest.param(("WFL11",), "ROW1XROW3", True, id="row-chain-on-child-workflow-block"),
+        pytest.param(("WFL11",), "INab12CD34e", True, id="barcode-on-child-workflow-block"),
+        pytest.param(("WFL11",), "WFL11", False, id="stored-child-workflow"),
+        pytest.param(("WFL11",), "WFL12", False, id="child-workflow-not-stored-yet"),
+        pytest.param(("ROW1XROW3",), "ROW2XROW3", False, id="block-stores-row-chains"),
+    ],
+)
+def test_needs_stored_interval_ids(stored: tuple[str, ...], interval: str, expected: bool):
+    """Test that only a non-child-workflow form on a child-workflow block needs resolving."""
+    needs = needs_stored_interval_ids(
+        properties=[_make_prop(interval=interval)], existing_data_rows=_block_storing(*stored)
+    )
+
+    assert needs is expected
+
+
+@pytest.mark.parametrize(
+    "interval",
+    [
+        pytest.param("ROW1XROW3", id="row-chain"),
+        pytest.param("row1xrow3", id="lowercase-row-chain"),
+        pytest.param("INab12CD34e", id="barcode"),
+    ],
+)
+def test_use_stored_interval_ids_switches_to_the_stored_child_workflow(interval: str):
+    """Test that a ROW chain or barcode of a stored combination becomes its child workflow ID."""
+    resolved = use_stored_interval_ids(
+        properties=[_make_prop(trial_number=1, interval=interval)],
+        existing_data_rows=_block_storing("WFL11"),
+        combinations=_COMBINATIONS,
+    )
+
+    assert resolved == [_make_prop(trial_number=1, interval="WFL11")]
+
+
+@pytest.mark.parametrize(
+    "interval",
+    [
+        pytest.param("ROW2XROW3", id="combination-not-stored"),
+        pytest.param("INAB12CD34E", id="barcode-other-case"),
+        pytest.param("ROW9", id="unknown-row-chain"),
+        pytest.param("WFL11", id="already-stored"),
+    ],
+)
+def test_use_stored_interval_ids_keeps_other_intervals(interval: str):
+    """Test that intervals with no stored child workflow to switch to are left as given."""
+    resolved = use_stored_interval_ids(
+        properties=[_make_prop(trial_number=1, interval=interval)],
+        existing_data_rows=_block_storing("WFL11"),
+        combinations=_COMBINATIONS,
+    )
+
+    assert resolved == [_make_prop(trial_number=1, interval=interval)]
 
 
 # ---------------------------------------------------------------------------
