@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.77.0](https://github.com/albert-labs/albert-python/compare/v1.76.1...v1.77.0) (2026-11-23)
+
+
+### Features
+
+* **data-columns:** add scroll search pagination ([#972](https://github.com/albert-labs/albert-python/issues/972)) ([cbc14d6](https://github.com/albert-labs/albert-python/commit/cbc14d66b52009ad0fa6402719a44f1b157e681e))
+* **lots:** add reactivate for deleted lots ([#984](https://github.com/albert-labs/albert-python/issues/984)) ([7d5ae27](https://github.com/albert-labs/albert-python/commit/7d5ae27467562d62f267a25c18ba54adff11ed44))
+* **parameter-groups:** add cursor search pagination ([#979](https://github.com/albert-labs/albert-python/issues/979)) ([ffe33ef](https://github.com/albert-labs/albert-python/commit/ffe33ef3ae4e1621af469c7af18f3c5d16b44a25))
+* **parameters:** add cursor-paginated search ([#973](https://github.com/albert-labs/albert-python/issues/973)) ([edce8c3](https://github.com/albert-labs/albert-python/commit/edce8c3018d1ac578e1f227fcc2f85cb3220e792))
+* **property-data:** fill interval setpoints and add interval_row_key on increased-intervals tenants ([#956](https://github.com/albert-labs/albert-python/issues/956)) ([4307f4b](https://github.com/albert-labs/albert-python/commit/4307f4b2c9dad5b89d1ec370fce29f63e1e6c42c))
+* **storage_locations:** filter get_by_name by location ([#982](https://github.com/albert-labs/albert-python/issues/982)) ([baa1a3c](https://github.com/albert-labs/albert-python/commit/baa1a3cbe99a3f902f746c98a72797d44d3e8603))
+* **tasks:** generate block combinations automatically on increased-intervals tenants ([#959](https://github.com/albert-labs/albert-python/issues/959)) ([efa613b](https://github.com/albert-labs/albert-python/commit/efa613bfb163a366d1a0aad621efe7d8ac71985f))
+
+
+### Bug Fixes
+
+* **intervals:** accept any interval ID form and rewrite the migration guide ([#962](https://github.com/albert-labs/albert-python/issues/962)) ([f84efcc](https://github.com/albert-labs/albert-python/commit/f84efcc0820b58cba2d55bf38b090f4cab9b73d8))
+* **lambda:** use image Python for layer catalog ([#990](https://github.com/albert-labs/albert-python/issues/990)) ([8c5fad2](https://github.com/albert-labs/albert-python/commit/8c5fad25dce4958dab2259cef7bcb73691516e2b))
+* **property-data:** update existing trials given by ROW chain or barcode ([#993](https://github.com/albert-labs/albert-python/issues/993)) ([eb306d7](https://github.com/albert-labs/albert-python/commit/eb306d7aeb042c1e10ef11dc59892196aec76522))
+
+
+### Documentation
+
+* **intervals:** remove increased intervals beta warnings ([#992](https://github.com/albert-labs/albert-python/issues/992)) ([ef2bf64](https://github.com/albert-labs/albert-python/commit/ef2bf64dc8ba75fa72b277b7cf3a508d255981f7))
+* **migration:** update increased intervals guide for 1.77.0 ([#991](https://github.com/albert-labs/albert-python/issues/991)) ([dfa8c50](https://github.com/albert-labs/albert-python/commit/dfa8c508b5967f032deb8d13e3b146d33f6767ac))
+* **sheets:** document LST ids for list-backed cell writes ([#980](https://github.com/albert-labs/albert-python/issues/980)) ([6d5eadd](https://github.com/albert-labs/albert-python/commit/6d5eadd9f911ee09d718bc0f550a61229ce6d86e))
+
 ## [1.76.1](https://github.com/albert-labs/albert-python/compare/v1.76.0...v1.76.1) (2026-11-19)
 
 
