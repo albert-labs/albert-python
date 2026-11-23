@@ -135,9 +135,9 @@ class ParameterSearchItem(BaseAlbertModel, HydrationMixin[Parameter]):
     """A lightweight, partially populated parameter from search results.
 
     Returned by
-    [`search`][albert.collections.parameters.ParameterCollection.search]. Call
-    ``hydrate()`` to fetch the fully populated
-    [`Parameter`][albert.resources.parameters.Parameter].
+    [`search`][albert.collections.parameters.ParameterCollection.search]. When ``id`` is present,
+    call ``hydrate()`` to fetch the fully populated
+    [`Parameter`][albert.resources.parameters.Parameter]. Results without an ``id`` cannot be hydrated.
     """
 
     id: ParameterId | None = Field(

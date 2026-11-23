@@ -269,7 +269,7 @@ class ParameterCollection(BaseCollection):
         ids : ParameterId or list[ParameterId], optional
             Filter by Parameter ID(s) (format ``PRM...``).
         created_by : str or list[str], optional
-            Filter by creator display name(s) or User ID(s).
+            Filter by creator display name(s).
         data_template : str or list[str], optional
             Filter by data template name(s).
         parameter_group : str or list[str], optional
@@ -285,9 +285,12 @@ class ParameterCollection(BaseCollection):
         translation : str or list[str], optional
             Translation(s) to include in the search.
         metadata_filters : dict[str, Any], optional
-            Filter by custom field values.
+            Filter by custom field (metadata) values, keyed by field name. For string fields,
+            map the name to a list of values, for example ``{"batchCode": ["B-100"]}``.
+            Multiple values on one field match any of them; different fields must all match.
         custom_fields : dict[str, Any], optional
-            Filter by custom field values.
+            Custom field type definitions used to interpret ``metadata_filters``, keyed by
+            field name, for example ``{"batchCode": "string"}``.
         facet_text : str, optional
             Text to match within a facet search.
         facet_field : str, optional
