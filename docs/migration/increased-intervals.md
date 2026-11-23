@@ -7,24 +7,26 @@ Everything here applies to both task types. General tasks have no blocks and are
 !!! abstract "What you need to do"
     1. [Upgrade to SDK 1.77.0 or later.](#1-upgrade-the-sdk) Older versions add blocks that
        stay on "Loading data" in Albert, with no error.
-    2. [Expect calls that add or change blocks to take longer.](#2-expect-block-changes-to-wait-for-generation)
-       They now wait until each block is ready for results.
-    3. [Handle `CombinationGenerationError`, and never repeat the call that raised it.](#3-handle-combinationgenerationerror)
-       The task or block already exists.
-    4. [Match results on `interval_row_key`, not `interval_combination`.](#4-update-code-that-reads-results-by-interval)
+    2. [If you read results by interval, match on `interval_row_key`, not `interval_combination`.](#2-update-code-that-reads-results-by-interval)
        Reads now report intervals as child workflow IDs (`WFL...`), so code that compares
        them to ROW chains finds nothing.
 
-    Writing, updating and voiding results by ROW chain keeps working; see
-    [Writing and checking results](#writing-and-checking-results).
+    What else changes:
+
+    - Calls that add or change blocks now [wait for combination generation](#waiting-for-generation),
+      so they take longer.
+    - They can raise [`CombinationGenerationError`](#handling-generation-failures) after the
+      task or block was created. Never repeat the call itself: that creates a duplicate.
+    - Writing, updating and voiding results by ROW chain
+      [keeps working](#writing-and-checking-results).
 
 ## Am I affected?
 
 | Your situation | What to do |
 |---|---|
 | Increased intervals is not enabled for your tenant | Nothing. Upgrading is safe and your code keeps working. |
-| Enabled, and your tasks have no intervalized parameters | Steps 1 to 3 |
-| Enabled, and your code reads or writes results by interval | Steps 1 to 4 |
+| Enabled | Step 1 |
+| Enabled, and your code reads results by interval | Steps 1 and 2 |
 
 ## Key terms
 
@@ -61,94 +63,7 @@ Everything here applies to both task types. General tasks have no blocks and are
     blocks without generating their combinations: the block stays on "Loading data" in
     Albert and no error is raised.
 
-### 2. Expect block changes to wait for generation
-
-`create`, `create_many`, `create_with_combinations`, `add_block`, `add_blocks` and
-`update_block_workflow` now generate the combinations of every block they add or change.
-Each takes a `wait` keyword:
-
-| | `wait=True` (default) | `wait=False` |
-|---|---|---|
-| Returns | When every block's combinations are generated | As soon as generation has started |
-| Blocks ready for results on return | Yes | Not yet |
-| Raises `CombinationGenerationError` when generation | could not start, failed, did not finish in time, or could not be monitored | could not start |
-
-!!! note "Timing"
-    Generation for blocks of the same task starts at least 10 seconds apart, so a task with
-    4 blocks takes at least 30 seconds to create. Blocks of different tasks are not spaced
-    out.
-
-With `wait=False`, check on the blocks later with `tasks.get_by_id`. Each block carries
-`job_id` and `job_state`:
-
-```python
-task = client.tasks.create(task=task_definition, wait=False)
-
-task = client.tasks.get_by_id(id=task.id)
-for block in task.blocks:
-    print(block.id, block.job_state)
-# BLK1 successful
-```
-
-### 3. Handle `CombinationGenerationError`
-
-The methods in step 2 try every block, then raise `CombinationGenerationError` if any failed.
-By then, the task or blocks were already created or changed.
-
-!!! danger "Never repeat the call that raised it"
-    Calling `create`, `create_many` or `create_with_combinations` again creates a second
-    task. Calling `add_block` or `add_blocks` again adds a second block. Retry generation for
-    the failed blocks only, with `generate_block_combinations`. It keeps interval barcodes.
-
-=== "create"
-
-    ```python
-    import time
-
-    from albert import Albert
-    from albert.exceptions import CombinationGenerationError
-
-    client = Albert()
-    try:
-        task = client.tasks.create(task=task_definition)
-    except CombinationGenerationError as err:
-        task = err.task  # the task exists
-        for block_id in err.failed_blocks:
-            client.tasks.generate_block_combinations(task_id=task.id, block_id=block_id)
-            time.sleep(10)  # leave 10 seconds between blocks of the same task
-    ```
-
-=== "create_many"
-
-    ```python
-    try:
-        tasks = client.tasks.create_many(tasks=[task_definition])
-    except CombinationGenerationError as err:
-        tasks = err.tasks  # err.task is None here
-        for entry in err.failed_blocks:
-            task_id, block_id = entry.split("/")  # entries name their task: TAS.../BLK...
-            client.tasks.generate_block_combinations(task_id=task_id, block_id=block_id)
-            time.sleep(10)
-    ```
-
-| Attribute | Contents |
-|---|---|
-| `task` | The task holding the failed blocks, fully populated. `None` from `create_many`. |
-| `tasks` | Every task the call generated blocks for, fully populated |
-| `failed_blocks` | IDs of the blocks to retry. From `create_many`, each entry is `TAS.../BLK...`. |
-| `job_states` | The last known generation state of each block, keyed like `failed_blocks` |
-
-!!! warning "A timed-out block may still be generating"
-    A block is also listed in `failed_blocks` when waiting timed out or the connection
-    dropped, even though its generation may still be running. Check its `job_state` with
-    `tasks.get_by_id` first, and retry only blocks whose state is `"failed"`.
-
-!!! note "Empty `failed_blocks` after `add_block` or `add_blocks`"
-    This happens only when Albert did not report which blocks were added. Generate
-    combinations for the blocks on `err.task.blocks` that were not on the task before the
-    call.
-
-### 4. Update code that reads results by interval
+### 2. Update code that reads results by interval
 
 Albert now stores each result under its combination's child workflow ID. All three reads
 report `interval_combination` in that form: `get_task_property_records`,
@@ -207,6 +122,100 @@ for interval in block.data:
 !!! tip
     For code that runs on tenants with and without increased intervals, prefer
     `get_task_property_records`. It does this mapping for you.
+
+---
+
+## Combination generation
+
+`create`, `create_many`, `create_with_combinations`, `add_block`, `add_blocks` and
+`update_block_workflow` generate the combinations of every block they add or change. This
+changes how long they take and how they can fail.
+
+### Waiting for generation
+
+By default, these methods return only when every block is ready for results. Generation for
+blocks of the same task starts at least 10 seconds apart, so a task with 4 blocks takes at
+least 30 seconds to create. Blocks of different tasks are not spaced out.
+
+Pass `wait=False` to return as soon as generation has started:
+
+| | `wait=True` (default) | `wait=False` |
+|---|---|---|
+| Returns | When every block's combinations are generated | As soon as generation has started |
+| Blocks ready for results on return | Yes | Not yet |
+| Raises `CombinationGenerationError` when generation | could not start, failed, did not finish in time, or could not be monitored | could not start |
+
+With `wait=False`, check on the blocks later with `tasks.get_by_id`. Each block carries
+`job_id` and `job_state`:
+
+```python
+task = client.tasks.create(task=task_definition, wait=False)
+
+task = client.tasks.get_by_id(id=task.id)
+for block in task.blocks:
+    print(block.id, block.job_state)
+# BLK1 successful
+```
+
+### Handling generation failures
+
+These methods try every block, then raise `CombinationGenerationError` if any failed. By
+then, the task or blocks were already created or changed. You don't have to catch it; catch
+it when you want to retry generation for the failed blocks.
+
+!!! danger "Never repeat the call that raised it"
+    Calling `create`, `create_many` or `create_with_combinations` again creates a second
+    task. Calling `add_block` or `add_blocks` again adds a second block. This includes retry
+    wrappers that repeat a call on any exception. Retry generation for the failed blocks
+    only, with `generate_block_combinations`. It keeps interval barcodes.
+
+=== "create"
+
+    ```python
+    import time
+
+    from albert import Albert
+    from albert.exceptions import CombinationGenerationError
+
+    client = Albert()
+    try:
+        task = client.tasks.create(task=task_definition)
+    except CombinationGenerationError as err:
+        task = err.task  # the task exists
+        for block_id in err.failed_blocks:
+            client.tasks.generate_block_combinations(task_id=task.id, block_id=block_id)
+            time.sleep(10)  # leave 10 seconds between blocks of the same task
+    ```
+
+=== "create_many"
+
+    ```python
+    try:
+        tasks = client.tasks.create_many(tasks=[task_definition])
+    except CombinationGenerationError as err:
+        tasks = err.tasks  # err.task is None here
+        for entry in err.failed_blocks:
+            task_id, block_id = entry.split("/")  # entries name their task: TAS.../BLK...
+            client.tasks.generate_block_combinations(task_id=task_id, block_id=block_id)
+            time.sleep(10)
+    ```
+
+| Attribute | Contents |
+|---|---|
+| `task` | The task holding the failed blocks, fully populated. `None` from `create_many`. |
+| `tasks` | Every task the call generated blocks for, fully populated |
+| `failed_blocks` | IDs of the blocks to retry. From `create_many`, each entry is `TAS.../BLK...`. |
+| `job_states` | The last known generation state of each block, keyed like `failed_blocks` |
+
+!!! warning "A timed-out block may still be generating"
+    A block is also listed in `failed_blocks` when waiting timed out or the connection
+    dropped, even though its generation may still be running. Check its `job_state` with
+    `tasks.get_by_id` first, and retry only blocks whose state is `"failed"`.
+
+!!! note "Empty `failed_blocks` after `add_block` or `add_blocks`"
+    This happens only when Albert did not report which blocks were added. Generate
+    combinations for the blocks on `err.task.blocks` that were not on the task before the
+    call.
 
 ---
 
@@ -281,16 +290,13 @@ They don't reduce the number of combinations.
 | New read-only `Block` fields | `combinations_mode` (`"child_workflows"` or `"legacy"`) and `previous_workflow_id` |
 | "No Parameter Group" blocks | `update_block_workflow` and `generate_block_combinations` work on blocks that use the default workflow |
 
-!!! note "If you call the Albert API directly"
-    `combinationsMode` and `previousWorkflowId` on a block are read-only. Do not send them
-    when you create a task or add a block; Albert rejects them.
-
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | A block stays on "Loading data" | It was added by an SDK older than 1.77.0, or its generation failed | Upgrade, then run `generate_block_combinations` for the block |
-| No results when matching by ROW chain | Reads report child workflow IDs | [Step 4](#4-update-code-that-reads-results-by-interval) |
+| No results when matching by ROW chain | Reads report child workflow IDs | [Step 2](#2-update-code-that-reads-results-by-interval) |
+| A duplicate task or block after an error | The call was repeated after `CombinationGenerationError` | Remove the duplicate, and retry generation only; see [Handling generation failures](#handling-generation-failures) |
 | Updating a trial adds a new trial instead | SDK older than 1.77.0, with a ROW chain or barcode | Upgrade |
 | `create_with_combinations` rejects the task | Increased intervals is not enabled for the tenant | Use `create` |
 | `TypeError` from a combination method | The task is a General task | Combinations apply to Property and Batch tasks only |
