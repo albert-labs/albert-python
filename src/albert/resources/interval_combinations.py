@@ -21,18 +21,12 @@ from albert.resources.worker_jobs import WorkerJob
 # parentWorkflowId on the response envelope (not per item). Expose it
 # if that id is not already available from the task/block read path.
 class IntervalCombinationItem(BaseAlbertModel):
-    """One child-workflow interval combination on a task block (🧪 Beta).
+    """One child-workflow interval combination on a task block.
 
     Returned by
     [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations].
     Use that method rather than any combinations array embedded on a task or block:
     the embedded array is empty once the block has 500 or more combinations.
-
-    !!! warning "Beta Feature!"
-        Increased intervals combination support is currently in beta and behind a platform
-        feature flag. Please do not use in production or without explicit guidance from
-        Albert. You might otherwise have a bad experience. This feature currently falls
-        outside of the Albert support contract, but we'd love your feedback!
 
     !!! example
         ```python
@@ -86,17 +80,12 @@ class OverrideAction(str, Enum):
 
 
 class Condition(NamedTuple):
-    """Specification for a rule condition before resolving workflow-local IDs (🧪 Beta).
+    """Specification for a rule condition before resolving workflow-local IDs.
 
     Used with [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to specify
     criteria using parameter names or short names. Can be instantiated as a named tuple or
     passed as a plain tuple (e.g. ``("Temperature", ">=", 90)``).
 
-    !!! warning "Beta Feature!"
-        Increased intervals combination support is currently in beta and behind a platform
-        feature flag. Please do not use in production or without explicit guidance from
-        Albert. You might otherwise have a bad experience. This feature currently falls
-        outside of the Albert support contract, but we'd love your feedback!
     """
 
     parameter: str
@@ -107,16 +96,11 @@ class Condition(NamedTuple):
 
 
 class RuleCondition(BaseAlbertModel):
-    """A single condition within an exclusion rule (🧪 Beta).
+    """A single condition within an exclusion rule.
 
     References a parameter group or data template, a parameter, a parameter row,
     and a comparison operator and threshold value.
 
-    !!! warning "Beta Feature!"
-        Increased intervals combination support is currently in beta and behind a platform
-        feature flag. Please do not use in production or without explicit guidance from
-        Albert. You might otherwise have a bad experience. This feature currently falls
-        outside of the Albert support contract, but we'd love your feedback!
     """
 
     parameter_group_id: ParameterGroupId | DataTemplateId | str = Field(alias="prgId")
@@ -142,7 +126,7 @@ class RuleCondition(BaseAlbertModel):
 
 
 class ExclusionRule(BaseAlbertModel):
-    """A combination rule composed of one or more conditions (🧪 Beta).
+    """A combination rule composed of one or more conditions.
 
     Rules evaluate combination variants against criteria defined on parameter values:
 
@@ -156,11 +140,6 @@ class ExclusionRule(BaseAlbertModel):
     Use [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to construct
     rules from human-readable parameter names and values.
 
-    !!! warning "Beta Feature!"
-        Increased intervals combination support is currently in beta and behind a platform
-        feature flag. Please do not use in production or without explicit guidance from
-        Albert. You might otherwise have a bad experience. This feature currently falls
-        outside of the Albert support contract, but we'd love your feedback!
     """
 
     id: str | None = None
@@ -178,7 +157,7 @@ Rule = ExclusionRule
 
 
 class CombinationOverride(BaseAlbertModel):
-    """A targeted skip or unskip override for a specific combination condition (🧪 Beta).
+    """A targeted skip or unskip override for a specific combination condition.
 
     Overrides pinpoint an exact combination in the Cartesian product space:
 
@@ -191,11 +170,6 @@ class CombinationOverride(BaseAlbertModel):
     which can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key]
     or built directly via [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override].
 
-    !!! warning "Beta Feature!"
-        Increased intervals combination support is currently in beta and behind a platform
-        feature flag. Please do not use in production or without explicit guidance from
-        Albert. You might otherwise have a bad experience. This feature currently falls
-        outside of the Albert support contract, but we'd love your feedback!
     """
 
     id: str | None = None
@@ -212,7 +186,7 @@ class CombinationOverride(BaseAlbertModel):
 
 
 class InventoryExclusion(BaseAlbertModel):
-    """An inventory x combination exclusion ("mask") for a task block (🧪 Beta).
+    """An inventory x combination exclusion ("mask") for a task block.
 
     Marks one task-level inventory tuple (``inv_lot_unique_id``, e.g.
     ``"INV123#LOT456#1"``) as excluded from one interval combination
@@ -224,11 +198,6 @@ class InventoryExclusion(BaseAlbertModel):
     - A mask has no editable fields (it *is* the pair). To change one, remove it and
       add the replacement pair.
 
-    !!! warning "Beta Feature!"
-        Increased intervals combination support is currently in beta and behind a platform
-        feature flag. Please do not use in production or without explicit guidance from
-        Albert. You might otherwise have a bad experience. This feature currently falls
-        outside of the Albert support contract, but we'd love your feedback!
     """
 
     id: str | None = None
@@ -242,7 +211,7 @@ class InventoryExclusion(BaseAlbertModel):
 
 
 class BlockRules(BaseAlbertModel):
-    """Combination rules and overrides for a task block (🧪 Beta).
+    """Combination rules and overrides for a task block.
 
     Encapsulates the rules and overrides that govern how interval combinations
     are evaluated and filtered on a task block:
@@ -257,11 +226,6 @@ class BlockRules(BaseAlbertModel):
     Returned by [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]
     and [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules].
 
-    !!! warning "Beta Feature!"
-        Increased intervals combination support is currently in beta and behind a platform
-        feature flag. Please do not use in production or without explicit guidance from
-        Albert. You might otherwise have a bad experience. This feature currently falls
-        outside of the Albert support contract, but we'd love your feedback!
     """
 
     task_id: str = Field(alias="taskId")
