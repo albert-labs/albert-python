@@ -1,4 +1,4 @@
-# Increased Intervals (🧪Beta)
+# Increased Intervals
 
 This guide is for you if increased intervals is enabled for your tenant and you create or
 edit **Property tasks** or **Batch tasks** with the Albert Python SDK. If your tenant does
@@ -151,8 +151,7 @@ for record in records:
 
 - If your code matches results by `ROW` chain, match on `interval_row_key` instead of
   `interval_combination`. It works on tenants with and without the feature.
-- If your code already matches child workflow IDs in `interval_combination`, as the beta
-  guide advised, it keeps working.
+- If your code already matches child workflow IDs in `interval_combination`, it keeps working.
 
 ### Writing, voiding and checking results
 
