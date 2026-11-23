@@ -273,7 +273,7 @@ class ParameterGroupCollection(BaseCollection):
         is_drop_down : bool, optional
             When True, apply smart dropdown search behavior.
         sort_by : str, optional
-            Attribute to sort results by.
+            Attribute to sort results by. Defaults to ``createdAt``.
         data_template : list[str], optional
             Filter by data template name(s) for smart dropdown search.
         parameter_group : str, optional
@@ -312,7 +312,7 @@ class ParameterGroupCollection(BaseCollection):
             "text": text,
             "userId": user_id,
             "isDropDown": is_drop_down,
-            "sortBy": sort_by,
+            "sortBy": sort_by if sort_by is not None else "createdAt",
             "dataTemplate": ensure_list(data_template),
             "parameterGroup": parameter_group,
             "sourceField": ensure_list(source_field),
@@ -447,7 +447,7 @@ class ParameterGroupCollection(BaseCollection):
         is_drop_down : bool, optional
             When True, apply smart dropdown search behavior.
         sort_by : str, optional
-            Attribute to sort results by.
+            Attribute to sort results by. Defaults to ``createdAt``.
         data_template : list[str], optional
             Filter by data template name(s) for smart dropdown search.
         parameter_group : str, optional
