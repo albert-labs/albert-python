@@ -3,6 +3,7 @@ import uuid
 import pytest
 
 from albert.client import Albert
+from albert.core.shared.enums import PaginationMode
 from albert.resources.parameters import Parameter, ParameterSearchItem
 from tests.utils.wait import poll_until
 
@@ -41,6 +42,33 @@ def test_parameter_get_all_by_ids(client: Albert, seeded_parameters: list[Parame
     )
     assert len(results) == len(ids)
     assert {x.id for x in results} == set(ids)
+
+
+def test_parameter_search_uses_cursor_pagination(
+    client: Albert, seeded_parameters: list[Parameter], monkeypatch: pytest.MonkeyPatch
+):
+    """Test search returns every scoped match exactly once across cursor pages."""
+    monkeypatch.setattr("albert.core.pagination.DEFAULT_LIMIT", 1)
+    parameter_ids = {parameter.id for parameter in seeded_parameters}
+
+    def search_all_matches():
+        results = client.parameters.search(ids=list(parameter_ids))
+        matches = list(results)
+        assert results.mode is PaginationMode.SEARCH_AFTER
+        assert results.json["limit"] == 1
+        assert not results.has_more
+        return matches
+
+    matches = poll_until(
+        search_all_matches,
+        predicate=lambda items: {item.id for item in items} == parameter_ids,
+    )
+    assert len(matches) == len(parameter_ids)
+    assert {item.id for item in matches} == parameter_ids
+
+    early_results = client.parameters.search(ids=list(parameter_ids), max_items=1)
+    assert len(list(early_results)) == 1
+    assert early_results.has_more
 
 
 def test_parameter_search(client: Albert, seed_prefix: str, seeded_parameters: list[Parameter]):
