@@ -3,8 +3,10 @@ from pydantic import ValidationError
 
 from albert.resources.targets import (
     ComparisonOperator,
+    Criterion,
     NumericRange,
     Target,
+    TargetType,
 )
 
 
@@ -85,3 +87,57 @@ class TestTargetParameterCoercion:
         """Test that a bare list (not the in-set dict shape) is left unchanged and rejected downstream."""
         with pytest.raises(ValidationError):
             self._validate_target([1, 2, 3])
+
+
+class TestTargetLabelId:
+    """Test that Target round-trips managed and legacy free-text labels."""
+
+    def test_label_id_is_serialized_on_create_payload(self):
+        """Test that label_id is included as labelId when dumping a create payload."""
+        target = Target(
+            name="Viscosity spec",
+            type=TargetType.PERFORMANCE,
+            data_template_id="DAT1",
+            data_column_id="DAC1",
+            target_value=Criterion(operator=ComparisonOperator.GTE, value=90),
+            is_required=True,
+            label_id="LBL1",
+        )
+
+        payload = target.model_dump(by_alias=True, exclude_none=True, mode="json")
+
+        assert payload["labelId"] == "LBL1"
+        assert "label" not in payload
+
+    def test_label_id_is_normalized_from_bare_numeric(self):
+        """Test that a bare numeric label id is prefixed to LBL… on validation."""
+        target = Target.model_validate(
+            {
+                "name": "Viscosity spec",
+                "type": "performance",
+                "dataTemplateId": "DAT1",
+                "dataColumnId": "DAC1",
+                "targetValue": {"operator": "gte", "value": 90},
+                "isRequired": True,
+                "labelId": "1",
+            }
+        )
+
+        assert target.label_id == "LBL1"
+
+    def test_legacy_label_string_is_accepted(self):
+        """Test that the deprecated free-text label field is still accepted on read."""
+        target = Target.model_validate(
+            {
+                "name": "Viscosity spec",
+                "type": "performance",
+                "dataTemplateId": "DAT1",
+                "dataColumnId": "DAC1",
+                "targetValue": {"operator": "gte", "value": 90},
+                "isRequired": True,
+                "label": "Needs",
+            }
+        )
+
+        assert target.label == "Needs"
+        assert target.label_id is None
