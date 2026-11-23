@@ -124,7 +124,7 @@ class IntervalCombination(BaseAlbertModel):
     condition."""
 
     interval_id: IntervalId | None = Field(default=None, alias="interval")
-    """The interval ID this combination is associated with. A ``ROW#`` chain of any length, a child workflow id (``WFL...``), a 9-character barcode, or ``"default"``. This is the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns for ROW-chain combinations."""
+    """The interval ID this combination is associated with. A ``ROW#`` chain of any length, a child workflow id (``WFL...``), a case-sensitive barcode, or ``"default"``. This is the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns for ROW-chain combinations."""
 
     interval_params: str | None = Field(default=None, alias="intervalParams")
     """The parameters participating in the interval."""

@@ -162,7 +162,7 @@ def build_catalog_job(regions: str) -> dict:
         "steps": [
             "checkout",
             {"add_ssh_keys": {"fingerprints": [DOCS_DEPLOY_KEY_FINGERPRINT]}},
-            {"run": {"name": "Install boto3", "command": "pip install --quiet boto3"}},
+            {"run": {"name": "Install boto3", "command": "python -m pip install --quiet boto3"}},
             {
                 "run": {
                     "name": "Build Lambda layer catalog",

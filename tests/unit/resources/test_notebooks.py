@@ -9,10 +9,14 @@ from albert.resources.notebooks import (
     ChecklistContent,
     ChecklistItem,
     ExcelBlock,
+    LiveCanvasBlock,
+    LiveCanvasContent,
     Notebook,
     NotebookCopyACL,
     NotebookCopyInfo,
+    NotebookVersion,
     ParagraphContent,
+    PostBlockPayload,
     PowerPointBlock,
     PutBlockDatum,
     PutBlockPayload,
@@ -212,6 +216,47 @@ def test_put_datum_accepts_office_and_report_content():
         assert datum.content is block.content
 
 
+def test_notebook_parses_artifact_block():
+    """Test a notebook with an embedded Artifact block parses and keeps its reference."""
+    payload = {
+        "albertId": "NTB123",
+        "parentId": "PRO123",
+        "blocks": [
+            {"id": "b1", "blockType": "paragraph", "content": {"text": "Notes"}},
+            {
+                "id": "b2",
+                "blockType": "liveCanvas",
+                "content": {"canvasId": "CNV123", "shareId": "CNS123", "title": "DOE overview"},
+            },
+        ],
+    }
+
+    notebook = Notebook(**payload)
+
+    block = notebook.blocks[1]
+    assert isinstance(block, LiveCanvasBlock)
+    assert block.content.canvas_id == "CNV123"
+    assert block.content.share_id == "CNS123"
+    assert block.content.title == "DOE overview"
+
+
+def test_artifact_block_round_trips_unchanged():
+    """Test an Artifact block is sent back with the same wire content, unknown keys included."""
+    content = {"canvasId": "CNV123", "shareId": "CNS123", "title": "DOE overview", "pinned": True}
+    block = LiveCanvasBlock(id="b2", content=LiveCanvasContent(**content))
+
+    datum = PutBlockDatum(
+        id=block.id,
+        type=block.type,
+        content=block.content,
+        operation=PutOperation.UPDATE,
+    )
+    dumped = datum.model_dump(mode="json", by_alias=True)
+
+    assert dumped["blockType"] == "liveCanvas"
+    assert dumped["content"] == content
+
+
 def test_copy_info_serializes_acl():
     """Test copy info sends access settings under the ``ACL`` wire key."""
     info = NotebookCopyInfo(
@@ -233,3 +278,59 @@ def test_copy_info_serializes_template_id():
     payload = info.model_dump(mode="json", by_alias=True, exclude_none=True)
 
     assert payload["templateId"] == "CTP789"
+
+
+def test_post_block_payload_rejects_mismatched_content():
+    """Test PostBlockPayload rejects content whose type differs from the block type."""
+    with pytest.raises(AlbertException, match="The content type and block type do not match."):
+        PostBlockPayload(type=BlockType.KETCHER, content=ParagraphContent(text="test"))
+
+
+def test_post_block_payload_serializes_to_wire_format():
+    """Test PostBlockPayload dumps to the wire shape, omitting an unset previous block."""
+    payload = PostBlockPayload(type=BlockType.PARAGRAPH, content=ParagraphContent(text="hi"))
+
+    assert payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "blockType": "paragraph",
+        "content": {"text": "hi"},
+    }
+
+
+def test_post_block_payload_preserves_nested_none_text():
+    """Test PostBlockPayload preserves null text while omitting unset placement."""
+    payload = PostBlockPayload(type=BlockType.PARAGRAPH, content=ParagraphContent(text=None))
+
+    assert payload.model_dump(mode="json", by_alias=True) == {
+        "blockType": "paragraph",
+        "content": {"text": None},
+    }
+
+
+def test_post_block_payload_includes_previous_block_id_when_set():
+    """Test PostBlockPayload carries the placement anchor when provided."""
+    payload = PostBlockPayload(
+        type=BlockType.PARAGRAPH,
+        content=ParagraphContent(text="hi"),
+        previous_block_id="B0",
+    )
+
+    dumped = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+    assert dumped["previousBlockId"] == "B0"
+
+
+def test_notebook_version_parses_wire_format():
+    """Test NotebookVersion parses a saved version record."""
+    version = NotebookVersion.model_validate(
+        {"id": "V1", "Created": {"by": "USR1", "byName": "Ada", "at": "2024-01-01T00:00:00Z"}}
+    )
+
+    assert version.id == "V1"
+    assert version.created.by == "USR1"
+    assert version.created.by_name == "Ada"
+
+
+def test_notebook_version_parses_albert_id_key():
+    """Test NotebookVersion also accepts the albertId key used by other platform records."""
+    version = NotebookVersion.model_validate({"albertId": "V1"})
+
+    assert version.id == "V1"

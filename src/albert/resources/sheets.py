@@ -22,6 +22,7 @@ from albert.core.utils import find_stack_level
 from albert.exceptions import AlbertException, AlbertHTTPError, AlbertPartialError
 from albert.resources.attributes import Attribute, ExpressionType, FormulaMetadata
 from albert.resources.inventory import InventoryItem
+from albert.utils.calculations import validate_calculation_expression
 
 # Define forward references
 Row = ForwardRef("Row")
@@ -285,7 +286,18 @@ class Cell(BaseResource):
     Writing a bare ``"INV..."`` id is accepted by the API but stored as unlinked
     plain text, so the UI shows the raw id instead of the linked item. On reads,
     a linked cell's value is a dict of the form ``{"id": "INVB90948", "name":
-    "B90948 || Copper Coupon"}``."""
+    "B90948 || Copper Coupon"}``.
+
+    For **list-backed sheet columns** (the built-in Function column, type ``FNC``,
+    and lookup columns tied to enum custom fields), set ``value`` to the list item
+    id (``"LST..."``). Resolve allowed Function tags with
+    [`get_all`][albert.collections.lists.ListsCollection.get_all] and
+    ``list_type="inventoryFunction"``. A display name such as ``"Dry"`` is not a
+    reference: the platform may store it as plain text or a list of strings
+    without linking to a list item. That differs from a **calculation** on the same
+    cell or row, where ``WHERE Function = "Dry"`` uses quoted names inside the
+    expression string (see ``calculation`` and
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells])."""
 
     min_value: str | None = Field(default=None, alias="minValue")
     """The minimum allowed value for inventory cells. Optional."""
@@ -303,7 +315,17 @@ class Cell(BaseResource):
     """The name of the cell. Optional. Default is None."""
 
     calculation: str = ""
-    """The formula backing the cell, if any (e.g. a total). Default is ``""``."""
+    """The formula backing the cell, if any (e.g. a total). Default is ``""``.
+
+    Totals reference grid coordinates (``"=COL5ROW12+COL6ROW12"``). Calculated
+    properties and ingredient bases use the ingredient expression language:
+    ``wt%``, ``parts_mass``, ``Function``, and bracketed attributes such as
+    ``[Solid %]``; aggregate with ``sum(expr)`` or
+    ``sum(expr WHERE Function = "Core")`` (quoted values, ``OR`` between values
+    of one key, never ``AND``). Use an ingredient basis when the value must be
+    back-solved; a calculated property is read-only. The full rule set lives on
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells]. Malformed
+    expressions raise ``ValueError`` before anything is saved."""
 
     design_id: str
     """The ID of the Design (Sheet section) this cell is in."""
@@ -448,11 +470,17 @@ class RowConfig(BaseAlbertModel):
 
 
 class RowGroup(BaseAlbertModel):
-    """A named group of rows within a Design."""
+    """A named group of rows (a section) within a Design."""
 
     row_id: str = Field(alias="rowId")
+    """The ID of the group's header row."""
+
     name: str | None = Field(default=None)
+    """The name of the group, shown on its header row. Optional. Default is None."""
+
     child_row_ids: list[str] = Field(default_factory=list)
+    """The IDs of the rows directly inside the group, in sheet order. A section nested
+    inside this one is listed by its header row ID."""
 
 
 class Design(BaseSessionResource):
@@ -468,9 +496,10 @@ class Design(BaseSessionResource):
     Methods
     -------
     group_rows(name, child_row_ids, ...) -> RowGroup
-        Create a named row group within this design.
+        Create a new row group (section) within this design.
     get_groups(refresh=False) -> list[RowGroup]
-        Get all row groups in this design.
+        Get all row groups in this design, including sections nested inside other
+        sections.
     """
 
     state: DesignState | None = Field(default=None)
@@ -702,7 +731,13 @@ class Design(BaseSessionResource):
         reference_id: str | None = None,
         position: str = "above",
     ) -> RowGroup:
-        """Create a row group within this design.
+        """Create a row group (section) within this design.
+
+        This always creates a new section with its own header row. To add rows to an
+        existing section, use
+        [`add_inventory_rows`][albert.resources.sheets.Sheet.add_inventory_rows] with
+        ``section_id``, or [`move_rows`][albert.resources.sheets.Sheet.move_rows]
+        next to a row inside it.
 
         !!! example
             ```python
@@ -762,7 +797,10 @@ class Design(BaseSessionResource):
         return group
 
     def get_groups(self, *, refresh: bool = False) -> list[RowGroup]:
-        """Get all row groups in this design.
+        """Get all row groups (sections, headers) in this design.
+
+        Sections nested inside other sections are included. Groups come in sheet
+        order, each before the sections nested inside it.
 
         !!! example
             ```python
@@ -795,19 +833,7 @@ class Design(BaseSessionResource):
             self._groups_cache = []
             return []
 
-        groups: list[RowGroup] = []
-        for item in seq:
-            rid = item.get("rowId") or item.get("id")
-            child_dicts = (
-                item.get("children") or item.get("childRows") or item.get("ChildRows") or []
-            )
-            if rid and child_dicts:
-                child_ids = [
-                    (c.get("rowId") or c.get("id"))
-                    for c in child_dicts
-                    if isinstance(c, dict) and (c.get("rowId") or c.get("id"))
-                ]
-                groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
+        groups = self._parse_row_groups(sequence=seq)
 
         # The row sequence does not carry group names; fill them in from the grid rows.
         if any(g.name is None for g in groups):
@@ -817,6 +843,39 @@ class Design(BaseSessionResource):
                     g.name = name_by_row_id.get(g.row_id)
 
         self._groups_cache = groups
+        return groups
+
+    @staticmethod
+    def _parse_row_groups(*, sequence: list) -> list[RowGroup]:
+        """Every row group in a design's row sequence, nested groups included.
+
+        Groups come in sheet order, each before the groups nested inside it. A
+        group listed more than once (the sequence can repeat one after a grouping
+        the sheet applied only in part) is kept at its first occurrence.
+        """
+        groups: list[RowGroup] = []
+        seen: set[str] = set()
+
+        def walk(items: list) -> None:
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                rid = item.get("rowId") or item.get("id")
+                child_dicts = (
+                    item.get("children") or item.get("childRows") or item.get("ChildRows") or []
+                )
+                if not rid or not child_dicts or rid in seen:
+                    continue
+                seen.add(rid)
+                child_ids = [
+                    (c.get("rowId") or c.get("id"))
+                    for c in child_dicts
+                    if isinstance(c, dict) and (c.get("rowId") or c.get("id"))
+                ]
+                groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
+                walk(child_dicts)
+
+        walk(sequence)
         return groups
 
 
@@ -967,9 +1026,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
     add_formulation_columns(formulation_names, ...) -> list[Column]
         Add one or more empty formulation columns.
     add_inventory_row(inventory_id, ...) -> Row
-        Add an ingredient (inventory) row.
+        Add an ingredient (inventory) row, optionally into a section.
     add_inventory_rows(inventory_ids, ...) -> list[Row]
-        Add multiple ingredient (inventory) rows in one call.
+        Add multiple ingredient (inventory) rows in one call, optionally into a section.
     add_blank_row(row_name, ...) -> Row
         Add a blank row.
     add_blank_rows(row_names, ...) -> list[Row]
@@ -1129,6 +1188,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 design._grid = None  # Assuming Design has a grid property
                 design._rows = None
                 design._columns = None
+                design._groups_cache = None
         else:
             raise NotImplementedError("grid is a read-only property")
 
@@ -2114,6 +2174,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 ordered = [row.row_unique_id for row in design._rows]
                 remaining = [label for label in grid.index if label not in set(ordered)]
                 design._grid = grid.reindex(index=[*ordered, *remaining])
+        # Rows placed next to a row inside a section join that section.
+        design._groups_cache = None
         self._grid = None
 
     def _apply_cells_to_cached_grids(self, *, cells: list[Cell]) -> None:
@@ -2562,15 +2624,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
         *,
         inventory_id: str,
         position: dict | None = None,
+        section_id: str | None = None,
     ):
-        """Add an ingredient (inventory) row to the Product Design.
+        """Add an ingredient (inventory, raw material) row to the Product Design.
 
         The row represents an inventory item that can then carry amounts in each
         formulation column. The ``INV`` prefix is added to ``inventory_id`` if absent.
+        Pass ``section_id`` to add the row at the end of an existing section (row
+        group), for example to fill a grouped template.
 
         !!! example
             ```python
             row = sheet.add_inventory_row(inventory_id="INVA9999999")
+
+            groups = sheet.product_design.get_groups()
+            pigments = next(g for g in groups if g.name == "Pigments")
+            row = sheet.add_inventory_row(inventory_id="INVA9999998", section_id=pigments.row_id)
             ```
 
         Parameters
@@ -2580,12 +2649,29 @@ class Sheet(BaseSessionResource):  # noqa:F811
         position : dict, optional
             Where to insert the row, as a dict with ``reference_id`` (a row ID) and
             ``position`` (``"above"`` or ``"below"``). Defaults to above ``"ROW1"``.
+            Cannot be combined with ``section_id``.
+        section_id : str, optional
+            The header row ID of an existing section to add the row to (the ``row_id``
+            of a [`RowGroup`][albert.resources.sheets.RowGroup] from
+            [`get_groups`][albert.resources.sheets.Design.get_groups]). A section here
+            is a row group inside the Product Design, not a Design section
+            (``design_id``) such as Results or Process Design. The row goes at the end
+            of the section, after any section nested inside it. The section must
+            contain at least one row. Cannot be combined with ``position``.
 
         Returns
         -------
         Row
             The created inventory row.
+
+        Raises
+        ------
+        AlbertException
+            If both ``position`` and ``section_id`` are given, or if ``section_id`` is
+            not a section with rows in the Product Design.
         """
+        if section_id is not None:
+            position = self._section_position(position=position, section_id=section_id)
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
         design_id = self.product_design.id
@@ -2612,11 +2698,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
             name=row_dict["name"],
             manufacturer=row_dict["manufacturer"],
         )
-        self._register_new_rows(
-            rows=[new_row],
-            reference_id=position["reference_id"],
-            position=position["position"],
-        )
+        if section_id is None:
+            self._register_new_rows(
+                rows=[new_row],
+                reference_id=position["reference_id"],
+                position=position["position"],
+            )
+        else:
+            # The anchor can be a nested section's header, whose rows sit between it
+            # and the new row; the cached row order cannot place that, so drop it.
+            self.grid = None
         return new_row
 
     @validate_call
@@ -2625,13 +2716,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         *,
         inventory_ids: list[str],
         position: dict | None = None,
+        section_id: str | None = None,
     ) -> list[Row]:
-        """Add multiple ingredient (inventory) rows to the Product Design.
+        """Add multiple ingredient (inventory, raw material) rows to the Product Design.
 
         The rows represent inventory items that can then carry amounts in each
         formulation column. The ``INV`` prefix is added to each ``inventory_id``
         if absent. All rows in the list are placed relative to the same
-        reference row.
+        reference row, or together at the end of the section given by
+        ``section_id``.
+
+        To build a formulation in a grouped template, add each ingredient to its
+        section first, then call
+        [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] with the
+        default ``enforce_order=False``, which reuses those rows.
 
         !!! warning "Concurrent use"
             Do not run this method concurrently with other writes to the same
@@ -2645,6 +2743,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
         !!! example
             ```python
             rows = sheet.add_inventory_rows(inventory_ids=["INVA9999999", "INVA9999998"])
+
+            groups = sheet.product_design.get_groups()
+            fillers = next(g for g in groups if g.name == "Fillers")
+            rows = sheet.add_inventory_rows(
+                inventory_ids=["INVA9999997", "INVA9999996"], section_id=fillers.row_id
+            )
             ```
 
         Parameters
@@ -2654,15 +2758,31 @@ class Sheet(BaseSessionResource):  # noqa:F811
         position : dict, optional
             Where to insert the rows, as a dict with ``reference_id`` (a row ID)
             and ``position`` (``"above"`` or ``"below"``). Defaults to above
-            ``"ROW1"``.
+            ``"ROW1"``. Cannot be combined with ``section_id``.
+        section_id : str, optional
+            The header row ID of an existing section to add the rows to (the
+            ``row_id`` of a [`RowGroup`][albert.resources.sheets.RowGroup] from
+            [`get_groups`][albert.resources.sheets.Design.get_groups]). A section here
+            is a row group inside the Product Design, not a Design section
+            (``design_id``) such as Results or Process Design. The rows go at the end
+            of the section, after any section nested inside it. The section must
+            contain at least one row. Cannot be combined with ``position``.
 
         Returns
         -------
         list[Row]
             The created inventory rows, in the order requested.
+
+        Raises
+        ------
+        AlbertException
+            If both ``position`` and ``section_id`` are given, or if ``section_id`` is
+            not a section with rows in the Product Design.
         """
         if not inventory_ids:
             return []
+        if section_id is not None:
+            position = self._section_position(position=position, section_id=section_id)
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
         design = self.product_design
@@ -2705,14 +2825,45 @@ class Sheet(BaseSessionResource):  # noqa:F811
             if chunk_rows and position["position"] == RowPosition.BELOW.value:
                 reference_id = chunk_rows[-1].row_id
 
-        # Rows arrived in an order the cached row list does not reflect; fold
-        # them into the cached Product Design state at the reference position.
-        self._register_new_rows(
-            rows=rows,
-            reference_id=position["reference_id"],
-            position=position["position"],
-        )
+        if section_id is None:
+            # Rows arrived in an order the cached row list does not reflect; fold
+            # them into the cached Product Design state at the reference position.
+            self._register_new_rows(
+                rows=rows,
+                reference_id=position["reference_id"],
+                position=position["position"],
+            )
+        else:
+            # The anchor can be a nested section's header, whose rows sit between it
+            # and the new rows; the cached row order cannot place that, so drop it.
+            self.grid = None
         return rows
+
+    def _section_position(self, *, position: dict | None, section_id: str) -> dict:
+        """The insert position that puts new rows at the end of a Product Design section."""
+        if position is not None:
+            raise AlbertException("Pass either position or section_id, not both.")
+        response = self.session.get(
+            f"/api/v3/worksheet/design/{self.product_design.id}/rows/sequence"
+        )
+        return self._position_at_end_of_section(sequence=response.json(), section_id=section_id)
+
+    @staticmethod
+    def _position_at_end_of_section(*, sequence: list, section_id: str) -> dict:
+        """Place rows below a section's last direct child, from the design's row sequence.
+
+        A new row lands at the level of the row it is placed against, so placing it
+        below the last direct child keeps it inside the section, and after a section
+        nested at the end (the last child is then that section's header).
+        """
+        groups = Design._parse_row_groups(sequence=sequence)
+        group = next((g for g in groups if g.row_id == section_id), None)
+        if group is None:
+            raise AlbertException(
+                f"{section_id} is not a section with rows in the Product Design. Pass the "
+                "row_id of a group from get_groups(); a section must contain at least one row."
+            )
+        return {"reference_id": group.child_row_ids[-1], "position": RowPosition.BELOW.value}
 
     @validate_call
     def add_lookup_row(
@@ -3637,6 +3788,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
         such as [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] and [`recolor_cells`][albert.resources.sheets.Column.recolor_cells] call this
         for you; use it directly when editing cells obtained from the grid.
 
+        All changes across all designs are computed and validated before
+        anything is written, so one malformed calculation means nothing is
+        written; the ``ValueError`` names the offending cell's row and column.
+
         Edits of any size are accepted; large edits are split to stay within
         platform limits. If the same sheet is being written elsewhere
         concurrently, some edits can fail and come back in ``failed``; read the
@@ -3649,6 +3804,62 @@ class Sheet(BaseSessionResource):  # noqa:F811
         in ``failed``, and a ``UserWarning`` says how many; unlike cells that fail from
         concurrent writes, retrying will not write them. Formatting changes on them, and
         all other cells, are written as usual.
+
+        **Writing list-backed cell values.** Cells in a Function (``FNC``) column or
+        an enum lookup column store list item references. Set ``Cell.value`` to the
+        list item id (``"LST..."``), not the display name. Resolve Function tags with
+        [`get_all`][albert.collections.lists.ListsCollection.get_all] and
+        ``list_type="inventoryFunction"``. Quoted names in ``WHERE Function = "..."``
+        belong only in ``calculation`` strings, not in ``value``.
+
+        **Writing calculations.** Totals and row arithmetic reference grid
+        coordinates and start with ``=``, e.g. ``"=COL5ROW12+COL6ROW12"``.
+        Calculated properties and ingredient bases instead use the ingredient
+        expression language:
+
+        - Variables: ``wt%`` (the ingredient's weight percent), ``parts_mass``
+          (the ingredient's amount), ``Function`` (the ingredient's Function
+          tag; usable only in ``WHERE`` filters), and ``ingredient_basis`` (the
+          per-ingredient result of a linked basis, usable inside aggregations,
+          e.g. ``sum(ingredient_basis WHERE Function = "Resin")``; either
+          casing of the variable compiles, but the platform's authored form is
+          lowercase). Beyond the built-ins, any property attribute of the
+          ingredient works in brackets, by name or ID, e.g. ``[Solid %]`` or
+          ``[ATR66]``; find them through
+          [`AttributeCollection`][albert.collections.attributes.AttributeCollection]
+          (``client.attributes``). Combine variables with ``+ - * /``,
+          parentheses, and numbers, e.g. ``wt% * [Solid %] / 100``.
+        - ``sum(expr)`` sums an expression over every ingredient.
+        - ``sum(expr WHERE Function = "Core")`` sums over only the ingredients
+          whose Function tag matches. ``OR`` adds more values of the same key:
+          ``sum(wt% WHERE Function = "Core" OR Function = "Shell")``. ``AND``
+          is not supported (an ingredient carries one Function value), values
+          must be quoted, and one ``WHERE`` filter reads one key. A text
+          property attribute in brackets can filter instead of ``Function``,
+          e.g. ``sum(parts_mass WHERE [Resin Type] = "Epoxy")``. Filter keys
+          are case-sensitive: ``Function`` is the exact spelling, and another
+          casing compiles but silently matches nothing.
+        - ``harmonicMean(weight, attr)`` is the weighted harmonic mean across
+          all ingredients, e.g. ``harmonicMean(wt%, [Density])``. ``WHERE``
+          filters are supported only inside ``sum(...)``, not in
+          ``harmonicMean(...)``.
+        - Aggregations are spelled in lowercase: ``SUM(...)`` or ``Sum(...)``
+          over ingredient variables does not compile. Plain column totals such
+          as ``=SUM(COL5:COL9)`` are a different formula language and are
+          unaffected.
+
+        Choosing between an ingredient basis and a calculated property: an
+        ingredient basis computes one value per ingredient and is the only form
+        that supports back-solving (entering a target result and letting the
+        platform solve for the ingredient amount). A calculated property
+        computes a single aggregate result per formulation as a read-only
+        output and cannot be back-solved; the platform refuses a back-solve
+        configuration on a calculated property (the SDK does not check this,
+        since back-solve configuration has no SDK surface), so when
+        back-solving is needed, model the value as an ingredient basis.
+        Back-solving supports plain per-ingredient expressions and share-of-sum
+        shapes such as ``wt% / sum(wt% WHERE Function = "Resin") * 100``
+        (parts per hundred resin); other aggregations cannot be back-solved.
 
         !!! example
             ```python
@@ -3697,6 +3908,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
             else:
                 request_path_dict[c.design_id].append(c)
 
+        # Compute and validate every change for every design before writing
+        # anything, so one malformed cell leaves the whole batch unwritten.
+        planned: list[tuple[str, list[tuple[CellChangePayload, Cell]]]] = []
         for design_id, cell_list in request_path_dict.items():
             # Diff every cell against one snapshot of this design's grid rather
             # than rescanning the grid per cell.
@@ -3721,6 +3935,19 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         failed.append(cell)
                         refused += 1
                     continue
+                # Validate a changed calculation only once the cell is known to
+                # be writable, so cells the sheet computes keep their refusal
+                # behavior and never raise here.
+                if cell.calculation and any(
+                    datum.attribute == "calculation" for datum in change_dict["data"]
+                ):
+                    try:
+                        validate_calculation_expression(expression=cell.calculation)
+                    except ValueError as error:
+                        raise ValueError(
+                            f"Cell in row {cell.row_id}, column {cell.column_id} of design "
+                            f"{cell.design_id}: {error}"
+                        ) from error
 
                 # The value-update schema allows at most 2 data changes per
                 # entry (worksheet.yaml Values data maxItems), and the worksheet
@@ -3742,6 +3969,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         }
                         payload_entries.append((single_change, cell))
 
+            planned.append((design_id, payload_entries))
+
+        for design_id, payload_entries in planned:
             if not payload_entries:
                 continue
 
@@ -4665,7 +4895,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         """Move (reorder) one or more rows within a Design section of this sheet.
 
         The rows keep their given relative order and are placed together above
-        or below the reference row.
+        or below the reference row. Moving rows next to a row inside a section
+        (row group) moves them into that section.
 
         !!! example
             ```python

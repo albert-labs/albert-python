@@ -52,7 +52,7 @@ class StorageLocationsCollection(BaseCollection):
         Create a new storage location.
     get_by_id(id) -> StorageLocation
         Get a single storage location by its Albert ID.
-    get_by_name(name, exact_match=True) -> StorageLocation | None
+    get_by_name(name, exact_match=True, location=None) -> StorageLocation | None
         Get a single storage location by name, or None if not found.
     get_all(...) -> Iterator[StorageLocation]
         Iterate over storage locations, optionally filtered by name or location.
@@ -101,15 +101,24 @@ class StorageLocationsCollection(BaseCollection):
         response = self.session.get(path)
         return StorageLocation(**response.json())
 
-    def get_by_name(self, *, name: str, exact_match: bool = True) -> StorageLocation | None:
-        """Get a single Storage Location by name.
+    def get_by_name(
+        self,
+        *,
+        name: str,
+        exact_match: bool = True,
+        location: Location | None = None,
+    ) -> StorageLocation | None:
+        """Get a single Storage Location by name, optionally within a parent Location.
 
         Returns the first match, or None if no storage location matches. To look up
         or create in one step, use [`get_or_create`][albert.collections.storage_locations.StorageLocationsCollection.get_or_create].
 
         !!! example
             ```python
-            storage_location = client.storage_locations.get_by_name(name="Freezer A")
+            parent = client.locations.get_by_id(id="LOC1")
+            storage_location = client.storage_locations.get_by_name(
+                name="Freezer A", location=parent
+            )
             storage_location.id if storage_location else "not found"
             # 'STL123'
             ```
@@ -121,14 +130,47 @@ class StorageLocationsCollection(BaseCollection):
         exact_match : bool, optional
             When True (default), requires an exact name match. When False, matches
             on a substring of the name.
+        location : Location, optional
+            Restrict the lookup to this parent
+            [`Location`][albert.resources.locations.Location]. If omitted, consider
+            storage locations at any parent Location.
 
         Returns
         -------
         StorageLocation or None
             The matching storage location, or None if no storage location matches.
         """
-        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
+        if location is None:
+            found = self.get_all(name=name, exact_match=exact_match, max_items=1)
+            return next(found, None)
+
+        found = (
+            storage_location
+            for storage_location in self.get_all(
+                name=name, exact_match=exact_match, location=location
+            )
+            if self._matches_name_and_location(
+                storage_location,
+                name=name,
+                exact_match=exact_match,
+                location=location,
+            )
+        )
         return next(found, None)
+
+    @staticmethod
+    def _matches_name_and_location(
+        storage_location: StorageLocation,
+        *,
+        name: str,
+        exact_match: bool,
+        location: Location,
+    ) -> bool:
+        if storage_location.location.id != location.id:
+            return False
+        if exact_match:
+            return storage_location.name.lower() == name.lower()
+        return name.lower() in storage_location.name.lower()
 
     def get_all(
         self,

@@ -61,6 +61,7 @@ def test_view_crud(client: Albert):
     assert created.id not in client.views.get_order(entity=ViewEntity.DATA_TEMPLATES)
 
 
+@pytest.mark.skip(reason="SDK-280: concurrent integration runs share the same user's view order")
 def test_view_set_order(client: Albert):
     """Test moving a view to the first tab and restoring the original order."""
     view = client.views.create(view=View(name=_name(), entity=ViewEntity.DATA_TEMPLATES))

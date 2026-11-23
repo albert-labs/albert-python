@@ -119,8 +119,8 @@ class EntityCustomField(BaseAlbertModel):
     section: FieldSection
     """Where the field is displayed on the form (top or bottom)."""
 
-    hidden: bool
-    """Whether the field is hidden from the form."""
+    hidden: bool | None = None
+    """Whether the field is hidden from the form. ``None`` when Albert omits it."""
 
     default: str | float | EntityLink | None = None
     """The default value applied to the field, if any."""
