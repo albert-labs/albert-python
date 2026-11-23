@@ -1,9 +1,15 @@
 from albert.resources.parameters import ParameterSearchItem
 
 
-def test_parameter_search_item_allows_missing_id():
-    """Test that a partial parameter search result remains valid without an ID."""
-    item = ParameterSearchItem(name="Temperature")
+def test_parameter_search_item_accepts_lowercase_metadata():
+    """Test that search results accept lower-case metadata."""
+    item = ParameterSearchItem.model_validate({"metadata": {"batchCode": "B-100"}})
 
-    assert item.id is None
-    assert item.name == "Temperature"
+    assert item.metadata == {"batchCode": "B-100"}
+
+
+def test_parameter_search_item_preserves_unmodeled_selected_fields():
+    """Test that explicitly selected fields remain accessible on search results."""
+    item = ParameterSearchItem.model_validate({"name": "Temperature", "customField": "value"})
+
+    assert item.model_extra == {"customField": "value"}

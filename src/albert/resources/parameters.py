@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import Status
@@ -140,6 +140,8 @@ class ParameterSearchItem(BaseAlbertModel, HydrationMixin[Parameter]):
     [`Parameter`][albert.resources.parameters.Parameter]. Results without an ``id`` cannot be hydrated.
     """
 
+    model_config = ConfigDict(extra="allow")
+
     id: ParameterId | None = Field(
         default=None,
         alias="albertId",
@@ -165,7 +167,11 @@ class ParameterSearchItem(BaseAlbertModel, HydrationMixin[Parameter]):
     updated_at: str | None = Field(default=None, alias="updatedAt")
     """ISO 8601 timestamp of when the parameter was last updated."""
 
-    metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
+    metadata: dict[str, Any] | None = Field(
+        default=None,
+        alias="Metadata",
+        validation_alias=AliasChoices("Metadata", "metadata"),
+    )
     """Custom metadata attached to the parameter."""
 
     parameter_groups: list[ParameterSearchItemLink] | None = Field(

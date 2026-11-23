@@ -243,8 +243,6 @@ class ParameterCollection(BaseCollection):
         translation: str | list[str] | None = None,
         metadata_filters: dict[str, Any] | None = None,
         custom_fields: dict[str, Any] | None = None,
-        facet_text: str | None = None,
-        facet_field: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
@@ -291,10 +289,6 @@ class ParameterCollection(BaseCollection):
         custom_fields : dict[str, Any], optional
             Custom field type definitions used to interpret ``metadata_filters``, keyed by
             field name, for example ``{"batchCode": "string"}``.
-        facet_text : str, optional
-            Text to match within a facet search.
-        facet_field : str, optional
-            Field to use for facet filtering.
         order_by : OrderBy, optional
             Sort direction. Default ``OrderBy.DESCENDING``.
         sort_by : str, optional
@@ -320,8 +314,6 @@ class ParameterCollection(BaseCollection):
             "sourceField": ensure_list(source_field),
             "additionalField": ensure_list(additional_field),
             "translation": ensure_list(translation),
-            "facetText": facet_text,
-            "facetField": facet_field,
         }
         if metadata_filters is not None:
             payload["metadataFilters"] = {"metadata": metadata_filters}

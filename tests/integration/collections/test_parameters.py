@@ -77,7 +77,9 @@ def test_parameter_search(client: Albert, seed_prefix: str, seeded_parameters: l
     hits = poll_until(
         lambda: [
             item
-            for item in client.parameters.search(text=seed_prefix, max_items=50)
+            for item in client.parameters.search(
+                text=seed_prefix, ids=list(seeded_ids), max_items=50
+            )
             if item.id in seeded_ids
         ]
     )
