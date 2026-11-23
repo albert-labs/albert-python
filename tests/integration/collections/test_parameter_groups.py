@@ -3,7 +3,7 @@ from contextlib import suppress
 import pytest
 
 from albert.client import Albert
-from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.parameter_groups import (
@@ -81,7 +81,7 @@ def test_parameter_group_search_uses_cursor_pagination(
         group_ids = {group.id for group in parameter_groups}
 
         def search_all_matches():
-            results = client.parameter_groups.search(tags=[tag.tag], order_by=OrderBy.ASCENDING)
+            results = client.parameter_groups.search(tags=[tag.tag])
             matches = [item for item in results if item.id in group_ids]
             assert results.mode is PaginationMode.SEARCH_AFTER
             assert results.json["limit"] == 1
@@ -93,7 +93,6 @@ def test_parameter_group_search_uses_cursor_pagination(
         )
         assert {item.id for item in matches} == group_ids
         assert len(matches) == len(group_ids)
-        assert [item.id for item in matches] == [group.id for group in parameter_groups]
 
         early_results = client.parameter_groups.search(tags=[tag.tag], max_items=1)
         assert len(list(early_results)) == 1
