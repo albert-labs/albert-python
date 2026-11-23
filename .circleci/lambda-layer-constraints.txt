@@ -1,0 +1,7 @@
+# Floors applied only when building the Lambda layer, not published as SDK
+# requirements. Python 3.11+ already resolves these on its own; the file keeps
+# a layer rebuild from drifting back to a vulnerable transitive pin.
+# dnspython 2.9.2 requires Python >=3.11, which matches lambda_runtimes.
+certifi>=2026.10.18
+dnspython>=2.9.2
+urllib3>=2.8.0
