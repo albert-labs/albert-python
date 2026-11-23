@@ -4,6 +4,8 @@ This guide is for you if increased intervals is enabled for your tenant and you 
 edit **Property tasks** or **Batch tasks** with the Albert Python SDK. If your tenant does
 not have the feature, nothing here applies and your existing code keeps working.
 
+Increased intervals and the combination methods described here remain in beta in SDK 1.77.0.
+
 ## Do you need to do anything?
 
 Upgrade to SDK version **1.77.0** or later. It is the minimum version for tenants with
