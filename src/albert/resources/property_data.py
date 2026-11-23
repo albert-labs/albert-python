@@ -999,14 +999,14 @@ class PropertyDataSearchItem(BaseAlbertModel):
     category: str
     """The data entity category (e.g. task or inventory)."""
 
-    workflow: list[WorkflowItem]
-    """The parameter setpoints in effect for this result."""
+    workflow: list[WorkflowItem] | None = Field(default=None)
+    """The parameter setpoints associated with the result, or ``None`` when unavailable."""
 
     result: PropertyDataResult
     """The measured result value."""
 
-    data_template_id: DataTemplateId = Field(..., alias="dataTemplateId")
-    """The data template (format ``DAT...``). Serialized as ``dataTemplateId``."""
+    data_template_id: DataTemplateId | None = Field(default=None, alias="dataTemplateId")
+    """The data template ID (format ``DAT...``), or ``None`` when unavailable."""
 
     workflow_name: str | None = Field(default=None, alias="workflowName")
     """The workflow name. Serialized as ``workflowName``."""
@@ -1014,8 +1014,8 @@ class PropertyDataSearchItem(BaseAlbertModel):
     parent_id: TaskId | InventoryId = Field(..., alias="parentId")
     """The entity the data was recorded on. Serialized as ``parentId``."""
 
-    data_template_name: str = Field(..., alias="dataTemplateName")
-    """The data template name. Serialized as ``dataTemplateName``."""
+    data_template_name: str | None = Field(default=None, alias="dataTemplateName")
+    """The data template name, or ``None`` when unavailable."""
 
     created_by: str = Field(..., alias="createdBy")
     """The user who created the record. Serialized as ``createdBy``."""
@@ -1026,8 +1026,8 @@ class PropertyDataSearchItem(BaseAlbertModel):
     project_id: ProjectId | None = Field(default=None, alias="projectId")
     """The project the data belongs to (format ``PRO...``). Serialized as ``projectId``. ``None`` for records with no project association (tenant-global data)."""
 
-    workflow_id: WorkflowId = Field(..., alias="workflowId")
-    """The workflow (format ``WFL...``). Serialized as ``workflowId``."""
+    workflow_id: WorkflowId | None = Field(default=None, alias="workflowId")
+    """The workflow ID (format ``WFL...``), or ``None`` when unavailable."""
 
     task_id: TaskId | None = Field(default=None, alias="taskId")
     """The task the result was measured on, if any (format ``TAS...``). Serialized as ``taskId``. """

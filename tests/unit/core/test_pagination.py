@@ -628,6 +628,15 @@ def _deserialize_fake_items(items: list[dict[str, Any]]) -> list[int]:
     return [_FakeItem(**item).value for item in items]
 
 
+class _MultiFieldFakeItem(BaseModel):
+    value: int
+    name: str
+
+
+def _deserialize_multi_field_fake_items(items: list[dict[str, Any]]) -> list[int]:
+    return [_MultiFieldFakeItem(**item).value for item in items]
+
+
 def test_paginator_skips_unparseable_item_without_losing_page(caplog) -> None:
     """A single unparseable item must not discard the rest of its page.
 
@@ -661,6 +670,168 @@ def test_paginator_skips_unparseable_item_without_losing_page(caplog) -> None:
     assert results == [1, 3]
     assert paginator.skipped_items == 1
     assert any("A2" in record.message for record in caplog.records)
+
+
+def test_paginator_skipped_items_starts_at_zero_without_failures() -> None:
+    """Test that the skipped-item count stays at zero when every item is readable."""
+    session = _ScriptedSession([{"Items": [{"value": 1}]}, {"Items": []}])
+    paginator = AlbertPaginator(
+        path="/fake",
+        mode=PaginationMode.OFFSET,
+        session=session,
+        deserialize=_deserialize_fake_items,
+    )
+
+    assert paginator.skipped_items == 0
+    assert list(paginator) == [1]
+    assert paginator.skipped_items == 0
+
+
+def test_paginator_counts_row_with_multiple_errors_once(caplog) -> None:
+    """Test that one unreadable row increments the count once despite several field errors."""
+    session = _ScriptedSession(
+        [{"Items": [{"albertId": "A1", "value": "not-a-number"}]}, {"Items": []}]
+    )
+    paginator = AlbertPaginator(
+        path="/fake",
+        mode=PaginationMode.OFFSET,
+        session=session,
+        deserialize=_deserialize_multi_field_fake_items,
+    )
+
+    with caplog.at_level("WARNING"):
+        results = list(paginator)
+
+    assert results == []
+    assert paginator.skipped_items == 1
+    assert any("2 validation errors" in record.message for record in caplog.records)
+
+
+def test_paginator_accumulates_skipped_items_across_pages() -> None:
+    """Test that skipped-item counts accumulate while readable rows keep their order."""
+    session = _ScriptedSession(
+        [
+            {"Items": [{"value": 1}, {"value": "bad"}]},
+            {"Items": [{"value": 2}, {"value": "also-bad"}]},
+            {"Items": []},
+        ]
+    )
+    paginator = AlbertPaginator(
+        path="/fake",
+        mode=PaginationMode.OFFSET,
+        session=session,
+        deserialize=_deserialize_fake_items,
+    )
+
+    results = list(paginator)
+
+    assert results == [1, 2]
+    assert paginator.skipped_items == 2
+    assert paginator.has_more is False
+    assert session.call_count == 3
+
+
+def test_paginator_counts_entirely_unreadable_page() -> None:
+    """Test that an entirely unreadable page yields nothing and reports its skipped rows."""
+    session = _ScriptedSession(
+        [{"Items": [{"value": "bad"}, {"value": "also-bad"}]}, {"Items": []}]
+    )
+    paginator = AlbertPaginator(
+        path="/fake",
+        mode=PaginationMode.OFFSET,
+        session=session,
+        deserialize=_deserialize_fake_items,
+    )
+
+    results = list(paginator)
+
+    assert results == []
+    assert paginator.skipped_items == 2
+    assert paginator.has_more is False
+
+
+def test_metadata_preserving_iterator_reads_skipped_items_lazily() -> None:
+    """Test that a wrapper exposes the source's current count as pages are read."""
+    session = _ScriptedSession(
+        [
+            {"Items": [{"value": 1}, {"value": "bad"}]},
+            {"Items": [{"value": 2}, {"value": "also-bad"}]},
+            {"Items": []},
+        ]
+    )
+    source = AlbertPaginator(
+        path="/fake",
+        mode=PaginationMode.OFFSET,
+        session=session,
+        deserialize=_deserialize_fake_items,
+    )
+    wrapped = MetadataPreservingIterator(source, iter(source))
+
+    assert wrapped.skipped_items == 0
+    assert next(wrapped) == 1
+    assert wrapped.skipped_items == 1
+    assert next(wrapped) == 2
+    assert wrapped.skipped_items == 2
+    assert list(wrapped) == []
+    assert wrapped.skipped_items == 2
+
+
+def test_mapped_paginator_forwards_skips_without_double_counting() -> None:
+    """Test that mapped results expose source skips without counting mapping drops."""
+    session = _ScriptedSession(
+        [
+            {"Items": [{"value": 1}, {"value": 2}, {"value": "bad"}]},
+            {"Items": []},
+        ]
+    )
+    source = AlbertPaginator(
+        path="/fake",
+        mode=PaginationMode.OFFSET,
+        session=session,
+        deserialize=_deserialize_fake_items,
+    )
+    mapped = MappedPaginator(source, lambda item: item * 2 if item == 1 else None)
+
+    results = list(mapped)
+
+    assert results == [2]
+    assert mapped.skipped_items == 1
+
+
+def test_metadata_preserving_iterator_legacy_source_has_zero_skips() -> None:
+    """Test that a source without skipped-item metadata reports zero."""
+    wrapped = MetadataPreservingIterator(iter([1]), iter(["one"]))
+
+    assert wrapped.skipped_items == 0
+    assert list(wrapped) == ["one"]
+
+
+def test_paginator_skipped_items_only_counts_pages_read_at_max_items() -> None:
+    """Test that early stopping preserves metadata and excludes unread pages from the count."""
+    session = _ScriptedSession(
+        [
+            {
+                "Items": [{"value": 1}, {"value": 2}, {"value": "bad"}],
+                "total": 4,
+            },
+            {"Items": [{"value": "also-bad"}], "total": 4},
+        ]
+    )
+    paginator = AlbertPaginator(
+        path="/fake",
+        mode=PaginationMode.OFFSET,
+        session=session,
+        deserialize=_deserialize_fake_items,
+        max_items=1,
+    )
+
+    results = list(paginator)
+
+    assert results == [1]
+    assert paginator.skipped_items == 1
+    assert paginator.has_more is True
+    assert paginator.total == 4
+    assert session.call_count == 1
 
 
 def _cursor_page(

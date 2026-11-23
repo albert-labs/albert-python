@@ -145,10 +145,11 @@ class AlbertPaginator(Iterator[ItemType]):
 
     @property
     def skipped_items(self) -> int:
-        """Count of items dropped during iteration because they failed to deserialize.
+        """Number of unreadable items skipped across pages retrieved so far.
 
-        Incremented each time a single unparseable item is skipped (the rest of its
-        page is still yielded). Zero when every item parsed.
+        The count starts at zero and increases once for each unreadable item. Only pages
+        already retrieved contribute: the count does not estimate unread pages or change
+        [`total`][albert.core.pagination.AlbertPaginator.total].
         """
         return self._skipped_items
 
@@ -368,7 +369,7 @@ class LastKeyCursorPaginator(AlbertPaginator[ItemType]):
 
 
 class MetadataPreservingIterator(Iterator[OutType]):
-    """Yield from ``items`` while exposing ``has_more`` / ``total`` from ``source``.
+    """Yield from ``items`` while exposing pagination metadata from ``source``.
 
     Use whenever a ``get_all`` wraps a search paginator in custom iteration (batch
     hydration, etc.). A plain generator would drop those completeness signals.
@@ -376,8 +377,9 @@ class MetadataPreservingIterator(Iterator[OutType]):
     Parameters
     ----------
     source : Any
-        The underlying paginator (or any object exposing ``has_more`` / ``total``);
-        those attributes are read lazily so they reflect state after iteration.
+        The underlying paginator (or any object exposing ``has_more``, ``total``, or
+        ``skipped_items``); those attributes are read lazily so they reflect state after
+        iteration.
     items : Iterator[OutType]
         The iterator actually yielded to the caller.
     """
@@ -395,6 +397,17 @@ class MetadataPreservingIterator(Iterator[OutType]):
     def total(self) -> int | None:
         """Delegate to the source paginator when present."""
         return getattr(self._source, "total", None)
+
+    @property
+    def skipped_items(self) -> int:
+        """Number of unreadable source items skipped across pages retrieved so far.
+
+        The count starts at zero and increases once for each unreadable item. Only pages
+        already retrieved contribute: the count does not estimate unread pages or change
+        [`total`][albert.core.pagination.MetadataPreservingIterator.total]. Sources without
+        this metadata report zero.
+        """
+        return getattr(self._source, "skipped_items", 0)
 
     def __iter__(self) -> Iterator[OutType]:
         return self
