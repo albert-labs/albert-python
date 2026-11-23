@@ -3,6 +3,7 @@ from contextlib import suppress
 import pytest
 
 from albert.client import Albert
+from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.parameter_groups import (
@@ -56,6 +57,53 @@ def test_parameter_group_get_all(client: Albert, seeded_parameter_groups: list[P
     """Test get_all for fully hydrated Parameter Groups."""
     results = list(client.parameter_groups.get_all(max_items=10))
     assert_valid_parameter_groups(results, ParameterGroup)
+
+
+def test_parameter_group_search_uses_cursor_pagination(
+    client: Albert, seed_prefix: str, monkeypatch: pytest.MonkeyPatch
+):
+    """Test cursor search returns every scoped match exactly once and stops early."""
+    monkeypatch.setattr("albert.core.pagination.DEFAULT_LIMIT", 1)
+    tag = None
+    parameter_groups = []
+    try:
+        tag = client.tags.create(tag=Tag(tag=f"{seed_prefix}-cursor-pagination"))
+        for suffix in ("first", "second"):
+            parameter_groups.append(
+                client.parameter_groups.create(
+                    parameter_group=ParameterGroup(
+                        name=f"{seed_prefix}-cursor-{suffix}",
+                        type=PGType.GENERAL,
+                        tags=[tag],
+                    )
+                )
+            )
+        group_ids = {group.id for group in parameter_groups}
+
+        def search_all_matches():
+            results = client.parameter_groups.search(tags=[tag.tag])
+            matches = [item for item in results if item.id in group_ids]
+            assert results.mode is PaginationMode.SEARCH_AFTER
+            assert results.json["limit"] == 1
+            return matches
+
+        matches = poll_until(
+            search_all_matches,
+            predicate=lambda items: {item.id for item in items} == group_ids,
+        )
+        assert {item.id for item in matches} == group_ids
+        assert len(matches) == len(group_ids)
+
+        early_results = client.parameter_groups.search(tags=[tag.tag], max_items=1)
+        assert len(list(early_results)) == 1
+        assert early_results.has_more
+    finally:
+        for group in parameter_groups:
+            with suppress(NotFoundError):
+                client.parameter_groups.delete(id=group.id)
+        if tag is not None:
+            with suppress(NotFoundError):
+                client.tags.delete(id=tag.id)
 
 
 def test_parameter_group_search(
