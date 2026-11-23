@@ -3,6 +3,16 @@
 import pytest
 from pydantic import ValidationError
 
+from albert.resources.design_operands import (
+    ConstantOperand,
+    IngredientAmountOperand,
+    LabelCountOperand,
+    LinearTerm,
+    PriceAggregationOperand,
+    PropertyAggregation,
+    PropertyAggregationOperand,
+    UnknownConstraintOperand,
+)
 from albert.resources.design_spaces import (
     CategoricalConstraint,
     ContinuousConstraint,
@@ -14,10 +24,23 @@ from albert.resources.design_spaces import (
     DesignSpaceViolation,
     DesignSpaceViolationCode,
     DiscreteConstraint,
+    IngredientEntry,
+    LabelConstraint,
+    LabelDefinition,
+    LinearCombinationConstraint,
     ParameterAssignment,
     ParameterEntry,
+    PriceConstraint,
+    PropertyConstraint,
+    PropertyRatioConstraint,
+    RatioConstraint,
+    RatioSide,
+    SetConstraintOperation,
     SetCountBoundsOperation,
+    SetIngredientOperation,
+    SetLabelOperation,
     SetParameterOperation,
+    UnknownDesignSpaceConstraint,
     UnknownParameterConstraint,
     UpdateComponentOperation,
 )
@@ -454,3 +477,299 @@ def test_a_malformed_constraint_of_a_known_kind_raises():
         ParameterEntry.model_validate(
             {"ref": _REF, "dataType": "numeric", "constraint": {"type": "discrete", "values": []}}
         )
+
+
+_BETA_SPACE = {
+    "id": "DSP123",
+    "name": "Beta clearcoat",
+    "parentId": "PRO456",
+    "state": "draft",
+    "ingredients": {
+        "INV001": {"action": "mustInclude", "min": 0.4, "max": 0.65, "rationale": "resin"},
+    },
+    "labels": {"local:additives": {"name": "Additives", "members": ["INV004", "INV005"]}},
+    "constraints": {
+        "CONLB001": {
+            "type": "label",
+            "label": "TAG42",
+            "action": "mayInclude",
+            "maxFraction": 0.35,
+        },
+        "CONRT001": {
+            "type": "ratio",
+            "numerator": {"ingredient": "INV001"},
+            "denominator": {"label": "local:additives"},
+            "constant": 1.0,
+            "min": 1.5,
+            "max": 2.5,
+            "rationale": "stoichiometry",
+        },
+        "CONPR001": {
+            "type": "property",
+            "aggregation": {"basis": "mean", "property": "Tg", "useReciprocal": True},
+            "min": 40.0,
+        },
+        "CONPT001": {
+            "type": "propertyRatio",
+            "numerator": {"basis": "sum", "property": "OH"},
+            "denominator": {"basis": "sum", "property": "NCO", "label": "local:additives"},
+            "constant": 1.0,
+            "max": 1.1,
+        },
+        "CONPC001": {"type": "price", "impute": True, "max": 4.5},
+        "CONLC001": {
+            "type": "linearCombination",
+            "name": "additive budget",
+            "terms": [
+                {
+                    "coefficient": 1.0,
+                    "operand": {"type": "ingredientAmount", "ingredient": "INV004"},
+                },
+                {
+                    "coefficient": 2.0,
+                    "operand": {"type": "labelCount", "label": "local:additives"},
+                },
+                {
+                    "coefficient": 0.5,
+                    "operand": {"type": "priceAggregation", "basis": "sum", "impute": 3.0},
+                },
+                {"coefficient": 1.0, "operand": {"type": "constant", "value": -0.01}},
+            ],
+            "max": 0.04,
+        },
+    },
+    "componentIndex": {
+        "INV004": ["labels/local:additives", "constraints/CONLC001"],
+        "local:additives": ["labels/local:additives", "constraints/CONRT001"],
+    },
+}
+
+
+def test_a_beta_space_round_trips_every_constraint_kind_unchanged():
+    """Test that labels, each constraint kind, componentIndex and rationale round-trip."""
+    space = DesignSpace.model_validate(_BETA_SPACE)
+
+    assert space.model_dump(by_alias=True, mode="json", exclude_none=True) == _BETA_SPACE
+
+
+@pytest.mark.parametrize(
+    ("key", "model"),
+    [
+        ("CONLB001", LabelConstraint),
+        ("CONRT001", RatioConstraint),
+        ("CONPR001", PropertyConstraint),
+        ("CONPT001", PropertyRatioConstraint),
+        ("CONPC001", PriceConstraint),
+        ("CONLC001", LinearCombinationConstraint),
+    ],
+)
+def test_a_read_constraint_parses_to_its_kind(key, model):
+    """Test that each stored constraint parses to the model of its kind."""
+    space = DesignSpace.model_validate(_BETA_SPACE)
+
+    assert isinstance(space.constraints[key], model)
+
+
+def test_a_beta_space_keeps_local_label_keys_and_parses_typed_operands():
+    """Test that local: keys stay as written and weighted-sum operands parse to their kinds."""
+    space = DesignSpace.model_validate(_BETA_SPACE)
+
+    assert list(space.labels) == ["local:additives"]
+    assert space.labels["local:additives"].members == ["INV004", "INV005"]
+    operands = [term.operand for term in space.constraints["CONLC001"].terms]
+    assert [type(o).__mro__[1] for o in operands] == [
+        IngredientAmountOperand,
+        LabelCountOperand,
+        PriceAggregationOperand,
+        ConstantOperand,
+    ]
+    assert space.component_index["local:additives"] == [
+        "labels/local:additives",
+        "constraints/CONRT001",
+    ]
+
+
+def test_an_alpha_space_reads_with_no_beta_collections():
+    """Test that a space written before beta parses with the beta fields left empty."""
+    space = DesignSpace.model_validate({"id": "DSP1", "ingredients": {}, "parameters": {}})
+
+    assert (space.labels, space.constraints, space.component_index) == (None, None, None)
+    assert space.model_dump(by_alias=True, mode="json", exclude_none=True) == {
+        "id": "DSP1",
+        "ingredients": {},
+        "parameters": {},
+    }
+
+
+def test_a_newer_constraint_kind_and_fields_survive_a_read():
+    """Test that an unknown constraint kind, operand kind and extra fields are kept."""
+    wire = {
+        "id": "DSP1",
+        "labels": {"local:a": {"name": "A", "members": [], "color": "red"}},
+        "constraints": {
+            "CONXX001": {"type": "conditional", "when": {"x": 1}},
+            "CONLB001": {"type": "label", "label": "local:a", "action": "exclude", "newField": 2},
+            "CONLC001": {
+                "type": "linearCombination",
+                "terms": [{"coefficient": 1.0, "operand": {"type": "newOperand", "x": 1}}],
+            },
+        },
+    }
+
+    space = DesignSpace.model_validate(wire)
+
+    assert isinstance(space.constraints["CONXX001"], UnknownDesignSpaceConstraint)
+    assert space.constraints["CONLB001"].model_extra == {"newField": 2}
+    assert isinstance(space.constraints["CONLC001"].terms[0].operand, UnknownConstraintOperand)
+    assert space.model_dump(by_alias=True, mode="json", exclude_none=True) == wire
+
+
+def test_a_malformed_constraint_of_a_known_kind_raises_on_read():
+    """Test that a known constraint kind that breaks its schema fails, not reads as unknown."""
+    with pytest.raises(ValidationError):
+        DesignSpace.model_validate(
+            {"constraints": {"CONLB001": {"type": "label", "action": "mayInclude"}}}
+        )
+
+
+def test_beta_operations_serialize_with_their_op_and_type_discriminators():
+    """Test that setLabel and setConstraint keep op and every nested type when sent."""
+    request = DesignSpaceOperationsRequest(
+        operations=[
+            SetIngredientOperation(
+                key="INV001", value=IngredientEntry(action="mayInclude", rationale="r")
+            ),
+            SetLabelOperation(
+                key="local:thickeners",
+                value=LabelDefinition(name="Thickeners", members=["INV001"]),
+            ),
+            SetConstraintOperation(
+                value=LabelConstraint(label="local:thickeners", action="mustInclude", min_count=2)
+            ),
+            SetConstraintOperation(
+                key="CONLC001",
+                value=LinearCombinationConstraint(
+                    terms=[
+                        LinearTerm(
+                            coefficient=1,
+                            operand=PropertyAggregationOperand(basis="sum", property="Tg"),
+                        )
+                    ],
+                    max=1,
+                ),
+            ),
+            SetConstraintOperation(
+                value=PropertyConstraint(
+                    aggregation=PropertyAggregation(
+                        basis="mean", property="Tg", use_reciprocal=True
+                    )
+                )
+            ),
+        ]
+    )
+
+    assert request.model_dump(by_alias=True, mode="json", exclude_unset=True)["operations"] == [
+        {
+            "op": "setIngredient",
+            "key": "INV001",
+            "value": {"action": "mayInclude", "rationale": "r"},
+        },
+        {
+            "op": "setLabel",
+            "key": "local:thickeners",
+            "value": {"name": "Thickeners", "members": ["INV001"]},
+        },
+        {
+            "op": "setConstraint",
+            "value": {
+                "type": "label",
+                "label": "local:thickeners",
+                "action": "mustInclude",
+                "minCount": 2,
+            },
+        },
+        {
+            "op": "setConstraint",
+            "key": "CONLC001",
+            "value": {
+                "type": "linearCombination",
+                "terms": [
+                    {
+                        "coefficient": 1.0,
+                        "operand": {
+                            "type": "propertyAggregation",
+                            "basis": "sum",
+                            "property": "Tg",
+                        },
+                    }
+                ],
+                "max": 1.0,
+            },
+        },
+        {
+            "op": "setConstraint",
+            "value": {
+                "type": "property",
+                "aggregation": {"basis": "mean", "property": "Tg", "useReciprocal": True},
+            },
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        {"op": "setLabel", "key": "TAG42", "value": {"name": "A", "members": []}},
+        {"op": "setLabel", "key": "local:", "value": {"name": "A", "members": []}},
+        {"op": "setLabel", "key": "local:a", "value": {"name": "", "members": []}},
+        {"op": "setLabel", "key": "local:a", "value": {"name": "A", "members": [], "x": 1}},
+        {"op": "setConstraint", "value": {"type": "conditional"}},
+        {"op": "setConstraint", "value": {"type": "label", "label": "TAG1", "action": "x"}},
+        {
+            "op": "setConstraint",
+            "value": {"type": "label", "label": "TAG1", "action": "exclude", "maxFraction": 2},
+        },
+        {
+            "op": "setConstraint",
+            "value": {"type": "label", "label": "TAG1", "action": "exclude", "newField": 1},
+        },
+        {"op": "setConstraint", "value": {"type": "linearCombination", "terms": []}},
+        {"op": "setConstraint", "key": "", "value": {"type": "price"}},
+    ],
+)
+def test_beta_operations_reject_what_the_service_does_not_accept(operation):
+    """Test that malformed label and constraint operations fail before anything is sent."""
+    with pytest.raises(ValidationError):
+        DesignSpaceOperationsRequest.model_validate({"operations": [operation]})
+
+
+@pytest.mark.parametrize(
+    "side",
+    [{}, {"ingredient": "INV001", "label": "TAG1"}],
+)
+def test_a_ratio_side_needs_exactly_one_of_ingredient_or_label(side):
+    """Test that a ratio side with neither or both of ingredient and label is rejected."""
+    with pytest.raises(ValidationError):
+        RatioSide.model_validate(side)
+
+
+def test_a_read_design_space_constraint_is_checked_again_when_sent():
+    """Test that a read constraint resends when known-only and is refused when it carries more."""
+    known = {"type": "label", "label": "local:a", "action": "exclude", "maxFraction": 0.2}
+    space = DesignSpace.model_validate(
+        {"constraints": {"CONLB001": known, "CONLB002": {**known, "newField": 1}}}
+    )
+
+    resent = SetConstraintOperation(key="CONLB001", value=space.constraints["CONLB001"])
+    assert resent.model_dump(by_alias=True, mode="json", exclude_unset=True)["value"] == known
+    with pytest.raises(ValidationError):
+        SetConstraintOperation(key="CONLB002", value=space.constraints["CONLB002"])
+
+
+def test_the_empty_label_warning_parses_as_a_known_code():
+    """Test that the empty_label warning code parses to its enum member."""
+    violation = DesignSpaceViolation.model_validate(
+        {"code": "empty_label", "message": "m", "components": ["labels/local:a"]}
+    )
+
+    assert violation.code is DesignSpaceViolationCode.EMPTY_LABEL

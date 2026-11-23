@@ -18,6 +18,13 @@ from albert.core.shared.identifiers import (
     UnitId,
 )
 from albert.core.shared.models.base import AuditFields, BaseResource
+from albert.resources.design_operands import (
+    LinearTerm,
+    PropertyAggregation,
+    TypedDesignModel,
+    _ReadLinearTerm,
+    _ReadPropertyAggregation,
+)
 
 if sys.version_info >= (3, 11):  # pragma: no cover (py311+)
     from enum import StrEnum
@@ -63,6 +70,7 @@ class DesignSpaceViolationCode(StrEnum):
     VARIABLE_NOT_DERIVED = "variable_not_derived"
     INTERNAL = "internal"
     UNSUPPORTED_OPERAND = "unsupported_operand"
+    EMPTY_LABEL = "empty_label"
 
 
 class _ParameterConstraintBase(BaseAlbertModel):
@@ -200,6 +208,9 @@ class IngredientEntry(BaseAlbertModel):
     max: float | None = Field(default=None, ge=0, le=1)
     """Fraction upper bound (0 to 1)."""
 
+    rationale: str | None = Field(default=None)
+    """Why the ingredient is bounded this way, in the author's words."""
+
 
 class ParameterRef(BaseAlbertModel):
     """The structured identity of a parameter: where it lives, and in what unit."""
@@ -238,6 +249,309 @@ class ParameterEntry(BaseAlbertModel):
     constraint: ParameterConstraintRead
     """The values the parameter may take inside the space. A kind this version does not
     know yet parses to ``UnknownParameterConstraint``."""
+
+    rationale: str | None = Field(default=None)
+    """Why the parameter is bounded this way, in the author's words."""
+
+
+class LabelDefinition(BaseAlbertModel):
+    """A local label: a named group of ingredients defined on the design space itself.
+
+    Keyed by a ``local:...`` ID in ``labels``. Constraints and descriptors name it in
+    place of a platform tag (``TAG...``).
+    """
+
+    model_config = ConfigDict(extra="forbid", revalidate_instances="subclass-instances")
+
+    name: str = Field(min_length=1)
+    """Display name of the label."""
+
+    members: list[InventoryId]
+    """The inventory IDs (format ``INV...``) in the label. An empty label is allowed and
+    reported as an ``empty_label`` warning."""
+
+
+class _ReadLabelDefinition(LabelDefinition):
+    """A local label read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _DesignSpaceConstraintBase(TypedDesignModel):
+    """Fields every design-space constraint carries."""
+
+    name: str | None = Field(default=None)
+    """Optional display name of the constraint."""
+
+    rationale: str | None = Field(default=None)
+    """Why the constraint exists, in the author's words."""
+
+
+class LabelConstraint(_DesignSpaceConstraintBase):
+    """Fraction and count bounds on a label's members. Keyed ``CONLB...``.
+
+    At most one label constraint may name a given label.
+    """
+
+    type: Literal["label"] = "label"
+    """Constraint kind; fixed to ``label``."""
+
+    label: str
+    """A platform tag (format ``TAG...``) or a local label key (``local:...``)."""
+
+    action: IngredientAction
+    """How the label's members participate, as on an ingredient."""
+
+    min_fraction: float | None = Field(default=None, ge=0, le=1, alias="minFraction")
+    """Smallest combined fraction of the members (0 to 1)."""
+
+    max_fraction: float | None = Field(default=None, ge=0, le=1, alias="maxFraction")
+    """Largest combined fraction of the members (0 to 1)."""
+
+    min_count: int | None = Field(default=None, ge=0, alias="minCount")
+    """Fewest members in one formulation."""
+
+    max_count: int | None = Field(default=None, ge=0, alias="maxCount")
+    """Most members in one formulation."""
+
+
+class RatioSide(BaseAlbertModel):
+    """One side of an ingredient ratio: exactly one of an ingredient or a label."""
+
+    model_config = ConfigDict(extra="forbid", revalidate_instances="subclass-instances")
+
+    ingredient: InventoryId | None = Field(default=None)
+    """The inventory ID (format ``INV...``) of the ingredient."""
+
+    label: str | None = Field(default=None)
+    """A platform tag (format ``TAG...``) or a local label key (``local:...``)."""
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> RatioSide:
+        """Require exactly one of ``ingredient`` and ``label``."""
+        if (self.ingredient is None) == (self.label is None):
+            raise ValueError("RatioSide needs exactly one of ingredient or label.")
+        return self
+
+
+class RatioConstraint(_DesignSpaceConstraintBase):
+    """Bounds on ``numerator / (constant * denominator)``. Keyed ``CONRT...``."""
+
+    type: Literal["ratio"] = "ratio"
+    """Constraint kind; fixed to ``ratio``."""
+
+    numerator: RatioSide
+    """The ingredient or label on top."""
+
+    denominator: RatioSide
+    """The ingredient or label below."""
+
+    constant: float = Field(default=1.0)
+    """Scales the denominator."""
+
+    min: float | None = Field(default=None)
+    """Smallest allowed ratio."""
+
+    max: float | None = Field(default=None)
+    """Largest allowed ratio."""
+
+
+class PropertyConstraint(_DesignSpaceConstraintBase):
+    """Bounds on one aggregated inventory property of the formulation. Keyed ``CONPR...``."""
+
+    type: Literal["property"] = "property"
+    """Constraint kind; fixed to ``property``."""
+
+    aggregation: PropertyAggregation
+    """The property aggregation to bound."""
+
+    min: float | None = Field(default=None)
+    """Smallest allowed value."""
+
+    max: float | None = Field(default=None)
+    """Largest allowed value."""
+
+
+class PropertyRatioConstraint(_DesignSpaceConstraintBase):
+    """Bounds on a ratio of two property aggregations. Keyed ``CONPT...``."""
+
+    type: Literal["propertyRatio"] = "propertyRatio"
+    """Constraint kind; fixed to ``propertyRatio``."""
+
+    numerator: PropertyAggregation
+    """The aggregation on top."""
+
+    denominator: PropertyAggregation
+    """The aggregation below."""
+
+    constant: float = Field(default=1.0)
+    """Scales the denominator."""
+
+    min: float | None = Field(default=None)
+    """Smallest allowed ratio."""
+
+    max: float | None = Field(default=None)
+    """Largest allowed ratio."""
+
+
+class PriceConstraint(_DesignSpaceConstraintBase):
+    """Bounds on the formulation's mean ingredient price. Keyed ``CONPC...``."""
+
+    type: Literal["price"] = "price"
+    """Constraint kind; fixed to ``price``."""
+
+    location: str | None = Field(default=None)
+    """Pricing location. Omit for any location."""
+
+    impute: bool | float | None = Field(default=None)
+    """How missing prices are handled: ``True`` fills the mean, a number fills that
+    constant, ``False`` fails when a price is missing. Omit to leave it unstated."""
+
+    min: float | None = Field(default=None)
+    """Smallest allowed price."""
+
+    max: float | None = Field(default=None)
+    """Largest allowed price."""
+
+
+class LinearCombinationConstraint(_DesignSpaceConstraintBase):
+    """Bounds on a weighted sum of quantities. Keyed ``CONLC...``."""
+
+    type: Literal["linearCombination"] = "linearCombination"
+    """Constraint kind; fixed to ``linearCombination``."""
+
+    terms: list[LinearTerm] = Field(min_length=1)
+    """The ``coefficient * operand`` terms that are summed."""
+
+    min: float | None = Field(default=None)
+    """Smallest allowed sum."""
+
+    max: float | None = Field(default=None)
+    """Largest allowed sum."""
+
+
+DesignSpaceConstraint = Annotated[
+    LabelConstraint
+    | RatioConstraint
+    | PropertyConstraint
+    | PropertyRatioConstraint
+    | PriceConstraint
+    | LinearCombinationConstraint,
+    Field(discriminator="type"),
+]
+"""A design-space constraint: bounds that span ingredients, labels or properties."""
+
+
+_DESIGN_SPACE_CONSTRAINT_KINDS = frozenset(
+    model.model_fields["type"].default
+    for model in (
+        LabelConstraint,
+        RatioConstraint,
+        PropertyConstraint,
+        PropertyRatioConstraint,
+        PriceConstraint,
+        LinearCombinationConstraint,
+    )
+)
+
+
+class UnknownDesignSpaceConstraint(BaseAlbertModel):
+    """A design-space constraint of a kind this SDK version does not know yet.
+
+    Only appears in design spaces read from the service, and keeps every key it carried.
+    Requests never accept it.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    type: str
+    """The kind the service reported."""
+
+    @field_validator("type")
+    @classmethod
+    def _only_unknown_kinds(cls, kind: str) -> str:
+        """Refuse a kind this version models: a malformed constraint of it is an error."""
+        if kind in _DESIGN_SPACE_CONSTRAINT_KINDS:
+            raise ValueError(f"{kind!r} constraint does not match its schema")
+        return kind
+
+
+class _ReadRatioSide(RatioSide):
+    """A ratio side read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadLabelConstraint(LabelConstraint):
+    """A label constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadRatioConstraint(RatioConstraint):
+    """A ratio constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+    numerator: _ReadRatioSide
+    """The ingredient or label on top."""
+
+    denominator: _ReadRatioSide
+    """The ingredient or label below."""
+
+
+class _ReadPropertyConstraint(PropertyConstraint):
+    """A property constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+    aggregation: _ReadPropertyAggregation
+    """The property aggregation to bound."""
+
+
+class _ReadPropertyRatioConstraint(PropertyRatioConstraint):
+    """A property-ratio constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+    numerator: _ReadPropertyAggregation
+    """The aggregation on top."""
+
+    denominator: _ReadPropertyAggregation
+    """The aggregation below."""
+
+
+class _ReadPriceConstraint(PriceConstraint):
+    """A price constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class _ReadLinearCombinationConstraint(LinearCombinationConstraint):
+    """A weighted-sum constraint read from the service, keeping unknown fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+    terms: list[_ReadLinearTerm] = Field(min_length=1)
+    """The ``coefficient * operand`` terms that are summed."""
+
+
+DesignSpaceConstraintRead = Annotated[
+    Annotated[
+        _ReadLabelConstraint
+        | _ReadRatioConstraint
+        | _ReadPropertyConstraint
+        | _ReadPropertyRatioConstraint
+        | _ReadPriceConstraint
+        | _ReadLinearCombinationConstraint,
+        Field(discriminator="type"),
+    ]
+    | UnknownDesignSpaceConstraint,
+    Field(union_mode="left_to_right"),
+]
+"""A design-space constraint as read from the service. A known kind parses to its model
+(an instance of ``LabelConstraint``, ``RatioConstraint`` and so on) and keeps fields this
+version does not model; an unknown kind parses to ``UnknownDesignSpaceConstraint``."""
 
 
 class _DesignRecord(BaseResource):
@@ -315,6 +629,20 @@ class DesignSpace(_DesignRecord):
     parameters: dict[str, ParameterEntry] | None = Field(default=None)
     """Parameter dimensions, keyed by the composite parameter key. Empty when absent."""
 
+    labels: dict[str, _ReadLabelDefinition] | None = Field(default=None)
+    """Local labels, keyed by a ``local:...`` ID. Absent on spaces written before beta."""
+
+    constraints: dict[str, DesignSpaceConstraintRead] | None = Field(default=None)
+    """Constraints, keyed by a type-prefixed ID the service assigns (``CONLB001``,
+    ``CONRT001``, ...). Absent on spaces written before beta."""
+
+    component_index: dict[str, list[str]] | None = Field(
+        default=None, alias="componentIndex", frozen=True
+    )
+    """What references what: each referenced ID (an ingredient, label or parameter) maps
+    to the component paths (``<collection>/<key>``) that point at it. Kept up to date by
+    the service on every edit; read only."""
+
     version: int | None = Field(default=None)
     """Optimistic-concurrency counter, checked on every write."""
 
@@ -380,8 +708,8 @@ class DesignSpaceReferences(BaseAlbertModel):
     model_config = ConfigDict(extra="allow")
 
     references: list[str] = Field(default_factory=list)
-    """Component paths (``<collection>/<key>``) that point at the requested component.
-    Empty when nothing does."""
+    """Component paths (``<collection>/<key>``) that point at the requested component,
+    sorted. Empty when nothing does, which is always the case for a constraint."""
 
 
 class DesignSpaceApplyResponse(BaseAlbertModel):
@@ -440,6 +768,9 @@ class ParameterAssignment(BaseAlbertModel):
 
     constraint: ParameterConstraint
     """The values the parameter may take inside the space."""
+
+    rationale: str | None = Field(default=None)
+    """Why the parameter is bounded this way, in the author's words."""
 
 
 class SetParameterOperation(_DesignSpaceOperationBase):
@@ -519,12 +850,45 @@ class UpdateComponentOperation(_DesignSpaceOperationBase):
     """The new value for the field."""
 
 
+class SetLabelOperation(_DesignSpaceOperationBase):
+    """Define or replace a local label: a named group of ingredients."""
+
+    op: Literal["setLabel"] = "setLabel"
+    """Operation kind; fixed to ``setLabel``."""
+
+    key: str = Field(pattern=r"^local:.+")
+    """The label's local ID, ``local:<name>`` (e.g. ``"local:thickeners"``)."""
+
+    value: LabelDefinition
+    """The label's display name and members."""
+
+
+class SetConstraintOperation(_DesignSpaceOperationBase):
+    """Create a constraint, or replace one by its key.
+
+    Leave ``key`` unset to create: the service assigns a type-prefixed key
+    (``CONLB001``, ``CONRT001``, ...), returned in the space's ``constraints``. Pass the
+    key of an existing constraint of the same kind to replace it.
+    """
+
+    op: Literal["setConstraint"] = "setConstraint"
+    """Operation kind; fixed to ``setConstraint``."""
+
+    key: str | None = Field(default=None, min_length=1)
+    """The constraint to replace. Leave unset to create a new one."""
+
+    value: DesignSpaceConstraint
+    """The constraint."""
+
+
 DesignSpaceOperation = Annotated[
     SetIngredientOperation
     | SetParameterOperation
     | SetCountBoundsOperation
     | RemoveComponentOperation
-    | UpdateComponentOperation,
+    | UpdateComponentOperation
+    | SetLabelOperation
+    | SetConstraintOperation,
     Field(discriminator="op"),
 ]
 """A builder operation on a draft design space."""
