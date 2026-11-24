@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import inspect
 import os
 from collections.abc import Iterable
@@ -18,16 +19,23 @@ T = TypeVar("T")
 
 _ALBERT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PYDANTIC_DIR = os.path.dirname(os.path.abspath(pydantic.__file__))
-_INTERNAL_PACKAGE_DIRS = (_ALBERT_DIR + os.sep, _PYDANTIC_DIR + os.sep)
+_IMPORTLIB_DIR = os.path.dirname(os.path.abspath(importlib.__file__))
+_FROZEN_IMPORTLIB_PREFIX = "<frozen importlib."
+_INTERNAL_PACKAGE_DIRS = (
+    _ALBERT_DIR + os.sep,
+    _PYDANTIC_DIR + os.sep,
+    _IMPORTLIB_DIR + os.sep,
+)
 
 
 def find_stack_level() -> int:
     """Return the ``stacklevel`` that attributes a warning to the caller's code.
 
     Counts the frames from the ``warnings.warn`` call site up to the first frame
-    outside the ``albert`` and ``pydantic`` packages, so the warning points at the
-    caller's line no matter how many SDK helpers or ``@validate_call`` wrappers sit in
-    between. Pass the result as ``warnings.warn(..., stacklevel=find_stack_level())``.
+    outside the ``albert`` and ``pydantic`` packages and Python's import machinery, so
+    the warning points at the caller's line no matter how many SDK helpers,
+    ``@validate_call`` wrappers, or import frames sit in between. Pass the result as
+    ``warnings.warn(..., stacklevel=find_stack_level())``.
 
     Returns
     -------
@@ -37,7 +45,13 @@ def find_stack_level() -> int:
     frame = inspect.currentframe()
     level = 0
     try:
-        while frame is not None and frame.f_code.co_filename.startswith(_INTERNAL_PACKAGE_DIRS):
+        while frame is not None:
+            filename = frame.f_code.co_filename
+            if filename.startswith(_FROZEN_IMPORTLIB_PREFIX):
+                frame = frame.f_back
+                continue
+            if not filename.startswith(_INTERNAL_PACKAGE_DIRS):
+                break
             frame = frame.f_back
             level += 1
     finally:

@@ -17,6 +17,12 @@ on the supported resources and usage patterns [here](https://docs.developer.albe
 
 This installs the latest stable release from [PyPI](https://pypi.org/project/albert/).
 
+### Python 3.10 deprecation
+
+Python 3.10 reached end of life in October 2026. The SDK will continue supporting it through **2027-01-31**. The first minor SDK release after that date will require Python 3.11 or later.
+
+On Python 3.10, `pip` will continue installing the last compatible SDK release. Upgrade to Python 3.11 or later to keep receiving new features, bug fixes, and security updates.
+
 ### Contribution
 
 For developers, please see the [contributing guide](CONTRIBUTING.md), which includes setup instructions, testing, and linting guidelines.

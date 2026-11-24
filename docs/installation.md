@@ -25,6 +25,9 @@ Albert has a few dependencies:
 
 If you’re on Python 3.10+ and already have **pip** or **uv** set up, you’re ready to go!
 
+!!! warning "Python 3.10 deprecation"
+    Python 3.10 reached end of life in October 2026. The SDK will continue supporting it through **2027-01-31**. The first minor SDK release after that date will require Python 3.11 or later.
+
 ## Install from repository
 
 And if you prefer to install albert directly from the repository:
