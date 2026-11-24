@@ -19,7 +19,7 @@ This installs the latest stable release from [PyPI](https://pypi.org/project/alb
 
 ### Python 3.10 deprecation
 
-Python 3.10 reached end of life in October 2026. The SDK will continue supporting it through **2027-01-31**. The first minor SDK release after that date will require Python 3.11 or later.
+Python 3.10 reached end of life in October 2026. The SDK deprecation was announced on **2026-11-24**, and Python 3.10 will remain supported through **2027-02-28**, three months after the announcement. The first minor SDK release after that date will require Python 3.11 or later.
 
 On Python 3.10, `pip` will continue installing the last compatible SDK release. Upgrade to Python 3.11 or later to keep receiving new features, bug fixes, and security updates.
 
