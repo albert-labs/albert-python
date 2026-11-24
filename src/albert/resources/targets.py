@@ -187,9 +187,15 @@ class Target(BaseResource):
     """Whether meeting this target is required."""
 
     label_id: LabelId | None = Field(default=None, alias="labelId")
-    """Optional ID of the managed label (format ``LBL...``) for this target."""
+    """Optional ID of the managed label (format ``LBL...``) for this target.
 
-    label: str | None = Field(default=None)
+    Must reference an existing, active target label; unknown ids are rejected.
+    """
+
+    label: str | None = Field(
+        default=None,
+        deprecated="Use label_id instead of the free-text label.",
+    )
     """Optional free-text label. Deprecated in favor of ``label_id``; prefer ``label_id`` on create."""
 
     validation: list[dict] | None = Field(default=None)
