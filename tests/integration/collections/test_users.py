@@ -4,8 +4,11 @@ import pytest
 
 from albert import Albert
 from albert.core.shared.enums import Status
-from albert.exceptions import ForbiddenError, NotFoundError
+from albert.exceptions import NotFoundError
 from albert.resources.users import User, UserSearchItem
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("users")
 
 
 def assert_user_items(
@@ -27,11 +30,18 @@ def test_simple_users_get_all(client: Albert):
 
 def test_advanced_users_search(client: Albert, static_user: User):
     faux_name = static_user.name.split(" ")[0]
-    adv_list = client.users.search(
-        text=faux_name,
-        status=[Status.ACTIVE],
-        search_fields=["name"],
-        max_items=20,
+    adv_list = poll_until(
+        lambda: [
+            user
+            for user in client.users.search(
+                text=faux_name,
+                status=[Status.ACTIVE],
+                user_id=[static_user.id],
+                search_fields=["name"],
+                max_items=20,
+            )
+            if user.id == static_user.id
+        ]
     )
     found = any(static_user.name.lower() == u.name.lower() for u in adv_list)
     assert found
@@ -43,48 +53,52 @@ def test_advanced_users_search(client: Albert, static_user: User):
     )
     assert next(adv_list_no_match, None) is None
 
-    short_list = client.users.search(max_items=3)
+    short_list = client.users.search(user_id=[static_user.id], max_items=3)
     assert_user_items(short_list, UserSearchItem)
 
 
 def test_user_get(client: Albert, static_user: User):
-    first_hit = next(client.users.search(text=static_user.name, max_items=1), None)
-    user_from_get = client.users.get_by_id(id=first_hit.id)
-    assert user_from_get.id == first_hit.id
+    hits = poll_until(
+        lambda: [
+            user
+            for user in client.users.search(
+                text=static_user.name,
+                user_id=[static_user.id],
+                max_items=1,
+            )
+            if user.id == static_user.id
+        ]
+    )
+    user_from_get = client.users.get_by_id(id=hits[0].id)
+    assert user_from_get.id == static_user.id
     assert isinstance(user_from_get, User)
 
 
-def test_hydrate_user(client: Albert):
-    users = list(client.users.search(max_items=5))
-    assert users, "Expected at least one user in search results"
+def test_hydrate_user(client: Albert, static_user: User):
+    users = poll_until(
+        lambda: [
+            user
+            for user in client.users.search(user_id=[static_user.id], max_items=1)
+            if user.id == static_user.id
+        ]
+    )
+    user = users[0]
+    hydrated = user.hydrate()
 
-    hydrated_any = False
-    for user in users:
-        try:
-            hydrated = user.hydrate()
-        except (NotFoundError, ForbiddenError):
-            continue
-        hydrated_any = True
+    assert hydrated.id == user.id
+    assert hydrated.name == user.name
+    assert hydrated.email == user.email
 
-        # identity checks
-        assert hydrated.id == user.id
-        assert hydrated.name == user.name
-        assert hydrated.email == user.email
+    if user.location_id and hydrated.location:
+        assert hydrated.location.id == user.location_id
+    if user.location and hydrated.location:
+        assert hydrated.location.name == user.location
 
-        # location check
-        if user.location_id and hydrated.location:
-            assert hydrated.location.id == user.location_id
-        if user.location and hydrated.location:
-            assert hydrated.location.name == user.location
-
-        # role consistency
-        if user.roles and hydrated.roles:
-            for search_role, full_role in zip(user.roles, hydrated.roles, strict=False):
-                assert search_role.roleId == full_role.id
-                assert search_role.roleName == full_role.name
-
-    if not hydrated_any:
-        pytest.skip("No search hits could be hydrated (stale index IDs)")
+    if user.roles and hydrated.roles:
+        hydrated_roles = {role.id: role.name for role in hydrated.roles}
+        for search_role in user.roles:
+            assert search_role.roleId in hydrated_roles
+            assert search_role.roleName == hydrated_roles[search_role.roleId]
 
 
 def test_user_update_no_changes(client: Albert, static_user: User):

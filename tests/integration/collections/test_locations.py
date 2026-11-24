@@ -63,7 +63,8 @@ def test_get_by_name(client: Albert, seeded_locations: list[Location]):
             [match]
             if (match := client.locations.get_by_name(name=seeded.name, exact_match=False))
             else []
-        )
+        ),
+        predicate=lambda matches: bool(matches and matches[0].id == seeded.id),
     )
 
     assert isinstance(fuzzy[0], Location)

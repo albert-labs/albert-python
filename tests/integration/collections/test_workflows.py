@@ -60,7 +60,14 @@ def test_create_fallback_for_nameless_matched_workflow(client: Albert):
 
 def test_workflow_search_basic(client: Albert, seeded_workflows: list[Workflow]):
     """Test search returns WorkflowSearchItem results with WFL ids."""
-    results = list(client.workflows.search(max_items=10))
+    seeded_ids = {workflow.id for workflow in seeded_workflows}
+    results = poll_until(
+        lambda: [
+            workflow
+            for workflow in client.workflows.search(ids=list(seeded_ids), max_items=10)
+            if workflow.id in seeded_ids
+        ]
+    )
     assert results, "Expected at least one workflow search result"
     for item in results:
         assert isinstance(item, WorkflowSearchItem)

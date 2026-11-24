@@ -1,5 +1,9 @@
+import pytest
+
 from albert.client import Albert
 from albert.resources.roles import Role
+
+pytestmark = pytest.mark.xdist_group("roles")
 
 
 def assert_role_items(list_items: list[Role]):

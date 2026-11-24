@@ -7,6 +7,7 @@ from albert.resources.label_templates import (
     LabelTemplateType,
 )
 from albert.resources.lots import Lot
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("inventory")
 
@@ -25,7 +26,16 @@ def test_label_template_get_by_id(client: Albert, seeded_label_templates: list[L
 def test_label_template_get_all(client: Albert, seeded_label_templates: list[LabelTemplate]):
     """Test get_all returns matching LabelTemplate items."""
     seeded = seeded_label_templates[0]
-    results = list(client.label_templates.get_all(type=LabelTemplateType.INVENTORY, max_items=50))
+    results = poll_until(
+        lambda: list(
+            client.label_templates.get_all(
+                name=seeded.name,
+                type=LabelTemplateType.INVENTORY,
+                max_items=50,
+            )
+        ),
+        predicate=lambda templates: seeded.id in {template.id for template in templates},
+    )
     assert results
     for template in results:
         assert isinstance(template, LabelTemplate)
