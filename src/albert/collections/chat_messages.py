@@ -60,7 +60,7 @@ class ChatMessageCollection:
         Add a message to a chat session.
     get_by_id(session_id, source_request_id, sequence, component_type=None) -> ChatMessage
         Get a single message by its request ID and sequence.
-    get_all(session_id, max_items=None) -> AsyncIterator[ChatMessage]
+    get_all(session_id, source_request_id=None, max_items=None) -> AsyncIterator[ChatMessage]
         Iterate over the messages in a session, oldest first.
     update(session_id, source_request_id, sequence, content) -> ChatMessage
         Update the content of a message.
@@ -181,6 +181,7 @@ class ChatMessageCollection:
         self,
         *,
         session_id: str,
+        source_request_id: str | None = None,
         max_items: int | None = None,
     ) -> AsyncIterator[ChatMessage]:
         """Iterate over the messages in a session, oldest first.
@@ -202,6 +203,9 @@ class ChatMessageCollection:
         session_id : str
             The ID of the [`ChatSession`][albert.resources.chats.ChatSession] whose
             messages to list.
+        source_request_id : str | None, optional
+            The request trace identifier whose messages to list. If ``None``, lists every
+            message in the session.
         max_items : int | None, optional
             Maximum number of messages to yield in total. If ``None``, yields every
             message in the session.
@@ -212,10 +216,14 @@ class ChatMessageCollection:
             Messages in the session, oldest first.
         """
         url = f"{self._sessions_base}/{session_id}/messages"
+        params = {}
+        if source_request_id is not None:
+            params["sourceRequestId"] = source_request_id
         return AsyncAlbertPaginator(
             session=self._session,
             path=url,
             deserialize=lambda item: ChatMessage(**item),
+            params=params,
             max_items=max_items,
         )
 
