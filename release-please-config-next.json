@@ -1,5 +1,6 @@
 {
   "release-type": "python",
+  "changelog-type": "github",
   "prerelease": true,
   "versioning-strategy": "prerelease",
   "prerelease-type": "beta",
