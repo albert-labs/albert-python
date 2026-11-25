@@ -4,13 +4,21 @@
 assert on the requests the SDK sends.
 """
 
+import json
 from urllib.parse import parse_qs, urlparse
 
 import responses
 
 from albert.collections.targets import TargetCollection
+from albert.resources.targets import (
+    ComparisonOperator,
+    Criterion,
+    Target,
+    TargetType,
+)
 from tests.unit.conftest import UNIT_BASE_URL
 
+_BASE_URL = f"{UNIT_BASE_URL}/api/v3/targets"
 _IDS_URL = f"{UNIT_BASE_URL}/api/v3/targets/ids"
 
 
@@ -48,3 +56,39 @@ def test_get_by_ids_sends_no_lookup_for_empty_ids(offline_session) -> None:
 
     assert result == []
     assert len(responses.calls) == 0
+
+
+@responses.activate
+def test_create_posts_label_id(offline_session) -> None:
+    """Test that create sends labelId in the POST body when set on the target."""
+    responses.post(
+        _BASE_URL,
+        json={
+            "id": "TAR1",
+            "name": "Viscosity spec",
+            "type": "performance",
+            "dataTemplateId": "DAT1",
+            "dataColumnId": "DAC1",
+            "targetValue": {"operator": "gte", "value": 90},
+            "isRequired": True,
+            "labelId": "LBL1",
+        },
+    )
+
+    created = TargetCollection(session=offline_session).create(
+        target=Target(
+            name="Viscosity spec",
+            type=TargetType.PERFORMANCE,
+            data_template_id="DAT1",
+            data_column_id="DAC1",
+            target_value=Criterion(operator=ComparisonOperator.GTE, value=90),
+            is_required=True,
+            label_id="LBL1",
+        )
+    )
+
+    assert created.id == "TAR1"
+    assert created.label_id == "LBL1"
+    assert responses.calls[0].request.body is not None
+    body = json.loads(responses.calls[0].request.body)
+    assert body["labelId"] == "LBL1"

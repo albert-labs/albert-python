@@ -8,6 +8,7 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
     DataColumnId,
     DataTemplateId,
+    LabelId,
     ParameterGroupId,
     ParameterId,
     ProjectId,
@@ -184,6 +185,18 @@ class Target(BaseResource):
 
     is_required: bool = Field(alias="isRequired")
     """Whether meeting this target is required."""
+
+    label_id: LabelId | None = Field(default=None, alias="labelId")
+    """Optional ID of the managed label (format ``LBL...``) for this target.
+
+    Must reference an existing, active target label; unknown ids are rejected.
+    """
+
+    label: str | None = Field(
+        default=None,
+        deprecated="Use label_id instead of the free-text label.",
+    )
+    """Optional free-text label. Deprecated in favor of ``label_id``; prefer ``label_id`` on create."""
 
     validation: list[dict] | None = Field(default=None)
     """Validation rules applied to the target value."""
