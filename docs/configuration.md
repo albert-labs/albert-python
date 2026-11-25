@@ -75,6 +75,29 @@ export ALBERT_CLIENT_SECRET=my-client-secret
 
 ---
 
+## Proxy configuration
+
+Proxy routing is configured in code when constructing the client, not through an environment variable.
+
+If your network requires a fixed proxy, pass its URLs keyed by scheme:
+
+```python
+from albert import Albert
+
+client = Albert(proxies={"https": "http://proxy.company.com:8080"})
+```
+
+If your network uses a PAC (Proxy Auto-Configuration) file to decide routing per destination, install the optional `pac` extra (see [Installation](installation.md#optional-extras)) and pass `pac_url`:
+
+```python
+client = Albert(pac_url="auto")  # discover from system settings or network auto-discovery
+client = Albert(pac_url="https://proxy.company.com/proxy.pac")  # or an explicit PAC file
+```
+
+Proxy configuration applies to everything the SDK does, including file uploads. See [Session](core/session.md) for the full reference.
+
+---
+
 ## Summary
 
 | Variable               | Purpose                                 | Used By                   |
