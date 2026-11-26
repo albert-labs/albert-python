@@ -259,7 +259,19 @@ class AttachmentCollection(BaseCollection):
         existing_dump = existing_meta.model_dump(by_alias=True, mode="json")
         updated_dump = updated_meta.model_dump(by_alias=True, mode="json")
 
+        # Gate nested metadata sub-fields on updated.metadata.model_fields_set so
+        # omitting a field during a partial metadata update does not emit a delete op.
+        set_meta_attributes: set[str] | None = None
+        if updated.metadata is not None:
+            set_meta_attributes = {
+                getattr(field_info, "serialization_alias", None) or field_info.alias or name
+                for name in updated.metadata.model_fields_set
+                if (field_info := AttachmentMetadata.model_fields.get(name)) is not None
+            }
+
         for attribute in self._updatable_metadata_attributes:
+            if set_meta_attributes is not None and attribute not in set_meta_attributes:
+                continue
             old_value = existing_dump.get(attribute)
             new_value = updated_dump.get(attribute)
 

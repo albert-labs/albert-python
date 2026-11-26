@@ -247,3 +247,41 @@ def test_unchanged_extensions_emits_no_op(offline_session) -> None:
     )
 
     assert payload.data == []
+
+
+def test_partial_metadata_update_leaves_unset_subfields_untouched(offline_session) -> None:
+    """Test that updating one metadata sub-field leaves other existing sub-fields untouched."""
+    existing = _attachment(
+        metadata=AttachmentMetadata(
+            wgk="1",
+            un_number="UN1234",
+            symbols=[HazardSymbol(id="HAZ1", name="Corrosive")],
+            extensions=[EntityLinkWithName(id="EXT1", name="Ext 1")],
+        )
+    )
+    updated = _attachment(metadata=AttachmentMetadata(wgk="2"))
+
+    payload = AttachmentCollection(session=offline_session)._generate_attachment_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert len(payload.data) == 1
+    assert payload.data[0].attribute == "wgk"
+    assert payload.data[0].operation == PatchOperation.UPDATE
+    assert payload.data[0].old_value == "1"
+    assert payload.data[0].new_value == "2"
+
+
+def test_explicit_none_metadata_clears_existing_metadata_fields(offline_session) -> None:
+    """Test that explicitly setting metadata=None deletes existing metadata fields."""
+    existing = _attachment(metadata=AttachmentMetadata(wgk="1", un_number="UN1234"))
+    updated = _attachment(metadata=None)
+
+    payload = AttachmentCollection(session=offline_session)._generate_attachment_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    by_attr = {d.attribute: d for d in payload.data}
+    assert set(by_attr) == {"wgk", "unNumber"}
+    assert by_attr["wgk"].operation == PatchOperation.DELETE
+    assert by_attr["unNumber"].operation == PatchOperation.DELETE
