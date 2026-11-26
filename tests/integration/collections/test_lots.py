@@ -28,8 +28,11 @@ def seeded_lot(
         seeded_locations=seeded_locations,
     )[0]
     seeded = client.lots.create(lots=[lot])[0]
-    yield seeded
-    client.lots.delete(id=seeded.id)
+    try:
+        yield seeded
+    finally:
+        with suppress(NotFoundError):
+            client.lots.delete(id=seeded.id)
 
 
 @pytest.fixture(scope="function")
@@ -164,6 +167,45 @@ def test_update(
     assert updated_lot.owner is not None
     assert any(o.id == second_user.id for o in updated_lot.owner)
     assert updated_lot.external_barcode_id == lot.external_barcode_id
+
+
+def test_update_status_transitions(client: Albert, seeded_lot: Lot):
+    """Test that supported status transitions work through single and bulk updates."""
+    lot = seeded_lot.model_copy()
+    assert lot.status == LotStatus.ACTIVE
+
+    try:
+        lot.status = LotStatus.QUARANTINED
+        quarantined = client.lots.update(lot=lot)
+        assert quarantined.status == LotStatus.QUARANTINED
+
+        quarantined.status = LotStatus.ACTIVE
+        reactivated = client.lots.update(lot=quarantined)
+        assert reactivated.status == LotStatus.ACTIVE
+
+        reactivated.status = LotStatus.QUARANTINED
+        bulk_quarantined = client.lots.update_many(
+            lots=[reactivated], notes="integration status transition"
+        )
+        assert [item.status for item in bulk_quarantined] == [LotStatus.QUARANTINED]
+    finally:
+        current = client.lots.get_by_id(id=lot.id)
+        if current.status == LotStatus.QUARANTINED:
+            current.status = LotStatus.ACTIVE
+            client.lots.update(lot=current)
+
+
+def test_status_updates_reject_inactive(client: Albert, seeded_lot: Lot):
+    """Test that single and bulk updates reject retiring a lot through its status."""
+    lot = seeded_lot.model_copy()
+    lot.status = LotStatus.INACTIVE
+
+    with pytest.raises(BadRequestError):
+        client.lots.update(lot=lot)
+    with pytest.raises(BadRequestError):
+        client.lots.update_many(lots=[lot], notes="integration rejected status transition")
+
+    assert client.lots.get_by_id(id=lot.id).status == LotStatus.ACTIVE
 
 
 def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_lot: Lot):

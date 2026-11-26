@@ -1028,6 +1028,11 @@ class LotCollection(BaseCollection):
         ``density``, ``initial_quantity_l``, and ``inventory_on_hand_l`` are
         fixed at creation and cannot be updated.
 
+        The platform supports changing ``status`` from active to quarantined and
+        from quarantined to active. It rejects changing status to inactive. Use
+        [`delete`][albert.collections.lots.LotCollection.delete] to retire a lot.
+        Inactive lots cannot be edited.
+
         Clearing a field (setting it to ``None``) is only supported for
         ``expiration_date``, ``pack_size``, ``external_barcode_id``, and
         individual ``metadata`` keys; clearing any other field is rejected.

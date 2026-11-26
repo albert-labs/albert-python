@@ -4,7 +4,7 @@ import pytest
 
 from albert.core.shared.models.base import EntityLink
 from albert.resources.inventory import InventoryCategory, InventoryDensity
-from albert.resources.lots import Lot, LotVolumeUnit
+from albert.resources.lots import Lot, LotStatus, LotVolumeUnit
 
 
 def test_lot_volume_coercion_and_serialization():
@@ -152,6 +152,22 @@ def test_lot_numeric_serializer_leaves_non_decimal_formatting_untouched():
 
     round_tripped = Lot.model_validate(dumped)
     assert round_tripped.cost == float("inf")
+
+
+def test_fetched_lot_allows_supported_status_assignment():
+    """Test that a fetched lot permits changing an active status to quarantined."""
+    lot = Lot.model_validate(
+        {
+            "albertId": "LOT1",
+            "parentId": "INVA123",
+            "inventoryOnHand": 5.0,
+            "status": "active",
+        }
+    )
+
+    lot.status = LotStatus.QUARANTINED
+
+    assert lot.status == LotStatus.QUARANTINED
 
 
 def test_lot_parent_category_alias():
