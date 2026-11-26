@@ -91,6 +91,76 @@ def _data_column_unit_patches(
     return None
 
 
+def _parameter_unit_family_patches(
+    initial_parameter_value: ParameterValue, updated_parameter_value: ParameterValue
+) -> PGPatchDatum | None:
+    """Generate a unit family patch for a parameter value."""
+    if "unit_family" not in updated_parameter_value.model_fields_set:
+        return None
+    initial = initial_parameter_value.unit_family
+    updated = updated_parameter_value.unit_family
+    if initial == updated:
+        return None
+    if initial is None and updated is not None:
+        return PGPatchDatum(
+            operation="add",
+            attribute="unitFamilyId",
+            newValue=updated.id,
+            rowId=updated_parameter_value.sequence,
+        )
+    if updated is None and initial is not None:
+        return PGPatchDatum(
+            operation="delete",
+            attribute="unitFamilyId",
+            oldValue=initial.id,
+            rowId=updated_parameter_value.sequence,
+        )
+    if initial.id != updated.id:
+        return PGPatchDatum(
+            operation="update",
+            attribute="unitFamilyId",
+            oldValue=initial.id,
+            newValue=updated.id,
+            rowId=updated_parameter_value.sequence,
+        )
+    return None
+
+
+def _data_column_unit_family_patches(
+    initial_data_column_value: DataColumnValue, updated_data_column_value: DataColumnValue
+) -> DTPatchDatum | None:
+    """Generate a unit family patch for a data column value."""
+    if "unit_family" not in updated_data_column_value.model_fields_set:
+        return None
+    initial = initial_data_column_value.unit_family
+    updated = updated_data_column_value.unit_family
+    if initial == updated:
+        return None
+    if initial is None and updated is not None:
+        return DTPatchDatum(
+            operation="add",
+            attribute="unitFamily",
+            newValue=updated.id,
+            colId=initial_data_column_value.sequence,
+        )
+    if updated is None and initial is not None:
+        return DTPatchDatum(
+            operation="delete",
+            attribute="unitFamily",
+            oldValue=initial.id,
+            colId=initial_data_column_value.sequence,
+        )
+    if initial.id != updated.id:
+        return DTPatchDatum(
+            operation="update",
+            attribute="unitFamily",
+            oldValue=initial.id,
+            newValue=updated.id,
+            colId=initial_data_column_value.sequence,
+        )
+    return None
+
+
 def _parameter_value_patches(
     initial_parameter_value: ParameterValue, updated_parameter_value: ParameterValue
 ) -> PGPatchDatum | None:
@@ -525,6 +595,9 @@ def generate_data_column_patches(
         unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
         if unit_patch:
             patches.append(unit_patch)
+        unit_family_patch = _data_column_unit_family_patches(initial_dc, updated_dc)
+        if unit_family_patch:
+            patches.append(unit_family_patch)
     return patches, new_data_columns, enum_patches
 
 
@@ -687,12 +760,15 @@ def generate_parameter_patches(
         )
     for existing_param, updated_param in updated_param_pairs:
         unit_patch = _parameter_unit_patches(existing_param, updated_param)
+        unit_family_patch = _parameter_unit_family_patches(existing_param, updated_param)
         value_patch = _parameter_value_patches(existing_param, updated_param)
         required_patch = _parameter_required_patch(existing_param, updated_param)
         validation_patch = parameter_validation_patch(existing_param, updated_param)
 
         if unit_patch:
             parameter_patches.append(unit_patch)
+        if unit_family_patch:
+            parameter_patches.append(unit_family_patch)
         if value_patch:
             parameter_patches.append(value_patch)
         if required_patch:

@@ -684,8 +684,8 @@ class ParameterGroupCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``description``, ``metadata``,
-        ``name``, ``tags``, and, per parameter, ``value``, ``unit``, ``required``, and
-        ``validation``.
+        ``name``, ``tags``, and, per parameter, ``value``, ``unit``, ``unit_family``,
+        ``required``, and ``validation``.
         Any tags that do not yet exist in Albert are created automatically.
         """
         if "tags" in parameter_group.model_fields_set and parameter_group.tags:

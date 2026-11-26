@@ -8,6 +8,9 @@ silently lost, using payload fragments recorded from the live API.
 
 import pytest
 
+from albert.core.shared.models.base import EntityLink
+from albert.resources.data_templates import DataColumnValue
+from albert.resources.parameter_groups import ParameterValue
 from albert.resources.product_design import (
     CasLevelSubstance,
     UnpackedCasInfo,
@@ -720,3 +723,32 @@ def test_substance_info_tolerates_wider_v3_field_types():
     assert substance.m_factor_chronic == "1"
     assert substance.stot_affected_organs == {"organ": "liver"}
     assert substance.stot_route_of_exposure == {"route": "oral"}
+
+
+def test_data_column_value_serializes_unit_and_family_pair():
+    """Test that a data column keeps both unit and family references."""
+    column = DataColumnValue(
+        data_column_id="DAC1",
+        unit=EntityLink(id="UNI1"),
+        unit_family=EntityLink(id="UNF1", name="Mass"),
+    )
+
+    payload = column.model_dump(by_alias=True, mode="json", exclude_none=True)
+
+    assert payload["Unit"] == {"id": "UNI1"}
+    assert payload["UnitFamily"] == {"id": "UNF1"}
+
+
+def test_parameter_value_deserializes_unit_and_family_pair():
+    """Test that a parameter keeps both unit and family references."""
+    parameter = ParameterValue.model_validate(
+        {
+            "id": "PRM1",
+            "Unit": {"id": "UNI1"},
+            "UnitFamily": {"id": "UNF1", "name": "Mass"},
+        }
+    )
+
+    assert parameter.unit.id == "UNI1"
+    assert parameter.unit_family.id == "UNF1"
+    assert parameter.unit_family.name == "Mass"

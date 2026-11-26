@@ -3,6 +3,7 @@ import pytest
 from albert.client import Albert
 from albert.core.shared.enums import OrderBy
 from albert.resources.units import Unit, UnitCategory
+from tests.integration.seeding import _unit_symbol_suffix
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
@@ -72,9 +73,10 @@ def test_unit_exists(client: Albert, seeded_units: list[Unit]):
 
 
 def test_unit_crud(client: Albert, seed_prefix: str):
+    suffix = _unit_symbol_suffix(seed_prefix)
     new_unit = Unit(
         name=seed_prefix,
-        symbol="x",
+        symbol=f"x{suffix}",
         synonyms=["kfnehiuow", "hbfuiewhbuewf89fy89b"],
         category=UnitCategory.MASS,
     )
@@ -83,11 +85,11 @@ def test_unit_crud(client: Albert, seed_prefix: str):
     assert created_unit.name == seed_prefix
     assert created_unit.id is not None
 
-    created_unit.symbol = "y"
+    created_unit.symbol = f"y{suffix}"
     updated_unit = client.units.update(unit=created_unit)
     assert isinstance(updated_unit, Unit)
     assert updated_unit.id == created_unit.id
-    assert updated_unit.symbol == "y"
+    assert updated_unit.symbol == f"y{suffix}"
 
     # Synonyms are patched as item-level add/delete operations.
     updated_unit.synonyms = ["kfnehiuow", "newsynonym"]

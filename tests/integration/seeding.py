@@ -609,6 +609,10 @@ def generate_tag_seeds(seed_prefix: str) -> list[Tag]:
     ]
 
 
+def _unit_symbol_suffix(seed_prefix: str) -> str:
+    return seed_prefix.removeprefix("SDK-Test-").replace("-", "")[:12]
+
+
 def generate_unit_seeds(seed_prefix: str) -> list[Unit]:
     """
     Generates a list of Unit seed objects for testing without IDs.
@@ -619,11 +623,12 @@ def generate_unit_seeds(seed_prefix: str) -> list[Unit]:
         A list of Unit objects with different permutations.
     """
 
+    suffix = _unit_symbol_suffix(seed_prefix)
     return [
         # Basic unit with length category
         Unit(
             name=f"{seed_prefix} - Meter",
-            symbol="m",
+            symbol=f"m{suffix}",
             synonyms=["Metre"],
             category=UnitCategory.LENGTH,
             verified=True,
@@ -631,14 +636,14 @@ def generate_unit_seeds(seed_prefix: str) -> list[Unit]:
         # Unit with mass category
         Unit(
             name=f"{seed_prefix} - Kilogram",
-            symbol="kg",
+            symbol=f"kg{suffix}",
             category=UnitCategory.MASS,
             verified=True,
         ),
         # Unit with temperature category and synonyms
         Unit(
             name=f"{seed_prefix} - Celsius",
-            symbol="°C",
+            symbol=f"°C{suffix}",
             synonyms=["Centigrade"],
             category=UnitCategory.TEMPERATURE,
             verified=False,
@@ -646,14 +651,14 @@ def generate_unit_seeds(seed_prefix: str) -> list[Unit]:
         # Unit with energy category
         Unit(
             name=f"{seed_prefix} - Joule",
-            symbol="J",
+            symbol=f"J{suffix}",
             category=UnitCategory.ENERGY,
             verified=True,
         ),
         # Unit with volume category
         Unit(
             name=f"{seed_prefix} - Liter",
-            symbol="L",
+            symbol=f"L{suffix}",
             synonyms=["Litre"],
             category=UnitCategory.VOLUME,
             verified=True,

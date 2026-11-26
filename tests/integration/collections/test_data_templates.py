@@ -29,7 +29,6 @@ from albert.resources.parameter_groups import (
 )
 from albert.resources.parameters import Parameter
 from albert.resources.tags import Tag
-from albert.resources.units import Unit
 from albert.resources.users import User
 from tests.utils.wait import poll_until
 
@@ -556,24 +555,47 @@ def test_update_calculation(client: Albert, calculation_dt: DataTemplate):
     assert updated_column.calculation == updated_calculation
 
 
-def test_update_units(
-    client: Albert, seeded_data_templates: list[DataTemplate], seeded_units: list[Unit]
-):
+def test_update_units(client: Albert, seed_prefix: str, static_length_units: dict[str, dict]):
     """Test updating units on a data template."""
-    dt = seeded_data_templates[3]
+    data_column = client.data_columns.create(
+        data_column=DataColumn(name=f"{seed_prefix} - Unit update")
+    )
+    dt = None
+    try:
+        meter = static_length_units["m"]
+        millimeter = static_length_units["mm"]
+        family_id = meter["unitFamilies"][0]["familyId"]
+        dt = client.data_templates.create(
+            data_template=DataTemplate(
+                name=f"{seed_prefix} - Unit update",
+                data_column_values=[
+                    DataColumnValue(
+                        data_column=data_column,
+                        value="1",
+                        unit=EntityLink(id=meter["id"]),
+                        unit_family=EntityLink(id=family_id),
+                    )
+                ],
+            )
+        )
+        dt = client.data_templates.get_by_id(id=dt.id)
+        column = dt.data_column_values[0]
+        original_unit = column.unit
 
-    column = [x for x in dt.data_column_values if x.unit is not None][0]  # Data column with unit
-    original_unit = column.unit
+        column.unit = EntityLink(id=millimeter["id"])
+        column.unit_family = EntityLink(id=family_id)
+        updated_dt = client.data_templates.update(data_template=dt)
 
-    # Update unit
-    new_unit = seeded_units[2]
-    column.unit = EntityLink(id=new_unit.id)
-    updated_dt = client.data_templates.update(data_template=dt)
-
-    assert updated_dt is not None
-    updated_column = [x for x in updated_dt.data_column_values if x.unit is not None][0]
-    assert updated_column.unit.id == new_unit.id
-    assert updated_column.unit.id != original_unit.id
+        updated_column = updated_dt.data_column_values[0]
+        assert updated_column.unit.id == millimeter["id"]
+        assert updated_column.unit.id != original_unit.id
+        assert updated_column.unit_family.id == family_id
+    finally:
+        if dt is not None:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=dt.id)
+        with suppress(NotFoundError):
+            client.data_columns.delete(id=data_column.id)
 
 
 def test_update_parameters_and_data_columns(

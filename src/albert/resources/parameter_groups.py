@@ -243,6 +243,9 @@ class ParameterValue(BaseAlbertModel):
     unit: SerializeAsEntityLink[Unit] | None = Field(alias="Unit", default=None)
     """The unit of measure for the value. Serialized as ``Unit``."""
 
+    unit_family: EntityLink | None = Field(default=None, alias="UnitFamily")
+    """The unit family reference. Required together with ``unit`` when unit management is enabled."""
+
     added: AuditFields | None = Field(alias="Added", default=None, exclude=True)
     required: bool | None = Field(default=None)
     """Whether this parameter is required. Defaults to False."""

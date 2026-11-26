@@ -629,8 +629,9 @@ class DataTemplateCollection(BaseCollection):
         -----
         The following fields can be updated: ``name``, ``description``,
         ``metadata``, and ``tags`` on the template itself, and per-parameter ``value``, ``unit``,
-        ``required``, and ``validation``. Data columns and parameters are removed by
-        leaving them out of the list, unless ``remove_omitted_rows=False``.
+        ``unit_family``, ``required``, and ``validation``. Data column ``unit_family`` can also
+        be updated. Data columns and parameters are removed by leaving them out of the list,
+        unless ``remove_omitted_rows=False``.
 
         Any tags that do not yet exist in Albert are created automatically.
 

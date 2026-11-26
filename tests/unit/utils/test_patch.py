@@ -6,6 +6,7 @@ diff behavior with no I/O to fake.
 
 import pytest
 
+from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import (
     DTPatchDatum,
     GeneralPatchDatum,
@@ -27,10 +28,12 @@ from albert.resources.units import Unit
 from albert.resources.users import User
 from albert.utils._patch import (
     _data_column_calculation_patches,
+    _data_column_unit_family_patches,
     _data_column_unit_patches,
     _data_column_value_patches,
     _normalize_curve_links,
     _parameter_required_patch,
+    _parameter_unit_family_patches,
     _parameter_unit_patches,
     _parameter_value_patches,
     build_acl_patch_payload,
@@ -126,6 +129,103 @@ def test_data_column_unit_patches_cleared_emits_delete():
     patch = _data_column_unit_patches(_dc(unit=Unit(id="UNI1", name="mL")), _dc(unit=None))
 
     assert patch == DTPatchDatum(operation="delete", attribute="unit", oldValue="UNI1", colId="1")
+
+
+def test_parameter_unit_family_patches_newly_set_emits_add():
+    """Test that a unit family set from None emits an add operation."""
+    patch = _parameter_unit_family_patches(
+        _pv(unit_family=None), _pv(unit_family=EntityLink(id="UNF1", name="Mass"))
+    )
+
+    assert patch == PGPatchDatum(
+        operation="add", attribute="unitFamilyId", newValue="UNF1", rowId="1"
+    )
+
+
+def test_parameter_unit_family_patches_cleared_emits_delete():
+    """Test that a cleared unit family emits a delete operation."""
+    patch = _parameter_unit_family_patches(
+        _pv(unit_family=EntityLink(id="UNF1", name="Mass")), _pv(unit_family=None)
+    )
+
+    assert patch == PGPatchDatum(
+        operation="delete", attribute="unitFamilyId", oldValue="UNF1", rowId="1"
+    )
+
+
+def test_parameter_unit_family_patches_changed_emits_update():
+    """Test that a changed unit family emits an update operation."""
+    patch = _parameter_unit_family_patches(
+        _pv(unit_family=EntityLink(id="UNF1", name="Mass")),
+        _pv(unit_family=EntityLink(id="UNF2", name="Length")),
+    )
+
+    assert patch == PGPatchDatum(
+        operation="update", attribute="unitFamilyId", oldValue="UNF1", newValue="UNF2", rowId="1"
+    )
+
+
+def test_data_column_unit_family_patches_newly_set_emits_add():
+    """Test that a data column family set from None emits an add operation."""
+    patch = _data_column_unit_family_patches(
+        _dc(unit_family=None), _dc(unit_family=EntityLink(id="UNF1", name="Mass"))
+    )
+
+    assert patch == DTPatchDatum(
+        operation="add", attribute="unitFamily", newValue="UNF1", colId="1"
+    )
+
+
+def test_data_column_unit_family_patches_cleared_emits_delete():
+    """Test that a cleared data column family emits a delete operation."""
+    patch = _data_column_unit_family_patches(
+        _dc(unit_family=EntityLink(id="UNF1", name="Mass")), _dc(unit_family=None)
+    )
+
+    assert patch == DTPatchDatum(
+        operation="delete", attribute="unitFamily", oldValue="UNF1", colId="1"
+    )
+
+
+def test_data_column_unit_family_patches_changed_emits_update():
+    """Test that a changed data column family emits an update operation."""
+    patch = _data_column_unit_family_patches(
+        _dc(unit_family=EntityLink(id="UNF1", name="Mass")),
+        _dc(unit_family=EntityLink(id="UNF2", name="Length")),
+    )
+
+    assert patch == DTPatchDatum(
+        operation="update", attribute="unitFamily", oldValue="UNF1", newValue="UNF2", colId="1"
+    )
+
+
+@pytest.mark.parametrize(
+    "builder,patch_fn",
+    [
+        pytest.param(_pv, _parameter_unit_family_patches, id="parameter"),
+        pytest.param(_dc, _data_column_unit_family_patches, id="data-column"),
+    ],
+)
+def test_unit_family_patches_same_id_is_no_op(builder, patch_fn):
+    """Test that identical unit family IDs emit no operation."""
+    initial = builder(unit_family=EntityLink(id="UNF1", name="Mass"))
+    updated = builder(unit_family=EntityLink(id="UNF1", name="Updated name"))
+
+    assert patch_fn(initial, updated) is None
+
+
+@pytest.mark.parametrize(
+    "builder,patch_fn",
+    [
+        pytest.param(_pv, _parameter_unit_family_patches, id="parameter"),
+        pytest.param(_dc, _data_column_unit_family_patches, id="data-column"),
+    ],
+)
+def test_unit_family_patches_unset_is_no_op(builder, patch_fn):
+    """Test that an omitted unit family leaves the existing value unchanged."""
+    initial = builder(unit_family=EntityLink(id="UNF1", name="Mass"))
+
+    assert patch_fn(initial, builder()) is None
 
 
 @pytest.mark.parametrize(
