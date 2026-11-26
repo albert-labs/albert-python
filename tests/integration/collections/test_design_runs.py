@@ -13,9 +13,8 @@ from albert.resources.targets import Criterion
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
-ignore_in_ten0 = pytest.mark.xfail(
-    reason="api-designruns is not live in the TEN0 test environment.",
-    strict=False,
+ignore_in_ten0 = pytest.mark.skip(
+    reason="Design functionality is not available in the TEN0 test environment.",
 )
 
 
