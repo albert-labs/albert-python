@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.78.1](https://github.com/albert-labs/albert-python/compare/v1.78.0...v1.78.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **attachments:** preserve unset metadata fields on update ([#1002](https://github.com/albert-labs/albert-python/issues/1002)) ([7709826](https://github.com/albert-labs/albert-python/commit/770982606163cada61d0c2735353509ad0f83d07))
+* **release:** correct pull request links in release notes ([#996](https://github.com/albert-labs/albert-python/issues/996)) ([3a5c968](https://github.com/albert-labs/albert-python/commit/3a5c9684866ab97ff198b363ec5e89881fff1dc9))
+
 ## [1.78.0](https://github.com/albert-labs/albert-python/compare/v1.77.0...v1.78.0) (2026-11-23)
 
 
