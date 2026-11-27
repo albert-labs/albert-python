@@ -23,8 +23,8 @@ def test_get_all_by_id(client: Albert, seeded_data_templates: list[DataTemplate]
     for row in rows:
         assert isinstance(row, Localization)
         assert row.id == template.id
-    assert rows[0].unique_id == "DAT"
-    assert rows[0].name == template.name
+    main = next(row for row in rows if row.unique_id == "DAT")
+    assert main.name == template.name
 
 
 def test_update(client: Albert, seed_prefix: str):

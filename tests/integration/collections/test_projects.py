@@ -30,21 +30,51 @@ def assert_valid_project_items(returned_list: list, entity_type: type = Project)
         assert isinstance(item.id, str) and item.id
 
 
-def test_project_get_all(client: Albert):
+def test_project_get_all(client: Albert, seed_prefix: str, seeded_projects: list[Project]):
     """Test get_all returns hydrated Project items."""
-    project_list = list(client.projects.get_all(max_items=10))
+    expected = seeded_projects[0]
+    project_list = poll_until(
+        lambda: [
+            project
+            for project in client.projects.get_all(
+                text=seed_prefix,
+                status=[expected.state],
+                max_items=100,
+            )
+            if project.id == expected.id
+        ],
+        timeout=120.0,
+    )
     assert_valid_project_items(project_list, Project)
 
 
-def test_project_search_basic(client: Albert):
+def test_project_search_basic(client: Albert, seed_prefix: str, seeded_projects: list[Project]):
     """Test search returns ProjectSearchItem items."""
-    project_list = list(client.projects.search(max_items=10))
+    seeded_ids = {project.id for project in seeded_projects}
+    project_list = poll_until(
+        lambda: [
+            project
+            for project in client.projects.search(text=seed_prefix, max_items=100)
+            if project.id in seeded_ids
+        ]
+    )
     assert_valid_project_items(project_list, ProjectSearchItem)
 
 
-def test_project_search_filtered(client: Albert):
+def test_project_search_filtered(client: Albert, seeded_projects: list[Project]):
     """Test search with status filter."""
-    advanced_list = list(client.projects.search(status=["Active"], max_items=10))
+    expected = seeded_projects[0]
+    advanced_list = poll_until(
+        lambda: [
+            project
+            for project in client.projects.search(
+                text=expected.description,
+                status=[expected.state],
+                max_items=100,
+            )
+            if project.id == expected.id
+        ]
+    )
     assert_valid_project_items(advanced_list, ProjectSearchItem)
 
 
@@ -103,20 +133,21 @@ def test_get_by_id(client: Albert, seeded_projects: list[Project]):
     assert fetched_project.description == seeded_project.description
 
 
-def test_create_project(client: Albert, seeded_locations):
+def test_create_project(client: Albert, seeded_locations, seed_prefix: str):
     # Create a new project
     new_project = Project(
-        description="A basic development project.",
+        description=f"{seed_prefix} - A basic development project.",
         locations=[EntityLink(id=seeded_locations[0].id)],
     )
 
     created_project = client.projects.create(project=new_project)
-    assert isinstance(created_project, Project)
-    assert isinstance(created_project.id, str)
-    assert created_project.description == "A basic development project."
-
-    # Clean up
-    client.projects.delete(id=created_project.id)
+    try:
+        assert isinstance(created_project, Project)
+        assert isinstance(created_project.id, str)
+        assert created_project.description == new_project.description
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=created_project.id)
 
 
 def test_update_project(seeded_locations, client: Albert, seed_prefix: str):

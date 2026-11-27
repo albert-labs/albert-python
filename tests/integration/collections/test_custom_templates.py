@@ -70,7 +70,13 @@ def test_custom_template_get_all(client: Albert, seeded_custom_templates: list[C
 def test_custom_template_search(client: Albert, seeded_custom_templates: list[CustomTemplate]):
     """Test search returns unhydrated CustomTemplateSearchItem results."""
     seeded_template = seeded_custom_templates[0]
-    results = list(client.custom_templates.search(text=seeded_template.name))
+    results = poll_until(
+        lambda: [
+            template
+            for template in client.custom_templates.search(text=seeded_template.name)
+            if template.id == seeded_template.id
+        ]
+    )
     assert_template_items(
         list_iterator=results,
         expected_type=CustomTemplateSearchItem,

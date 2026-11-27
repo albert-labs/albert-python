@@ -38,9 +38,19 @@ def assert_valid_inventory_items(returned_list: list[InventoryItem]):
         assert isinstance(item.id, str)
 
 
-def test_inventory_get_all_with_pagination(client: Albert):
+def test_inventory_get_all_with_pagination(client: Albert, seeded_inventory: list[InventoryItem]):
     """Test inventory get_all respects pagination and item type."""
-    results = list(client.inventory.get_all(max_items=10))
+    seeded_ids = {item.id for item in seeded_inventory}
+    results = poll_until(
+        lambda: [
+            item
+            for item in client.inventory.get_all(
+                albert_id=[item.id.removeprefix("INV") for item in seeded_inventory],
+                max_items=10,
+            )
+            if item.id in seeded_ids
+        ]
+    )
     assert len(results) <= 10
     assert_valid_inventory_items(results)
 
@@ -83,15 +93,17 @@ def test_inventory_get_all_with_filters(
         )
 
     results = poll_until(
-        lambda: list(
-            client.inventory.get_all(
+        lambda: [
+            item
+            for item in client.inventory.get_all(
                 text=test_item.name,
                 category=InventoryCategory.CONSUMABLES,
                 cas=matching_cas,
                 company=test_item.company,
-                max_items=10,
+                max_items=100,
             )
-        )
+            if normalize_inv_id(item.id) == test_item.id
+        ]
     )
 
     assert_valid_inventory_items(results)
@@ -124,12 +136,12 @@ def test_inventory_get_all_with_filters(
         lambda: filter_seeded(
             list(
                 client.inventory.get_all(
-                    text=seed_prefix,
                     created_by=static_user.id,
                     max_items=100,
                 )
             )
-        )
+        ),
+        predicate=lambda results: {normalize_inv_id(item.id) for item in results} == seeded_ids,
     )
     assert hydrated_by_creator
 

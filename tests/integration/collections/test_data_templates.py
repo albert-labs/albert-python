@@ -50,9 +50,18 @@ def assert_valid_data_template_items(
         assert item.id.startswith("DAT")
 
 
-def test_data_template_get_all_basic(client: Albert, seeded_data_templates: list[DataTemplate]):
+def test_data_template_get_all_basic(
+    client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
+):
     """Test get_all returns hydrated DataTemplate results."""
-    results = poll_until(lambda: list(client.data_templates.get_all(max_items=10)))
+    seeded_ids = {template.id for template in seeded_data_templates}
+    results = poll_until(
+        lambda: [
+            template
+            for template in client.data_templates.get_all(name=seed_prefix, max_items=100)
+            if template.id in seeded_ids
+        ]
+    )
     assert_valid_data_template_items(results, DataTemplate)
 
 
@@ -100,16 +109,20 @@ def test_data_template_search(
     if candidate.standards and len(candidate.standards) > 0:
         standard_org = candidate.standards[0].get("standardOrganization")
 
-    results = list(
-        client.data_templates.search(
-            name=seed_prefix,
-            owner=[owner],
-            tags=[tag],
-            data_columns=[data_column],
-            standard_organization=[standard_org] if standard_org else None,
-            additional_field=["owner", "tags", "createdByName", "standards"],
-            max_items=10,
-        )
+    results = poll_until(
+        lambda: [
+            dt
+            for dt in client.data_templates.search(
+                name=seed_prefix,
+                owner=[owner],
+                tags=[tag],
+                data_columns=[data_column],
+                standard_organization=[standard_org] if standard_org else None,
+                additional_field=["owner", "tags", "createdByName", "standards"],
+                max_items=10,
+            )
+            if dt.id == candidate.id
+        ]
     )
     assert_valid_data_template_items(results, DataTemplateSearchItem)
 
@@ -188,9 +201,11 @@ def test_get_by_ids(client: Albert, seeded_data_templates: list[DataTemplate]):
     ids = [x.id for x in seeded_data_templates]
     dt = client.data_templates.get_by_ids(ids=ids)
     assert len(dt) == len(seeded_data_templates)
-    for i, d in enumerate(dt):
-        assert d.name == seeded_data_templates[i].name
-        assert d.id == seeded_data_templates[i].id
+    assert {template.id for template in dt} == set(ids)
+    expected_by_id = {template.id: template for template in seeded_data_templates}
+    for template in dt:
+        assert template.id in expected_by_id
+        assert template.name == expected_by_id[template.id].name
 
 
 def test_duplicate(client: Albert, seeded_data_templates: list[DataTemplate], seed_prefix: str):

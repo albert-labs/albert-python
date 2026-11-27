@@ -47,15 +47,26 @@ def test_get_by_ids(client: Albert, seeded_parameter_groups: list[ParameterGroup
     pg = client.parameter_groups.get_by_ids(ids=ids)
     assert isinstance(pg, list)
     assert len(pg) == len(seeded_parameter_groups)
-    for i, u in enumerate(pg):
-        assert isinstance(u, ParameterGroup)
-        assert u.id == seeded_parameter_groups[i].id
-        assert u.name == seeded_parameter_groups[i].name
+    assert {group.id for group in pg} == set(ids)
+    expected_by_id = {group.id: group for group in seeded_parameter_groups}
+    for group in pg:
+        assert isinstance(group, ParameterGroup)
+        assert group.id in expected_by_id
+        assert group.name == expected_by_id[group.id].name
 
 
-def test_parameter_group_get_all(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+def test_parameter_group_get_all(
+    client: Albert, seed_prefix: str, seeded_parameter_groups: list[ParameterGroup]
+):
     """Test get_all for fully hydrated Parameter Groups."""
-    results = list(client.parameter_groups.get_all(max_items=10))
+    seeded_ids = {group.id for group in seeded_parameter_groups}
+    results = poll_until(
+        lambda: [
+            group
+            for group in client.parameter_groups.get_all(text=seed_prefix, max_items=100)
+            if group.id in seeded_ids
+        ]
+    )
     assert_valid_parameter_groups(results, ParameterGroup)
 
 

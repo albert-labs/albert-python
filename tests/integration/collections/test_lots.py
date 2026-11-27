@@ -29,7 +29,8 @@ def seeded_lot(
     )[0]
     seeded = client.lots.create(lots=[lot])[0]
     yield seeded
-    client.lots.delete(id=seeded.id)
+    with suppress(NotFoundError):
+        client.lots.delete(id=seeded.id)
 
 
 @pytest.fixture(scope="function")
