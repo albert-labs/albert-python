@@ -6,6 +6,7 @@ import pytest
 from albert.client import Albert
 from albert.exceptions import NotFoundError
 from albert.resources.unit_families_v4 import UnitFamilyV4, UnitFamilyV4Type
+from albert.resources.units import Unit, UnitCategory
 from albert.resources.units_v4 import (
     UnitFamilyV4Ref,
     UnitV4,
@@ -48,6 +49,11 @@ def test_create_get_update_delete_convertible(client: Albert, seed_prefix: str):
 
         fetched = poll_until(lambda: _get_unit_or_empty(client, unit.id))
         assert fetched and fetched[0].id == unit.id
+
+        wrong_unit = fetched[0].model_copy(deep=True)
+        wrong_unit.id = "UNI0"
+        with pytest.raises(ValueError, match="id cannot be changed"):
+            client.units_v4.update(unit=wrong_unit)
 
         fetched[0].description = "Updated by the SDK test suite"
         fetched[0].synonyms = ["kilo", "kilos"]
@@ -107,6 +113,60 @@ def test_update_convertible_rejects_family_change(client: Albert, seed_prefix: s
     finally:
         with suppress(NotFoundError):
             client.units_v4.delete(id=unit.id)
+
+
+def test_setup_legacy_unit_and_chain_update(client: Albert, seed_prefix: str):
+    """Test setting up a v3-created legacy unit and updating the returned record."""
+    suffix = _suffix()
+    symbol = f"legacy{suffix}"
+    family = client.unit_families_v4.create(
+        unit_family=UnitFamilyV4(
+            name=f"{seed_prefix} - Legacy Count {suffix}",
+            type=UnitFamilyV4Type.NON_CONVERTIBLE,
+        )
+    )
+    legacy_unit = None
+    try:
+        legacy_unit = client.units.create(
+            unit=Unit(
+                name=f"{seed_prefix} - Legacy Unit {suffix}",
+                symbol=symbol,
+                category=UnitCategory.OTHER,
+            )
+        )
+        fetched = poll_until(lambda: _get_unit_or_empty(client, legacy_unit.id))[0]
+        assert fetched.origin == UnitV4Origin.CUSTOM_LEGACY
+        assert fetched.type is None
+
+        fetched.description = "Legacy setup regression"
+        with pytest.raises(ValueError, match=r"setup\(\)"):
+            client.units_v4.update(unit=fetched)
+
+        fetched.symbol = symbol
+        fetched.type = UnitV4Type.NON_CONVERTIBLE
+        fetched.unit_families = [UnitFamilyV4Ref(id=family.id)]
+        wrong_unit = fetched.model_copy(deep=True)
+        wrong_unit.id = "UNI0"
+        with pytest.raises(ValueError, match="id cannot be changed"):
+            client.units_v4.setup(unit=wrong_unit, unit_family_id=family.id)
+
+        set_up = client.units_v4.setup(unit=fetched, unit_family_id=family.id)
+
+        assert set_up.id == legacy_unit.id
+        assert set_up.type == UnitV4Type.NON_CONVERTIBLE
+        assert set_up.origin == UnitV4Origin.CUSTOM
+        assert set_up.symbol == symbol
+        assert {f.id for f in set_up.unit_families or []} == {family.id}
+
+        set_up.description = "Updated after legacy setup"
+        updated = client.units_v4.update(unit=set_up)
+        assert updated.description == "Updated after legacy setup"
+    finally:
+        if legacy_unit is not None:
+            with suppress(NotFoundError):
+                client.units_v4.delete(id=legacy_unit.id)
+        with suppress(NotFoundError):
+            client.unit_families_v4.delete(id=family.id)
 
 
 def test_search_and_get_by_ids(client: Albert, seed_prefix: str):

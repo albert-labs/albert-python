@@ -1,8 +1,4 @@
-"""Unit tests for the v4 units merge-patch builders.
-
-These helpers are pure (no session), so they can be exercised without the API.
-They guard the unset-vs-explicit distinction described in OPINIONS.md.
-"""
+"""Unit tests for pure v4 unit and unit-family payload helpers."""
 
 import pytest
 
@@ -22,15 +18,174 @@ def _existing_unit(**overrides) -> UnitV4:
         "synonyms": ["g", "grms"],
         "siUnit": "kg",
         "siValue": "0.001",
-        # the units v4 API serializes family refs as familyId/familyName
         "unitFamilies": [{"familyId": "UNF1", "familyName": "Mass"}],
     }
     data.update(overrides)
     return UnitV4.model_validate(data)
 
 
+# --- UnitV4Collection._generate_create_payload ---
+
+
+def test_unit_create_payload_sends_family_ids():
+    """Test that a create payload contains writable fields and family IDs."""
+    unit = UnitV4(
+        name="Batch",
+        symbol="batch",
+        type=UnitV4Type.NON_CONVERTIBLE,
+        unit_families=[UnitFamilyV4Ref(id="UNF3")],
+    )
+
+    payload = UnitV4Collection._generate_create_payload(unit=unit)
+
+    assert payload == {
+        "name": "Batch",
+        "type": "Non-Convertible",
+        "symbol": "batch",
+        "unitFamilies": ["UNF3"],
+    }
+
+
+def test_unit_create_payload_requires_symbol():
+    """Test that create rejects a unit whose symbol is absent."""
+    unit = UnitV4(name="Grams", type=UnitV4Type.CONVERTIBLE, ref_unit="g")
+
+    with pytest.raises(ValueError, match="non-empty symbol"):
+        UnitV4Collection._generate_create_payload(unit=unit)
+
+
+@pytest.mark.parametrize("symbol", ["", "   "], ids=["empty", "whitespace"])
+def test_unit_create_payload_rejects_blank_symbol(symbol: str):
+    """Test that create rejects a blank unit symbol."""
+    unit = UnitV4(name="Grams", symbol=symbol, type=UnitV4Type.CONVERTIBLE, ref_unit="g")
+
+    with pytest.raises(ValueError, match="non-empty symbol"):
+        UnitV4Collection._generate_create_payload(unit=unit)
+
+
+# --- UnitV4Collection._generate_setup_payload ---
+
+
+def test_unit_setup_payload_includes_full_convertible_unit():
+    """Test that convertible setup includes the complete unit and reference fields."""
+    unit = UnitV4(
+        id="UNI1",
+        name="Grams",
+        description="Grams weight",
+        symbol="g",
+        synonyms=["g", "grms"],
+        type=UnitV4Type.CONVERTIBLE,
+        ref_unit="lb",
+        ref_unit_value="0.00220462",
+        unit_families=[UnitFamilyV4Ref(id="UNF9")],
+    )
+
+    payload = UnitV4Collection._generate_setup_payload(unit=unit, unit_family_id="UNF1")
+
+    assert payload == {
+        "id": "UNI1",
+        "name": "Grams",
+        "description": "Grams weight",
+        "type": "Convertible",
+        "symbol": "g",
+        "synonyms": ["g", "grms"],
+        "refUnit": "lb",
+        "refUnitValue": "0.00220462",
+        "unitFamilyId": "UNF1",
+    }
+
+
+def test_unit_setup_payload_supports_reference_expression():
+    """Test that convertible setup can use a reference expression."""
+    unit = UnitV4(
+        id="UNI1",
+        name="Kilograms",
+        symbol="kg",
+        type=UnitV4Type.CONVERTIBLE,
+        ref_unit_exp="1000*g",
+    )
+
+    payload = UnitV4Collection._generate_setup_payload(unit=unit, unit_family_id="UNF1")
+
+    assert payload == {
+        "id": "UNI1",
+        "name": "Kilograms",
+        "type": "Convertible",
+        "symbol": "kg",
+        "refUnitExp": "1000*g",
+        "unitFamilyId": "UNF1",
+    }
+
+
+def test_unit_setup_payload_includes_non_convertible_families():
+    """Test that non-convertible setup includes family IDs and excludes reference fields."""
+    unit = UnitV4(
+        id="UNI1",
+        name="Pieces",
+        description="Individual pieces",
+        symbol="pcs",
+        synonyms=["piece"],
+        type=UnitV4Type.NON_CONVERTIBLE,
+        ref_unit="g",
+        ref_unit_exp="1000*g",
+        ref_unit_value="1000",
+        unit_families=[UnitFamilyV4Ref(id="UNF1"), UnitFamilyV4Ref(id="UNF2")],
+    )
+
+    payload = UnitV4Collection._generate_setup_payload(unit=unit, unit_family_id="UNF1")
+
+    assert payload == {
+        "id": "UNI1",
+        "name": "Pieces",
+        "description": "Individual pieces",
+        "type": "Non-Convertible",
+        "symbol": "pcs",
+        "synonyms": ["piece"],
+        "unitFamilies": ["UNF1", "UNF2"],
+        "unitFamilyId": "UNF1",
+    }
+
+
+def test_unit_setup_payload_requires_id():
+    """Test that setup rejects a unit whose ID is absent."""
+    unit = UnitV4(name="Grams", symbol="g", type=UnitV4Type.CONVERTIBLE, ref_unit="g")
+
+    with pytest.raises(ValueError, match="must have an id"):
+        UnitV4Collection._generate_setup_payload(unit=unit, unit_family_id="UNF1")
+
+
+def test_unit_setup_payload_requires_symbol():
+    """Test that setup rejects a unit whose symbol is absent."""
+    unit = UnitV4(id="UNI1", name="Grams", type=UnitV4Type.CONVERTIBLE, ref_unit="g")
+
+    with pytest.raises(ValueError, match="non-empty symbol"):
+        UnitV4Collection._generate_setup_payload(unit=unit, unit_family_id="UNF1")
+
+
+@pytest.mark.parametrize("symbol", ["", "   "], ids=["empty", "whitespace"])
+def test_unit_setup_payload_rejects_blank_symbol(symbol: str):
+    """Test that setup rejects a blank unit symbol."""
+    unit = UnitV4(
+        id="UNI1", name="Grams", symbol=symbol, type=UnitV4Type.CONVERTIBLE, ref_unit="g"
+    )
+
+    with pytest.raises(ValueError, match="non-empty symbol"):
+        UnitV4Collection._generate_setup_payload(unit=unit, unit_family_id="UNF1")
+
+
+def test_unit_setup_payload_requires_type():
+    """Test that setup rejects a unit whose type is absent."""
+    unit = UnitV4(id="UNI1", name="Grams", symbol="g", ref_unit="g")
+
+    with pytest.raises(ValueError, match="must have a type"):
+        UnitV4Collection._generate_setup_payload(unit=unit, unit_family_id="UNF1")
+
+
+# --- UnitV4Collection._generate_merge_patch ---
+
+
 def test_unit_patch_sends_only_changed_fields():
-    """Only fields the caller set and changed are included in the patch."""
+    """Test that only fields the caller set and changed are included."""
     existing = _existing_unit()
     updated = existing.model_copy()
     updated.description = "Grams, for powders"
@@ -42,7 +197,7 @@ def test_unit_patch_sends_only_changed_fields():
 
 
 def test_unit_patch_leaves_unset_fields_untouched():
-    """A partial update object never emits fields the caller did not set."""
+    """Test that a partial update never emits fields the caller did not set."""
     existing = _existing_unit()
     updated = UnitV4(id="UNI1", name="Grams", symbol="g", type=UnitV4Type.CONVERTIBLE)
 
@@ -52,7 +207,7 @@ def test_unit_patch_leaves_unset_fields_untouched():
 
 
 def test_unit_patch_explicit_none_clears_description():
-    """Explicit ``None`` is sent so the server deletes the attribute."""
+    """Test that an explicit ``None`` clears the description."""
     existing = _existing_unit()
     updated = existing.model_copy()
     updated.description = None
@@ -63,7 +218,7 @@ def test_unit_patch_explicit_none_clears_description():
 
 
 def test_unit_patch_families_on_non_convertible_sends_ids():
-    """Non-convertible units may change families; IDs are sent as a plain list."""
+    """Test that non-convertible family changes contain a plain list of IDs."""
     existing = _existing_unit(type="Non-Convertible", siUnit=None, siValue=None)
     updated = existing.model_copy()
     updated.unit_families = [UnitFamilyV4Ref(id="UNF1"), UnitFamilyV4Ref(id="UNF9")]
@@ -74,7 +229,7 @@ def test_unit_patch_families_on_non_convertible_sends_ids():
 
 
 def test_unit_patch_families_same_set_is_noop():
-    """Reordering families without changing membership sends nothing."""
+    """Test that reordering families without changing membership emits nothing."""
     existing = _existing_unit(
         type="Non-Convertible",
         unitFamilies=[
@@ -91,7 +246,7 @@ def test_unit_patch_families_same_set_is_noop():
 
 
 def test_unit_patch_families_on_convertible_raises():
-    """Convertible units derive families from their SI mapping; changing them is an error."""
+    """Test that changing families on a convertible unit raises."""
     existing = _existing_unit()
     updated = existing.model_copy()
     updated.unit_families = [UnitFamilyV4Ref(id="UNF9")]
@@ -100,52 +255,56 @@ def test_unit_patch_families_on_convertible_raises():
         UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
 
 
-def test_unit_patch_legacy_setup_sends_type_and_ref_unit():
-    """Setting a type on a Custom (Legacy) unit performs the setup flow."""
+def test_unit_patch_legacy_unit_directs_to_setup():
+    """Test that a legacy unit with no type is directed to setup instead of updated."""
     existing = _existing_unit(
         type=None, siUnit=None, siValue=None, unitFamilies=[], origin="Custom (Legacy)"
     )
     updated = existing.model_copy()
-    updated.type = UnitV4Type.CONVERTIBLE
-    updated.ref_unit = "g"
+    updated.description = "New description"
 
-    patch = UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
-
-    assert patch == {"type": "Convertible", "refUnit": "g"}
+    with pytest.raises(ValueError, match=r"setup\(\)"):
+        UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
 
 
-def test_unit_patch_legacy_non_convertible_setup_sends_families():
-    """A legacy unit set up as non-convertible may carry family IDs in the same call."""
-    existing = _existing_unit(
-        type=None, siUnit=None, siValue=None, unitFamilies=[], origin="Custom (Legacy)"
-    )
-    updated = existing.model_copy()
-    updated.type = UnitV4Type.NON_CONVERTIBLE
-    updated.unit_families = [UnitFamilyV4Ref(id="UNF1")]
-
-    patch = UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
-
-    assert patch == {"type": "Non-Convertible", "unitFamilies": ["UNF1"]}
-
-
-def test_unit_patch_type_change_after_setup_raises():
-    """The type of a unit that is already set up cannot be changed or cleared."""
+@pytest.mark.parametrize(
+    "new_type",
+    [UnitV4Type.NON_CONVERTIBLE, None],
+    ids=["changed", "cleared"],
+)
+def test_unit_patch_type_change_after_setup_raises(new_type: UnitV4Type | None):
+    """Test that the type of a set-up unit cannot be changed or cleared."""
     existing = _existing_unit()
     updated = existing.model_copy()
-    updated.type = UnitV4Type.NON_CONVERTIBLE
+    updated.type = new_type
 
     with pytest.raises(ValueError, match="type"):
         UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
 
+
+@pytest.mark.parametrize(
+    ("attribute", "value"),
+    [
+        ("ref_unit", "kg"),
+        ("ref_unit_exp", "1000*g"),
+        ("ref_unit_value", "1000"),
+    ],
+)
+def test_unit_patch_si_mapping_change_after_setup_raises(attribute: str, value: str):
+    """Test that SI mapping changes on a set-up unit are rejected."""
+    existing = _existing_unit()
     updated = existing.model_copy()
-    updated.type = None
+    setattr(updated, attribute, value)
 
-    with pytest.raises(ValueError, match="type"):
+    with pytest.raises(ValueError, match="SI mapping"):
         UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
+
+
+# --- UnitFamilyV4Collection._generate_merge_patch ---
 
 
 def test_unit_family_patch_sends_only_name_and_description():
-    """Only name and description are patchable on a unit family."""
+    """Test that only name and description are patchable on a unit family."""
     existing = UnitFamilyV4.model_validate(
         {"id": "UNF1", "name": "Mass", "description": "Old", "type": "Convertible"}
     )
@@ -159,19 +318,3 @@ def test_unit_family_patch_sends_only_name_and_description():
 
     untouched = UnitFamilyV4(id="UNF1", name="Mass", type=UnitFamilyV4Type.CONVERTIBLE)
     assert UnitFamilyV4Collection._generate_merge_patch(existing=existing, updated=untouched) == {}
-
-
-def test_unit_update_requires_fetched_unit(offline_session):
-    """Test that updating a unit that was never read raises before any request."""
-    unit = UnitV4(id="UNI1", name="Grams", symbol="g", type=UnitV4Type.CONVERTIBLE)
-
-    with pytest.raises(ValueError, match="get_by_id"):
-        UnitV4Collection(session=offline_session).update(unit=unit)
-
-
-def test_unit_family_update_requires_fetched_family(offline_session):
-    """Test that updating a family that was never read raises before any request."""
-    family = UnitFamilyV4(id="UNF1", name="Mass", type=UnitFamilyV4Type.CONVERTIBLE)
-
-    with pytest.raises(ValueError, match="get_by_id"):
-        UnitFamilyV4Collection(session=offline_session).update(unit_family=family)

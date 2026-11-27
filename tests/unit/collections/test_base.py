@@ -4,6 +4,8 @@ Allowed under the patch-builder exception in OPINIONS.md: these guard non-obviou
 diff behavior in ``BaseCollection._generate_metadata_diff`` with no I/O to fake.
 """
 
+import pytest
+
 from albert.collections.base import BaseCollection
 from albert.collections.companies import CompanyCollection
 from albert.core.shared.models.base import BaseResource, EntityLink
@@ -437,3 +439,23 @@ def test_metadata_add_single_entity_value_uses_bare_id() -> None:
     assert len(data) == 1
     assert data[0].operation == PatchOperation.ADD
     assert data[0].new_value == "LST1"
+
+
+# --- BaseCollection._validate_snapshot_id ---
+
+
+def test_validate_snapshot_id_accepts_matching_id() -> None:
+    """Test that a write target matching the fetched ID is accepted."""
+    result = BaseCollection._validate_snapshot_id(
+        current_id="UNI1", snapshot_id="UNI1", resource_name="unit"
+    )
+
+    assert result is None
+
+
+def test_validate_snapshot_id_rejects_changed_id() -> None:
+    """Test that changing the fetched ID is rejected before a write."""
+    with pytest.raises(ValueError, match="id cannot be changed after fetching"):
+        BaseCollection._validate_snapshot_id(
+            current_id="UNI2", snapshot_id="UNI1", resource_name="unit"
+        )

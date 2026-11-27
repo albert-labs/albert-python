@@ -29,6 +29,16 @@ class BaseCollection:
     def __init__(self, *, session: AlbertSession):
         self.session = session
 
+    @staticmethod
+    def _validate_snapshot_id(
+        *, current_id: str | None, snapshot_id: str | None, resource_name: str
+    ) -> None:
+        if current_id != snapshot_id:
+            raise ValueError(
+                f"The {resource_name} id cannot be changed after fetching. "
+                f"Fetch the intended {resource_name} before writing."
+            )
+
     def _metadata_list_patch_value(self, links: list[EntityLink], *, as_list: bool = False) -> Any:
         """Serialize list metadata for PATCH. Override in subclasses when needed.
 

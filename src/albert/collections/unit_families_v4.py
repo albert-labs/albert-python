@@ -274,7 +274,7 @@ class UnitFamilyV4Collection(BaseCollection):
         [`get_by_id`][albert.collections.unit_families_v4.UnitFamilyV4Collection.get_by_id]),
         modify the updatable fields on the returned object, then pass it here. The
         family is matched by its ``id``. Only fields you changed since the read are
-        sent. If another writer changes the family between your read and this call,
+        updated. If another writer changes the family between your read and this call,
         the update is rejected instead of overwriting their change.
 
         !!! example
@@ -287,7 +287,8 @@ class UnitFamilyV4Collection(BaseCollection):
         Parameters
         ----------
         unit_family : UnitFamilyV4
-            The unit family carrying the desired changes. Must have its ``id`` set.
+            The unit family carrying the desired changes. Must have its ``id`` set and must
+            have been fetched from Albert first.
 
         Returns
         -------
@@ -297,7 +298,8 @@ class UnitFamilyV4Collection(BaseCollection):
         Raises
         ------
         ValueError
-            If the family has no ``id`` or was not fetched from Albert first.
+            If the family has no ``id``, was not fetched from Albert first, or has a
+            different ``id`` from the fetched family.
         albert.exceptions.PreconditionFailedError
             If the family was modified after it was fetched. Fetch it again and
             reapply the changes.
@@ -314,6 +316,11 @@ class UnitFamilyV4Collection(BaseCollection):
                 "Fetch the family with get_by_id() before updating it, so changed "
                 "fields can be detected and concurrent edits rejected."
             )
+        self._validate_snapshot_id(
+            current_id=unit_family.id,
+            snapshot_id=unit_family._snapshot.id,
+            resource_name="unit family",
+        )
         family_id = ensure_unit_family_v4_id(unit_family.id)
         patch = self._generate_merge_patch(existing=unit_family._snapshot, updated=unit_family)
         if not patch:

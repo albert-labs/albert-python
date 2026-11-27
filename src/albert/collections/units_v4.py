@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import validate_call
 
@@ -7,7 +7,12 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
-from albert.core.shared.identifiers import UnitV4Id, ensure_unit_v4_id
+from albert.core.shared.identifiers import (
+    UnitFamilyV4Id,
+    UnitV4Id,
+    ensure_unit_family_v4_id,
+    ensure_unit_v4_id,
+)
 from albert.resources.units_v4 import (
     UnitV4,
     UnitV4Compatible,
@@ -15,7 +20,6 @@ from albert.resources.units_v4 import (
     UnitV4Origin,
     UnitV4Type,
 )
-from albert.utils.worker_jobs import poll_worker_job
 
 _SEARCH_PAGE_SIZE = 100  # maximum page size accepted by the v4 units search endpoint
 _CREATE_FIELDS = {
@@ -30,6 +34,11 @@ _CREATE_FIELDS = {
     "unit_families",
 }
 _MERGE_PATCH_HEADERS = {"Content-Type": "application/merge-patch+json"}
+
+
+def _validate_unit_symbol(symbol: str | None, *, operation: str) -> None:
+    if symbol is None or not symbol.strip():
+        raise ValueError(f"The unit must have a non-empty symbol to be {operation}.")
 
 
 class UnitV4Collection(BaseCollection):
@@ -81,14 +90,14 @@ class UnitV4Collection(BaseCollection):
         Search for units matching the given filters.
     update(unit) -> UnitV4
         Update an existing unit.
+    setup(unit, unit_family_id) -> UnitV4
+        Set up a Custom (Legacy) unit.
     delete(id) -> None
         Delete a unit by its ID.
     lookup(symbol=..., name=...) -> UnitV4Lookup
         Check whether a unit symbol or name is already in use.
     get_compatible(symbol=..., expression=...) -> UnitV4Compatible
         Get the SI mapping and compatible unit families for a symbol or expression.
-    merge(parent_id, child_ids, ...) -> str
-        Merge units into a parent unit as a background job, optionally waiting for completion.
     """
 
     _api_version = "v4"
@@ -103,6 +112,16 @@ class UnitV4Collection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{UnitV4Collection._api_version}/master-data/units"
+
+    @staticmethod
+    def _generate_create_payload(*, unit: UnitV4) -> dict[str, Any]:
+        _validate_unit_symbol(unit.symbol, operation="created")
+        payload = unit.model_dump(
+            by_alias=True, mode="json", exclude_none=True, include=_CREATE_FIELDS
+        )
+        if "unitFamilies" in payload:
+            payload["unitFamilies"] = [family["id"] for family in payload["unitFamilies"]]
+        return payload
 
     @validate_call
     def create(self, *, unit: UnitV4) -> UnitV4:
@@ -132,18 +151,15 @@ class UnitV4Collection(BaseCollection):
         Parameters
         ----------
         unit : UnitV4
-            The unit to create. ``name`` and ``symbol`` must be unique within the tenant.
+            The unit to create. ``symbol`` must be non-empty. ``name`` and ``symbol`` must be
+            unique within the tenant.
 
         Returns
         -------
         UnitV4
             The newly created unit, including its assigned ID and resolved SI fields.
         """
-        payload = unit.model_dump(
-            by_alias=True, mode="json", exclude_none=True, include=_CREATE_FIELDS
-        )
-        if "unitFamilies" in payload:
-            payload["unitFamilies"] = [family["id"] for family in payload["unitFamilies"]]
+        payload = self._generate_create_payload(unit=unit)
         response = self.session.post(self.base_path, json=payload)
         return UnitV4(**response.json())
 
@@ -286,8 +302,8 @@ class UnitV4Collection(BaseCollection):
 
         Fetch a unit (e.g. via [`get_by_id`][albert.collections.units_v4.UnitV4Collection.get_by_id]),
         modify the updatable fields on the returned object, then pass it here. The unit
-        is matched by its ``id``. Only fields you changed since the read are sent;
-        everything else is left untouched. If another writer changes the unit between
+        is matched by its ``id``. Only fields you changed since the read are updated;
+        everything else is left unchanged. If another writer changes the unit between
         your read and this call, the update is rejected instead of overwriting their
         change.
 
@@ -299,21 +315,11 @@ class UnitV4Collection(BaseCollection):
             updated = client.units_v4.update(unit=unit)
             ```
 
-        !!! example
-            Set up a Custom (Legacy) unit, which has no ``type`` until setup:
-            ```python
-            from albert.resources.units_v4 import UnitV4Type
-
-            legacy = client.units_v4.get_by_id(id="UNI1")
-            legacy.type = UnitV4Type.CONVERTIBLE
-            legacy.ref_unit = "g"
-            updated = client.units_v4.update(unit=legacy)
-            ```
-
         Parameters
         ----------
         unit : UnitV4
-            The unit carrying the desired changes. Must have its ``id`` set.
+            The unit carrying the desired changes. Must have its ``id`` set and must have
+            been fetched from Albert first.
 
         Returns
         -------
@@ -323,10 +329,10 @@ class UnitV4Collection(BaseCollection):
         Raises
         ------
         ValueError
-            If the unit has no ``id``, if it was not fetched from Albert first, if
-            ``unit_families`` is changed on a convertible unit (families of
-            convertible units are derived from the SI mapping and cannot be edited),
-            or if ``type`` is changed on a unit that is already set up.
+            If the unit has no ``id``, was not fetched first, has a different ``id`` from
+            the fetched unit, or has no ``type``. Also raised for attempts to change the
+            ``type`` or SI mapping of a set-up unit, or to change ``unit_families`` on a
+            convertible unit.
         albert.exceptions.PreconditionFailedError
             If the unit was modified after it was fetched. Fetch it again and
             reapply the changes.
@@ -334,15 +340,12 @@ class UnitV4Collection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``name``, ``description``, ``symbol``,
-        ``synonyms``. Non-convertible units can also update ``unit_families``. The SI
-        mapping of a convertible unit (``si_unit``, ``si_value``, ``ref_unit``,
-        ``ref_unit_exp``, ``ref_unit_value``) is fixed once created because changing
-        it would alter historical measurements.
+        ``synonyms``. Non-convertible units can also update ``unit_families``. The ``type``
+        and SI mapping (``si_unit``, ``si_value``, ``ref_unit``, ``ref_unit_exp``,
+        ``ref_unit_value``) are fixed once a unit is set up.
 
-        A Custom (Legacy) unit has no ``type`` until it is set up. Setting ``type``
-        on such a unit performs the setup instead of a partial update: provide
-        ``ref_unit`` or ``ref_unit_exp`` for a convertible unit, or ``unit_families``
-        for a non-convertible one, in the same call.
+        A Custom (Legacy) unit with no ``type`` must be set up with
+        [`setup`][albert.collections.units_v4.UnitV4Collection.setup] before it can be updated.
         """
         if unit.id is None:
             raise ValueError("The unit must have an id to be updated.")
@@ -351,6 +354,9 @@ class UnitV4Collection(BaseCollection):
                 "Fetch the unit with get_by_id() before updating it, so changed "
                 "fields can be detected and concurrent edits rejected."
             )
+        self._validate_snapshot_id(
+            current_id=unit.id, snapshot_id=unit._snapshot.id, resource_name="unit"
+        )
         unit_id = ensure_unit_v4_id(unit.id)
         patch = self._generate_merge_patch(existing=unit._snapshot, updated=unit)
         if not patch:
@@ -362,6 +368,95 @@ class UnitV4Collection(BaseCollection):
         updated._snapshot = updated.model_copy(deep=True)
         return updated
 
+    @validate_call
+    def setup(self, *, unit: UnitV4, unit_family_id: UnitFamilyV4Id) -> UnitV4:
+        """Set up a Custom (Legacy) unit.
+
+        Fetch a unit with no ``type``, set its ``type`` and other desired fields, then pass
+        it here with the family to use for existing references to the unit. The returned unit
+        can be changed again with
+        [`update`][albert.collections.units_v4.UnitV4Collection.update].
+
+        !!! example
+            ```python
+            from albert.resources.units_v4 import UnitV4Type
+
+            legacy = client.units_v4.get_by_id(id="UNI1")
+            legacy.type = UnitV4Type.CONVERTIBLE
+            legacy.ref_unit = "g"
+            set_up = client.units_v4.setup(unit=legacy, unit_family_id="UNF1")
+            ```
+
+        Parameters
+        ----------
+        unit : UnitV4
+            The fetched Custom (Legacy) unit to set up. Its ``id``, ``name``, ``symbol``,
+            and ``type`` are required. ``symbol`` must be non-empty.
+        unit_family_id : UnitFamilyV4Id
+            The family to associate with existing references to this unit. It must be one
+            of the unit's families after setup.
+
+        Returns
+        -------
+        UnitV4
+            The set-up unit.
+
+        Raises
+        ------
+        ValueError
+            If the unit has no ``id``, ``symbol``, or ``type``, has a blank ``symbol``,
+            was not fetched first, or has a different ``id`` from the fetched unit.
+        albert.exceptions.PreconditionFailedError
+            If the unit was modified after it was fetched. Fetch it again and reapply the
+            setup changes.
+
+        Notes
+        -----
+        For a convertible unit, provide ``ref_unit`` or ``ref_unit_exp``, with an optional
+        ``ref_unit_value``. Albert resolves its families, and ``unit_family_id`` must identify
+        one of them. For a non-convertible unit, provide ``unit_families`` including
+        ``unit_family_id``. Reference fields do not apply to non-convertible units.
+
+        A unit can be set up only once. Use
+        [`update`][albert.collections.units_v4.UnitV4Collection.update] for later changes.
+        """
+        payload = self._generate_setup_payload(unit=unit, unit_family_id=unit_family_id)
+        if unit._etag is None or unit._snapshot is None:
+            raise ValueError(
+                "Fetch the unit with get_by_id() before setting it up, so concurrent "
+                "edits can be rejected."
+            )
+        self._validate_snapshot_id(
+            current_id=unit.id, snapshot_id=unit._snapshot.id, resource_name="unit"
+        )
+        response = self.session.post(
+            f"{self.base_path}/setup", json=payload, headers={"If-Match": unit._etag}
+        )
+        set_up = UnitV4(**response.json())
+        set_up._etag = response.headers.get("ETag")
+        set_up._snapshot = set_up.model_copy(deep=True)
+        return set_up
+
+    @staticmethod
+    def _generate_setup_payload(*, unit: UnitV4, unit_family_id: UnitFamilyV4Id) -> dict[str, Any]:
+        if unit.id is None:
+            raise ValueError("The unit must have an id to be set up.")
+        _validate_unit_symbol(unit.symbol, operation="set up")
+        if unit.type is None:
+            raise ValueError("The unit must have a type to be set up.")
+
+        include = {"id", "name", "description", "type", "symbol", "synonyms"}
+        if unit.type is UnitV4Type.CONVERTIBLE:
+            include.update({"ref_unit", "ref_unit_exp", "ref_unit_value"})
+        else:
+            include.add("unit_families")
+        payload = unit.model_dump(by_alias=True, mode="json", exclude_none=True, include=include)
+        payload["id"] = ensure_unit_v4_id(unit.id)
+        payload["unitFamilyId"] = ensure_unit_family_v4_id(unit_family_id)
+        if "unitFamilies" in payload:
+            payload["unitFamilies"] = [family["id"] for family in payload["unitFamilies"]]
+        return payload
+
     @staticmethod
     def _generate_merge_patch(*, existing: UnitV4, updated: UnitV4) -> dict[str, Any]:
         """Build the set of changed, patchable fields between two units.
@@ -369,6 +464,12 @@ class UnitV4Collection(BaseCollection):
         Only attributes the caller explicitly set on ``updated`` participate; unset
         attributes leave the server value untouched.
         """
+        if existing.type is None:
+            raise ValueError(
+                "A Custom (Legacy) unit with no type must be set up with setup() "
+                "before it can be updated."
+            )
+
         patch: dict[str, Any] = {}
         for attr in ("name", "description", "symbol", "synonyms"):
             if attr not in updated.model_fields_set:
@@ -377,42 +478,26 @@ class UnitV4Collection(BaseCollection):
             if new_value != getattr(existing, attr):
                 patch[attr] = new_value
 
-        # Custom (Legacy) units carry no type until setup; setting ``type`` runs the
-        # setup flow, which also accepts the SI-mapping fields for convertible units.
         if "type" in updated.model_fields_set and updated.type != existing.type:
-            if existing.type is not None or updated.type is None:
-                raise ValueError(
-                    "type can only be set when setting up a Custom (Legacy) unit; "
-                    "it cannot be changed or cleared afterwards."
-                )
-            patch["type"] = updated.type.value
+            raise ValueError("type cannot be changed or cleared after a unit is set up.")
 
-        for attr, wire_name in (
-            ("ref_unit", "refUnit"),
-            ("ref_unit_exp", "refUnitExp"),
-            ("ref_unit_value", "refUnitValue"),
-        ):
+        for attr in ("ref_unit", "ref_unit_exp", "ref_unit_value"):
             if attr not in updated.model_fields_set:
                 continue
-            new_value = getattr(updated, attr)
-            if new_value != getattr(existing, attr):
-                patch[wire_name] = new_value
+            if getattr(updated, attr) != getattr(existing, attr):
+                raise ValueError(
+                    "The SI mapping cannot be changed after a unit is set up; "
+                    f"create a new unit instead of changing {attr}."
+                )
 
         if "unit_families" in updated.model_fields_set:
             new_ids = [family.id for family in updated.unit_families or []]
             old_ids = [family.id for family in existing.unit_families or []]
             if sorted(new_ids) != sorted(old_ids):
-                effective_type = (
-                    updated.type
-                    if "type" in updated.model_fields_set and updated.type is not None
-                    else existing.type
-                )
-                if effective_type is not UnitV4Type.NON_CONVERTIBLE:
+                if existing.type is not UnitV4Type.NON_CONVERTIBLE:
                     raise ValueError(
                         "unit_families can only be changed on non-convertible units; "
-                        "families of a convertible unit are derived from its SI mapping. "
-                        "A Custom (Legacy) unit accepts unit_families only as part of "
-                        "its setup (set type in the same call)."
+                        "families of a convertible unit are derived from its SI mapping."
                     )
                 patch["unitFamilies"] = new_ids
         return patch
@@ -515,63 +600,3 @@ class UnitV4Collection(BaseCollection):
             params = {"type": "exp", "value": expression}
         response = self.session.get(f"{self.base_path}/compatible", params=params)
         return UnitV4Compatible(**response.json())
-
-    @validate_call
-    def merge(
-        self,
-        *,
-        parent_id: UnitV4Id,
-        child_ids: list[UnitV4Id],
-        webhook_url: str | None = None,
-        webhook_method: Literal["POST", "GET"] = "POST",
-        wait: bool = False,
-    ) -> str:
-        """Merge units into a parent unit as a background job.
-
-        Every reference to a child unit across the tenant is repointed to the parent
-        unit. The merge runs asynchronously; by default this call returns as soon as
-        the job is accepted. Pass ``wait=True`` to block until the job completes.
-
-        !!! example
-            ```python
-            job_id = client.units_v4.merge(parent_id="UNI1", child_ids=["UNI2", "UNI3"])
-            ```
-
-        Parameters
-        ----------
-        parent_id : UnitV4Id
-            The unit that survives the merge.
-        child_ids : list[UnitV4Id]
-            The units to merge into ``parent_id``. At least one is required.
-        webhook_url : str, optional
-            A URL Albert calls when the job completes.
-        webhook_method : Literal["POST", "GET"], optional
-            HTTP method for the webhook call, ``"POST"`` (default) or ``"GET"``.
-        wait : bool, optional
-            Whether to wait for the merge job to complete before returning, by
-            default False.
-
-        Returns
-        -------
-        str
-            The ID of the background merge job.
-
-        Raises
-        ------
-        TimeoutError
-            If ``wait=True`` and the job does not complete within the retry window.
-        AlbertException
-            If ``wait=True`` and the job fails or is cancelled.
-        """
-        payload: dict[str, Any] = {"parentId": parent_id, "childIds": child_ids}
-        if webhook_url is not None:
-            payload["webhook"] = {"url": webhook_url, "method": webhook_method}
-        response = self.session.post(f"{self.base_path}/merge", json=payload)
-        job_id = response.json()["id"]
-        if wait:
-            poll_worker_job(
-                session=self.session,
-                job_id=job_id,
-                job_description=f"Merge units into {parent_id}",
-            )
-        return job_id

@@ -1,6 +1,8 @@
 import uuid
 from contextlib import suppress
 
+import pytest
+
 from albert.client import Albert
 from albert.exceptions import NotFoundError
 from albert.resources.unit_families_v4 import (
@@ -41,6 +43,11 @@ def test_create_get_update_delete_convertible(client: Albert, seed_prefix: str):
         fetched = poll_until(lambda: _get_family_or_empty(client, family.id))
         assert fetched and fetched[0].id == family.id
         assert fetched[0].units is not None
+
+        wrong_family = fetched[0].model_copy(deep=True)
+        wrong_family.id = "UNF0"
+        with pytest.raises(ValueError, match="id cannot be changed"):
+            client.unit_families_v4.update(unit_family=wrong_family)
 
         fetched[0].description = "Updated by the SDK test suite"
         updated = client.unit_families_v4.update(unit_family=fetched[0])

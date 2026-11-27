@@ -34,7 +34,8 @@ Migrating now means your code is ready for 2.0 with only a rename.
 - **Non-convertible units** (for example `batch`) are linked to families explicitly.
 - **Conflict checks** with `lookup()` before creating a unit or family.
 - **SI preview** with `get_compatible()` to see what Albert will resolve before creating.
-- **Async merge** with `merge()`, which returns a job ID instead of blocking.
+- **Legacy setup** with `setup()` to add a type and SI mapping to an existing Custom
+  (Legacy) unit.
 - **Optimistic locking** on updates is handled for you: `update()` sends the version it
   read, so a concurrent edit fails loudly instead of being overwritten.
 
@@ -53,7 +54,7 @@ Migrating now means your code is ready for 2.0 with only a rename.
 | Exists check | `exists(name=...)` | `lookup(symbol=...)` or `lookup(name=...)` |
 | Grouping | `UnitCategory` enum | Unit families (`client.unit_families_v4`) |
 | SI conversion | ❌ | ✅ `si_unit`, `si_value`, `get_compatible()` |
-| Merge | ❌ | ✅ `merge(parent_id=..., child_ids=[...])` |
+| Legacy setup | ❌ | `setup(unit=..., unit_family_id=...)` |
 | Return model | `Unit` | `UnitV4` |
 
 ---
@@ -123,10 +124,34 @@ unit.synonyms = ["g", "gram", "grams"]
 unit = client.units_v4.update(unit=unit)
 ```
 
-!!! note "SI mapping is fixed"
-    `si_unit`, `si_value`, `ref_unit`, `ref_unit_exp` and `ref_unit_value` cannot be
-    changed on a convertible unit after creation, because doing so would alter
-    historical measurements. Create a new unit instead.
+!!! note "Type and SI mapping are fixed after setup"
+    `type`, `si_unit`, `si_value`, `ref_unit`, `ref_unit_exp` and `ref_unit_value` cannot
+    be changed after a unit is set up, because changing the mapping would alter historical
+    measurements. Create a new unit instead.
+
+### Set up a Custom (Legacy) unit
+
+Existing v3 units can appear in v4 with the `Custom (Legacy)` origin and no `type`. Fetch
+the unit, choose its type and mapping, then call `setup()`. Do not pass it to `update()`
+until setup is complete.
+
+```python
+from albert.resources.units_v4 import UnitV4Type
+
+legacy = client.units_v4.get_by_id(id="UNI123")
+legacy.type = UnitV4Type.CONVERTIBLE
+legacy.ref_unit = "g"
+legacy = client.units_v4.setup(unit=legacy, unit_family_id="UNF1")
+
+# The returned record supports a subsequent update.
+legacy.description = "Grams used for powders"
+legacy = client.units_v4.update(unit=legacy)
+```
+
+For a non-convertible unit, set `type=UnitV4Type.NON_CONVERTIBLE` and provide
+`unit_families`. The family identified by `unit_family_id` must be included. For a
+convertible unit, Albert resolves the families from `ref_unit` or `ref_unit_exp`, and
+`unit_family_id` must identify one of the resolved families.
 
 ### `exists` → `lookup`
 
@@ -168,7 +193,7 @@ All v4 models live in `albert.resources.units_v4` and
 
 | Model | Used by | Purpose |
 |---|---|---|
-| `UnitV4` | `create`, `get_by_id`, `get_by_ids`, `search`, `update` | Full unit record, including SI mapping and family references |
+| `UnitV4` | `create`, `get_by_id`, `get_by_ids`, `search`, `setup`, `update` | Full unit record, including SI mapping and family references |
 | `UnitV4Type` | `UnitV4`, `search` | `Convertible` or `Non-Convertible` |
 | `UnitV4Origin` | `UnitV4`, `search` | `Albert Managed`, `Custom`, or `Custom (Legacy)` |
 | `UnitFamilyV4Ref` | `UnitV4`, `UnitV4Compatible` | `{id, name}` reference to a family |
@@ -187,7 +212,8 @@ All v4 models live in `albert.resources.units_v4` and
 | Field | v3 `Unit` | v4 `UnitV4` |
 |---|---|---|
 | `id` | ✅ (`UNI...`) | ✅ (UUID or `UNI...`) |
-| `name`, `symbol`, `synonyms` | ✅ | ✅ |
+| `name`, `synonyms` | ✅ | ✅ |
+| `symbol` | ✅ | Required on create/setup; may be absent on Custom (Legacy) responses |
 | `category` | `UnitCategory` | ❌ replaced by `unit_families` |
 | `verified` | ✅ | ❌ replaced by `origin` |
 | `description` | ❌ | ✅ |
