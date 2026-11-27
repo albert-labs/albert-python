@@ -132,6 +132,7 @@ nav:
           - Substances v3 → v4 (🧪Beta): migration/substances-v4.md
           - Specs → Attributes: migration/specs-to-attributes.md
           - Increased Intervals: migration/increased-intervals.md
+          - Units v3 → v4 (🧪 Beta): migration/units-v4.md
       - Contributing: CONTRIBUTING.md
   - SDK Reference:
       - Clients:
@@ -201,7 +202,9 @@ nav:
           - Teams: collections/teams.md
           - Tasks: collections/tasks.md
           - UN Numbers: collections/un_numbers.md
+          - Unit Families V4 (🧪 Beta): collections/unit_families_v4.md
           - Units: collections/units.md
+          - Units V4 (🧪 Beta): collections/units_v4.md
           - Users: collections/users.md
           - Views: collections/views.md
           - Workflows: collections/workflows.md
@@ -271,7 +274,9 @@ nav:
           - Teams: resources/teams.md
           - Tasks: resources/tasks.md
           - UN Numbers: resources/un_numbers.md
+          - Unit Families V4 (🧪 Beta): resources/unit_families_v4.md
           - Units: resources/units.md
+          - Units V4 (🧪 Beta): resources/units_v4.md
           - Users: resources/users.md
           - Views: resources/views.md
           - Workflows: resources/workflows.md

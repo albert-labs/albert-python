@@ -41,6 +41,16 @@ class BaseCollection:
         self.session = session
 
     @staticmethod
+    def _validate_snapshot_id(
+        *, current_id: str | None, snapshot_id: str | None, resource_name: str
+    ) -> None:
+        if current_id != snapshot_id:
+            raise ValueError(
+                f"The {resource_name} id cannot be changed after fetching. "
+                f"Fetch the intended {resource_name} before writing."
+            )
+
+    @staticmethod
     def _comparable_value(value: Any) -> Any:
         """Reduce a field value to a form that ignores server-side normalization.
 
