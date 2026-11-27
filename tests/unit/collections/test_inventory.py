@@ -4,13 +4,20 @@ Allowed under the patch-builder exception in OPINIONS.md: these guard
 non-obvious diff behavior in ``_generate_inventory_patch_payload`` (the
 company/tags/cas/acls special cases and the formula-override normalization)
 and pure parameter-mapping behavior in ``_prepare_parameters``, with no I/O to
-fake. ``_apply_inventory_patch_payload`` batching is covered with ``responses``
-since it only asserts on the requests the SDK sends.
+fake. ``_apply_inventory_patch_payload`` batching and ``get_by_ids`` handling of
+missing IDs are covered with ``responses`` since they only assert on the requests
+the SDK sends and how it reacts to errors.
 """
 
+import json
+import warnings
+from urllib.parse import parse_qs, urlparse
+
+import pytest
 import responses
 
 from albert.collections.inventory import InventoryCollection
+from albert.exceptions import AlbertHTTPError, AlbertPartialError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
@@ -30,6 +37,51 @@ def _item(**kwargs) -> InventoryItem:
 
 def _collection(offline_session) -> InventoryCollection:
     return InventoryCollection(session=offline_session)
+
+
+# --- symbols cannot be updated ---
+
+
+def test_changed_symbols_warn(offline_session) -> None:
+    """Test that changing symbols warns instead of being dropped silently."""
+    existing = _item(symbols=[{"id": "SYM1"}])
+    updated = _item(symbols=[{"id": "SYM2"}])
+
+    with pytest.warns(UserWarning, match="symbols"):
+        payload = _collection(offline_session)._generate_inventory_patch_payload(
+            existing=existing, updated=updated
+        )
+
+    assert payload["data"] == []
+
+
+def test_unchanged_symbols_in_any_order_emit_no_op(offline_session) -> None:
+    """Test that symbols carried along unchanged, in any order, do not warn."""
+    existing = _item(symbols=[{"id": "SYM1"}, {"id": "SYM2"}])
+    updated = _item(symbols=[{"id": "SYM2"}, {"id": "SYM1"}])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        payload = _collection(offline_session)._generate_inventory_patch_payload(
+            existing=existing, updated=updated
+        )
+
+    assert payload["data"] == []
+
+
+# --- calculated properties are read-only ---
+
+
+def test_changed_calculated_properties_emit_no_op(offline_session) -> None:
+    """Test that calculated property values are never patched, even when set and changed."""
+    existing = _item(calculated_properties={"ATR1": {"value": 1.0}})
+    updated = _item(calculated_properties={"ATR1": {"value": 2.0}, "ATR2": {"value": 3.0}})
+
+    payload = _collection(offline_session)._generate_inventory_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload["data"] == []
 
 
 # --- base scalar attributes pass through _generate_patch_payload unmodified ---
@@ -295,9 +347,29 @@ def test_company_cleared_emits_delete_with_entity_id(offline_session) -> None:
 
 
 def test_company_changed_emits_update_with_bare_ids(offline_session) -> None:
-    """Test that changing company emits an update op with bare old/new ids."""
+    """Test that changing company emits an update op with bare old/new ids and the new name."""
     existing = _item(company=Company(id="COM1", name="Acme"))
     updated = _item(company=Company(id="COM2", name="Beta"))
+
+    payload = _collection(offline_session)._generate_inventory_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload["data"] == [
+        {
+            "operation": "update",
+            "attribute": "companyId",
+            "oldValue": "COM1",
+            "newValue": "COM2",
+            "name": "Beta",
+        }
+    ]
+
+
+def test_company_changed_without_name_emits_update_without_name(offline_session) -> None:
+    """Test that a nameless new company emits an update op without a name key."""
+    existing = _item(company=Company(id="COM1", name="Acme"))
+    updated = _item(company=Company.model_construct(id="COM2"))
 
     payload = _collection(offline_session)._generate_inventory_patch_payload(
         existing=existing, updated=updated
@@ -385,6 +457,27 @@ def test_tags_added_from_empty_uses_entity_id_shape(offline_session) -> None:
             "newValue": "TAG1",
             "entityId": "TAG1",
         }
+    ]
+
+
+def test_tags_added_from_empty_deduplicates_by_id(offline_session) -> None:
+    """Test that a duplicate tag ID in the new list emits only one add op."""
+    existing = _item(tags=[])
+    updated = _item(
+        tags=[
+            Tag(id="TAG1", tag="alpha"),
+            Tag(id="TAG1", tag="alpha"),
+            Tag(id="TAG2", tag="beta"),
+        ]
+    )
+
+    payload = _collection(offline_session)._generate_inventory_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload["data"] == [
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG1", "entityId": "TAG1"},
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG2", "entityId": "TAG2"},
     ]
 
 
@@ -702,6 +795,42 @@ def test_prepare_parameters_leaves_list_filters_untouched(offline_session) -> No
     assert params["albertId"] == ["INVA1", "INVA2"]
 
 
+# --- search pagination ---
+
+
+@responses.activate
+def test_search_match_all_conditions_follows_search_after_cursor(offline_session) -> None:
+    """Test that match_all_conditions searches send searchAfter and follow the cursor."""
+    pages = [
+        {
+            "Items": [{"albertId": "INVA1", "category": "RawMaterials", "unit": "mass"}],
+            "nextSearchAfter": ["2026-01-02", "INVA1"],
+            "prevSearchAfter": None,
+        },
+        {
+            "Items": [{"albertId": "INVA2", "category": "Consumables", "unit": "volume"}],
+            "nextSearchAfter": None,
+            "prevSearchAfter": ["2026-01-02", "INVA1"],
+        },
+    ]
+    served = []
+
+    def serve_page(request):
+        served.append(request)
+        return 200, {}, json.dumps(pages[len(served) - 1])
+
+    responses.add_callback(
+        responses.GET, f"{UNIT_BASE_URL}/api/v3/inventories/llmsearch", callback=serve_page
+    )
+
+    results = list(_collection(offline_session).search(match_all_conditions=True))
+
+    assert [r.id for r in results] == ["INVA1", "INVA2"]
+    queries = [parse_qs(urlparse(call.request.url).query) for call in responses.calls]
+    assert [q["searchAfter"] for q in queries] == [["[]"], [json.dumps(["2026-01-02", "INVA1"])]]
+    assert all("offset" not in q for q in queries)
+
+
 # --- _apply_inventory_patch_payload batching ---
 
 
@@ -786,3 +915,235 @@ def test_apply_sends_nothing_when_no_changes(offline_session) -> None:
     )
 
     assert len(responses.calls) == 0
+
+
+# --- _apply_inventory_patch_payloads bulk batching ---
+
+
+@responses.activate
+def test_apply_many_routes_tag_and_company_ops_to_bulk_endpoint(offline_session) -> None:
+    """Test that tag and company changes go to the bulk route after per-item changes."""
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/inventories", json={})
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/inventories/INVA1", json={})
+
+    patch_payloads = [
+        (
+            "INVA1",
+            {
+                "data": [
+                    {
+                        "attribute": "alias",
+                        "operation": "update",
+                        "oldValue": "a",
+                        "newValue": "b",
+                    },
+                    {"operation": "add", "attribute": "tagId", "newValue": "TAG1"},
+                    {"operation": "delete", "attribute": "tagId", "oldValue": "TAG2"},
+                    {
+                        "operation": "update",
+                        "attribute": "companyId",
+                        "oldValue": "COM1",
+                        "newValue": "COM2",
+                        "name": "Beta",
+                    },
+                ]
+            },
+        )
+    ]
+
+    _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+    assert len(responses.calls) == 2
+    per_item_call, bulk_call = responses.calls
+    assert per_item_call.request.url == f"{UNIT_BASE_URL}/api/v3/inventories/INVA1"
+    assert json.loads(per_item_call.request.body) == {"data": [patch_payloads[0][1]["data"][0]]}
+    assert bulk_call.request.url == f"{UNIT_BASE_URL}/api/v3/inventories"
+    assert json.loads(bulk_call.request.body) == [
+        {
+            "id": "INVA1",
+            "data": [
+                {"operation": "add", "attribute": "tagId", "newValue": [{"id": "TAG1"}]},
+                {"operation": "delete", "attribute": "tagId", "oldValue": [{"id": "TAG2"}]},
+                {
+                    "operation": "update",
+                    "attribute": "companyId",
+                    "oldValue": "COM1",
+                    "newValue": "COM2",
+                    "name": "Beta",
+                },
+            ],
+        }
+    ]
+
+
+@responses.activate
+def test_apply_many_merges_bulk_ops_for_duplicate_ids(offline_session) -> None:
+    """Test that two payloads for one item merge into a single bulk entry."""
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/inventories", json={})
+
+    patch_payloads = [
+        ("INVA1", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG1"}]}),
+        ("INVA1", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG2"}]}),
+    ]
+
+    _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+    assert len(responses.calls) == 1
+    assert json.loads(responses.calls[0].request.body) == [
+        {
+            "id": "INVA1",
+            "data": [
+                {"operation": "add", "attribute": "tagId", "newValue": [{"id": "TAG1"}]},
+                {"operation": "add", "attribute": "tagId", "newValue": [{"id": "TAG2"}]},
+            ],
+        }
+    ]
+
+
+@responses.activate
+def test_apply_many_chunks_bulk_entries_at_300(offline_session) -> None:
+    """Test that bulk entries are sent in chunks of at most 300 items."""
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/inventories", json={})
+
+    patch_payloads = [
+        (f"INVA{i}", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG1"}]})
+        for i in range(301)
+    ]
+
+    _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+    assert len(responses.calls) == 2
+    assert len(json.loads(responses.calls[0].request.body)) == 300
+    assert len(json.loads(responses.calls[1].request.body)) == 1
+
+
+@responses.activate
+def test_apply_many_raises_on_partial_success(offline_session) -> None:
+    """Test that a partial success with failed items raises AlbertPartialError."""
+    responses.patch(
+        f"{UNIT_BASE_URL}/api/v3/inventories",
+        status=206,
+        json={"FailedItems": [{"id": "INVA1", "message": "boom"}], "CreatedItems": []},
+    )
+
+    patch_payloads = [
+        ("INVA1", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG1"}]})
+    ]
+
+    with pytest.raises(AlbertPartialError, match="partially succeeded"):
+        _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+
+@responses.activate
+def test_apply_many_ignores_206_without_failed_items(offline_session) -> None:
+    """Test that a partial-success status with no failed items does not raise."""
+    responses.patch(
+        f"{UNIT_BASE_URL}/api/v3/inventories",
+        status=206,
+        json={"FailedItems": [], "CreatedItems": [{"id": "INVA1"}]},
+    )
+
+    patch_payloads = [
+        ("INVA1", {"data": [{"operation": "add", "attribute": "tagId", "newValue": "TAG1"}]})
+    ]
+
+    _collection(offline_session)._apply_inventory_patch_payloads(patch_payloads=patch_payloads)
+
+    assert len(responses.calls) == 1
+
+
+# --- _dedup_applies_to ---
+
+
+def test_dedup_applies_to_formula_is_false() -> None:
+    """Test that duplicate matching is skipped for Formulas."""
+    assert InventoryCollection._dedup_applies_to(category=InventoryCategory.FORMULAS) is False
+
+
+@pytest.mark.parametrize(
+    "category",
+    [InventoryCategory.RAW_MATERIALS, InventoryCategory.CONSUMABLES, InventoryCategory.EQUIPMENT],
+)
+def test_dedup_applies_to_non_formula_categories(category: InventoryCategory) -> None:
+    """Test that duplicate matching applies to non-Formula categories."""
+    assert InventoryCollection._dedup_applies_to(category=category) is True
+
+
+_IDS_URL = f"{UNIT_BASE_URL}/api/v3/inventories/ids"
+_NOT_FOUND = {"errors": [{"msg": "No Record Found"}]}
+
+
+def _ids_item(item_id: str) -> dict:
+    return {"albertId": item_id, "name": item_id, "category": "RawMaterials"}
+
+
+@responses.activate
+def test_get_by_ids_omits_batch_where_every_id_is_missing(offline_session) -> None:
+    """Test that a batch of only missing IDs is omitted instead of raising."""
+    found = [_ids_item(f"INVA{i}") for i in range(300)]
+    responses.get(_IDS_URL, json={"Items": found})
+    responses.get(_IDS_URL, status=404, json=_NOT_FOUND)
+    ids = [f"INVA{i}" for i in range(301)]
+
+    result = InventoryCollection(session=offline_session).get_by_ids(ids=ids)
+
+    assert [item.id for item in result] == ids[:300]
+    assert len(responses.calls) == 2
+
+
+@responses.activate
+def test_get_by_ids_returns_empty_when_all_ids_missing(offline_session) -> None:
+    """Test that looking up only missing IDs returns an empty list."""
+    responses.get(_IDS_URL, status=404, json=_NOT_FOUND)
+
+    result = InventoryCollection(session=offline_session).get_by_ids(ids=["INVZ1"])
+
+    assert result == []
+
+
+@responses.activate
+def test_get_by_ids_warns_with_ids_dropped_from_a_partial_batch(offline_session, caplog) -> None:
+    """Test that IDs missing from an otherwise found batch are named in a warning."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item("INVA1")]})
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(ids=["INVA1", "INVZ1"])
+
+    assert [r.message for r in caplog.records] == ["Skipped 1 inventory IDs not found: INVZ1"]
+
+
+@responses.activate
+def test_get_by_ids_warns_with_ids_from_a_fully_missing_batch(offline_session, caplog) -> None:
+    """Test that every ID in a batch that was entirely missing is counted in the warning."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item(f"INVA{i}") for i in range(300)]})
+    responses.get(_IDS_URL, status=404, json=_NOT_FOUND)
+    missing = [f"INVZ{i}" for i in range(12)]
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(
+            ids=[*(f"INVA{i}" for i in range(300)), *missing]
+        )
+
+    assert [r.message for r in caplog.records] == [
+        f"Skipped 12 inventory IDs not found: {', '.join(missing[:10])} (and 2 more)"
+    ]
+
+
+@responses.activate
+def test_get_by_ids_does_not_warn_when_all_ids_found(offline_session, caplog) -> None:
+    """Test that no warning is logged when every ID is found, with or without the prefix."""
+    responses.get(_IDS_URL, json={"Items": [_ids_item("INVA1"), _ids_item("A2")]})
+
+    with caplog.at_level("WARNING", logger="albert"):
+        InventoryCollection(session=offline_session).get_by_ids(ids=["INVA1", "INVA2"])
+
+    assert caplog.records == []
+
+
+@responses.activate
+def test_get_by_ids_still_raises_other_errors(offline_session) -> None:
+    """Test that errors other than not-found still propagate."""
+    responses.get(_IDS_URL, status=403, json={"errors": [{"msg": "Forbidden"}]})
+
+    with pytest.raises(AlbertHTTPError):
+        InventoryCollection(session=offline_session).get_by_ids(ids=["INVA1"])

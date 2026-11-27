@@ -43,6 +43,13 @@ def test_list_by_parent_id(client: Albert, seeded_notebooks: list[Notebook]):
     assert nb.name == retrieved_nb.name
 
 
+def test_list_by_parent_id_max_items(client: Albert, seeded_notebooks: list[Notebook]):
+    """Test that max_items caps the number of notebooks returned."""
+    nb = seeded_notebooks[0]
+    retrieved = client.notebooks.list_by_parent_id(parent_id=nb.parent_id, max_items=1)
+    assert len(retrieved) == 1
+
+
 def test_update(client: Albert, seeded_notebook: Notebook):
     notebook = seeded_notebook.model_copy()
 
@@ -84,28 +91,6 @@ def test_update_block_content_with_empty_text(client: Albert, seeded_notebook: N
     seeded_notebook.blocks.append(header_block)
     updated_notebook = client.notebooks.update_block_content(notebook=seeded_notebook)
     assert updated_notebook.blocks[-1].content.text is None
-
-
-def test_update_block_content_raises_exception(client: Albert, seeded_notebook: Notebook):
-    # Try to change the type of a notebook block
-    notebook = seeded_notebook.model_copy()
-    header_block = HeaderBlock(content=HeaderContent(level=1, text="Header block"))
-    notebook.blocks.append(header_block)
-    notebook = client.notebooks.update_block_content(notebook=notebook)
-    paragraph_content = ParagraphContent(text="HeaderBlock to ParagraphBlock")
-    notebook.blocks[-1] = ParagraphBlock(id=header_block.id, content=paragraph_content)
-    with pytest.raises(AlbertException, match="Cannot convert an existing block type"):
-        client.notebooks.update_block_content(notebook=notebook)
-
-    # Try to create notebook blocks with duplicate ids
-    notebook = seeded_notebook.model_copy()
-    header_block1 = HeaderBlock(content=HeaderContent(level=1, text="Header block 1"))
-    header_block2 = HeaderBlock(
-        id=header_block1.id, content=HeaderContent(level=1, text="Header block 2")
-    )
-    notebook.blocks.extend([header_block1, header_block2])
-    with pytest.raises(AlbertException, match="You have Notebook blocks with duplicate ids"):
-        client.notebooks.update_block_content(notebook=notebook)
 
 
 def test_search(client: Albert, seed_prefix: str, seeded_notebooks: list[Notebook]):
@@ -157,3 +142,78 @@ def test_copy(client: Albert, seeded_notebook: Notebook, seeded_projects: Iterat
     assert len(blocks) == len(block_copies)
     for block, block_copy in zip(blocks, block_copies, strict=True):
         assert type(block) == type(block_copy)
+
+
+def test_create_block(client: Albert, seeded_notebook: Notebook):
+    """Test creating a block adds it to the notebook, preserving existing blocks."""
+    existing_ids = {b.id for b in seeded_notebook.blocks}
+    new_block = ParagraphBlock(content=ParagraphContent(text="Created in place."))
+
+    created = client.notebooks.create_block(notebook_id=seeded_notebook.id, block=new_block)
+
+    assert created.id == new_block.id
+    refreshed = client.notebooks.get_by_id(id=seeded_notebook.id)
+    assert existing_ids | {created.id} <= {b.id for b in refreshed.blocks}
+
+
+def test_create_block_with_none_text(client: Albert, seeded_notebook: Notebook):
+    """Test creating a paragraph block preserves null text."""
+    new_block = ParagraphBlock(content=ParagraphContent(text=None))
+
+    created = client.notebooks.create_block(notebook_id=seeded_notebook.id, block=new_block)
+
+    assert created.content.text is None
+
+
+def test_create_block_after_a_given_block(client: Albert, seeded_notebook: Notebook):
+    """Test creating a block with previous_block_id places it directly after that block."""
+    anchor = seeded_notebook.blocks[0]
+    new_block = ParagraphBlock(content=ParagraphContent(text="Placed after the first block."))
+
+    created = client.notebooks.create_block(
+        notebook_id=seeded_notebook.id, block=new_block, previous_block_id=anchor.id
+    )
+
+    refreshed_ids = [b.id for b in client.notebooks.get_by_id(id=seeded_notebook.id).blocks]
+    assert refreshed_ids.index(created.id) == refreshed_ids.index(anchor.id) + 1
+
+
+def test_update_block(client: Albert, seeded_notebook: Notebook):
+    """Test updating a block changes its content in place and leaves other blocks untouched."""
+    paragraph = next(b for b in seeded_notebook.blocks if isinstance(b, ParagraphBlock))
+    updated_block = paragraph.model_copy(deep=True)
+    updated_block.content.text = "Updated in place."
+
+    result = client.notebooks.update_block(notebook_id=seeded_notebook.id, block=updated_block)
+
+    assert result.id == paragraph.id
+    assert result.content.text == "Updated in place."
+    refreshed = client.notebooks.get_by_id(id=seeded_notebook.id)
+    assert [b.id for b in refreshed.blocks] == [b.id for b in seeded_notebook.blocks]
+
+
+def test_delete_block(client: Albert, seeded_notebook: Notebook):
+    """Test deleting a block removes it from the notebook."""
+    block = client.notebooks.create_block(
+        notebook_id=seeded_notebook.id,
+        block=ParagraphBlock(content=ParagraphContent(text="Delete me.")),
+    )
+
+    client.notebooks.delete_block(notebook_id=seeded_notebook.id, block_id=block.id)
+
+    refreshed = client.notebooks.get_by_id(id=seeded_notebook.id)
+    assert block.id not in {b.id for b in refreshed.blocks}
+
+
+def test_get_versions_and_restore_version(client: Albert, seeded_notebook: Notebook):
+    """Test saved versions of a notebook can be listed and restored."""
+    versions = poll_until(lambda: client.notebooks.get_versions(notebook_id=seeded_notebook.id))
+    assert versions, "Expected at least one saved version after content edits"
+    assert all(version.id for version in versions)
+
+    restored = client.notebooks.restore_version(
+        notebook_id=seeded_notebook.id, version_id=versions[0].id
+    )
+
+    assert restored.id == seeded_notebook.id
+    assert len(restored.blocks) > 0

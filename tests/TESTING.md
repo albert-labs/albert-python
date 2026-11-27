@@ -6,7 +6,7 @@ each suite has its own guide with the binding rules.
 | Suite | Guide | Runs | Needs |
 |---|---|---|---|
 | `tests/unit/` | [`unit/TESTING.md`](unit/TESTING.md) | every PR, first, in about 2s | nothing (no env, no network) |
-| `tests/integration/` | [`integration/TESTING.md`](integration/TESTING.md) | every PR, after unit | `ALBERT_CLIENT_ID_SDK`, `ALBERT_CLIENT_SECRET_SDK`, `ALBERT_BASE_URL` |
+| `tests/integration/` | [`integration/TESTING.md`](integration/TESTING.md) | every PR, after unit: only the tests affected by the change; full suite on `main`/`next`, manual runs, release PRs, and PRs labeled `ci:full-integration` | `ALBERT_CLIENT_ID_SDK`, `ALBERT_CLIENT_SECRET_SDK`, `ALBERT_BASE_URL` |
 
 Integration tests are the primary mechanism: the SDK is a thin client over the Albert API,
 and only a live call proves the API accepts what we send and returns what we parse.

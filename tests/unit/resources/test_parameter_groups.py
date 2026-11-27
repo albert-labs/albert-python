@@ -2,6 +2,8 @@ import pytest
 from pydantic import ValidationError
 
 from albert.resources.parameter_groups import (
+    DataType,
+    Operator,
     ParameterGroup,
     ParameterGroupSearchItem,
     ParameterValue,
@@ -109,3 +111,23 @@ def test_parameter_group_sanitizes_empty_entity_link_metadata():
     assert pg.metadata["AdvCTDSTPT_1"] == []
     assert "bareEmptyLink" not in pg.metadata
     assert pg.metadata["ADVNUMPTPG_1"] == 23
+
+
+@pytest.mark.parametrize(
+    ("datatype", "operator", "value"),
+    [
+        ("date", "after", "2026-06-02"),
+        ("date", "before", "2026-06-02"),
+        ("timestamp", "after", "2026-06-02T08:00:00+00:00"),
+        ("timestamp", "before", "2026-06-02T08:00:00+00:00"),
+    ],
+)
+def test_parameter_value_accepts_date_validation_operators(datatype, operator, value):
+    """Test that a date or timestamp validation with before or after parses and round-trips."""
+    rule = {"datatype": datatype, "operator": operator, "value": value}
+    parsed = ParameterValue.model_validate({"id": "PRM1396", "validation": [rule]})
+
+    assert parsed.validation[0].datatype == DataType(datatype)
+    assert parsed.validation[0].operator == Operator(operator)
+    dumped = parsed.validation[0].model_dump(by_alias=True, mode="json", exclude_none=True)
+    assert dumped == rule

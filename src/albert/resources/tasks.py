@@ -1,17 +1,24 @@
 from __future__ import annotations
 
-import warnings
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, TypeAdapter
+from pydantic import AliasChoices, Field, TypeAdapter
 from typing_extensions import deprecated
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
-from albert.core.shared.identifiers import InventoryId, LotId, TaskId
-from albert.core.shared.models.patch import PatchPayload
+from albert.core.shared.identifiers import (
+    BlockId,
+    InventoryId,
+    LotId,
+    RowId,
+    TaskId,
+    WorkflowId,
+)
+from albert.core.shared.models.base import EntityLinkWithName
+from albert.core.shared.models.patch import PatchDatum, PatchPayload
 from albert.core.shared.types import (
     MetadataItem,
     SerializeAsEntityLink,
@@ -48,12 +55,16 @@ class TaskCategory(str, Enum):
     BATCH_WITH_QC : str
         A batch task that also carries quality-control data. A variant of
         [`BatchTask`][albert.resources.tasks.BatchTask].
+    REACTION_BATCH : str
+        A synthesis batch task created from a reaction on a reaction worksheet.
+        Corresponds to [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask].
     """
 
     PROPERTY = "Property"
     BATCH = "Batch"
     GENERAL = "General"
     BATCH_WITH_QC = "BatchWithQC"
+    REACTION_BATCH = "ReactionBatch"
 
 
 class BatchSizeUnit(str, Enum):
@@ -61,10 +72,12 @@ class BatchSizeUnit(str, Enum):
 
     The enum values are the exact wire strings the platform expects;
     note the non-SI capitalization ``"Kg"`` (lowercase ``"kg"`` is rejected).
-    The SDK performs **no unit conversion**: ``batch_size`` and batch-data
-    amounts are stored as sent. For mass-tracked inventory, the batch-data
-    grid is denominated in kilograms regardless of this unit, so scale
-    amounts accordingly when writing used amounts.
+    The SDK performs **no unit conversion**. For mass-tracked inventory the
+    platform stores ``batch_size`` and batch-data amounts in **kilograms**
+    regardless of this unit; ``batch_size_unit`` only selects the unit used to
+    display them. Convert before sending: a 500 g batch is
+    ``batch_size=0.5`` with ``batch_size_unit=BatchSizeUnit.GRAMS``, and
+    sending ``batch_size=500`` with ``"g"`` displays as 500000 g.
 
     Attributes
     ----------
@@ -203,6 +216,12 @@ class TaskState(str, Enum):
     The state generally advances as work progresses: an unclaimed task is
     picked up, started, finished, and eventually closed (or cancelled).
 
+    State is coupled to the assignee: a task without an assignee is always
+    ``Unclaimed``, and a task cannot be ``Not Started`` or ``In Progress``
+    with no one assigned. Creating a task without an assignee defaults its
+    state to ``Unclaimed``; see
+    [`create`][albert.collections.tasks.TaskCollection.create].
+
     Attributes
     ----------
     UNCLAIMED : str
@@ -252,7 +271,11 @@ class TaskInventoryInformation(BaseAlbertModel):
     """A combined inventory-and-lot identifier used internally."""
 
     batch_size: float | None = Field(alias="batchSize", default=None)
-    """The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."""
+    """The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask].
+
+    For mass-tracked inventory this value is in kilograms, whatever the task's
+    [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit] (which only sets
+    the display unit): 500 g is ``0.5``."""
 
     selected_lot: bool | None = Field(alias="selectedLot", exclude=True, frozen=True, default=None)
     """Read-only. Whether this lot is the one selected for the task."""
@@ -265,6 +288,19 @@ class TaskInventoryInformation(BaseAlbertModel):
 
     selected_lot: bool | None = Field(alias="selectedLot", default=None, exclude=True)
     """Read-only. Whether this lot is the one selected for the task."""
+
+    inventory_on_hand: float | None = Field(
+        default=None, alias="inventoryOnHand", exclude=True, frozen=True
+    )
+    """Read-only. Amount on hand of the output lot, populated on [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask] rows once the task is completed. Mass is kilograms, volume is litres."""
+
+    parent_unit: str | None = Field(default=None, alias="parentUnit", exclude=True, frozen=True)
+    """Read-only. Display unit hint for the output lot on a [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask]: ``mass`` displays kilograms, ``volume`` displays litres."""
+
+    location: EntityLinkWithName | None = Field(
+        default=None, alias="Location", exclude=True, frozen=True
+    )
+    """Read-only. Location of the output lot on a [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask], set once the task is completed."""
 
 
 class Block(BaseAlbertModel):
@@ -317,6 +353,14 @@ class Block(BaseAlbertModel):
     job_state: str | None = Field(default=None, alias="jobState", exclude=True)
     """State of the worker job in [`job_id`][albert.resources.tasks.Block.job_id], or ``None`` when no job is associated. Serialized as ``jobState``."""
 
+    combinations_mode: str | None = Field(default=None, alias="combinationsMode", exclude=True)
+    """Read-only. How the block's interval combinations are kept: ``"child_workflows"`` when increased intervals is enabled for your tenant (combinations are generated for the block whenever it is added or its workflow changes), ``"legacy"`` otherwise. ``None`` on blocks you build yourself."""
+
+    previous_workflow_id: str | None = Field(
+        default=None, alias="previousWorkflowId", exclude=True
+    )
+    """Read-only. The workflow this block was switched from, until combinations are generated for its new workflow (format ``WFL...``). ``None`` otherwise, or when increased intervals is not enabled for your tenant."""
+
     intervals_start_from: Literal["all", "none"] | None = Field(
         default=None, alias="intervalsStartFrom"
     )
@@ -335,18 +379,11 @@ class Block(BaseAlbertModel):
 
     @property
     @deprecated(
-        "`Block.combinations_count` is deprecated; the platform returns the combination "
-        "count on the block's final Workflow element, not on the Block. Use "
-        "`Workflow.combinations_count` instead."
+        "`Block.combinations_count` is deprecated and will be removed in a future release; "
+        "read `combinations_count` from the block's final Workflow instead."
     )
     def combinations_count(self) -> int | None:
         """Deprecated alias for the ``combinations_count`` of the block's final workflow."""
-        warnings.warn(
-            "`Block.combinations_count` is deprecated and will be removed in a future "
-            "release; read `combinations_count` from the block's final Workflow instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         for workflow in self.workflow or []:
             count = getattr(workflow, "combinations_count", None)
             if count is not None:
@@ -450,7 +487,7 @@ class BaseTask(BaseTaggedResource):
     """Overall result summary for the task."""
 
     state: TaskState | None = Field(default=None)
-    """Current lifecycle state of the task."""
+    """Current lifecycle state of the task. A task without an ``assigned_to`` is always ``Unclaimed``; ``Not Started`` and ``In Progress`` require an assignee. On create, a missing state defaults to ``Unclaimed`` when the task has no assignee."""
 
     project: SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]] | None = Field(
         default=None, alias="Project"
@@ -460,7 +497,7 @@ class BaseTask(BaseTaggedResource):
     assigned_to: (
         SerializeAsEntityLinkWithName[User] | SerializeAsEntityLinkWithName[Team] | None
     ) = Field(default=None, alias="AssignedTo")
-    """The user or team responsible for the task."""
+    """The user or team responsible for the task. When ``None``, the task is unassigned and its ``state`` must be ``Unclaimed`` (terminal states such as ``Completed`` are allowed on create for ingestion flows)."""
 
     page_state: PageState | None = Field(
         alias="PageState",
@@ -469,7 +506,7 @@ class BaseTask(BaseTaggedResource):
     """Internal UI layout state for the task page."""
 
     entity_type: TaskEntityType | None = Field(default=None, alias="EntityType")
-    """Internal entity-type classification. See Also --------"""
+    """Internal entity-type classification."""
 
 
 class PropertyTask(BaseTask):
@@ -548,7 +585,10 @@ class BatchTask(BaseTask):
 
     category: Literal[TaskCategory.BATCH, TaskCategory.BATCH_WITH_QC] = TaskCategory.BATCH
     batch_size_unit: BatchSizeUnit | None = Field(alias="batchSizeUnit", default=None)
-    """The unit of measure for the batch size (grams, kilograms, or pounds)."""
+    """The unit used to display the batch size (grams, kilograms, or pounds).
+
+    Does not change how ``batch_size`` is stored; mass batch sizes are always sent
+    in kilograms."""
 
     qc_task: bool | None = Field(alias="qcTask", default=None)
     """Whether this is a quality-control batch task."""
@@ -601,7 +641,86 @@ class GeneralTask(BaseTask):
     category: Literal[TaskCategory.GENERAL] = TaskCategory.GENERAL
 
 
-TaskUnion = Annotated[PropertyTask | BatchTask | GeneralTask, Field(..., discriminator="category")]
+class ReactionUnitOverride(BaseAlbertModel):
+    """A per-row unit override on a [`ReactionBatchTask`][albert.resources.tasks.ReactionBatchTask].
+
+    Sets the display unit for a single row of the reaction grid, identified by
+    its ``stt_id``. Rows without an override use the task's
+    [`default_unit`][albert.resources.tasks.ReactionBatchTask.default_unit]."""
+
+    stt_id: str = Field(alias="sttId")
+    """The reaction grid row ID (format ``STT...``)."""
+
+    unit: str
+    """The display unit for the row (for example ``g`` or ``mg``)."""
+
+
+class ReactionBatchTask(BatchTask):
+    """A synthesis batch task created from a reaction on a reaction worksheet.
+
+    A reaction batch task manufactures the product of a recorded reaction: it
+    links back to its source reaction, worksheet, and designs, and its
+    [`inventory_information`][albert.resources.tasks.BaseTask.inventory_information]
+    rows expose the output lot once the task is completed. The reaction grid
+    itself (reagents, picked lots, products, actuals) is managed through
+    [`BatchDataCollection`][albert.collections.batch_data.BatchDataCollection]
+    (``client.batch_data.get_reaction``).
+
+    Reaction batch tasks are created by the platform from a reaction; the SDK
+    reads them but does not create them. Inherits all fields from
+    [`BatchTask`][albert.resources.tasks.BatchTask]; its
+    [`category`][albert.resources.tasks.ReactionBatchTask.category] is always
+    [`REACTION_BATCH`][albert.resources.tasks.TaskCategory.REACTION_BATCH].
+
+    !!! example
+        ```python
+        task = client.tasks.get_by_id(id="TASREA1")
+        task.category
+        # <TaskCategory.REACTION_BATCH: 'ReactionBatch'>
+        ```
+    """
+
+    category: Literal[TaskCategory.REACTION_BATCH] = TaskCategory.REACTION_BATCH
+
+    reaction_id: str | None = Field(default=None, alias="reactionId", exclude=True, frozen=True)
+    """Read-only. The ID of the source reaction (format ``RXN...``)."""
+
+    reaction_name: str | None = Field(
+        default=None, alias="reactionName", exclude=True, frozen=True
+    )
+    """Read-only. The title of the source reaction, frozen at task creation. Omitted on older tasks."""
+
+    worksheet_id: str | None = Field(default=None, alias="worksheetId", exclude=True, frozen=True)
+    """Read-only. The worksheet the source reaction was created on (format ``WKS...``)."""
+
+    reagents_design_id: str | None = Field(
+        default=None, alias="reagentsDesignId", exclude=True, frozen=True
+    )
+    """Read-only. The reagents design on the reaction worksheet (format ``DES...``)."""
+
+    products_design_id: str | None = Field(
+        default=None, alias="productsDesignId", exclude=True, frozen=True
+    )
+    """Read-only. The products design on the reaction worksheet (format ``DES...``)."""
+
+    inventory_id: InventoryId | None = Field(
+        default=None, alias="inventoryId", exclude=True, frozen=True
+    )
+    """Read-only. The Reaction-category inventory item minted for the reaction product (format ``INV...``)."""
+
+    default_unit: str | None = Field(default=None, alias="defaultUnit", exclude=True, frozen=True)
+    """Read-only. Display unit for lot on-hand amounts. Defaults to kilograms when omitted."""
+
+    units: list[ReactionUnitOverride] | None = Field(
+        default=None, alias="Units", exclude=True, frozen=True
+    )
+    """Read-only. Per-row unit overrides for the reaction grid. See [`ReactionUnitOverride`][albert.resources.tasks.ReactionUnitOverride]."""
+
+
+TaskUnion = Annotated[
+    PropertyTask | BatchTask | GeneralTask | ReactionBatchTask,
+    Field(..., discriminator="category"),
+]
 TaskAdapter = TypeAdapter(TaskUnion)
 
 
@@ -630,6 +749,121 @@ class TaskPatchPayload(PatchPayload):
 
     id: str
     """The id of the Task to be updated."""
+
+
+class AllocatedLot(BaseAlbertModel):
+    """One lot and the quantity drawn from it within an allocation.
+
+    Pass inside [`TaskParameterAllocation`][albert.resources.tasks.TaskParameterAllocation]
+    to record consumption of a special parameter's inventory item from one or
+    more lots. Used with
+    [`allocate_inventory`][albert.collections.tasks.TaskCollection.allocate_inventory].
+
+    !!! example
+        ```python
+        from albert.resources.tasks import AllocatedLot
+
+        lot = AllocatedLot(lot_id="LOT9999999", quantity=1.5)
+        ```
+    """
+
+    lot_id: LotId = Field(alias="id")
+    """The lot consumed (format ``LOT...``). Serialized as ``id``."""
+
+    quantity: float
+    """The amount drawn from this lot."""
+
+
+class TaskLotAllocation(BaseAlbertModel):
+    """An allocation against the task's own inventory.
+
+    Sets the absolute quantity of one inventory item + lot pair consumed by the
+    task. Pass a list of these (optionally mixed with
+    [`TaskParameterAllocation`][albert.resources.tasks.TaskParameterAllocation]) to
+    [`allocate_inventory`][albert.collections.tasks.TaskCollection.allocate_inventory].
+
+    !!! example
+        ```python
+        from albert.resources.tasks import TaskLotAllocation
+
+        allocation = TaskLotAllocation(
+            inventory_id="INVB9999999", lot_id="LOT9999999", quantity=0.5
+        )
+        ```
+    """
+
+    inventory_id: InventoryId
+    """The inventory item consumed (format ``INV...``). Must be one of the task's inventory items."""
+
+    lot_id: LotId
+    """The lot consumed (format ``LOT...``). Must be a lot of ``inventory_id`` listed on the task."""
+
+    quantity: float
+    """The total quantity of the item + lot pair consumed. An absolute value, not a delta. Pass ``0`` to clear the recorded quantity (a cleared quantity reads back as unset)."""
+
+    occurrence: int | None = Field(default=None)
+    """Which row to target when the same inventory item and lot appear on the task more than once (the 1-based occurrence suffix of the task's inventory tuple)."""
+
+
+class TaskParameterAllocation(BaseAlbertModel):
+    """An allocation against an inventory-linked special parameter on a block's workflow.
+
+    Records consumption of the inventory item selected on an Equipment,
+    Consumables, or Templates parameter row. The target row is resolved from
+    the block's workflow by
+    [`allocate_inventory`][albert.collections.tasks.TaskCollection.allocate_inventory]:
+    for an intervalized parameter, the matching interval row; otherwise the
+    parameter's own row.
+
+    !!! example
+        ```python
+        from albert.resources.tasks import AllocatedLot, TaskParameterAllocation
+
+        allocation = TaskParameterAllocation(
+            inventory_id="INVC9999999",
+            lots=[AllocatedLot(lot_id="LOT9999999", quantity=1.5)],
+            parameter="Light Source",
+        )
+        ```
+    """
+
+    inventory_id: InventoryId
+    """The inventory item consumed (format ``INV...``). Must be selected on a special parameter of the block's workflow."""
+
+    lots: list[AllocatedLot] = Field(min_length=1)
+    """The lot(s) the consumed quantity is drawn from."""
+
+    parameter: str | None = Field(default=None)
+    """The special parameter's name or short name (e.g. ``"Light Source"``). Required when the same item is selected on more than one parameter row of the workflow."""
+
+    row_id: RowId | None = Field(default=None)
+    """The workflow row to allocate against (format ``ROW...``). Overrides automatic resolution."""
+
+
+class QuantityUsedEntry(BaseAlbertModel):
+    """Internal wire shape for one special-parameter allocation entry."""
+
+    row_id: RowId = Field(alias="rowId")
+    """The resolved workflow row being allocated against. Serialized as ``rowId``."""
+
+    workflow_id: WorkflowId = Field(alias="workflowId")
+    """The block's current workflow (format ``WFL...``). Serialized as ``workflowId``."""
+
+    inventory_id: InventoryId = Field(alias="invId")
+    """The inventory item consumed (format ``INV...``). Serialized as ``invId``."""
+
+    block_id: BlockId = Field(alias="blockId")
+    """The block holding the parameter row (format ``BLK...``). Serialized as ``blockId``."""
+
+    lots: list[AllocatedLot] = Field(alias="lot")
+    """The lots and quantities consumed. Serialized as ``lot``."""
+
+
+class QuantityUsedPatchDatum(PatchDatum):
+    """Internal wire shape for a task-level (inventory tuple) allocation operation."""
+
+    inv_lot_unique_id: str = Field(alias="invLotUniqueId")
+    """The task-level inventory tuple targeted (format ``{inventoryId}#{lotId}#{occurrence}``). Serialized as ``invLotUniqueId``."""
 
 
 class TaskSearchInventory(BaseAlbertModel):
@@ -800,28 +1034,147 @@ class TaskMetadataBlockdata(BaseAlbertModel):
     )
 
 
+class TaskMetadataInventory(BaseAlbertModel):
+    """Inventory item summary on TaskMetadata."""
+
+    id: str
+    name: str | None = None
+    category: str | None = None
+    lot_id: str | None = Field(default=None, alias="lotId")
+    lot_name: str | None = Field(default=None, alias="lotName")
+    lot_number: str | None = Field(default=None, alias="lotNumber")
+    barcode_id: str | None = Field(default=None, alias="barcodeId")
+
+    @property
+    def inventory_id(self) -> str:
+        """Alias for id, matching TaskInventoryInformation."""
+        return self.id
+
+
+class TaskMetadataIntervalCombo(BaseAlbertModel):
+    """Child-workflow interval combination entry (schema v2)."""
+
+    id: str
+    values: list[str | None]
+
+
+class TaskMetadataIntervals(BaseAlbertModel):
+    """Interval columns and combinations (schema v2)."""
+
+    columns: list[str] = Field(default_factory=list)
+    combos: list[TaskMetadataIntervalCombo] = Field(default_factory=list)
+
+
+class TaskMetadataInventoryReference(BaseAlbertModel):
+    """Per-file column name hints for inventory/lot grouping (schema v2)."""
+
+    inventory_id: str | None = Field(default=None, alias="inventoryId")
+    inventory_name: str | None = Field(default=None, alias="inventoryName")
+    lot_id: str | None = Field(default=None, alias="lotId")
+    lot_name: str | None = Field(default=None, alias="lotName")
+
+
 class TaskMetadata(BaseAlbertModel):
     """Top-level metadata describing the task context for scripts."""
 
     filename: str | None = None
     task_id: str | None = Field(default=None, alias="taskId")
     block_id: str | None = Field(default=None, alias="blockId")
-    inventories: list[TaskInventoryInformation] = Field(default_factory=list, alias="Inventories")
+    inventories: list[TaskMetadataInventory] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("Inventories", "inventories"),
+        serialization_alias="inventories",
+    )
     blockdata: TaskMetadataBlockdata | None = Field(default=None, alias="Blockdata")
+
+    # Schema v2 (INCREASED_INTERVALS) fields
+    schema_version: int | None = Field(default=None, alias="schemaVersion")
+    data_template_id: str | None = Field(default=None, alias="dataTemplateId")
+    intervals: TaskMetadataIntervals | None = None
+    inventory_reference: TaskMetadataInventoryReference | None = Field(
+        default=None, alias="inventoryReference", exclude=True
+    )
+
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize TaskMetadata according to schemaVersion (v1 or v2).
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized task metadata dictionary formatted for v1 or v2.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        if self.schema_version == 2:
+            data.pop("Blockdata", None)
+            data["schemaVersion"] = 2
+            if "Inventories" in data:
+                data["inventories"] = data.pop("Inventories")
+        else:
+            data.pop("schemaVersion", None)
+            data.pop("dataTemplateId", None)
+            data.pop("intervals", None)
+            if "inventories" in data:
+                data["Inventories"] = data.pop("inventories")
+        return data
 
 
 # Models for CSV tables endpoints
 class CsvTableInput(BaseAlbertModel):
-    """Payload for invoking the CSV table proxy endpoint."""
+    """Payload for invoking the CSV table proxy endpoint (schema v1)."""
 
     script_s3_url: str = Field(alias="scriptS3URL")
     data_s3_url: str = Field(alias="dataS3URL")
     task_metadata: TaskMetadata = Field(alias="TaskMetadata")
 
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize payload for the v1 CSV table proxy endpoint.
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized request dictionary formatted for v1.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        data["TaskMetadata"] = self.task_metadata.to_payload_dict()
+        return data
+
+
+class CsvTableFile(BaseAlbertModel):
+    """File entry in CsvTableInputV2."""
+
+    data_s3_url: str = Field(alias="dataS3URL")
+    filename: str
+    inventory_reference: TaskMetadataInventoryReference | None = Field(
+        default=None, alias="inventoryReference"
+    )
+
+
+class CsvTableInputV2(BaseAlbertModel):
+    """Payload for invoking the CSV table proxy endpoint (schema v2)."""
+
+    script_s3_url: str = Field(alias="scriptS3URL")
+    files: list[CsvTableFile] = Field(..., min_length=1, max_length=1)
+    task_metadata: TaskMetadata = Field(alias="TaskMetadata")
+
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize payload for the v2 CSV table proxy endpoint.
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized request dictionary formatted for v2.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        data["TaskMetadata"] = self.task_metadata.to_payload_dict()
+        return data
+
 
 class CsvTableResponseItem(BaseAlbertModel):
     """Single table response emitted by the CSV table proxy."""
 
+    interval: str | None = Field(default=None, alias="Interval")
+    inv_id: str | None = Field(default=None, alias="InvId")
+    lot_id: str | None = Field(default=None, alias="LotId")
     data: list[dict[str, Any]] = Field(alias="Data")
 
 

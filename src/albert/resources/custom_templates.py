@@ -10,6 +10,7 @@ from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL, AccessControlLevel
+from albert.resources.interval_combinations import CombinationOverride, ExclusionRule
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
 from albert.resources.projects import Project
@@ -174,6 +175,53 @@ class SamConfig(BaseResource):
     """The status of the SAM job."""
 
 
+class WorkflowCombination(BaseAlbertModel):
+    """One cell of the interval-combination grid stored on a template workflow.
+
+    When a template block's workflow has two intervalized parameters, the
+    combination grid enumerates the cross-product of their interval values and
+    records which cells are enabled. The first intervalized parameter is
+    described by ``heading``/``val``/``unit_name`` and the second by
+    ``heading2``/``val2``/``unit_name2``.
+    """
+
+    index: int
+    """Position of this cell in the enumeration of the two-parameter cross-product grid."""
+
+    interval_params: str | None = Field(default=None, alias="intervalParams")
+    """The interval entry IDs of the two intervalized parameters, joined with ``X`` (e.g. ``INT1XINT1``)."""
+
+    heading: str | None = None
+    """Display name of the first intervalized parameter."""
+
+    val: str | None = None
+    """Interval value of the first intervalized parameter, serialized as a string."""
+
+    unit_name: str | None = Field(default=None, alias="unitName")
+    """Display name of the unit of ``val``."""
+
+    heading2: str | None = None
+    """Display name of the second intervalized parameter."""
+
+    val2: str | None = None
+    """Interval value of the second intervalized parameter, serialized as a string."""
+
+    unit_name2: str | None = Field(default=None, alias="unitName2")
+    """Display name of the unit of ``val2``."""
+
+    is_checked: bool = Field(default=False, alias="isChecked")
+    """Whether this combination is enabled. Disabled combinations are excluded from tasks created from the template."""
+
+    hidden: bool = False
+    """Whether this combination is hidden from display in the grid. Display-only flag; does not affect whether the combination is enabled."""
+
+    name: str | None = None
+    """Optional display label for this combination entry."""
+
+    value: str | None = None
+    """Optional display value for this combination entry."""
+
+
 class Workflow(BaseResource):
     """A workflow reference within a custom template."""
 
@@ -186,11 +234,27 @@ class Workflow(BaseResource):
     sam_config: list[SamConfig] | None = Field(default=None, alias="SamConfig")
     """SAM configurations associated with this workflow, if any."""
 
+    combination: list[WorkflowCombination] | None = Field(
+        default=None,
+        alias="Combination",
+    )
+    """The interval-combination grid stored on this workflow, present on Property Task templates whose workflow has two intervalized parameters."""
+
 
 # TODO: once DTs are done allow a list of DTs with the correct field_serializer
 class Block(BaseTaggedResource):
     workflow: list[Workflow] = Field(default=None, alias="Workflow")
     datatemplate: list[EntityLink] | None = Field(default=None, alias="Datatemplate")
+    intervals_start_from: Literal["all", "none"] | None = Field(
+        default=None, alias="intervalsStartFrom"
+    )
+    """Baseline mode controlling which interval combinations are generated for tasks created from this template. ``"all"`` starts from every combination and rules and overrides prune variants out, while ``"none"`` starts from an empty set and rules and manual overrides pull combinations in. Only applicable when the template uses increased intervals and the block has intervalized parameters."""
+
+    rules: list[ExclusionRule] | None = Field(default=None)
+    """Combination rules for this block. Conditions within a single rule use AND logic, while multiple rules use OR logic. Matching combinations are excluded when ``intervals_start_from`` is ``"all"`` and included when it is ``"none"``."""
+
+    overrides: list[CombinationOverride] | None = Field(default=None)
+    """Combination overrides targeting specific combinations on this block by parameter values. Supports ``skip`` (exclude) and ``unskip`` (include) actions, and always takes precedence over rules."""
 
 
 # TODO: once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
@@ -225,6 +289,8 @@ class PropertyData(BaseTaggedResource):
     category: Literal[TemplateCategory.PROPERTY] = TemplateCategory.PROPERTY
     name: str | None = Field(default=None)
     blocks: list[Block] = Field(default_factory=list, alias="Blocks")  # Needs to be it's own class
+    increased_intervals: bool | None = Field(default=None, alias="increasedIntervals")
+    """Whether this template uses the increased intervals combination behavior. When true, each block in ``blocks`` may carry ``intervals_start_from``, ``rules``, and ``overrides`` controlling which interval combinations are generated for tasks created from this template."""
     priority: Priority  # enum?!
     location: SerializeAsEntityLink[Location] | None = Field(alias="Location", default=None)
     assigned_to: SerializeAsEntityLink[User] | None = Field(alias="AssignedTo", default=None)

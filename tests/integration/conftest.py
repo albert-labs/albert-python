@@ -1,3 +1,4 @@
+import random
 import time
 import uuid
 from collections.abc import AsyncGenerator, Callable, Iterator
@@ -15,6 +16,7 @@ from albert.exceptions import (
     AlbertServerError,
     BadRequestError,
     ForbiddenError,
+    InternalServerError,
     NotFoundError,
 )
 from albert.resources.attachments import Attachment
@@ -23,14 +25,6 @@ from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight
 from albert.resources.btmodel import BTModel, BTModelSession
 from albert.resources.cas import Cas
-from albert.resources.chats import (
-    ChatComponentType,
-    ChatFolder,
-    ChatMessage,
-    ChatRole,
-    ChatSession,
-    ChatUserType,
-)
 from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
 from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
@@ -96,6 +90,25 @@ from tests.integration.seeding import (
     generate_workflow_seeds,
     pick_report_type_id,
 )
+
+_HEAVY_XDIST_GROUPS = ("tasks", "sheets", "sheetcolumns", "inventory", "projects", "datatemplates")
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Schedule the slowest xdist groups first so they never queue behind light ones.
+
+    With ``--no-loadscope-reorder`` xdist hands out groups in collection order; the
+    default orders by test count, which can start the slowest group last.
+    """
+
+    def _rank(item: pytest.Item) -> int:
+        mark = item.get_closest_marker("xdist_group")
+        name = mark.args[0] if mark and mark.args else None
+        if name in _HEAVY_XDIST_GROUPS:
+            return _HEAVY_XDIST_GROUPS.index(name)
+        return len(_HEAVY_XDIST_GROUPS)
+
+    items.sort(key=_rank)
 
 
 def _pmap(fn: Callable, items) -> list:
@@ -296,6 +309,23 @@ def second_user(client: Albert, static_user: User) -> User:
         if hydrated.id != static_user.id and hydrated.status == Status.ACTIVE:
             return hydrated
     pytest.skip("No second active user available for team tests")
+
+
+@pytest.fixture(scope="session")
+def third_user(client: Albert, static_user: User, second_user: User) -> User:
+    """Get a third active user distinct from the static SDK bot and second user."""
+    for user in client.users.search(max_items=50):
+        try:
+            hydrated = client.users.get_by_id(id=user.id)
+        except (NotFoundError, ForbiddenError):
+            # Search indexes can return stale IDs that GET no longer finds.
+            continue
+        if (
+            hydrated.id not in {static_user.id, second_user.id}
+            and hydrated.status == Status.ACTIVE
+        ):
+            return hydrated
+    pytest.skip("No third active user available for team tests")
 
 
 @pytest.fixture(scope="session")
@@ -890,12 +920,28 @@ def _create_entity_type(client: Albert, entity_type: EntityType) -> EntityType:
     last_error: BadRequestError | None = None
     for prefix in candidates:
         entity_type.prefix = prefix
-        try:
-            return client.entity_types.create(entity_type=entity_type)
-        except BadRequestError as err:
-            if "Invalid prefix" not in str(err):
-                raise
-            last_error = err
+        # Concurrent xdist workers create entity types referencing the same shared
+        # custom fields. The service may reject colliding creates as
+        # "customCategory already exist" (400) or as a transaction conflict (500).
+        # The create is atomic, so nothing is written on a conflict and a backoff
+        # retry is safe.
+        for attempt in range(4):
+            try:
+                return client.entity_types.create(entity_type=entity_type)
+            except BadRequestError as err:
+                if "customCategory already exist" in str(err):
+                    if attempt == 3:
+                        raise
+                    time.sleep(2**attempt + random.random())
+                    continue
+                if "Invalid prefix" not in str(err):
+                    raise
+                last_error = err
+                break
+            except InternalServerError as err:
+                if "TransactionConflict" not in str(err) or attempt == 3:
+                    raise
+                time.sleep(2**attempt + random.random())
     if last_error is not None:
         raise last_error
     raise ValueError(f"No prefix candidates for category {entity_type.category}")
@@ -1103,48 +1149,3 @@ def seeded_built_smart_dataset(
     yield created
     with suppress(NotFoundError, BadRequestError):
         client.smart_datasets.delete(id=created.id)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_folder(
-    async_client: AsyncAlbert, seed_prefix: str
-) -> AsyncGenerator[ChatFolder, None]:
-    folder = await async_client.chat_folders.create(
-        folder=ChatFolder(name=f"{seed_prefix} Chat Folder")
-    )
-    yield folder
-    with suppress(NotFoundError):
-        await async_client.chat_folders.delete(id=folder.id)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_session(
-    async_client: AsyncAlbert, seed_prefix: str, seeded_folder: ChatFolder
-) -> AsyncGenerator[ChatSession, None]:
-    session = await async_client.chat_sessions.create(
-        session=ChatSession(
-            name=f"{seed_prefix} Chat Session",
-            parent_id=seeded_folder.id,
-            source_session_id=str(uuid.uuid4()),
-        )
-    )
-    yield session
-    with suppress(NotFoundError):
-        await async_client.chat_sessions.delete(id=session.id)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_message(
-    async_client: AsyncAlbert, seeded_session: ChatSession
-) -> AsyncGenerator[ChatMessage, None]:
-    message = await async_client.chat_messages.create(
-        message=ChatMessage(
-            component_type=ChatComponentType.TEXT,
-            user_type=ChatUserType.USER,
-            role=ChatRole.USER,
-            content={"message": "Hello from SDK tests"},
-            parent_id=seeded_session.id,
-            sequence="000",
-        )
-    )
-    yield message

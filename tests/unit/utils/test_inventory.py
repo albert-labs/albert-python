@@ -1,16 +1,27 @@
-"""Unit tests for the inventory CAS patch builder.
+"""Unit tests for the inventory patch builders.
 
 Allowed under the patch-builder exception in OPINIONS.md: these guard non-obvious
-diff behavior in ``_build_cas_patch_operations`` with no I/O to fake.
+diff behavior in ``_build_cas_patch_operations`` and ``_split_bulk_patch_operations``
+with no I/O to fake.
 """
 
 import pytest
 
+from albert.core.shared.enums import SecurityClass
 from albert.core.shared.models.base import EntityLink
 from albert.resources.cas import Cas
-from albert.resources.inventory import CasAmount
+from albert.resources.companies import Company
+from albert.resources.inventory import (
+    CasAmount,
+    InventoryCategory,
+    InventoryItem,
+    InventoryMinimum,
+    InventoryUnitCategory,
+)
 from albert.resources.lists import ListItem
+from albert.resources.tags import Tag
 from albert.utils.inventory import (
+    _build_bulk_create_item_payload,
     _build_cas_add_operation,
     _build_cas_delete_operation,
     _build_cas_patch_operations,
@@ -20,6 +31,9 @@ from albert.utils.inventory import (
     _cas_identifier,
     _ensure_unique_cas_amounts,
     _normalize_inventory_function_ids,
+    _offset_bulk_result_indices,
+    _split_bulk_create_results,
+    _split_bulk_patch_operations,
 )
 
 # ---------------------------------------------------------------------------
@@ -404,6 +418,147 @@ def test_build_cas_update_operations_never_emits_substance_id_op():
 
 
 # ---------------------------------------------------------------------------
+# _split_bulk_patch_operations
+# ---------------------------------------------------------------------------
+
+
+def test_split_bulk_patch_operations_empty_input():
+    """Test that no patch operations produce no bulk and no remaining operations."""
+    assert _split_bulk_patch_operations([]) == ([], [])
+
+
+def test_split_bulk_patch_operations_merges_tag_adds_into_one_operation():
+    """Test that per-tag add operations merge into one bulk add with id entries."""
+    patch_data = [
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG1", "entityId": "TAG1"},
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG2"},
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == [
+        {
+            "operation": "add",
+            "attribute": "tagId",
+            "newValue": [{"id": "TAG1"}, {"id": "TAG2"}],
+        }
+    ]
+    assert remaining == []
+
+
+def test_split_bulk_patch_operations_merges_tag_deletes_into_one_operation():
+    """Test that per-tag delete operations merge into one bulk delete with id entries."""
+    patch_data = [
+        {"operation": "delete", "attribute": "tagId", "oldValue": "TAG1"},
+        {"operation": "delete", "attribute": "tagId", "oldValue": "TAG2"},
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == [
+        {
+            "operation": "delete",
+            "attribute": "tagId",
+            "oldValue": [{"id": "TAG1"}, {"id": "TAG2"}],
+        }
+    ]
+    assert remaining == []
+
+
+def test_split_bulk_patch_operations_company_update_with_name_goes_to_bulk():
+    """Test that a companyId update carrying the company name is bulk-eligible."""
+    patch_data = [
+        {
+            "operation": "update",
+            "attribute": "companyId",
+            "oldValue": "COM1",
+            "newValue": "COM2",
+            "name": "Acme Chemicals",
+        }
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == patch_data
+    assert remaining == []
+
+
+def test_split_bulk_patch_operations_company_update_without_name_stays_per_item():
+    """Test that a companyId update without a name stays on the per-item route."""
+    patch_data = [
+        {
+            "operation": "update",
+            "attribute": "companyId",
+            "oldValue": "COM1",
+            "newValue": "COM2",
+        }
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == []
+    assert remaining == patch_data
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        pytest.param(
+            {"operation": "add", "attribute": "companyId", "newValue": "COM1"},
+            id="company-add",
+        ),
+        pytest.param(
+            {"operation": "delete", "attribute": "companyId", "entityId": "COM1"},
+            id="company-delete",
+        ),
+        pytest.param(
+            {"operation": "update", "attribute": "name", "oldValue": "a", "newValue": "b"},
+            id="scalar-attribute",
+        ),
+        pytest.param(
+            {"operation": "add", "attribute": "Metadata.IDH", "newValue": "LST1"},
+            id="metadata-attribute",
+        ),
+        pytest.param(
+            {"operation": "add", "attribute": "casId", "newValue": "CAS1"},
+            id="cas-attribute",
+        ),
+    ],
+)
+def test_split_bulk_patch_operations_unsupported_attributes_stay_per_item(operation):
+    """Test that operations the bulk update does not accept stay on the per-item route."""
+    bulk_operations, remaining = _split_bulk_patch_operations([operation])
+
+    assert bulk_operations == []
+    assert remaining == [operation]
+
+
+def test_split_bulk_patch_operations_mixed_operations_preserve_remaining_order():
+    """Test that remaining operations keep their order around merged bulk operations."""
+    name_operation = {
+        "operation": "update",
+        "attribute": "name",
+        "oldValue": "a",
+        "newValue": "b",
+    }
+    metadata_operation = {"operation": "add", "attribute": "Metadata.IDH", "newValue": "LST1"}
+    patch_data = [
+        name_operation,
+        {"operation": "add", "attribute": "tagId", "newValue": "TAG1"},
+        metadata_operation,
+        {"operation": "delete", "attribute": "tagId", "oldValue": "TAG2"},
+    ]
+
+    bulk_operations, remaining = _split_bulk_patch_operations(patch_data)
+
+    assert bulk_operations == [
+        {"operation": "add", "attribute": "tagId", "newValue": [{"id": "TAG1"}]},
+        {"operation": "delete", "attribute": "tagId", "oldValue": [{"id": "TAG2"}]},
+    ]
+    assert remaining == [name_operation, metadata_operation]
+
+
+# ---------------------------------------------------------------------------
 # _build_cas_patch_operations
 # ---------------------------------------------------------------------------
 
@@ -542,3 +697,194 @@ def test_build_cas_patch_operations_raises_on_duplicate_updated_cas():
                 CasAmount(min=3.0, max=4.0, id="CAS1"),
             ],
         )
+
+
+# ---------------------------------------------------------------------------
+# _build_bulk_create_item_payload
+# ---------------------------------------------------------------------------
+
+
+def test_build_bulk_create_item_payload_maps_supported_fields():
+    """Test that the bulk payload carries every supported field in wire format."""
+    item = InventoryItem(
+        name="Titanium Dioxide",
+        alias="TiO2",
+        description="White pigment",
+        security_class=SecurityClass.SHARED,
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.VOLUME,
+        density=1.26,
+        company=Company(id="COM1", name="Acme Chemicals"),
+        tags=[Tag(id="TAG1", tag="pigment")],
+        cas=[CasAmount(id="CAS1", min=0.5, max=1.0)],
+        minimum=[InventoryMinimum(id="LOC1", minimum=10.0)],
+        metadata={"articleNumber": "ART-1"},
+    )
+
+    assert _build_bulk_create_item_payload(item) == {
+        "name": "Titanium Dioxide",
+        "alias": "TiO2",
+        "description": "White pigment",
+        "class": "shared",
+        "category": "RawMaterials",
+        "unitCategory": "volume",
+        "density": 1.26,
+        "Company": {"id": "COM1"},
+        "Tags": [{"id": "TAG1"}],
+        "Cas": [{"id": "CAS1", "min": 0.5, "max": 1.0}],
+        "Minimum": [{"id": "LOC1", "minimum": 10.0}],
+        "Metadata": {"articleNumber": "ART-1"},
+    }
+
+
+def test_build_bulk_create_item_payload_omits_unset_fields():
+    """Test that a minimal item emits only the keys bulk create requires."""
+    item = InventoryItem(
+        name="Nitrile Gloves",
+        category=InventoryCategory.CONSUMABLES,
+        company=Company(id="COM1", name="Acme Chemicals"),
+    )
+
+    assert _build_bulk_create_item_payload(item) == {
+        "name": "Nitrile Gloves",
+        "category": "Consumables",
+        "unitCategory": "units",
+        "Company": {"id": "COM1"},
+    }
+
+
+def test_build_bulk_create_item_payload_drops_formula_and_server_fields():
+    """Test that ids, ACLs, and the formula parent are never sent to bulk create."""
+    item = InventoryItem(
+        id="INV1",
+        name="A formula",
+        category=InventoryCategory.FORMULAS,
+        project_id="PRO1",
+        company=Company(id="COM1", name="Acme Chemicals"),
+    )
+
+    payload = _build_bulk_create_item_payload(item)
+
+    assert payload == {
+        "name": "A formula",
+        "category": "Formulas",
+        "unitCategory": "mass",
+        "Company": {"id": "COM1"},
+    }
+
+
+def test_build_bulk_create_item_payload_slims_cas_entries():
+    """Test that CAS entries carry only id, min, and max."""
+    item = InventoryItem(
+        name="Hydrochloric Acid",
+        category=InventoryCategory.RAW_MATERIALS,
+        company=Company(id="COM1", name="Acme Chemicals"),
+        cas=[
+            CasAmount(
+                id="CAS1",
+                min=0.3,
+                max=0.6,
+                target=0.45,
+                cas_category="trade_secret",
+                classification_type="Harmonised C&L",
+                substance_id="SUB1",
+            )
+        ],
+    )
+
+    assert _build_bulk_create_item_payload(item)["Cas"] == [{"id": "CAS1", "min": 0.3, "max": 0.6}]
+
+
+def test_build_bulk_create_item_payload_omits_empty_child_lists():
+    """Test that empty tag, CAS, and minimum lists are not sent."""
+    item = InventoryItem.model_construct(
+        name="Sodium Chloride",
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.MASS,
+        company=Company(id="COM1", name="Acme Chemicals"),
+        tags=[],
+        cas=[],
+        minimum=[],
+    )
+
+    payload = _build_bulk_create_item_payload(item)
+
+    assert "Tags" not in payload
+    assert "Cas" not in payload
+    assert "Minimum" not in payload
+
+
+# ---------------------------------------------------------------------------
+# _offset_bulk_result_indices
+# ---------------------------------------------------------------------------
+
+
+def test_offset_bulk_result_indices_shifts_indices_by_offset():
+    """Test that result indices are shifted by the given offset."""
+    entries = [{"index": 0, "id": "INVA1"}, {"index": 2, "message": "Failed"}]
+
+    assert _offset_bulk_result_indices(entries, 300) == [
+        {"index": 300, "id": "INVA1"},
+        {"index": 302, "message": "Failed"},
+    ]
+
+
+def test_offset_bulk_result_indices_returns_copies():
+    """Test that the input entries are not mutated."""
+    entries = [{"index": 0, "id": "INVA1"}]
+
+    shifted = _offset_bulk_result_indices(entries, 300)
+
+    assert entries == [{"index": 0, "id": "INVA1"}]
+    assert shifted[0] is not entries[0]
+
+
+# ---------------------------------------------------------------------------
+# _split_bulk_create_results
+# ---------------------------------------------------------------------------
+
+
+def test_split_bulk_create_results_separates_flagged_failures():
+    """Test that failed entries are split from created records, order preserved."""
+    results = [
+        {"index": 0, "albertId": "INVA1"},
+        {"index": 1, "name": "Bad", "message": "Failed", "failed": True},
+        {"index": 2, "albertId": "INVA2"},
+    ]
+
+    created, failed = _split_bulk_create_results(results)
+
+    assert created == [{"index": 0, "albertId": "INVA1"}, {"index": 2, "albertId": "INVA2"}]
+    assert failed == [{"index": 1, "name": "Bad", "message": "Failed", "failed": True}]
+
+
+def test_split_bulk_create_results_all_created():
+    """Test that a fully successful result list yields no failures."""
+    results = [{"index": 0, "albertId": "INVA1"}]
+
+    assert _split_bulk_create_results(results) == (results, [])
+
+
+def test_split_bulk_create_results_empty():
+    """Test that an empty result list yields empty created and failed lists."""
+    assert _split_bulk_create_results([]) == ([], [])
+
+
+def test_split_bulk_create_results_unwraps_wrapped_all_created():
+    """Test that a wrapped all-created result yields created entries and no failures."""
+    results = {"CreatedItems": [{"index": 0, "albertId": "INVA1"}]}
+
+    assert _split_bulk_create_results(results) == ([{"index": 0, "albertId": "INVA1"}], [])
+
+
+def test_split_bulk_create_results_unwraps_wrapped_partial():
+    """Test that a wrapped partial result yields its created and failed entries."""
+    results = {
+        "CreatedItems": [{"index": 0, "albertId": "INVA1"}],
+        "FailedItems": [{"index": 1, "name": "Bad", "message": "Failed"}],
+    }
+
+    created, failed = _split_bulk_create_results(results)
+
+    assert created == [{"index": 0, "albertId": "INVA1"}]
+    assert failed == [{"index": 1, "name": "Bad", "message": "Failed"}]

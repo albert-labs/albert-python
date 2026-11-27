@@ -87,7 +87,7 @@ class Interval(BaseAlbertModel):
     """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters. Not auto-filled from an object ``value``."""
 
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
-    """The unit of ``value``, where applicable. If given, the unit must have an ``id``. See Also --------"""
+    """The unit of ``value``, where applicable. If given, the unit must have an ``id``."""
 
     row_id: RowId | None = Field(default=None, alias="rowId", exclude=True)
 
@@ -109,7 +109,7 @@ class IntervalDetail(BaseAlbertModel):
     """The parameter name (e.g. ``"Equipment"``)."""
 
     value: str
-    """The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``). See Also --------"""
+    """The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``)."""
 
 
 class IntervalCombination(BaseAlbertModel):
@@ -124,7 +124,7 @@ class IntervalCombination(BaseAlbertModel):
     condition."""
 
     interval_id: IntervalId | None = Field(default=None, alias="interval")
-    """The interval ID this combination is associated with. A ``ROW#`` chain of any length, a child workflow id (``WFL...``), a 9-character barcode, or ``"default"``. This is the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns for ROW-chain combinations."""
+    """The interval ID this combination is associated with. A ``ROW#`` chain of any length, a child workflow id (``WFL...``), a case-sensitive barcode, or ``"default"``. This is the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns for ROW-chain combinations."""
 
     interval_params: str | None = Field(default=None, alias="intervalParams")
     """The parameters participating in the interval."""
@@ -133,7 +133,7 @@ class IntervalCombination(BaseAlbertModel):
     """A human-readable representation of the combination, of the form ``"[Parameter Name]: [Parameter Value] [Parameter Unit]"`` for each parameter."""
 
     interval_details: list[IntervalDetail] | None = Field(default=None, alias="intervalDetails")
-    """Per-parameter breakdown of the combination. Each entry has ``name`` (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``). See Also --------"""
+    """Per-parameter breakdown of the combination. Each entry has ``name`` (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``)."""
 
 
 class ParameterSetpoint(BaseAlbertModel):
@@ -437,7 +437,7 @@ class Workflow(BaseResource):
     """The setpoints to apply, organized one entry per Data Template / Parameter Group. The order of these entries is part of the workflow's identity."""
 
     interval_combinations: list[IntervalCombination] | None = Field(
-        default=None, alias="IntervalCombinations"
+        default=None, alias="IntervalCombinations", exclude=True
     )
     """The realized conditions when parameters are intervalized. Populated by the platform; present when the workflow is retrieved, not something you set when building one."""
 
@@ -587,7 +587,7 @@ class Workflow(BaseResource):
 
     @validate_call
     def get_override_key(self, *, parameter_values: dict[str, Any]) -> str:
-        """Build the compound override key for a set of parameter values (🧪 Beta).
+        """Build the compound override key for a set of parameter values.
 
         Matches each given parameter name and value against the workflow's intervalized
         parameters and assembles the compound key in the format
@@ -610,12 +610,6 @@ class Workflow(BaseResource):
         interval value of ``"25"``. Matching on parameter name checks both the parameter's
         name and short name (case-insensitive). Segments are ordered in the canonical
         order that the parameters appear in the workflow.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -684,17 +678,11 @@ class Workflow(BaseResource):
         unit: str | Unit | None = None,
         group: str | None = None,
     ) -> RuleCondition:
-        """Build a rule condition from a parameter name, short name, or ID and value (🧪 Beta).
+        """Build a rule condition from a parameter name, short name, or ID and value.
 
         Resolves the parameter's group ID, parameter ID, row ID, and unit ID from
         this workflow's defined setpoints, avoiding the need to manually lookup
         internal IDs.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -870,7 +858,7 @@ class Workflow(BaseResource):
         unit: str | Unit | None = None,
         group: str | None = None,
     ) -> ExclusionRule:
-        """Build a rule from conditions or parameter criteria (🧪 Beta).
+        """Build a rule from conditions or parameter criteria.
 
         Convenience builder that constructs a named [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule]
         using human-readable parameter names and values rather than internal IDs.
@@ -889,12 +877,6 @@ class Workflow(BaseResource):
             combination satisfying all conditions is pruned/excluded from the task block.
           - In Include Mode (``"none"``): The rule acts as an inclusion rule. Combinations
             satisfying all conditions are kept/included in the task block.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -1014,7 +996,7 @@ class Workflow(BaseResource):
         action: OverrideAction | str = OverrideAction.SKIP,
         is_manual: bool | None = None,
     ) -> CombinationOverride:
-        """Build a combination override from parameter values (🧪 Beta).
+        """Build a combination override from parameter values.
 
         Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
         targeting a single specific combination variant by its exact parameter values,
@@ -1034,12 +1016,6 @@ class Workflow(BaseResource):
         - **Manual Cherry-Picking (`is_manual=True`)**: In Include Mode (``intervals_start_from="none"``),
           setting ``is_manual=True`` designates a manually cherry-picked combination from an
           otherwise empty baseline.
-
-        !!! warning "Beta Feature!"
-            Increased intervals combination support is currently in beta and behind a platform
-            feature flag. Please do not use in production or without explicit guidance from
-            Albert. You might otherwise have a bad experience. This feature currently falls
-            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python

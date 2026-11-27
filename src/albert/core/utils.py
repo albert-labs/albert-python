@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import inspect
+import os
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, TypeVar
+
+import pydantic
 
 from albert.exceptions import AlbertPartialError
 
@@ -11,6 +15,34 @@ if TYPE_CHECKING:
     import requests
 
 T = TypeVar("T")
+
+_ALBERT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_PYDANTIC_DIR = os.path.dirname(os.path.abspath(pydantic.__file__))
+_INTERNAL_PACKAGE_DIRS = (_ALBERT_DIR + os.sep, _PYDANTIC_DIR + os.sep)
+
+
+def find_stack_level() -> int:
+    """Return the ``stacklevel`` that attributes a warning to the caller's code.
+
+    Counts the frames from the ``warnings.warn`` call site up to the first frame
+    outside the ``albert`` and ``pydantic`` packages, so the warning points at the
+    caller's line no matter how many SDK helpers or ``@validate_call`` wrappers sit in
+    between. Pass the result as ``warnings.warn(..., stacklevel=find_stack_level())``.
+
+    Returns
+    -------
+    int
+        The ``stacklevel`` to pass to ``warnings.warn``.
+    """
+    frame = inspect.currentframe()
+    level = 0
+    try:
+        while frame is not None and frame.f_code.co_filename.startswith(_INTERNAL_PACKAGE_DIRS):
+            frame = frame.f_back
+            level += 1
+    finally:
+        del frame
+    return level
 
 
 def ensure_list(value: T | Iterable[T] | None) -> list[T] | None:

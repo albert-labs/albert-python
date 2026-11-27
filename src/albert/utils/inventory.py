@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from albert.core.shared.models.base import BaseResource, EntityLink
-from albert.resources.inventory import CasAmount
+from albert.resources.inventory import CasAmount, InventoryItem
 
 
 def _cas_identifier(cas_amount: CasAmount) -> str | None:
@@ -197,6 +197,127 @@ def _build_cas_update_operations(existing: CasAmount, updated: CasAmount) -> lis
         )
 
     return operations
+
+
+# Fields of the single-create wire shape that bulk create also accepts. Bulk create
+# takes a slimmer per-item shape, so everything else (albertId, ACL, parentId,
+# read-only fields) is dropped.
+_BULK_CREATE_SCALAR_KEYS = (
+    "name",
+    "alias",
+    "description",
+    "class",
+    "category",
+    "unitCategory",
+    "density",
+    "Company",
+    "Metadata",
+)
+
+
+def _build_bulk_create_item_payload(item: InventoryItem) -> dict[str, Any]:
+    """Build the wire shape for one item of a bulk inventory create.
+
+    Company and tags must already be resolved (carry ids); the bulk route looks
+    them up by id only. CAS entries are slimmed to the keys bulk create reads
+    (``id``, ``min``, ``max``), and minimums are sent under the ``Minimum`` key.
+    """
+    dump = item.model_dump(by_alias=True, exclude_none=True, mode="json")
+    payload: dict[str, Any] = {key: dump[key] for key in _BULK_CREATE_SCALAR_KEYS if key in dump}
+    if dump.get("Tags"):
+        payload["Tags"] = dump["Tags"]
+    if item.cas:
+        payload["Cas"] = [{"id": cas.id, "min": cas.min, "max": cas.max} for cas in item.cas]
+    if item.minimum:
+        payload["Minimum"] = [
+            {"id": minimum.id, "minimum": minimum.minimum} for minimum in item.minimum
+        ]
+    return payload
+
+
+def _offset_bulk_result_indices(items: list[dict[str, Any]], offset: int) -> list[dict[str, Any]]:
+    """Return copies of bulk create result entries with ``index`` shifted by ``offset``.
+
+    Result indices are positions within the group that produced them; shifting
+    maps them back to positions in the caller's full item list.
+    """
+    return [{**entry, "index": entry["index"] + offset} for entry in items]
+
+
+def _split_bulk_create_results(
+    results: list[dict[str, Any]] | dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split one group of bulk create results into created entries and failures.
+
+    Both wire shapes are accepted while the operation rolls out: a bare mixed
+    array in request order (failed entries flagged ``failed: true``) or an
+    object carrying ``CreatedItems`` and ``FailedItems`` lists.
+    """
+    if isinstance(results, dict):
+        return results.get("CreatedItems") or [], results.get("FailedItems") or []
+    created = [entry for entry in results if not entry.get("failed")]
+    failed = [entry for entry in results if entry.get("failed")]
+    return created, failed
+
+
+def _split_bulk_patch_operations(
+    patch_data: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split one item's patch operations into bulk-update operations and per-item operations.
+
+    The bulk inventory update accepts ``tagId`` adds and deletes (each as a single
+    operation carrying an array of ``{"id": ...}`` entries) and ``companyId`` updates
+    that carry the new company's ``name``. All other operations stay on the per-item
+    update route.
+
+    Parameters
+    ----------
+    patch_data : list[dict[str, Any]]
+        One item's generated patch operations.
+
+    Returns
+    -------
+    tuple[list[dict[str, Any]], list[dict[str, Any]]]
+        The bulk-update operations and the remaining per-item operations.
+    """
+    tag_ids_to_add: list[str] = []
+    tag_ids_to_delete: list[str] = []
+    company_updates: list[dict[str, Any]] = []
+    remaining: list[dict[str, Any]] = []
+    for operation in patch_data:
+        attribute = operation.get("attribute")
+        if attribute == "tagId" and operation.get("operation") == "add":
+            tag_ids_to_add.append(operation["newValue"])
+        elif attribute == "tagId" and operation.get("operation") == "delete":
+            tag_ids_to_delete.append(operation["oldValue"])
+        elif (
+            attribute == "companyId"
+            and operation.get("operation") == "update"
+            and operation.get("name")
+        ):
+            company_updates.append(operation)
+        else:
+            remaining.append(operation)
+
+    bulk_operations: list[dict[str, Any]] = []
+    if tag_ids_to_add:
+        bulk_operations.append(
+            {
+                "operation": "add",
+                "attribute": "tagId",
+                "newValue": [{"id": tag_id} for tag_id in tag_ids_to_add],
+            }
+        )
+    if tag_ids_to_delete:
+        bulk_operations.append(
+            {
+                "operation": "delete",
+                "attribute": "tagId",
+                "oldValue": [{"id": tag_id} for tag_id in tag_ids_to_delete],
+            }
+        )
+    bulk_operations.extend(company_updates)
+    return bulk_operations, remaining
 
 
 def _build_cas_patch_operations(

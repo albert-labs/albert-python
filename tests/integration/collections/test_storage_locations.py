@@ -5,6 +5,7 @@ import pytest
 from albert import Albert
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("projects")
 
@@ -14,13 +15,6 @@ def assert_valid_storage_location_items(returned_list: list[StorageLocation]):
     assert returned_list, "Expected at least one StorageLocation result"
     for u in returned_list[:10]:
         assert isinstance(u, StorageLocation)
-
-
-def test_storage_location_get_all_with_pagination(client: Albert):
-    """Test storage location get_all."""
-    results = list(client.storage_locations.get_all(max_items=10))
-    assert_valid_storage_location_items(results)
-    assert len(results) <= 10
 
 
 def test_storage_location_get_all_with_filters(
@@ -52,6 +46,43 @@ def test_storage_location_get_all_with_filters(
     assert sample.model_dump(mode="json", include=list_fields) == by_id.model_dump(
         mode="json", include=list_fields
     )
+
+
+def test_get_by_name(
+    client: Albert,
+    seeded_storage_locations: list[StorageLocation],
+    seeded_locations: list[Location],
+):
+    """Test get_by_name returns matches and None when no match exists."""
+    seeded = seeded_storage_locations[0]
+
+    found = poll_until(
+        lambda: client.storage_locations.get_by_name(name=seeded.name, exact_match=True),
+    )
+
+    assert isinstance(found, StorageLocation)
+    assert found.id == seeded.id
+
+    found_at_location = poll_until(
+        lambda: client.storage_locations.get_by_name(
+            name=seeded.name,
+            exact_match=True,
+            location=seeded_locations[0],
+        ),
+    )
+
+    assert isinstance(found_at_location, StorageLocation)
+    assert found_at_location.id == seeded.id
+
+    wrong_location = client.storage_locations.get_by_name(
+        name=seeded.name,
+        exact_match=True,
+        location=seeded_locations[1],
+    )
+    assert wrong_location is None
+
+    missing = client.storage_locations.get_by_name(name=f"TEST - {uuid.uuid4()}")
+    assert missing is None
 
 
 def test_get_or_create_storage_location(

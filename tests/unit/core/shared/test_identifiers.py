@@ -10,6 +10,11 @@ from albert.core.shared.identifiers import (
     ensure_block_id,
     ensure_data_column_id,
     ensure_datatemplate_id,
+    ensure_design_candidate_id,
+    ensure_design_candidate_set_id,
+    ensure_design_model_config_id,
+    ensure_design_run_id,
+    ensure_design_space_id,
     ensure_interval_id,
     ensure_inventory_id,
     ensure_lot_id,
@@ -28,6 +33,7 @@ from albert.core.shared.identifiers import (
     ensure_unit_family_v4_id,
     ensure_unit_id,
     ensure_unit_v4_id,
+    ensure_view_id,
     ensure_workflow_id,
     ensure_worksheet_id,
 )
@@ -42,6 +48,11 @@ from albert.resources.workflows import Interval, IntervalCombination
         (ensure_tag_id, "TAG", "", "TagId cannot be empty"),
         (ensure_data_column_id, "DAC", "", "DataColumnId cannot be empty"),
         (ensure_datatemplate_id, "DAT", "", "DataTemplateId cannot be empty"),
+        (ensure_design_model_config_id, "DMC", "", "DesignModelConfigId cannot be empty"),
+        (ensure_design_space_id, "DSP", "", "DesignSpaceId cannot be empty"),
+        (ensure_design_run_id, "DSR", "", "DesignRunId cannot be empty"),
+        (ensure_design_candidate_set_id, "DCS", "", "DesignCandidateSetId cannot be empty"),
+        (ensure_design_candidate_id, "DCN", "", "DesignCandidateId cannot be empty"),
         (ensure_propertydata_id, "PTD", "", "PropertyDataId cannot be empty"),
         (ensure_block_id, "BLK", "", "BlockId cannot be empty"),
         (ensure_row_id, "ROW", "", "RowId cannot be empty"),
@@ -55,6 +66,7 @@ from albert.resources.workflows import Interval, IntervalCombination
         (ensure_unit_family_id, "UNF", "", "UnitFamilyId cannot be empty"),
         (ensure_workflow_id, "WFL", "", "WorkflowId cannot be empty"),
         (ensure_worksheet_id, "WKS", "", "WorksheetId cannot be empty"),
+        (ensure_view_id, "VEW", "", "ViewId cannot be empty"),
     ],
 )
 def test_ensure_id_functions(
@@ -74,6 +86,53 @@ def test_ensure_id_functions(
         ensure_func("")
     with pytest.raises(ValueError, match=error_msg):
         ensure_func(None)
+
+
+def test_ensure_design_space_id_keeps_the_uuid_case():
+    uuid = "0b7e2c1a-4f3d-4c8e-9a51-2d6f8b9e1c47"
+    assert ensure_design_space_id(f"DSP{uuid}") == f"DSP{uuid}"
+    assert ensure_design_space_id(f"dsp{uuid}") == f"DSP{uuid}"
+    assert ensure_design_space_id(uuid) == f"DSP{uuid}"
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_design_space_id(f"INV{uuid}")
+
+
+def test_ensure_design_model_config_id_keeps_the_uuid_case():
+    uuid = "0b7e2c1a-4f3d-4c8e-9a51-2d6f8b9e1c47"
+    assert ensure_design_model_config_id(f"DMC{uuid}") == f"DMC{uuid}"
+    assert ensure_design_model_config_id(f"dmc{uuid}") == f"DMC{uuid}"
+    assert ensure_design_model_config_id(uuid) == f"DMC{uuid}"
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_design_model_config_id(f"DSP{uuid}")
+
+
+@pytest.mark.parametrize(
+    ("ensure_func", "prefix"),
+    [
+        (ensure_design_run_id, "DSR"),
+        (ensure_design_candidate_set_id, "DCS"),
+        (ensure_design_candidate_id, "DCN"),
+    ],
+)
+def test_design_run_and_candidate_ids_keep_the_uuid_case(ensure_func, prefix):
+    uuid = "0b7e2c1a-4f3d-4c8e-9a51-2d6f8b9e1c47"
+    assert ensure_func(f"{prefix}{uuid}") == f"{prefix}{uuid}"
+    assert ensure_func(f"{prefix.lower()}{uuid}") == f"{prefix}{uuid}"
+    assert ensure_func(uuid) == f"{prefix}{uuid}"
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_func(f"INV{uuid}")
+
+
+def test_ensure_unit_id_keeps_the_uuid_case():
+    uuid = "550e8400-e29b-41d4-a716-446655440000"
+    dac_uuid = "dac84400-e29b-41d4-a716-446655440000"
+    assert ensure_unit_id(uuid) == uuid
+    assert ensure_unit_id(f"UNI{uuid}") == f"UNI{uuid}"
+    assert ensure_unit_id(f"uni{uuid}") == f"UNI{uuid}"
+    assert ensure_unit_id(f"UNI{dac_uuid}") == f"UNI{dac_uuid}"
+    assert ensure_unit_id("uni42") == "UNI42"
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_unit_id(f"INV{uuid}")
 
 
 def test_ensure_lot_id_display_format():
@@ -126,14 +185,11 @@ def test_ensure_interval_id():
 
     assert ensure_row_id("row123Xrow456") == "ROW123XROW456"
 
-    with pytest.raises(ValueError, match="Must be a ROW chain"):
-        ensure_interval_id("123")
 
-    with pytest.raises(ValueError, match="Must be a ROW chain"):
-        ensure_interval_id("123X456")
-
-    with pytest.raises(ValueError, match="Must be a ROW chain"):
-        ensure_interval_id("ROW123XROW456X")
+@pytest.mark.parametrize("interval_id", ["INNR4wxUsM0", "123", "123X456", "ROW123XROW456X"])
+def test_ensure_interval_id_passes_unrecognized_forms_through_unchanged(interval_id):
+    """Test that interval IDs in a form the SDK does not recognize are kept as given."""
+    assert ensure_interval_id(interval_id) == interval_id
 
 
 @pytest.mark.parametrize(
@@ -365,3 +421,27 @@ def test_worker_job_metadata_preserves_child_workflow_fields():
     assert dumped["newWorkflowId"] == "WFL383358"
     assert dumped["oldWorkflowId"] == "WFL375193"
     assert dumped["parentType"] == "TAS"
+
+
+_UUID_ID_FUNCTIONS = [
+    (ensure_design_space_id, "DSP"),
+    (ensure_design_model_config_id, "DMC"),
+    (ensure_design_run_id, "DSR"),
+    (ensure_design_candidate_set_id, "DCS"),
+    (ensure_design_candidate_id, "DCN"),
+]
+
+
+@pytest.mark.parametrize(("ensure_func", "prefix"), _UUID_ID_FUNCTIONS)
+def test_uuid_ids_prefix_a_bare_uuid_that_starts_like_another_prefix(ensure_func, prefix):
+    """Test that a bare uuid starting with another entity's prefix is still read as bare."""
+    uuid = "dac84400-e29b-41d4-a716-446655440000"
+
+    assert ensure_func(uuid) == f"{prefix}{uuid}"
+
+
+@pytest.mark.parametrize(("ensure_func", "prefix"), _UUID_ID_FUNCTIONS)
+def test_uuid_ids_still_reject_another_entitys_id(ensure_func, prefix):
+    """Test that an ID carrying another entity's prefix is rejected."""
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_func("INV123")

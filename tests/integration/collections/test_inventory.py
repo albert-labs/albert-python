@@ -1,3 +1,4 @@
+import time
 from contextlib import suppress
 from uuid import uuid4
 
@@ -8,7 +9,7 @@ from albert.collections.inventory import InventoryCategory
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import ensure_inventory_id
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import BadRequestError, NotFoundError
+from albert.exceptions import AlbertPartialError, BadRequestError, NotFoundError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import FieldType, ServiceType
@@ -19,6 +20,7 @@ from albert.resources.inventory import (
     InventoryUnitCategory,
 )
 from albert.resources.lots import Lot
+from albert.resources.projects import Project
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.tags import Tag
 from albert.resources.users import User
@@ -288,6 +290,29 @@ def test_get_by_id_preserves_metadata_list_item_names(
         client.inventory.delete(id=created.id)
 
 
+def test_reactivate_inventory(client: Albert, seed_prefix: str, seeded_companies: list[Company]):
+    """Test reactivating a deleted inventory item restores access."""
+    created = client.inventory.create(
+        inventory_item=InventoryItem(
+            name=f"{seed_prefix} - Reactivate {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+        ),
+        avoid_duplicates=False,
+    )
+    try:
+        client.inventory.delete(id=created.id)
+        with pytest.raises(NotFoundError):
+            client.inventory.get_by_id(id=created.id)
+
+        reactivated = client.inventory.reactivate(id=created.id)
+        assert reactivated.id == created.id
+        assert reactivated.status == "active"
+    finally:
+        with suppress(NotFoundError):
+            client.inventory.delete(id=created.id)
+
+
 def test_get_by_ids(client: Albert, seeded_inventory):
     # Use this worker's seeded IDs directly; a search round-trip would race other
     # workers' teardown deletes and fuzzy text matching
@@ -315,22 +340,38 @@ def test_inventory_update(client: Albert, seed_prefix: str, seeded_inventory: li
     assert updated.id == inventory_item.id
 
 
-def test_collection_blocks_formulation(client: Albert, seeded_projects):
-    """assert that trying to create a FORMULATION with a collection block raises an error"""
-
-    # create a formulation with the collection block
-    with pytest.raises(NotImplementedError):
-        r = client.inventory.create(
+def test_create_formula_inventory_item(client: Albert, seed_prefix: str, seeded_locations):
+    """Test creating a Formula inventory item under a Project."""
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - Formula parent project",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+        )
+    )
+    formula = None
+    try:
+        formula = client.inventory.create(
             inventory_item=InventoryItem(
-                name="test formulation",
+                name=f"{seed_prefix} - Test Formula",
                 category=InventoryCategory.FORMULAS,
-                project_id=seeded_projects[0].id,
+                project_id=project.id,
             )
         )
-
-        # delete the collection block in case it was created
-        client.inventory.delete(r)
-        assert not client.inventory.exists(r.id)
+        assert formula.id is not None
+        assert formula.category == InventoryCategory.FORMULAS
+        assert formula.project_id == project.id
+        assert formula.unit_category == InventoryUnitCategory.MASS
+    finally:
+        # A Formula can only be deleted once its parent Project is deleted.
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+        if formula is not None:
+            for _ in range(5):
+                try:
+                    client.inventory.delete(id=formula.id)
+                    break
+                except BadRequestError:
+                    time.sleep(1)
 
 
 def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryItem]):
@@ -412,6 +453,27 @@ def test_update_many_inventory_items(client: Albert, seeded_inventory: list[Inve
     assert set(updated_by_id) == {item.id for item in items}
     for i, item in enumerate(items):
         assert updated_by_id[item.id].description == f"update_many description {i}"
+
+
+def test_update_many_inventory_items_tags_and_company(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seeded_companies: list[Company],
+    seeded_tags: list[Tag],
+):
+    """Test update_many applies tag and company changes in one call."""
+    items = seeded_inventory[:2]
+    to_update = [
+        items[0].model_copy(update={"company": seeded_companies[1], "tags": [seeded_tags[1]]}),
+        items[1].model_copy(update={"tags": [seeded_tags[2]]}),
+    ]
+
+    updated = client.inventory.update_many(inventory_items=to_update)
+
+    updated_by_id = {item.id: item for item in updated}
+    assert updated_by_id[items[0].id].company.id == seeded_companies[1].id
+    assert {t.id for t in updated_by_id[items[0].id].tags} == {seeded_tags[1].id}
+    assert {t.id for t in updated_by_id[items[1].id].tags} == {seeded_tags[2].id}
 
 
 def test_update_inventory_item_advanced_attributes(
@@ -591,6 +653,122 @@ def test_create_volume_inventory_item(
     finally:
         with suppress(NotFoundError, BadRequestError):
             client.inventory.delete(id=created.id)
+
+
+def test_create_many_inventory_items(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+    seeded_tags: list[Tag],
+    seeded_cas: list[Cas],
+):
+    """Test creating multiple inventory items in one call, including a volume item."""
+    items = [
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Salt {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0],
+            cas=[CasAmount(id=seeded_cas[0].id, min=0.5, max=1.0)],
+            tags=[seeded_tags[0]],
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Gloves {uuid4()}",
+            category=InventoryCategory.CONSUMABLES,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[1],
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Balance {uuid4()}",
+            category=InventoryCategory.EQUIPMENT,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0].name,  # unresolved name resolves to the company
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Solvent {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.VOLUME,
+            density=0.785,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0],
+        ),
+    ]
+    created: list[InventoryItem] = []
+    try:
+        created = client.inventory.create_many(inventory_items=items)
+        assert [item.name for item in created] == [item.name for item in items]
+        assert all(item.id is not None for item in created)
+        assert created[0].cas[0].id == seeded_cas[0].id
+        assert created[0].tags[0].id == seeded_tags[0].id
+        assert created[2].company.id == seeded_companies[0].id
+        assert created[3].unit_category == InventoryUnitCategory.VOLUME
+        refetched_solvent = client.inventory.get_by_id(id=created[3].id)
+        assert refetched_solvent.density is not None
+        assert refetched_solvent.density.value == pytest.approx(0.785)
+    finally:
+        for item in created:
+            with suppress(NotFoundError, BadRequestError):
+                client.inventory.delete(id=item.id)
+
+
+def test_create_many_inventory_items_partial_failure(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+):
+    """Test that a partially failing bulk create raises AlbertPartialError with per-item results."""
+    items = [
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Good {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Bad {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+            tags=[Tag(id="TAG0_DOES_NOT_EXIST", tag=f"{seed_prefix} - bogus")],
+        ),
+    ]
+    with pytest.raises(AlbertPartialError) as exc_info:
+        client.inventory.create_many(inventory_items=items)
+    error = exc_info.value
+    created_id = None
+    try:
+        assert len(error.created_items) == 1
+        assert error.created_items[0]["index"] == 0
+        created_id = error.created_items[0].get("albertId") or error.created_items[0].get("id")
+        assert created_id is not None
+        assert len(error.failed_items) == 1
+        assert error.failed_items[0]["index"] == 1
+        assert error.failed_items[0]["name"] == items[1].name
+    finally:
+        if created_id is not None:
+            with suppress(NotFoundError, BadRequestError):
+                client.inventory.delete(id=created_id)
+
+
+def test_create_many_inventory_items_all_failed(
+    client: Albert,
+    seed_prefix: str,
+):
+    """Test that an all-failed bulk create reports every failure against its input position."""
+    items = [
+        InventoryItem(
+            name=f"{seed_prefix} - Bulk Missing Company {index}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=Company(id="COM0_DOES_NOT_EXIST", name="Missing"),
+        )
+        for index in range(301)
+    ]
+
+    with pytest.raises(AlbertPartialError) as exc_info:
+        client.inventory.create_many(inventory_items=items)
+
+    error = exc_info.value
+    assert error.created_items == []
+    assert [entry["index"] for entry in error.failed_items] == list(range(301))
+    assert "partially succeeded" not in str(error)
 
 
 def test_update_rejects_unit_category_change_to_volume(

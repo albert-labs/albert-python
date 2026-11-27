@@ -44,12 +44,15 @@ class SecurityClass(str, Enum):
         Access is limited to designated users only.
     PRIVATE : str
         Visible only to the owner. Used by Projects.
+    PUBLIC : str
+        Accessible publicly. Returned by Parameter Groups.
     """
 
     SHARED = "shared"
     RESTRICTED = "restricted"
     CONFIDENTIAL = "confidential"
     PRIVATE = "private"
+    PUBLIC = "public"
 
 
 class PaginationMode(str, Enum):
@@ -61,7 +64,11 @@ class PaginationMode(str, Enum):
         Offset-based pagination using a numeric skip value.
     KEY : str
         Cursor-based pagination using an opaque ``startKey`` / ``lastKey`` pair.
+    SEARCH_AFTER : str
+        Cursor-based search pagination using a ``searchAfter`` / ``nextSearchAfter`` pair
+        of sort values, with no cap on how deep results can be read.
     """
 
     OFFSET = "offset"
     KEY = "key"
+    SEARCH_AFTER = "search_after"

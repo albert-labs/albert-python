@@ -2,14 +2,29 @@
 
 Tasks in Albert are a way to manage and track your daily work and collaborate with colleagues. There are three types of tasks: Batch Tasks, Property Tasks, and General Tasks.
 
-## Intervals, Rules, and Overrides Overview (🧪 Beta)
+## Intervals, Rules, and Overrides Overview
 
-!!! warning "Beta Feature!"
-    Increased intervals combination support is currently in beta and behind a platform feature flag.
-    Please do not use in production or without explicit guidance from Albert. This feature currently
-    falls outside of the Albert support contract, but we'd love your feedback!
+### Which method should I use?
 
-When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] blocks, Albert manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
+| Action | Increased intervals not enabled | Increased intervals enabled |
+| --- | --- | --- |
+| Create a General task | `create` | `create` |
+| Create a Property or Batch task with blocks | `create` | `create`, or `create_with_combinations` to set rules or overrides |
+| Create several Property or Batch tasks | `create_many` | `create_many` |
+| Add a block | `add_block` / `add_blocks` | `add_block` / `add_blocks` |
+| Change a block's workflow | `update_block_workflow` | `update_block_workflow` |
+| Remove a block | `remove_block` | `remove_block` |
+
+When increased intervals is enabled, every Property and Batch task block needs its combinations
+generated before it can hold results, even when its workflow has no intervals. `create`,
+`create_many`, `add_block`, `add_blocks`, and `update_block_workflow` generate them before they
+return; pass `wait=False` to return as soon as generation has started. Call
+[`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+yourself only to retry after a
+`CombinationGenerationError` or after saving
+rules with `generate_combinations=False`.
+
+When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] and [`BatchTask`][albert.resources.tasks.BatchTask] blocks, Albert manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
 
 ### What are intervals?
 
@@ -120,7 +135,7 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
     - [`workflow.build_override`][albert.resources.workflows.Workflow.build_override]: Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride] directly from a dictionary of parameter names and values (e.g. `workflow.build_override(parameter_values={"Temperature": 25, "Speed": 2000}, action="skip")`).
 
 !!! warning "Property Tasks only"
-    Child-workflow interval combinations are exclusively supported on [`PropertyTask`][albert.resources.tasks.PropertyTask]. They cannot be created or evaluated on [`BatchTask`][albert.resources.tasks.BatchTask] or [`GeneralTask`][albert.resources.tasks.GeneralTask].
+    Child-workflow interval combinations are supported on [`PropertyTask`][albert.resources.tasks.PropertyTask] and [`BatchTask`][albert.resources.tasks.BatchTask]. They cannot be created or evaluated on a [`GeneralTask`][albert.resources.tasks.GeneralTask].
 
 !!! warning "Platform combinations cap"
     The platform enforces a maximum safety cap of 2,000 combinations per block. If your parameter intervals expand to more than 2,000 combinations (after applying rules and overrides), creation will fail.
@@ -317,6 +332,39 @@ In this workflow:
         print(combo.id, combo.name, combo.interval_barcode)
     ```
 
+## Create an intervalized Batch task
+
+[`BatchTask`][albert.resources.tasks.BatchTask] blocks support combinations the same way Property task blocks do, including `intervals_start_from`, rules, and overrides. Use [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations] to set rules or overrides on the blocks; `create` also generates each block's combinations, without them.
+
+!!! example "Create a Batch task with an intervalized workflow"
+    ```python
+    from albert import Albert
+    from albert.resources.tasks import BatchSizeUnit, BatchTask, Block, TaskInventoryInformation
+
+    client = Albert()
+
+    task = client.tasks.create_with_combinations(
+        task=BatchTask(
+            name="Mixing speed batch",
+            parent_id="PRO123",
+            batch_size_unit=BatchSizeUnit.GRAMS,
+            inventory_information=[
+                TaskInventoryInformation(inventory_id="INVEXP123", batch_size=50.0)
+            ],
+            blocks=[
+                Block(
+                    data_template=[{"id": "DAT100"}],
+                    workflow=[{"id": "WFL456"}],
+                )
+            ],
+        ),
+        wait=True,
+    )
+    block_id = task.blocks[0].id
+    for combo in client.tasks.get_block_combinations(task_id=task.id, block_id=block_id):
+        print(combo.id, combo.name, combo.interval_barcode)
+    ```
+
 ## Modify rules and regenerate combinations on an existing task
 
 You can update rules and overrides on an existing task block at any time using [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]. By default, the SDK automatically recalculates the Cartesian product and regenerates child-workflow combinations on Albert.
@@ -374,7 +422,7 @@ You can update rules and overrides on an existing task block at any time using [
     - The same convention applies to `overrides`.
 
 !!! note "Workflow replacement (swapping workflows)"
-    If you swap a block's workflow using [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow], pass the **replaced** workflow ID as `old_workflow_id` when calling [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations] so the platform archives the old child workflows and provisions the new ones cleanly.
+    [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] regenerates the block's combinations for the new workflow. Each combination of the new workflow keeps the interval barcode and results of its best-matching combination in the replaced workflow. Old combinations that are not carried forward are removed. There is no need to pass `old_workflow_id` to [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]: the platform finds the block's earlier workflow itself.
 
 ## Import results
 

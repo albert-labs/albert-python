@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -9,7 +10,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ParameterId
 from albert.core.utils import ensure_list
-from albert.resources.parameters import Parameter
+from albert.resources.parameters import Parameter, ParameterSearchItem
 
 
 class ParameterCollection(BaseCollection):
@@ -59,6 +60,8 @@ class ParameterCollection(BaseCollection):
         Get many parameters by their IDs.
     get_all(...) -> Iterator[Parameter]
         Search for parameters by name or ID.
+    search(...) -> Iterator[ParameterSearchItem]
+        Search for parameters using free text and advanced filters.
     update(parameter) -> Parameter
         Update an existing parameter.
     delete(id) -> None
@@ -223,6 +226,112 @@ class ParameterCollection(BaseCollection):
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
+
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        ids: ParameterId | list[ParameterId] | None = None,
+        created_by: str | list[str] | None = None,
+        data_template: str | list[str] | None = None,
+        parameter_group: str | list[str] | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
+        translation: str | list[str] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[ParameterSearchItem]:
+        """Search for parameters matching the given filters.
+
+        Returns lightweight, partially populated results. Results are returned as a lazily
+        paginated iterator, so iterating fetches additional pages on demand. With no filters,
+        searches across all accessible parameters.
+
+        !!! example
+            ```python
+            hits = client.parameters.search(text="temperature", max_items=10)
+            for hit in hits:
+                print(hit.id, hit.name)
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text query matched against parameter fields.
+        ids : ParameterId or list[ParameterId], optional
+            Filter by Parameter ID(s) (format ``PRM...``).
+        created_by : str or list[str], optional
+            Filter by creator display name(s).
+        data_template : str or list[str], optional
+            Filter by data template name(s).
+        parameter_group : str or list[str], optional
+            Filter by parameter group name(s).
+        contains_field : str or list[str], optional
+            Field(s) to apply a contains search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the contains search.
+        source_field : str or list[str], optional
+            Restrict which fields are included in each search result.
+        additional_field : str or list[str], optional
+            Additional fields to include on each search result.
+        translation : str or list[str], optional
+            Translation(s) to include in the search.
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values, keyed by field name. For string fields,
+            map the name to a list of values, for example ``{"batchCode": ["B-100"]}``.
+            Multiple values on one field match any of them; different fields must all match.
+        custom_fields : dict[str, Any], optional
+            Custom field type definitions used to interpret ``metadata_filters``, keyed by
+            field name, for example ``{"batchCode": "string"}``.
+        order_by : OrderBy, optional
+            Sort direction. Default ``OrderBy.DESCENDING``.
+        sort_by : str, optional
+            Attribute to sort results by.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all matches.
+
+        Returns
+        -------
+        Iterator[ParameterSearchItem]
+            A lazily paginated iterator of matching parameter search results.
+        """
+        payload: dict[str, Any] = {
+            "text": text,
+            "albertId": ensure_list(ids),
+            "order": order_by,
+            "sortBy": sort_by,
+            "createdBy": ensure_list(created_by),
+            "dataTemplate": ensure_list(data_template),
+            "parameterGroup": ensure_list(parameter_group),
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "sourceField": ensure_list(source_field),
+            "additionalField": ensure_list(additional_field),
+            "translation": ensure_list(translation),
+        }
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
+
+        return AlbertPaginator(
+            mode=PaginationMode.SEARCH_AFTER,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            method="POST",
+            retry_safe=True,
+            json=payload,
+            max_items=max_items,
+            deserialize=lambda items: [
+                ParameterSearchItem(**item)._bind_collection(self) for item in items
+            ],
+        )
 
     @validate_call
     def get_all(

@@ -3,20 +3,24 @@
 from __future__ import annotations
 
 import math
+import warnings
 from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
 from albert.core.shared.models.patch import PatchOperation
+from albert.resources.interval_combinations import IntervalCombinationItem
 from albert.resources.property_data import (
     DataInterval,
+    ImagePropertyValue,
     PropertyData,
     PropertyDataInventoryInformation,
     PropertyValue,
     TaskDataColumn,
     TaskPropertyCreate,
     TaskPropertyData,
+    TaskPropertyRecord,
     Trial,
 )
 from albert.resources.tasks import Block, PropertyTask
@@ -36,16 +40,21 @@ from albert.utils.property_data import (
     evaluate_calculation,
     flatten_task_property_data,
     form_calculated_task_property_patches,
+    form_existing_row_value_patches,
     generate_data_patch_payload,
     get_all_columns_used_in_calculations,
     get_columns_used_in_calculation,
     get_on_platform_row,
+    is_child_workflow_interval,
     map_block_final_workflows,
+    needs_stored_interval_ids,
     prepare_new_task_property,
     resolve_data_template_id,
     resolve_return_scope,
     resolve_trial_number,
     trial_has_recorded_data,
+    use_stored_interval_ids,
+    warn_on_duplicate_task_property_targets,
 )
 
 # ---------------------------------------------------------------------------
@@ -214,6 +223,41 @@ def test_resolve_return_scope_none_returns_empty_list():
 
 
 # ---------------------------------------------------------------------------
+# warn_on_duplicate_task_property_targets
+# ---------------------------------------------------------------------------
+
+
+def _task_prop(**kwargs) -> TaskPropertyCreate:
+    kwargs.setdefault("data_column", TaskDataColumn(data_column_id="DAC1", column_sequence="1"))
+    kwargs.setdefault("value", "1")
+    return TaskPropertyCreate(**kwargs)
+
+
+def test_duplicate_task_property_targets_warn_for_values_defaulting_to_trial_one():
+    """Test that two values for one column with no trial number produce a warning."""
+    with pytest.warns(UserWarning, match="visible_trial_number=1"):
+        warn_on_duplicate_task_property_targets(
+            properties=[_task_prop(value="1"), _task_prop(value="2")]
+        )
+
+
+@pytest.mark.parametrize(
+    "second",
+    [
+        _task_prop(visible_trial_number=2),
+        _task_prop(interval_combination="ROW2"),
+        _task_prop(data_column=TaskDataColumn(data_column_id="DAC2", column_sequence="2")),
+        _task_prop(data_column=TaskDataColumn(data_column_id="DAC1", column_sequence="3")),
+    ],
+)
+def test_distinct_task_property_targets_do_not_warn(second):
+    """Test that values differing in trial, interval or column do not warn."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        warn_on_duplicate_task_property_targets(properties=[_task_prop(), second])
+
+
+# ---------------------------------------------------------------------------
 # resolve_data_template_id
 # ---------------------------------------------------------------------------
 
@@ -336,6 +380,87 @@ def test_df_to_task_prop_create_list_raises_for_missing_column():
 
 
 # ---------------------------------------------------------------------------
+# needs_stored_interval_ids / use_stored_interval_ids
+# ---------------------------------------------------------------------------
+
+
+def _block_storing(*intervals: str) -> TaskPropertyData:
+    data = [
+        DataInterval(interval_combination=interval, trials=[Trial(trial_number=1)])
+        for interval in intervals
+    ]
+    return TaskPropertyData(parent_id="TAS1", block_id="BLK1", data=data)
+
+
+_COMBINATIONS = [
+    IntervalCombinationItem(
+        id="WFL11", interval_row_key="ROW1XROW3", interval_barcode="INab12CD34e"
+    ),
+    IntervalCombinationItem(
+        id="WFL12", interval_row_key="ROW2XROW3", interval_barcode="INzz99YY88x"
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("stored", "interval", "expected"),
+    [
+        pytest.param(("WFL11",), "ROW1XROW3", True, id="row-chain-on-child-workflow-block"),
+        pytest.param(("WFL11",), "INab12CD34e", True, id="barcode-on-child-workflow-block"),
+        pytest.param(("WFL11",), "WFL11", False, id="stored-child-workflow"),
+        pytest.param(("WFL11",), "WFL12", False, id="child-workflow-not-stored-yet"),
+        pytest.param(("ROW1XROW3",), "ROW2XROW3", False, id="block-stores-row-chains"),
+    ],
+)
+def test_needs_stored_interval_ids(stored: tuple[str, ...], interval: str, expected: bool):
+    """Test that only a non-child-workflow form on a child-workflow block needs resolving."""
+    needs = needs_stored_interval_ids(
+        properties=[_make_prop(interval=interval)], existing_data_rows=_block_storing(*stored)
+    )
+
+    assert needs is expected
+
+
+@pytest.mark.parametrize(
+    "interval",
+    [
+        pytest.param("ROW1XROW3", id="row-chain"),
+        pytest.param("row1xrow3", id="lowercase-row-chain"),
+        pytest.param("INab12CD34e", id="barcode"),
+    ],
+)
+def test_use_stored_interval_ids_switches_to_the_stored_child_workflow(interval: str):
+    """Test that a ROW chain or barcode of a stored combination becomes its child workflow ID."""
+    resolved = use_stored_interval_ids(
+        properties=[_make_prop(trial_number=1, interval=interval)],
+        existing_data_rows=_block_storing("WFL11"),
+        combinations=_COMBINATIONS,
+    )
+
+    assert resolved == [_make_prop(trial_number=1, interval="WFL11")]
+
+
+@pytest.mark.parametrize(
+    "interval",
+    [
+        pytest.param("ROW2XROW3", id="combination-not-stored"),
+        pytest.param("INAB12CD34E", id="barcode-other-case"),
+        pytest.param("ROW9", id="unknown-row-chain"),
+        pytest.param("WFL11", id="already-stored"),
+    ],
+)
+def test_use_stored_interval_ids_keeps_other_intervals(interval: str):
+    """Test that intervals with no stored child workflow to switch to are left as given."""
+    resolved = use_stored_interval_ids(
+        properties=[_make_prop(trial_number=1, interval=interval)],
+        existing_data_rows=_block_storing("WFL11"),
+        combinations=_COMBINATIONS,
+    )
+
+    assert resolved == [_make_prop(trial_number=1, interval=interval)]
+
+
+# ---------------------------------------------------------------------------
 # trial_has_recorded_data
 # ---------------------------------------------------------------------------
 
@@ -452,6 +577,112 @@ def test_prepare_new_task_property_returns_unchanged_for_unset_trial_number_on_p
     result = prepare_new_task_property(prop=prop, existing_data_rows=existing, trial_number=1)
 
     assert result is prop
+
+
+def test_prepare_new_task_property_uses_stored_trial_number():
+    """Test that a new column on a filled row is addressed by the stored trial number."""
+    prop = _make_prop(trial_number=1)
+    prop = prop.model_copy(
+        update={"data_column": TaskDataColumn(data_column_id="DAC2", column_sequence="COL2")}
+    )
+    trial = Trial(
+        trial_number=1,
+        back_end_trial_number="5",
+        data_columns=[
+            PropertyValue(
+                id="DAC1",
+                sequence="COL1",
+                data_column_unique_id="DAC1#COL1",
+                property_data=PropertyData(id="PTD1", value="filled"),
+            )
+        ],
+    )
+    existing = TaskPropertyData(
+        parent_id="TAS1",
+        data=[DataInterval(interval_combination="default", trials=[trial])],
+    )
+
+    result = prepare_new_task_property(prop=prop, existing_data_rows=existing, trial_number=1)
+
+    assert result.trial_number == 5
+
+
+def test_empty_image_cell_with_id_is_patched(monkeypatch: pytest.MonkeyPatch):
+    """Test that an image write updates an existing empty cell instead of creating one."""
+    monkeypatch.setattr(
+        "albert.utils.property_data.resolve_image_property_value",
+        lambda **kwargs: {"fileName": "a.png", "s3Key": {"original": "k"}},
+    )
+    trial = Trial(
+        trial_number=1,
+        data_columns=[
+            PropertyValue(
+                id="DAC1",
+                sequence="COL1",
+                data_column_unique_id="DAC1#COL1",
+                property_data=PropertyData(id="PTD1", value="filled"),
+            ),
+            PropertyValue(
+                id="DAC2",
+                sequence="COL2",
+                property_data=PropertyData(id="PTD2", value=None),
+            ),
+        ],
+    )
+    existing = TaskPropertyData(
+        parent_id="TAS1",
+        data=[DataInterval(interval_combination="default", trials=[trial])],
+    )
+    prop = TaskPropertyCreate(
+        interval_combination="default",
+        data_column=TaskDataColumn(data_column_id="DAC2", column_sequence="COL2"),
+        value=ImagePropertyValue(file_path="a.png"),
+        trial_number=1,
+    )
+
+    patches, new = form_existing_row_value_patches(
+        session=SimpleNamespace(),
+        task_id="TAS1",
+        block_id="BLK1",
+        existing_data_rows=existing,
+        properties=[prop],
+    )
+
+    assert new == []
+    assert [(p.property_column_id, p.operation, p.new_value["fileName"]) for p in patches] == [
+        ("PTD2", PatchOperation.UPDATE, "a.png")
+    ]
+
+
+def test_unchanged_scalar_on_existing_cell_is_left_alone():
+    """Test that writing the current value does not create a new cell or a patch."""
+    existing = _property_data(
+        [
+            PropertyValue(
+                id="DAC1",
+                sequence="COL1",
+                data_column_unique_id="DAC1#COL1",
+                property_data=PropertyData(id="PTD1", value="1"),
+            )
+        ]
+    )
+    prop = TaskPropertyCreate(
+        interval_combination="default",
+        data_column=TaskDataColumn(data_column_id="DAC1", column_sequence="COL1"),
+        value="1",
+        trial_number=1,
+    )
+
+    patches, new = form_existing_row_value_patches(
+        session=SimpleNamespace(),
+        task_id="TAS1",
+        block_id="BLK1",
+        existing_data_rows=existing,
+        properties=[prop],
+    )
+
+    assert patches == []
+    assert new == []
 
 
 # ---------------------------------------------------------------------------
@@ -975,6 +1206,41 @@ def test_build_interval_setpoint_map_cartesian_combination_includes_fixed_setpoi
     assert result["ROW1XROW3"] == {"Pressure": "1atm", "Temp": "25", "Speed": "100"}
 
 
+def test_build_interval_setpoint_map_resolves_interval_ids_the_workflow_does_not_list():
+    """Test that extra ROW chains resolve when the workflow lists no combinations."""
+    workflow = Workflow(
+        id="WFL1",
+        parameter_group_setpoints=[
+            ParameterGroupSetpoints(
+                id="PRG1",
+                parameter_setpoints=[
+                    ParameterSetpoint(parameter_id="PRM1", name="Pressure", value="1atm"),
+                    ParameterSetpoint(
+                        parameter_id="PRM2",
+                        name="Temp",
+                        intervals=[Interval(value="25", row_id="ROW1")],
+                    ),
+                    ParameterSetpoint(
+                        parameter_id="PRM3",
+                        name="Speed",
+                        intervals=[Interval(value="100", row_id="ROW3")],
+                    ),
+                ],
+            )
+        ],
+        interval_combinations=None,
+    )
+
+    result = build_interval_setpoint_map(workflow=workflow, interval_ids=["ROW1XROW3"])
+
+    assert result == {
+        "default": {"Pressure": "1atm"},
+        "ROW1": {"Pressure": "1atm", "Temp": "25"},
+        "ROW3": {"Pressure": "1atm", "Speed": "100"},
+        "ROW1XROW3": {"Pressure": "1atm", "Temp": "25", "Speed": "100"},
+    }
+
+
 def test_build_interval_setpoint_map_skips_unresolvable_interval_id():
     """Test that an interval id referencing an unknown row is left out of the map."""
     workflow = Workflow(
@@ -1147,6 +1413,119 @@ def test_flatten_task_property_data_produces_one_record_per_column():
 
     # falls back to property_data.value when column.value is None
     assert second.value == "99"
+
+
+def _child_workflow_block(interval_id: str) -> TaskPropertyData:
+    """Build a one-value block whose interval is reported as ``interval_id``."""
+    col = PropertyValue(name="Viscosity", id="DAC1", sequence="COL1", value="5")
+    trial = Trial(trial_number=1, data_columns=[col])
+    interval = DataInterval(interval_combination=interval_id, trials=[trial], name="Raw")
+    return TaskPropertyData(parent_id="TAS1", block_id="BLK1", data=[interval])
+
+
+def _expected_record(**overrides) -> TaskPropertyRecord:
+    """Build the record `_child_workflow_block` flattens to, with ``overrides`` applied."""
+    fields = {
+        "task_id": "TAS1",
+        "block_id": "BLK1",
+        "interval_description": "Raw",
+        "trial_number": 1,
+        "visible_trial_number": 1,
+        "data_column_id": "DAC1",
+        "data_column_name": "Viscosity",
+        "sequence": "COL1",
+        "value": "5",
+        "workflow_id": "WFL1",
+    }
+    return TaskPropertyRecord(**{**fields, **overrides})
+
+
+def test_flatten_task_property_data_maps_child_workflow_interval_to_row_key():
+    """Test that a child workflow interval keeps its ID and gains its ROW chain and setpoints."""
+    block = _child_workflow_block("WFL1001")
+
+    records = flatten_task_property_data(
+        block=block,
+        task_id="TAS1",
+        workflow_id="WFL1",
+        workflow_name=None,
+        interval_setpoints={"ROW1XROW3": {"Temp": "25", "Speed": "100"}},
+        interval_descriptions={"WFL1001": "Temp: 25, Speed: 100"},
+        interval_row_keys={"WFL1001": "ROW1XROW3"},
+    )
+
+    assert records == [
+        _expected_record(
+            interval_combination="WFL1001",
+            interval_row_key="ROW1XROW3",
+            parameter_setpoints={"Temp": "25", "Speed": "100"},
+            interval_description="Temp: 25, Speed: 100",
+        )
+    ]
+
+
+def test_flatten_task_property_data_keeps_unmapped_child_workflow_interval():
+    """Test that a child workflow interval with no known ROW chain gets no row key."""
+    block = _child_workflow_block("WFL1002")
+
+    records = flatten_task_property_data(
+        block=block,
+        task_id="TAS1",
+        workflow_id="WFL1",
+        workflow_name=None,
+        interval_setpoints={"ROW1XROW3": {"Temp": "25"}},
+        interval_descriptions={},
+        interval_row_keys={"WFL1001": "ROW1XROW3"},
+    )
+
+    assert records == [_expected_record(interval_combination="WFL1002", interval_row_key=None)]
+
+
+@pytest.mark.parametrize(
+    ("interval_id", "row_key"),
+    [
+        pytest.param("ROW1", "ROW1", id="row-chain"),
+        pytest.param("ROW1XROW3", "ROW1XROW3", id="row-chain-pair"),
+        pytest.param("default", None, id="default"),
+    ],
+)
+def test_flatten_task_property_data_row_key_for_legacy_interval(interval_id, row_key):
+    """Test that a ROW chain is its own row key, default has none, and setpoints are kept."""
+    block = _child_workflow_block(interval_id)
+
+    records = flatten_task_property_data(
+        block=block,
+        task_id="TAS1",
+        workflow_id="WFL1",
+        workflow_name=None,
+        interval_setpoints={interval_id: {"Temp": "25"}},
+        interval_descriptions={},
+    )
+
+    assert records == [
+        _expected_record(
+            interval_combination=interval_id,
+            interval_row_key=row_key,
+            parameter_setpoints={"Temp": "25"},
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("interval_id", "expected"),
+    [
+        pytest.param("WFL413364", True, id="child-workflow"),
+        pytest.param("ROW3XROW6", False, id="row-chain"),
+        pytest.param("default", False, id="default"),
+        pytest.param("OhI8ap0HY", False, id="barcode"),
+        pytest.param("WFLabc", False, id="wfl-prefix-not-an-id"),
+        pytest.param("", False, id="empty"),
+        pytest.param(None, False, id="none"),
+    ],
+)
+def test_is_child_workflow_interval(interval_id, expected):
+    """Test that only child workflow IDs are recognised as child workflow intervals."""
+    assert is_child_workflow_interval(interval_id) is expected
 
 
 def test_flatten_task_property_data_falls_back_to_interval_name_for_description():

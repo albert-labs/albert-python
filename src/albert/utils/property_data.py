@@ -8,7 +8,8 @@ import mimetypes
 import operator
 import re
 import uuid
-from collections.abc import Callable
+import warnings
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -22,8 +23,10 @@ from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import AttachmentId, BlockId, DataTemplateId, TaskId
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchOperation
+from albert.core.utils import find_stack_level
 from albert.resources.data_templates import CurveDBMetadata, ImportMode, StorageKeyReference
 from albert.resources.files import FileNamespace
+from albert.resources.interval_combinations import IntervalCombinationItem
 from albert.resources.property_data import (
     CurvePropertyValue,
     CurvePropertyValuePayload,
@@ -254,6 +257,40 @@ def resolve_curve_property_value(
     return value.model_dump(by_alias=True, mode="json", exclude_none=True)
 
 
+def warn_on_duplicate_task_property_targets(*, properties: list[TaskPropertyCreate]) -> None:
+    """Warn if two values in one batch target the same cell.
+
+    A cell is identified by interval, data column, column sequence and visible trial
+    number. Values that share a cell would overwrite each other, which most often
+    happens when several values for one column leave ``visible_trial_number`` unset
+    and all default to trial 1.
+    """
+    seen: set[tuple] = set()
+    duplicates: list[str] = []
+    for prop in properties:
+        key = (
+            prop.interval_combination,
+            prop.data_column.data_column_id,
+            prop.data_column.column_sequence,
+            prop.visible_trial_number,
+        )
+        if key in seen:
+            duplicates.append(
+                f"interval={key[0]}, data_column={key[1]}, "
+                f"column_sequence={key[2]}, visible_trial_number={key[3]}"
+            )
+        seen.add(key)
+    if duplicates:
+        warnings.warn(
+            "More than one value targets the same interval and trial for a data column, "
+            "so one overwrites the other: "
+            + "; ".join(duplicates)
+            + ". Give each value a distinct visible_trial_number to keep them all.",
+            UserWarning,
+            stacklevel=find_stack_level(),
+        )
+
+
 def resolve_data_template_id(*, prop: TaskPropertyCreate) -> DataTemplateId:
     """Extract the data template id from a task property."""
     data_template = prop.data_template
@@ -364,6 +401,62 @@ def _df_to_task_prop_create_list(
     return task_prop_create_list
 
 
+def _stored_intervals(*, existing_data_rows: TaskPropertyData) -> set[str]:
+    return {interval.interval_combination for interval in existing_data_rows.data}
+
+
+def needs_stored_interval_ids(
+    *, properties: list[TaskPropertyCreate], existing_data_rows: TaskPropertyData
+) -> bool:
+    """Return whether any property may name a stored child workflow by another form.
+
+    True when the block stores its intervals by child workflow ID (``WFL...``) and a
+    property gives an interval that is not stored and is not itself a child workflow ID,
+    such as a ROW chain or an interval barcode.
+    """
+    stored = _stored_intervals(existing_data_rows=existing_data_rows)
+    if not any(is_child_workflow_interval(interval) for interval in stored):
+        return False
+    return any(
+        prop.interval_combination not in stored
+        and not is_child_workflow_interval(prop.interval_combination)
+        for prop in properties
+    )
+
+
+def use_stored_interval_ids(
+    *,
+    properties: list[TaskPropertyCreate],
+    existing_data_rows: TaskPropertyData,
+    combinations: Iterable[IntervalCombinationItem],
+) -> list[TaskPropertyCreate]:
+    """Give each property the interval ID its block stores, so existing trials match.
+
+    A property whose interval is a ROW chain or interval barcode of one of
+    ``combinations`` gets that combination's child workflow ID, when the block stores
+    results under it. Other properties are returned unchanged.
+    """
+    stored = _stored_intervals(existing_data_rows=existing_data_rows)
+    child_workflow_ids: dict[str, str] = {}
+    for combination in combinations:
+        if not combination.id or combination.id not in stored:
+            continue
+        for other_form in (combination.interval_row_key, combination.interval_barcode):
+            if other_form:
+                child_workflow_ids[other_form] = combination.id
+
+    resolved = []
+    for prop in properties:
+        interval = prop.interval_combination
+        if interval not in stored:
+            # ROW chains follow Albert ID uppercasing; barcodes are case-sensitive.
+            key = interval.upper() if _ROW_CHAIN_RE.fullmatch(interval.upper()) else interval
+            if key in child_workflow_ids:
+                prop = prop.model_copy(update={"interval_combination": child_workflow_ids[key]})
+        resolved.append(prop)
+    return resolved
+
+
 def form_existing_row_value_patches(
     *,
     session: AlbertSession,
@@ -425,6 +518,31 @@ def trial_has_recorded_data(
     return any(col.property_data is not None for col in trial.data_columns)
 
 
+def stored_trial_number(*, trial: Trial) -> int:
+    """Return the trial number used when writing a value onto this row.
+
+    A row's displayed number can differ from the number that identifies the
+    stored trial. Use the stored number when it is present.
+    """
+    raw = trial.back_end_trial_number
+    if raw is None:
+        return trial.trial_number
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return trial.trial_number
+
+
+def _targets_column(*, data_column: PropertyValue, prop: TaskPropertyCreate) -> bool:
+    """Return True when a block column is the one a write is aimed at."""
+    column_id = prop.data_column.data_column_id
+    sequence = prop.data_column.column_sequence
+    unique_id = f"{column_id}#{sequence}"
+    if data_column.data_column_unique_id == unique_id:
+        return True
+    return data_column.id == column_id and data_column.sequence == sequence
+
+
 def prepare_new_task_property(
     *,
     prop: TaskPropertyCreate,
@@ -435,8 +553,8 @@ def prepare_new_task_property(
 
     A block listing can include an empty placeholder trial. That placeholder is
     not a stored trial, so trial_number is omitted and a new trial is created.
-    If the trial already has data, trial_number is kept so a missing column is
-    added to that trial.
+    If the trial already has data, trial_number is the stored trial number so a
+    missing column is added to that trial.
     """
     if trial_number is None:
         return prop
@@ -445,12 +563,27 @@ def prepare_new_task_property(
         interval_combination=prop.interval_combination,
         trial_number=trial_number,
     ):
-        if prop.trial_number == trial_number:
+        row = get_on_platform_row(
+            existing_data_rows=existing_data_rows,
+            interval_combination=prop.interval_combination,
+            trial_number=trial_number,
+        )
+        stored = stored_trial_number(trial=row) if row is not None else trial_number
+        if prop.trial_number == stored:
             return prop
-        return prop.model_copy(update={"trial_number": trial_number})
+        return prop.model_copy(update={"trial_number": stored})
     if prop.trial_number is None:
         return prop
     return prop.model_copy(update={"trial_number": None})
+
+
+def _trials_for_interval(
+    *, existing_data_rows: TaskPropertyData, interval_combination: str
+) -> list[Trial]:
+    for interval in existing_data_rows.data:
+        if interval.interval_combination == interval_combination:
+            return list(interval.trials)
+    return []
 
 
 def process_property(
@@ -463,23 +596,25 @@ def process_property(
     trial_number: int,
 ) -> list | None:
     """Resolve patches for a property against existing trials."""
-    for interval in existing_data_rows.data:
-        if interval.interval_combination != prop.interval_combination:
-            continue
-
-        for trial in interval.trials:
-            if trial.trial_number != trial_number:
-                continue
-
-            trial_patches = process_trial(
-                session=session,
-                task_id=task_id,
-                block_id=block_id,
-                trial=trial,
-                prop=prop,
-            )
-            if trial_patches is not None:
-                return trial_patches
+    trials = _trials_for_interval(
+        existing_data_rows=existing_data_rows,
+        interval_combination=prop.interval_combination,
+    )
+    # The displayed trial number wins. The stored number is the fallback for
+    # callers that already passed it.
+    chosen = [trial for trial in trials if trial.trial_number == trial_number]
+    if not chosen:
+        chosen = [trial for trial in trials if stored_trial_number(trial=trial) == trial_number]
+    for trial in chosen:
+        trial_patches = process_trial(
+            session=session,
+            task_id=task_id,
+            block_id=block_id,
+            trial=trial,
+            prop=prop,
+        )
+        if trial_patches is not None:
+            return trial_patches
 
     return None
 
@@ -524,8 +659,7 @@ def process_trial(
     """Generate patch operations for a trial's matching data column."""
     for data_column in trial.data_columns:
         if (
-            data_column.data_column_unique_id
-            == f"{prop.data_column.data_column_id}#{prop.data_column.column_sequence}"
+            _targets_column(data_column=data_column, prop=prop)
             and data_column.property_data is not None
         ):
             if isinstance(prop.value, CurvePropertyValue):
@@ -775,22 +909,27 @@ def _setpoint_display_value(value: Any) -> str | None:
     return getattr(value, "name", None) or getattr(value, "id", None) or str(value)
 
 
-def build_interval_setpoint_map(*, workflow: Workflow) -> dict[str, dict[str, str]]:
+def build_interval_setpoint_map(
+    *, workflow: Workflow, interval_ids: Iterable[str] = ()
+) -> dict[str, dict[str, str]]:
     """Map each interval ID of a workflow to the parameter setpoints it represents.
 
     Combines the parameters the interval varies with the workflow's fixed setpoints, so
     each entry is the complete set of conditions for that interval. The ``"default"``
     key holds the fixed setpoints alone, for blocks with no intervalized parameters.
 
-    Only ROW-chain interval IDs are resolved. Tenants running the increased-intervals
-    beta address data by child workflow ID instead, and those IDs do not correspond to
-    the workflow's own interval rows, so they are left out.
+    Only ROW-chain interval IDs are resolved. On tenants with increased intervals, data
+    is addressed by child workflow ID; translate those to their ROW chain first (see
+    [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations]).
 
     Parameters
     ----------
     workflow : Workflow
         A fully populated workflow, as returned by
         [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id].
+    interval_ids : Iterable[str], optional
+        Additional ROW chains to resolve when the workflow does not include its
+        combinations, or returns an empty combination list. Defaults to none.
 
     Returns
     -------
@@ -818,9 +957,10 @@ def build_interval_setpoint_map(*, workflow: Workflow) -> dict[str, dict[str, st
     interval_map: dict[str, dict[str, str]] = {"default": dict(fixed)}
 
     # An interval ID is a chain of the row IDs of each varied parameter, joined with "X".
-    interval_ids = {c.interval_id for c in (workflow.interval_combinations or []) if c.interval_id}
-    interval_ids.update(varied)
-    for interval_id in interval_ids:
+    chains = {c.interval_id for c in (workflow.interval_combinations or []) if c.interval_id}
+    chains.update(varied)
+    chains.update(interval_ids)
+    for interval_id in chains:
         setpoints = dict(fixed)
         resolved = True
         for row_id in interval_id.split("X"):
@@ -858,6 +998,19 @@ def map_block_final_workflows(*, task: PropertyTask) -> dict[str, Workflow | Ent
     return mapping
 
 
+_CHILD_WORKFLOW_ID_RE = re.compile(r"^WFL\d+$")
+_ROW_CHAIN_RE = re.compile(r"^ROW\d+(?:XROW\d+)*$")
+
+
+def is_child_workflow_interval(interval_id: str | None) -> bool:
+    """Return whether an interval ID is a child workflow ID (``WFL...``).
+
+    Tenants with increased intervals report each interval of an intervalized block as
+    the child workflow holding that combination, instead of its ROW chain.
+    """
+    return bool(interval_id) and _CHILD_WORKFLOW_ID_RE.fullmatch(interval_id) is not None
+
+
 def flatten_task_property_data(
     *,
     block: TaskPropertyData,
@@ -866,16 +1019,35 @@ def flatten_task_property_data(
     workflow_name: str | None,
     interval_setpoints: dict[str, dict[str, str]],
     interval_descriptions: dict[str, str],
+    interval_row_keys: dict[str, str] | None = None,
 ) -> list[TaskPropertyRecord]:
-    """Flatten one block's interval/trial tree into one record per measured value."""
+    """Flatten one block's interval/trial tree into one record per measured value.
+
+    Each record keeps the interval ID as reported in ``interval_combination``.
+    ``interval_row_keys`` maps child workflow interval IDs to their ROW chain; the ROW
+    chain goes on ``interval_row_key`` and is used to look up the setpoints. A reported
+    ROW chain is its own row key, and an unmapped child workflow ID gets none.
+    """
     data_template = block.data_template
     inventory = block.inventory
+    row_keys = interval_row_keys or {}
 
     records: list[TaskPropertyRecord] = []
     for interval in block.data:
-        interval_id = interval.interval_combination
-        setpoints = interval_setpoints.get(interval_id, {})
-        description = interval_descriptions.get(interval_id) or interval.name
+        reported_id = interval.interval_combination
+        if is_child_workflow_interval(reported_id):
+            row_key = row_keys.get(reported_id)
+        elif reported_id and _ROW_CHAIN_RE.fullmatch(reported_id):
+            row_key = reported_id
+        else:
+            row_key = None
+        lookup_id = row_key or reported_id
+        setpoints = interval_setpoints.get(lookup_id, {})
+        description = (
+            interval_descriptions.get(lookup_id)
+            or interval_descriptions.get(reported_id)
+            or interval.name
+        )
         for trial in interval.trials:
             for column in trial.data_columns:
                 property_data = column.property_data
@@ -891,7 +1063,7 @@ def flatten_task_property_data(
                         data_template_name=getattr(data_template, "name", None),
                         inventory_id=getattr(inventory, "inventory_id", None),
                         lot_id=getattr(inventory, "lot_id", None),
-                        interval_combination=interval_id,
+                        interval_combination=reported_id,
                         interval_description=description.strip() if description else None,
                         parameter_setpoints=dict(setpoints),
                         trial_number=trial.trial_number,
@@ -909,6 +1081,7 @@ def flatten_task_property_data(
                         calculation=column.calculation,
                         workflow_id=workflow_id,
                         workflow_name=workflow_name,
+                        interval_row_key=row_key,
                     )
                 )
     return records

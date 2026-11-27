@@ -30,8 +30,11 @@ releases, and testing edge cases.
 - **Follow existing patterns.** Check similar code before writing new code. Match style and structure.
 - **Touch only what's needed.** Don't refactor adjacent code, improve unrelated formatting, or remove pre-existing dead code unless asked. Remove only imports/symbols that *your* changes made unused.
 - **Validate at boundaries only.** Trust internal code and type hints. Only validate user input and external API responses.
+- **Catch narrow exceptions.** Never `except Exception` (or bare `except`) in SDK code; catch `AlbertHTTPError` or the specific subclass the code can handle. See `OPINIONS.md`.
+- **Changing a field's `alias`/`serialization_alias` is a wire change** for every code path that serializes the model, including unrelated endpoints. Grep the model's `model_dump(by_alias=True)` call sites first. See `OPINIONS.md`.
+- **Bulk/batch methods short-circuit empty input.** Every bulk method (`*_many`, `add_columns`, `delete_rows`, ...) returns without firing a request when given an empty list, and the guard applies uniformly across all sibling bulk methods. A no-op `update()` (nothing in `model_fields_set`) returns the current entity without a request.
 - Collections inherit from `BaseCollection` and accept an `AlbertSession`.
-- Public collection methods use `@validate_call` for runtime validation.
+- Public collection methods use `@validate_call` for runtime validation. Match sibling methods on the same collection: if they declare it, new methods do too.
 - **Always use keyword-only arguments (`*`) for public methods.** Place `*` immediately
   after `self` (or `cls`) on all public collection, resource, and client methods
   (e.g. `def get_by_id(self, *, id: str) -> Cas:`). Never expose positional parameters on
@@ -134,6 +137,7 @@ Many list/search methods use `AlbertPaginator` (`src/albert/core/pagination.py`)
 
 - **Offset** (`PaginationMode.OFFSET`) — uses `offset` param, defaults to `limit=1000`, stops when `Items` is empty.
 - **Key** (`PaginationMode.KEY`) — uses `startKey`, expects `lastKey` in response. Do not pass `limit` from the SDK; the backend controls page size.
+- **Choose the mode from response-shape evidence, not habit.** A `total` field in the payload signals OFFSET; a `lastKey` continuation token signals KEY. For a brand-new endpoint, verify the whole envelope (`Items` key, continuation key, accepted query params) against the backend handler, the OpenAPI spec, or a live call before merge. The wrong mode silently truncates results after the first page. See `OPINIONS.md`.
 
 Expose a `max_items` parameter on public list/search methods where appropriate to allow early stopping.
 
@@ -154,6 +158,19 @@ Rule of thumb: if you already have an `AlbertPaginator`, return it. Reach for `M
 **`offset` and `limit` are never exposed as method parameters.** They are internal pagination state managed entirely by `AlbertPaginator`. Never add `offset` or `limit` to a public method signature or docstring. Use `max_items` as the only caller-facing pagination control.
 
 Exception: when a backend caps page size below `DEFAULT_LIMIT` (1000), set `limit` in the search/list payload (or paginator params) to that cap so the first request is valid (see `substance_v4`, `workflows`). Collections still must not expose `limit` as a public method parameter.
+
+## Retries and timeouts
+
+`AlbertSession` (`src/albert/core/session.py`) owns transport resilience: the retry policy, retryable statuses, and the default timeout. Collections never build their own retry or timeout logic.
+
+- **Defaults are defined once in `albert.core.session`**: `DEFAULT_TIMEOUT = (10, 300)` (connect, read) and `RETRYABLE_STATUSES = (403, 429, 500, 502, 503, 504)`. Import them; never redefine them per collection.
+- **Every entry point that constructs a session defaults `timeout=DEFAULT_TIMEOUT`, never `None`.** A forwarded `None` default silently overrides the session default and disables the timeout. `timeout=None` is the caller's explicit opt-out only. Mind the asymmetry with `retries`, where `None` means "use the session default".
+- **Throttled calls (429) are retried for every method** by the `_AlbertRetry` policy and raise `TooManyRequestsError` (subclass of `AlbertClientError`) once retries are exhausted. Other retryable statuses retry idempotent methods only, so mutating calls are never replayed after a 5xx.
+- **Read-only calls issued with POST pass `retry_safe=True`** so transient statuses retry them too: set it on `AlbertPaginator(..., method="POST")` for paged searches and on direct `session.post(...)` calls (e.g. facet lookups). GET-based reads need no flag; idempotent methods already retry.
+- **Never mark mutating calls `retry_safe`.** Replaying a create, update, or delete after a 5xx can duplicate writes.
+- **`retry_safe` state is scoped to a single call** (a `ContextVar` set and reset around the request). Do not persist retry-safety state on the session or thread it through collection state.
+- **`AsyncAlbertSession` has no retry policy or default timeout.** Do not assume sync/async parity when porting transport behavior; flag the gap instead.
+- **Tests** live in `tests/unit/core/`: the `is_retry` matrix (method, status, marker), marker scoping, paginator flag forwarding, and the 429 exception mapping. When adding a session-constructing entry point, assert the default through the wrapper itself, not only through a directly built `AlbertSession`.
 
 ## Testing
 
@@ -200,6 +217,8 @@ Exception: when a backend caps page size below `DEFAULT_LIMIT` (1000), set `limi
   5. Bug fix: add the failing case as a test first; if it was pinned with `xfail`, remove
      the marker.
 - Test docstrings should be crisp, start with "Test ...", and avoid implementation details.
+- **Assert what the docstring guarantees.** If a method documents ordering (`in the order requested`) or a limit, tests assert order (not just `len(...) == N`) and cross the documented boundary (e.g. chunk size + 1 ids). A documented guarantee without a matching assertion is an assumption.
+- **Numeric constants tied to backend caps** (chunk sizes, page-size caps) carry a code comment citing the OpenAPI spec or handler that defines the cap, and are defined once (module-level or shared) rather than inlined per collection.
 - Verify changes work, don't assume: always run `uv run pytest tests/unit`, and run the
   related integration files with `-n 4`.
 - Rationale for the unit vs integration split: `OPINIONS.md`.
@@ -303,6 +322,7 @@ class CasCollection(BaseCollection):
 - Instantiate the client zero-arg (`client = Albert()`); show it once in the class-level example and reuse `client` in method examples.
 - Async collections (e.g. chat) use `async with AsyncAlbert() as client:` and `await`.
 - Show returned values as `# comment` lines. Verify example values against the model fields.
+- Examples must be paste-runnable: no undefined variables or stale names. After renaming any model, field, or variable, grep all docstring examples for the old identifier; a stale name in an `!!! example` block is a user-facing bug.
 
 ### Wording conventions (keep consistent across the SDK)
 
@@ -316,11 +336,16 @@ class CasCollection(BaseCollection):
 - Beta badge: `(🧪 Beta)` (with a space).
 - No em dashes (`—`); use commas, colons, or parentheses (org language policy).
 
-- Docstrings must describe **what** a method does from the caller's perspective — never mention internal implementation details or backend API specifics (e.g. diffing, patching, HTTP methods, "returned by the API").
+- Docstrings must describe **what** a method does from the caller's perspective — never how it is wired to the backend. Banned terms in public docstrings: `endpoint`, `route`, HTTP verbs (`GET`, `POST`, `PATCH`, `DELETE`), HTTP status codes (`HTTP 200`, `404`), `request` / `response`, `payload`, `JSON`, `diffing`, `patching`, and phrasing like "returned by the API". Keep code comments and log messages free of these too whenever a caller-neutral phrasing exists. The standard `session` Parameters line and `base_path` Attributes line ("The base API route for \<entity\> requests") are the sanctioned exceptions.
   - Wrong: `"""Update an attachment by diffing the current server state."""`
   - Right: `"""Update an attachment."""`
   - Wrong: `The updated attachment returned by the API.`
   - Right: `The updated Attachment.`
+  - The ban also covers **request-mechanics phrasing**, the most common evasion: `in batches`, `batched calls`, `round trip(s)`, `re-fetched`, `its own request`, `avoids N requests`, `required by the endpoint`. Describe the caller outcome, not the wire mechanics.
+    - Wrong: `Workflows are created in batches and re-fetched automatically.`
+    - Right: `Created workflows are fully populated.`
+- **Docstrings are the Ask Albert tool-search surface.** Include common user synonyms in the summary line so prompts match (e.g. `Star (pin) a project.`). When a behavior change invalidates a comparative claim in a sibling docstring (`Unlike X, ...`), update that docstring in the same PR; stale comparatives actively misdirect the agent.
+- **Keep agent-facing guidance compact.** Keep the guidance between the summary line and the first Numpy section header short, and lead with the rules a caller must not miss; long-form reference can follow in the same docstring. Keep field docstrings compact too.
 - Every collection class docstring must include a `Methods` section listing all public methods:
 
 ```python
@@ -356,7 +381,23 @@ class TagCollection(BaseCollection):
 
 ## Deprecations
 
-See `OPINIONS.md` for the `@deprecated` runtime warning gotcha.
+- Deprecate functions, methods, properties, and classes with `@deprecated` from
+  `typing_extensions`. It emits the runtime `DeprecationWarning`; do not also call
+  `warnings.warn` inside them, or callers see the warning twice.
+- Use a manual `warnings.warn(..., DeprecationWarning, stacklevel=find_stack_level())` only
+  for deprecated parameters or argument values. Pydantic model caveat: see `OPINIONS.md`.
+
+## Warnings
+
+- Every `warnings.warn` call in `src/albert` passes `stacklevel=find_stack_level()` from
+  `albert.core.utils`. Never hardcode `stacklevel`: `@validate_call` and SDK helpers add
+  frames, so a literal number points inside the SDK or pydantic, and Python's default
+  filters then hide `DeprecationWarning` from callers. `tests/unit/meta/test_warning_conventions.py`
+  enforces this.
+- `@deprecated` (typing_extensions) handles its own `stacklevel`; keep using it for deprecated
+  callables and classes.
+- Unit tests for a warning assert `record[0].filename == __file__` so attribution is checked,
+  not only the message.
 
 ## After Every Code Edit
 
@@ -369,10 +410,13 @@ uv run pytest tests/integration/<relevant_test_file>.py -v
 
 Run the full integration suite (`uv run pytest tests/integration -n 4`) if the change is broad.
 
+After merging `main` into a PR branch, re-run `ruff check` and `ruff format` before re-requesting review; merges regularly introduce duplicate imports (F811) and formatting drift.
+
 ## Commits & Releases
 
 - Prefer multiple focused commits over one large commit.
 - Use Conventional Commits: `feat(scope): summary`, `fix(scope): summary`, `chore(scope): summary`.
+- A change that adds a caller-visible capability (method, parameter, model, option) is `feat`, even when motivated by a bug. See `OPINIONS.md`.
 - Version bumps and commit-type gotchas: `OPINIONS.md`.
 
 Example commit:

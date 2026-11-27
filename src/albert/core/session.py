@@ -1,6 +1,8 @@
+import contextvars
 import json
 from collections.abc import Mapping
 from enum import Enum
+from typing import IO
 from urllib.parse import quote, urlencode, urljoin
 
 import requests
@@ -11,6 +13,40 @@ import albert
 from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import AlbertSSOClient
 from albert.exceptions import handle_http_errors
+
+DEFAULT_TIMEOUT = (10, 300)
+"""Default (connect, read) timeout in seconds applied to every call."""
+
+RETRYABLE_STATUSES = (403, 429, 500, 502, 503, 504)
+"""Statuses retried with exponential backoff."""
+
+_retry_safe_request: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "retry_safe_request", default=False
+)
+"""Set for the duration of a call opted in to retries regardless of method."""
+
+
+class _AlbertRetry(Retry):
+    """Retry policy that retries throttled and retry-safe calls for every HTTP method.
+
+    urllib3's default policy retries only idempotent methods. A throttled call
+    (status 429) is safe to retry for any method because the server rejected it
+    before processing, so 429 is retried for all methods. Calls marked retry-safe
+    (read-only operations issued with a non-idempotent method, such as searches)
+    retry every ``status_forcelist`` status. All other calls keep the default
+    idempotent-only behavior.
+    """
+
+    def is_retry(self, method: str, status_code: int, has_retry_after: bool = False) -> bool:
+        if status_code == 429:
+            return True
+        if (
+            _retry_safe_request.get(False)
+            and self.status_forcelist
+            and status_code in self.status_forcelist
+        ):
+            return True
+        return super().is_retry(method, status_code, has_retry_after)
 
 
 class AlbertSession(requests.Session):
@@ -27,13 +63,16 @@ class AlbertSession(requests.Session):
         An authentication manager used to dynamically fetch and refresh tokens.
         If provided, it overrides `token`.
     retries : int, optional
-        The number of automatic retries on failed requests (default is 3).
+        The number of automatic retries on failed or throttled calls (default is 3).
+        Throttled calls are retried for every method; transient server errors are
+        retried for idempotent methods only, unless the call is marked retry-safe
+        (read-only operations such as searches). A ``Retry-After`` hint from the
+        server is honored.
     timeout : float | tuple[float, float], optional
-        Default timeout in seconds applied to every request. Accepts a single
+        Default timeout in seconds applied to every call. Accepts a single
         float (applied to both connect and read) or a ``(connect, read)`` tuple.
-        When ``None`` (the default), requests have no timeout and can block
-        indefinitely. A per-call ``timeout`` passed to a request always takes
-        precedence.
+        Defaults to ``DEFAULT_TIMEOUT`` (10 s connect, 300 s read). Pass ``None``
+        for no timeout. A per-call ``timeout`` always takes precedence.
     headers : Mapping[str, str], optional
         Extra headers applied to every request made through this session, for
         example a caller-supplied correlation or audit header. Merged over the
@@ -51,7 +90,7 @@ class AlbertSession(requests.Session):
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
-        timeout: float | tuple[float, float] | None = None,
+        timeout: float | tuple[float, float] | None = DEFAULT_TIMEOUT,
         headers: Mapping[str, str] | None = None,
     ):
         super().__init__()
@@ -75,12 +114,12 @@ class AlbertSession(requests.Session):
 
         # Set up retry logic
         retries = retries if retries is not None else 3
-        retry = Retry(
+        retry = _AlbertRetry(
             total=retries,
             read=retries,
             connect=retries,
             backoff_factor=0.3,
-            status_forcelist=(500, 502, 503, 504, 403),
+            status_forcelist=RETRYABLE_STATUSES,
             raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry)
@@ -94,7 +133,9 @@ class AlbertSession(requests.Session):
             return self._auth_manager.get_access_token()
         return self._provided_token
 
-    def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
+    def request(
+        self, method: str, path: str, *args, retry_safe: bool = False, **kwargs
+    ) -> requests.Response:
         # Send auth via per-request headers: mutating self.headers is not safe when
         # the session is shared across threads. Applied last so neither a
         # per-request header nor a session default can displace it.
@@ -110,10 +151,63 @@ class AlbertSession(requests.Session):
             qs = urlencode(params, doseq=True, quote_via=quote)
             full_url = f"{full_url}?{qs}"
 
-        with handle_http_errors():
-            response = super().request(method, full_url, *args, **kwargs)
-            response.raise_for_status()
-            return response
+        marker = _retry_safe_request.set(retry_safe)
+        try:
+            with handle_http_errors():
+                response = super().request(method, full_url, *args, **kwargs)
+                response.raise_for_status()
+                return response
+        finally:
+            _retry_safe_request.reset(marker)
+
+    def upload_to_signed_url(self, *, url: str, data: IO | bytes, content_type: str) -> None:
+        """Upload file contents to a pre-signed storage URL.
+
+        The URL is self-authenticating, so no Albert credentials are sent with
+        the upload. The session's retry and timeout configuration applies, and
+        an error is raised if the storage service rejects the upload.
+
+        Parameters
+        ----------
+        url : str
+            The pre-signed upload URL.
+        data : IO | bytes
+            The file contents, as an open binary file-like object or raw bytes.
+        content_type : str
+            The MIME type of the file (e.g. ``"text/csv"``).
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AlbertHTTPError
+            If the storage service rejects the upload.
+        requests.ConnectionError
+            If the upload cannot be delivered after the configured retries. The
+            message omits the signed URL's query.
+        """
+        try:
+            with handle_http_errors():
+                response = super().request(
+                    "PUT",
+                    url,
+                    data=data,
+                    headers={"Content-Type": content_type, "Authorization": None},
+                    timeout=self._timeout,
+                )
+                if response.status_code >= 400:
+                    # A signed URL carries temporary access material in its query, and the
+                    # body may be the uploaded file; keep both out of errors and logs.
+                    response.url = response.url.partition("?")[0]
+                    response.request.url = response.request.url.partition("?")[0]
+                    response.request.body = None
+                response.raise_for_status()
+        except requests.ConnectionError:
+            raise requests.ConnectionError(
+                f"Connection failed for {url.partition('?')[0]}"
+            ) from None
 
     def _encode_query_params(self, params: dict) -> dict:
         """Encode and clean up query parameters for the request."""

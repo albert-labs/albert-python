@@ -19,13 +19,23 @@ from albert.resources.attributes import (
     AttributeValue,
     AttributeValuesResponse,
     AttributeValuesResponseItem,
+    ExpressionType,
+    FormulaMetadata,
 )
 from albert.resources.parameter_groups import DataType
 from albert.utils._patch import generate_enum_patches
+from albert.utils.calculations import (
+    validate_calculation_expression,
+    validate_formula_expression_references,
+)
+
+# No documented cap on the attributes /ids id[] param; 300 matches the documented
+# cap of the peer lots/inventory/workflow collections.
+_IDS_CHUNK_SIZE = 300
 
 
 class AttributeCollection(BaseCollection):
-    """Manage inventory reference Attributes in the Albert platform (🧪 Beta).
+    """Manage inventory reference Attributes in the Albert platform.
 
     An Attribute is a centralized, reusable *inventory reference property*
     template (e.g. "Viscosity @ 25°C"): it names what to track, which
@@ -51,10 +61,6 @@ class AttributeCollection(BaseCollection):
     (``INV...``), lots (``LOT...``), or other parent types as the platform expands.
 
     This collection is accessed as ``client.attributes``.
-
-    !!! warning "Beta Feature!"
-        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
-        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
     !!! example
         ```python
@@ -127,7 +133,7 @@ class AttributeCollection(BaseCollection):
         Remove all reference values from a parent entity.
     """
 
-    _updatable_attributes = {"reference_name", "parameters", "validation"}
+    _updatable_attributes = {"reference_name", "parameters", "validation", "formula_metadata"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
@@ -209,6 +215,8 @@ class AttributeCollection(BaseCollection):
     def get_by_ids(self, *, ids: list[AttributeId]) -> list[Attribute]:
         """Get multiple attributes by their IDs.
 
+        Arbitrarily long ID lists are supported.
+
         Parameters
         ----------
         ids : list[str]
@@ -217,21 +225,78 @@ class AttributeCollection(BaseCollection):
         Returns
         -------
         list[Attribute]
-            The fully populated attributes.
+            The fully populated attributes. Attributes not found are omitted.
+            Order is not guaranteed to match the input list.
         """
-        response = self.session.get(f"{self.base_path}/ids", params={"id": ids})
-        data = response.json()
-        items = data.get("Items") or data.get("items") or []
-        return [Attribute(**item) for item in items]
+        url = f"{self.base_path}/ids"
+        batches = [ids[i : i + _IDS_CHUNK_SIZE] for i in range(0, len(ids), _IDS_CHUNK_SIZE)]
+        attributes: list[Attribute] = []
+        for batch in batches:
+            # The attribute service reports "not found" when no ID in a batch
+            # matches; those batches contribute no attributes.
+            with suppress(NotFoundError):
+                data = self.session.get(url, params={"id": batch}).json()
+                items = data.get("Items") or data.get("items") or []
+                attributes.extend(Attribute(**item) for item in items)
+        return attributes
 
     @validate_call
     def create(self, *, attribute: Attribute) -> Attribute:
-        """Create a new inventory reference attribute definition.
+        """Create a new inventory reference attribute definition, with optional worksheet formulas.
+
+        Worksheet formulas (ingredient basis and calculated property, see
+        [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata]): reference
+        attributes by ID (``[ATR123]``), never by name; resolve names with
+        [`search`][albert.collections.attributes.AttributeCollection.search]. ``WHERE``
+        works only inside ``sum(...)``, values are quoted, and several values of one key
+        combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
+        ``request_inverse=True``. Only the first calculated property of an attribute, in
+        sheet order, is saved to the inventory; give a variant that must be saved its own
+        attribute. The SDK rejects malformed ``WHERE`` filters and invented bracket
+        tokens (for example ``[INVFNC]``) client-side before saving; unknown ``[ATR...]``
+        ids may still save and fail on the sheet.
 
         Define the property template once in the attribute catalogue, then assign values to
         inventory items or lots with [`add_values`][albert.collections.attributes.AttributeCollection.add_values].
         Uniqueness is enforced on name and on the data column, unit, and parameter
         setpoint combination.
+
+        !!! example
+            ```python
+            from albert.resources.attributes import (
+                Attribute,
+                AttributeCategory,
+                ExpressionType,
+                FormulaMetadata,
+                ValidationItem,
+            )
+            from albert.resources.parameter_groups import DataType
+
+            # Resolve the referenced property's name to its ID (check the hit's name).
+            solids_id = next(client.attributes.search(text="Solid %")).id
+            attribute = client.attributes.create(
+                attribute=Attribute(
+                    datacolumn_id="DAC123",
+                    category=AttributeCategory.PROPERTY,
+                    reference_name="Total Solids",
+                    validation=[ValidationItem(datatype=DataType.NUMBER)],
+                    formula_metadata=[
+                        FormulaMetadata(
+                            display_name="Solids Share",
+                            expression=f"wt% * [{solids_id}]",
+                            expression_type=ExpressionType.INGREDIENT_BASIS,
+                            request_inverse=False,
+                        ),
+                        FormulaMetadata(
+                            display_name="Total Solids",
+                            expression="sum(ingredient_basis)",
+                            expression_type=ExpressionType.CALCULATED_PROPERTY,
+                            request_inverse=False,
+                        ),
+                    ],
+                )
+            )
+            ```
 
         Parameters
         ----------
@@ -242,7 +307,14 @@ class AttributeCollection(BaseCollection):
         -------
         Attribute
             The fully populated attribute.
+
+        Raises
+        ------
+        ValueError
+            If a calculated property has ``request_inverse=True``.
         """
+        if attribute.formula_metadata:
+            self._check_formulas(attribute.formula_metadata)
         payload = attribute.model_dump(
             by_alias=True, exclude_unset=True, mode="json", exclude={"id"}
         )
@@ -251,11 +323,42 @@ class AttributeCollection(BaseCollection):
 
     @validate_call
     def update(self, *, attribute: Attribute) -> Attribute:
-        """Update an existing attribute definition.
+        """Update an existing attribute definition, including its worksheet formulas.
+
+        Worksheet formulas (``formula_metadata``, ingredient basis and calculated
+        property) are replaced as a whole: fetch the attribute, edit or append to its
+        list, and pass the full list back. Reference attributes by ID (``[ATR123]``),
+        never by name; resolve names with
+        [`search`][albert.collections.attributes.AttributeCollection.search]. ``WHERE``
+        works only inside ``sum(...)``, values are quoted, and several values of one key
+        combine with ``OR``, never ``AND``. Back-solving needs an ingredient basis with
+        ``request_inverse=True``. Only the first calculated property of an attribute, in
+        sheet order, is saved to the inventory; give a variant that must be saved its own
+        attribute. The SDK validates expression syntax client-side (``WHERE``
+        rules, ``Function`` not ``[INVFNC]``); see
+        [`FormulaMetadata`][albert.resources.attributes.FormulaMetadata] for examples.
 
         Changes apply to the attribute definition. Inventory items that already
         store reference values keep their assignments; worksheet cells that
         previously imported a value are not updated automatically.
+
+        !!! example
+            ```python
+            from albert.resources.attributes import ExpressionType, FormulaMetadata
+
+            # ATR123 has an ingredient basis; add a calculated property that totals it.
+            attribute = client.attributes.get_by_id(id="ATR123")
+            attribute.formula_metadata = [
+                *(attribute.formula_metadata or []),
+                FormulaMetadata(
+                    display_name="Total Solids",
+                    expression="sum(ingredient_basis)",
+                    expression_type=ExpressionType.CALCULATED_PROPERTY,
+                    request_inverse=False,
+                ),
+            ]
+            updated = client.attributes.update(attribute=attribute)
+            ```
 
         Parameters
         ----------
@@ -267,12 +370,19 @@ class AttributeCollection(BaseCollection):
         Attribute
             The fully populated attribute.
 
+        Raises
+        ------
+        ValueError
+            If the ID is missing, or if changed ``formula_metadata`` has a calculated
+            property with ``request_inverse=True``.
+
         Notes
         -----
         The following fields can be updated: ``reference_name``, ``parameters``,
-        ``validation``. ``reference_name`` must remain unique across definitions.
-        ``unit_id`` can only be set once (when no unit is currently assigned); it
-        cannot be changed afterwards.
+        ``validation``, ``formula_metadata``. ``reference_name`` must remain unique
+        across definitions. ``unit_id`` can only be set once (when no unit is currently
+        assigned); it cannot be changed afterwards. ``formula_metadata``: pass the full
+        list; formulas left out are removed, and ``None`` or ``[]`` removes them all.
         """
         if attribute.id is None:
             raise ValueError("Attribute ID is required for update.")
@@ -280,12 +390,13 @@ class AttributeCollection(BaseCollection):
         existing = self.get_by_id(id=attribute.id)
 
         enum_patches = self._generate_enum_patches(existing=existing, updated=attribute)
-        if enum_patches:
-            self.session.put(f"{self.base_path}/{attribute.id}/enums", json={"data": enum_patches})
-
+        # Built before any write so a rejected formula list leaves the attribute untouched.
         patch_payload = self._generate_attribute_patch_payload(
             existing=existing, updated=attribute, skip_validation=bool(enum_patches)
         )
+        if enum_patches:
+            self.session.put(f"{self.base_path}/{attribute.id}/enums", json={"data": enum_patches})
+
         if len(patch_payload.data) > 0:
             self.session.patch(
                 f"{self.base_path}/{attribute.id}",
@@ -400,6 +511,7 @@ class AttributeCollection(BaseCollection):
             session=self.session,
             deserialize=lambda items: [AttributeSearchItem(**item) for item in items],
             method="POST",
+            retry_safe=True,
             json=body,
             max_items=max_items,
         )
@@ -453,6 +565,8 @@ class AttributeCollection(BaseCollection):
         Returns one [`AttributeValuesResponse`][albert.resources.attributes.AttributeValuesResponse]
         per entity when ``scope`` includes child lots. Inventory item values are
         the canonical source for worksheet reference columns.
+        A formula's values can include calculated property values that a worksheet
+        stored; they look like any other value.
 
         Parameters
         ----------
@@ -667,6 +781,25 @@ class AttributeCollection(BaseCollection):
                 )
             )
 
+        # Formulas go as one whole-list op: root and per-formula ops cannot be mixed,
+        # and adding a formula needs a root op. Never send old_value; it is rejected.
+        if "formula_metadata" in updated.model_fields_set:
+            old_formulas = self._dump_formulas(existing.formula_metadata)
+            new_formulas = self._dump_formulas(updated.formula_metadata)
+            if new_formulas != old_formulas:
+                if not new_formulas:
+                    data.append(
+                        PatchDatum(attribute="formulaMetadata", operation=PatchOperation.DELETE)
+                    )
+                else:
+                    self._check_formulas(updated.formula_metadata)
+                    op = PatchOperation.UPDATE if old_formulas else PatchOperation.ADD
+                    data.append(
+                        PatchDatum(
+                            attribute="formulaMetadata", operation=op, new_value=new_formulas
+                        )
+                    )
+
         return PatchPayload(data=data)
 
     @staticmethod
@@ -674,6 +807,30 @@ class AttributeCollection(BaseCollection):
         if not params:
             return []
         return [p.model_dump(by_alias=True, mode="json", exclude_none=True) for p in params]
+
+    @staticmethod
+    def _dump_formulas(formulas: list[FormulaMetadata] | None) -> list[dict[str, Any]]:
+        # Display names are trimmed on create but not on update; trim here to match.
+        return [
+            {**f.model_dump(by_alias=True, mode="json"), "displayName": f.display_name.strip()}
+            for f in formulas or []
+        ]
+
+    @staticmethod
+    def _check_formulas(formulas: list[FormulaMetadata]) -> None:
+        for formula in formulas:
+            validate_calculation_expression(expression=formula.expression)
+            validate_formula_expression_references(expression=formula.expression)
+        inverse = [
+            f.display_name
+            for f in formulas
+            if f.expression_type == ExpressionType.CALCULATED_PROPERTY and f.request_inverse
+        ]
+        if inverse:
+            raise ValueError(
+                "Invalid formula_metadata: request_inverse=True on CALCULATED_PROPERTY "
+                f"({', '.join(inverse)}); back-solving needs an INGREDIENT_BASIS."
+            )
 
     @staticmethod
     def _generate_enum_patches(*, existing: Attribute, updated: Attribute) -> list[dict]:

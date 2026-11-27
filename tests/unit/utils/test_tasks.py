@@ -11,33 +11,295 @@ from __future__ import annotations
 import types
 
 import pytest
+import requests
 import responses
 
 from albert.collections.tasks import TaskCollection
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
+from albert.exceptions import AlbertException
 from albert.resources.attachments import AttachmentMetadata
 from albert.resources.data_templates import CurveDataEntityLink, DataColumnValue
 from albert.resources.notes import Note, NoteAttachmentEntityLink
+from albert.resources.parameters import ParameterCategory
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
+    AllocatedLot,
     Block,
     GeneralTask,
     PropertyTask,
     TaskInventoryInformation,
+    TaskLotAllocation,
+    TaskParameterAllocation,
+    TaskState,
 )
+from albert.resources.worker_jobs import WorkerJob, WorkerJobState
+from albert.resources.workflows import ParameterGroupSetpoints, ParameterSetpoint, Workflow
 from albert.utils.tasks import (
+    added_block_modes,
     build_property_payload,
+    build_quantity_used_data,
     build_task_metadata,
+    child_workflow_block_ids,
     determine_extension,
     extract_extensions_from_attachment,
     fetch_csv_table_rows,
     generate_adv_patch_payload,
+    get_current_workflow_id,
+    interleave_task_blocks,
     is_metadata_item_list,
     map_csv_headers_to_columns,
+    mirror_project_from_parent_id,
     resolve_attachment,
+    resolve_parameter_row_id,
+    resolve_task_block,
+    resolve_task_lot_target,
+    resolve_unassigned_task_state,
+    wait_for_block_jobs,
 )
 from tests.unit.conftest import UNIT_BASE_URL
+
+# ---------------------------------------------------------------------------
+# mirror_project_from_parent_id
+# ---------------------------------------------------------------------------
+
+
+def test_mirror_project_from_parent_id_injects_project_for_project_parent():
+    """Test that a Project parent_id is mirrored into a payload missing Project."""
+    payload = {"name": "Task"}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id="PRO1")
+
+    assert result == {"name": "Task", "Project": {"id": "PRO1"}}
+
+
+def test_mirror_project_from_parent_id_preserves_existing_project():
+    """Test that an explicit Project in the payload is never overwritten."""
+    payload = {"name": "Task", "Project": {"id": "PRO9"}}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id="PRO1")
+
+    assert result == {"name": "Task", "Project": {"id": "PRO9"}}
+
+
+def test_mirror_project_from_parent_id_ignores_non_project_parent():
+    """Test that an Inventory parent_id is not mirrored into Project."""
+    payload = {"name": "Task"}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id="INV1")
+
+    assert result == {"name": "Task"}
+
+
+def test_mirror_project_from_parent_id_no_parent_leaves_payload_untouched():
+    """Test that a missing parent_id leaves the payload unchanged."""
+    payload = {"name": "Task"}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id=None)
+
+    assert result == {"name": "Task"}
+
+
+def test_mirror_project_from_parent_id_accepts_lowercase_prefix():
+    """Test that a lowercase project prefix is still recognized as a Project ID."""
+    payload = {"name": "Task"}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id="pro1")
+
+    assert result == {"name": "Task", "Project": {"id": "pro1"}}
+
+
+# ---------------------------------------------------------------------------
+# resolve_unassigned_task_state
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_unassigned_task_state_defaults_missing_state_to_unclaimed():
+    """Test that an absent state resolves to Unclaimed."""
+    assert resolve_unassigned_task_state(state=None) is TaskState.UNCLAIMED
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(TaskState.NOT_STARTED, id="not-started"),
+        pytest.param(TaskState.IN_PROGRESS, id="in-progress"),
+    ],
+)
+def test_resolve_unassigned_task_state_rejects_ownership_states(state):
+    """Test that ownership states are rejected without an assignee."""
+    with pytest.raises(AlbertException, match="requires an assignee"):
+        resolve_unassigned_task_state(state=state)
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(TaskState.UNCLAIMED, id="unclaimed"),
+        pytest.param(TaskState.COMPLETED, id="completed"),
+        pytest.param(TaskState.CLOSED, id="closed"),
+        pytest.param(TaskState.CANCELLED, id="cancelled"),
+    ],
+)
+def test_resolve_unassigned_task_state_preserves_allowed_explicit_states(state):
+    """Test that explicit Unclaimed and terminal states pass through unchanged."""
+    assert resolve_unassigned_task_state(state=state) is state
+
+
+# ---------------------------------------------------------------------------
+# child_workflow_block_ids
+# ---------------------------------------------------------------------------
+
+
+def test_child_workflow_block_ids_keeps_child_workflow_blocks_in_order():
+    """Test that only child-workflow blocks are selected, in the order given."""
+    modes = {
+        "BLK3": "child_workflows",
+        "BLK1": "legacy",
+        "BLK2": "child_workflows",
+        "BLK4": None,
+        "BLK5": "future",
+    }
+
+    assert child_workflow_block_ids(modes=modes) == ["BLK3", "BLK2"]
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        pytest.param("legacy", id="legacy"),
+        pytest.param(None, id="unreported"),
+        pytest.param("future", id="unknown"),
+    ],
+)
+def test_child_workflow_block_ids_treats_other_modes_as_legacy(mode):
+    """Test that a legacy, unreported, or unknown mode needs no generation."""
+    assert child_workflow_block_ids(modes={"BLK1": mode}) == []
+
+
+# ---------------------------------------------------------------------------
+# added_block_modes
+# ---------------------------------------------------------------------------
+
+
+def test_added_block_modes_maps_blocks_in_order_added():
+    """Test that each added block maps to its combinations mode, in the order added."""
+    data = {
+        "blocks": [
+            {"id": "BLK3", "taskId": "TAS1", "combinationsMode": "child_workflows", "jobId": None},
+            {"id": "BLK2", "taskId": "TAS1", "combinationsMode": "legacy", "jobId": None},
+            {"id": "BLK4", "taskId": "TAS1"},
+        ]
+    }
+
+    modes = added_block_modes(data=data, task_id="TAS1")
+
+    assert list(modes.items()) == [
+        ("BLK3", "child_workflows"),
+        ("BLK2", "legacy"),
+        ("BLK4", None),
+    ]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(None, id="no-body"),
+        pytest.param({}, id="no-blocks-key"),
+        pytest.param({"blocks": []}, id="empty-blocks"),
+        pytest.param([], id="not-an-object"),
+    ],
+)
+def test_added_block_modes_raises_when_blocks_not_reported(data):
+    """Test that a missing list of added blocks raises a clear error."""
+    with pytest.raises(AlbertException, match="Blocks were added to task TAS1"):
+        added_block_modes(data=data, task_id="TAS1")
+
+
+# ---------------------------------------------------------------------------
+# interleave_task_blocks
+# ---------------------------------------------------------------------------
+
+
+def test_interleave_task_blocks_alternates_tasks():
+    """Test that blocks are ordered round robin across tasks, keeping each task's order."""
+    block_ids = {"TAS1": ["BLK1", "BLK2", "BLK3"], "TAS2": ["BLK1"], "TAS3": ["BLK2", "BLK1"]}
+
+    assert interleave_task_blocks(block_ids=block_ids) == [
+        ("TAS1", "BLK1"),
+        ("TAS2", "BLK1"),
+        ("TAS3", "BLK2"),
+        ("TAS1", "BLK2"),
+        ("TAS3", "BLK1"),
+        ("TAS1", "BLK3"),
+    ]
+
+
+def test_interleave_task_blocks_keeps_a_single_task_in_order():
+    """Test that a single task's blocks keep their order."""
+    assert interleave_task_blocks(block_ids={"TAS1": ["BLK2", "BLK1"]}) == [
+        ("TAS1", "BLK2"),
+        ("TAS1", "BLK1"),
+    ]
+
+
+def test_interleave_task_blocks_returns_empty_for_no_tasks():
+    """Test that no tasks give no blocks."""
+    assert interleave_task_blocks(block_ids={}) == []
+
+
+# ---------------------------------------------------------------------------
+# wait_for_block_jobs
+# ---------------------------------------------------------------------------
+
+
+def _job(job_id: str, state: WorkerJobState) -> WorkerJob:
+    return WorkerJob(albert_id=job_id, job_type="createChildWorkflows", metadata={}, state=state)
+
+
+def test_wait_for_block_jobs_returns_finished_jobs_in_order():
+    """Test that each block maps to its finished job, in the order given."""
+    started = {
+        ("TAS1", "BLK1"): _job("JOB1", WorkerJobState.SUBMITTED),
+        ("TAS1", "BLK2"): _job("JOB2", WorkerJobState.SUBMITTED),
+    }
+    done = {
+        "JOB1": _job("JOB1", WorkerJobState.SUCCESSFUL),
+        "JOB2": _job("JOB2", WorkerJobState.FAILED),
+    }
+
+    finished = wait_for_block_jobs(jobs=started, wait=lambda key, job: done[job.albert_id])
+
+    assert list(finished.items()) == [
+        (("TAS1", "BLK1"), done["JOB1"]),
+        (("TAS1", "BLK2"), done["JOB2"]),
+    ]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(TimeoutError("still running"), id="timeout"),
+        pytest.param(AlbertException("not found"), id="albert-error"),
+        pytest.param(requests.ConnectionError("connection dropped"), id="connection-error"),
+    ],
+)
+def test_wait_for_block_jobs_keeps_waiting_after_a_block_raises(error: Exception):
+    """Test that a block whose wait raises maps to None and later blocks are still waited for."""
+    started = {
+        ("TAS1", "BLK1"): _job("JOB1", WorkerJobState.SUBMITTED),
+        ("TAS1", "BLK2"): _job("JOB2", WorkerJobState.SUBMITTED),
+    }
+    done = _job("JOB2", WorkerJobState.SUCCESSFUL)
+
+    def wait(key: tuple[str, str], job: WorkerJob) -> WorkerJob:
+        if job.albert_id == "JOB1":
+            raise error
+        return done
+
+    finished = wait_for_block_jobs(jobs=started, wait=wait)
+
+    assert finished == {("TAS1", "BLK1"): None, ("TAS1", "BLK2"): done}
 
 
 def _payload(offline_session, *, existing: GeneralTask, updated: GeneralTask):
@@ -189,7 +451,7 @@ def test_inventory_information_explicit_empty_clears_existing(offline_session):
 
 
 def test_inventory_information_add_and_remove_by_key(offline_session):
-    """Test that add/remove are keyed on inventory_id#lot_id, in delete-then-add order."""
+    """Test that add/remove are keyed on inventory_id#lot_id, in add-then-delete order."""
     existing = GeneralTask(
         id="TAS1",
         name="Task",
@@ -211,14 +473,43 @@ def test_inventory_information_add_and_remove_by_key(offline_session):
 
     assert payload.data == [
         {
+            "operation": PatchOperation.ADD,
+            "attribute": "inventory",
+            "newValue": [{"id": "INV3", "lotId": "LOT3"}],
+        },
+        {
             "operation": PatchOperation.DELETE,
             "attribute": "inventory",
             "oldValue": [{"id": "INV1", "lotId": "LOT1"}],
         },
+    ]
+
+
+def test_inventory_information_replacing_only_item_adds_before_deleting(offline_session):
+    """Test that swapping a task's only inventory item adds the new one before removing the old."""
+    existing = GeneralTask(
+        id="TAS1",
+        name="Task",
+        inventory_information=[TaskInventoryInformation(inventory_id="INV1")],
+    )
+    updated = GeneralTask(
+        id="TAS1",
+        name="Task",
+        inventory_information=[TaskInventoryInformation(inventory_id="INV2")],
+    )
+
+    payload = _payload(offline_session, existing=existing, updated=updated)
+
+    assert payload.data == [
         {
             "operation": PatchOperation.ADD,
             "attribute": "inventory",
-            "newValue": [{"id": "INV3", "lotId": "LOT3"}],
+            "newValue": [{"id": "INV2"}],
+        },
+        {
+            "operation": PatchOperation.DELETE,
+            "attribute": "inventory",
+            "oldValue": [{"id": "INV1"}],
         },
     ]
 
@@ -679,6 +970,213 @@ def test_build_task_metadata_defaults_inventories_to_empty_list():
     assert metadata.inventories == []
 
 
+def test_build_task_metadata_v2_autodetect_from_intervals_start_from():
+    """Test that a block with intervals_start_from defaults to schemaVersion=2."""
+    block = Block(
+        id="BLK1",
+        workflow=[EntityLink(id="WFL1", name="Workflow A")],
+        data_template=[EntityLink(id="DAT1", name="Data Template A")],
+        intervals_start_from="all",
+    )
+    task = PropertyTask(
+        id="TAS1",
+        name="Task",
+        blocks=[block],
+        inventory_information=[TaskInventoryInformation(inventory_id="INV1", lot_id="LOT1")],
+    )
+
+    metadata = build_task_metadata(task=task, block_id="BLK1", filename="results.csv")
+
+    assert metadata.schema_version == 2
+    assert metadata.data_template_id == "DAT1"
+    assert metadata.blockdata is None
+    assert metadata.intervals is not None
+    assert metadata.intervals.columns == []
+    assert metadata.intervals.combos == []
+    assert len(metadata.inventories) == 1
+    assert metadata.inventories[0].id == "INV1"
+    assert metadata.inventories[0].inventory_id == "INV1"
+
+    payload_dict = metadata.to_payload_dict()
+    assert payload_dict["schemaVersion"] == 2
+    assert payload_dict["dataTemplateId"] == "DAT1"
+    assert "inventories" in payload_dict
+    assert "Blockdata" not in payload_dict
+
+
+def test_build_task_metadata_v2_autodetect_from_combinations_mode():
+    """Test that a child-workflow block with no other interval markers uses schemaVersion=2."""
+    block = Block(
+        id="BLK1",
+        workflow=[EntityLink(id="WFL1", name="Workflow A")],
+        data_template=[EntityLink(id="DAT1", name="Data Template A")],
+        combinationsMode="child_workflows",
+    )
+    task = PropertyTask(id="TAS1", name="Task", blocks=[block])
+
+    metadata = build_task_metadata(task=task, block_id="BLK1", filename="results.csv")
+
+    assert (metadata.schema_version, metadata.blockdata) == (2, None)
+
+
+def test_build_task_metadata_v1_populates_intervals_and_workflow_json_with_session():
+    """Test that build_task_metadata queries workflow endpoints for v1."""
+    block = Block(
+        id="BLK1",
+        workflow=[EntityLink(id="WFL100", name="Workflow 100")],
+        data_template=[EntityLink(id="DAT100", name="Data Template 100")],
+    )
+    task = PropertyTask(
+        id="TAS100",
+        name="Task 100",
+        blocks=[block],
+        inventory_information=[TaskInventoryInformation(inventory_id="INV100", lot_id="LOT100")],
+    )
+
+    class FakeResponse:
+        def __init__(self, data, status_code=200):
+            self._data = data
+            self.status_code = status_code
+
+        def json(self):
+            return self._data
+
+    class FakeSession:
+        def get(self, path, params=None):
+            if path == "/api/v3/workflows/intervals" and params == {"id": "WFL100"}:
+                return FakeResponse(
+                    [
+                        {
+                            "albertId": "WFL100",
+                            "Intervals": [
+                                {
+                                    "interval": "ROW1XROW2",
+                                    "intervalParams": "INT1XINT1",
+                                    "intervalString": "Temp: 25",
+                                    "sequence": 1,
+                                    "intervalDetails": [
+                                        {"name": "Temp", "value": "25", "unitName": "C"}
+                                    ],
+                                }
+                            ],
+                        }
+                    ]
+                )
+            if path == "/api/v3/workflows/WFL100":
+                return FakeResponse(
+                    {
+                        "albertId": "WFL100",
+                        "name": "Workflow 100",
+                        "ParameterGroups": [
+                            {
+                                "id": "PRG1",
+                                "name": "Group 1",
+                                "prgSequence": 1,
+                                "rowId": "ROW1",
+                                "Parameters": [
+                                    {
+                                        "id": "PRM1",
+                                        "name": "Temp",
+                                        "rowId": "ROW2",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                )
+            return FakeResponse({}, 404)
+
+    metadata = build_task_metadata(
+        task=task, block_id="BLK1", filename="results.csv", session=FakeSession()
+    )
+
+    assert metadata.schema_version == 1
+    assert metadata.blockdata is not None
+    assert metadata.blockdata.id == "BLK1"
+    assert len(metadata.blockdata.workflow) == 1
+    wf = metadata.blockdata.workflow[0]
+    assert wf.albert_id == "WFL100"
+    assert len(wf.intervals) == 1
+    assert wf.intervals[0].interval == "ROW1XROW2"
+    assert wf.intervals[0].interval_details[0].name == "Temp"
+    assert wf.intervals[0].interval_details[0].value == "25"
+    assert metadata.blockdata.workflow_json.albert_id == "WFL100"
+
+    payload = metadata.to_payload_dict()
+    assert "schemaVersion" not in payload
+    assert "dataTemplateId" not in payload
+    assert "Blockdata" in payload
+    assert "Inventories" in payload
+
+
+def test_build_task_metadata_v2_populates_columns_and_combos_with_session():
+    """Test that build_task_metadata queries combinations for v2."""
+    block = Block(
+        id="BLK2",
+        workflow=[EntityLink(id="WFL200", name="Workflow 200")],
+        data_template=[EntityLink(id="DAT200", name="Data Template 200")],
+        intervals_start_from="all",
+    )
+    task = PropertyTask(
+        id="TAS200",
+        name="Task 200",
+        blocks=[block],
+        inventory_information=[TaskInventoryInformation(inventory_id="INV200", lot_id="LOT200")],
+    )
+
+    class FakeResponse:
+        def __init__(self, data, status_code=200):
+            self._data = data
+            self.status_code = status_code
+
+        def json(self):
+            return self._data
+
+    class FakeSession:
+        def get(self, path, params=None):
+            if path == "/api/v3/workflows/intervals":
+                return FakeResponse(
+                    [
+                        {
+                            "albertId": "WFL200",
+                            "Intervals": [
+                                {
+                                    "interval": "ROW5XROW9",
+                                    "intervalDetails": [
+                                        {"name": "Cure Box", "value": "C13582"},
+                                        {"name": "Strain", "value": "45"},
+                                    ],
+                                }
+                            ],
+                        }
+                    ]
+                )
+            if path == "/api/v3/tasks/TAS200/blocks/BLK2/combinations":
+                return FakeResponse(
+                    {
+                        "combinations": [
+                            {
+                                "id": "WFL900001",
+                                "intervalRowKey": "ROW5XROW9",
+                            }
+                        ]
+                    }
+                )
+            return FakeResponse({}, 404)
+
+    metadata = build_task_metadata(
+        task=task, block_id="BLK2", filename="test.csv", session=FakeSession()
+    )
+
+    assert metadata.schema_version == 2
+    assert metadata.data_template_id == "DAT200"
+    assert metadata.intervals is not None
+    assert metadata.intervals.columns == ["Cure Box", "Strain"]
+    assert len(metadata.intervals.combos) == 1
+    assert metadata.intervals.combos[0].id == "WFL900001"
+    assert metadata.intervals.combos[0].values == ["C13582", "45"]
+
+
 # ---------------------------------------------------------------------------
 # resolve_attachment
 # ---------------------------------------------------------------------------
@@ -1096,3 +1594,542 @@ def test_curve_mode_entries_missing_name_or_id_are_skipped():
     )
 
     assert mapping == {"DAC2": "col1"}
+
+
+# ---------------------------------------------------------------------------
+# resolve_task_block
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_task_block_returns_matching_block():
+    """Test that the block with the requested ID is returned."""
+    block = Block(
+        id="BLK1",
+        workflow=[EntityLink(id="WFL1")],
+        data_template=[EntityLink(id="DAT1")],
+    )
+    task = PropertyTask(id="TAS1", name="Task", blocks=[block])
+
+    assert resolve_task_block(task=task, block_id="BLK1") is block
+
+
+def test_resolve_task_block_raises_when_block_missing():
+    """Test that an unknown block ID raises a descriptive error."""
+    task = PropertyTask(id="TAS1", name="Task", blocks=[])
+
+    with pytest.raises(AlbertException, match="Block 'BLK9' not found on task 'TAS1'"):
+        resolve_task_block(task=task, block_id="BLK9")
+
+
+def test_resolve_task_block_raises_when_task_has_no_blocks():
+    """Test that a task without any blocks raises instead of returning None."""
+    task = GeneralTask(id="TAS2", name="General")
+
+    with pytest.raises(AlbertException, match="Block 'BLK1' not found on task 'TAS2'"):
+        resolve_task_block(task=task, block_id="BLK1")
+
+
+# ---------------------------------------------------------------------------
+# get_current_workflow_id
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("workflows", [None, []])
+def test_get_current_workflow_id_returns_none_without_workflows(workflows):
+    """Test that an empty or missing workflow list yields no current workflow."""
+    assert get_current_workflow_id(workflows=workflows) is None
+
+
+@pytest.mark.parametrize(
+    "categories",
+    [["FINAL", "INITIAL"], ["INITIAL", "FINAL"]],
+)
+def test_get_current_workflow_id_prefers_final_over_initial(categories):
+    """Test that the final workflow wins over the initial one in any order."""
+    workflows = [
+        Workflow(id=f"WFL{i + 1}", category=category) for i, category in enumerate(categories)
+    ]
+
+    result = get_current_workflow_id(workflows=workflows)
+
+    assert result == next(w.id for w in workflows if w.category == "FINAL")
+
+
+def test_get_current_workflow_id_prefers_final_placeholder_over_real_initial():
+    """Test that a final placeholder still wins when the initial workflow is real."""
+    workflows = [
+        Workflow(id="WFL1", name="No Parameter Group", category="FINAL"),
+        Workflow(id="WFL7108", category="INITIAL"),
+    ]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL1"
+
+
+def test_get_current_workflow_id_skips_uncategorized_placeholder():
+    """Test that the placeholder is skipped for a real workflow when no categories exist."""
+    workflows = [
+        Workflow(id="WFL1", name="No Parameter Group"),
+        Workflow(id="WFL2"),
+    ]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL2"
+
+
+def test_get_current_workflow_id_keeps_placeholder_when_it_is_the_only_workflow():
+    """Test that a lone placeholder is returned rather than skipped."""
+    workflows = [Workflow(id="WFL1", name="No Parameter Group")]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL1"
+
+
+def test_get_current_workflow_id_falls_back_to_initial():
+    """Test that an initial-only list resolves to the initial workflow."""
+    workflows = [Workflow(id="WFL7108", category="INITIAL")]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL7108"
+
+
+def test_get_current_workflow_id_returns_first_when_nothing_is_categorized():
+    """Test that the first workflow wins when no categories or placeholder apply."""
+    workflows = [Workflow(id="WFL2"), Workflow(id="WFL3")]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL2"
+
+
+def test_get_current_workflow_id_reads_entity_links():
+    """Test that plain entity-link entries resolve by their category marker."""
+    workflows = [
+        EntityLink(id="WFL9591", category="INITIAL"),
+        EntityLink(id="WFL11206", category="FINAL"),
+    ]
+
+    assert get_current_workflow_id(workflows=workflows) == "WFL11206"
+
+
+# ---------------------------------------------------------------------------
+# resolve_parameter_row_id
+# ---------------------------------------------------------------------------
+
+
+def _allocation_workflow() -> Workflow:
+    """Workflow with one intervalized and one fixed special parameter."""
+    return Workflow.model_validate(
+        {
+            "albertId": "WFL416155",
+            "ParameterGroups": [
+                {
+                    "id": "PRG3549",
+                    "name": "UV Bonding",
+                    "prgSequence": 1,
+                    "rowId": "ROW28",
+                    "Parameters": [
+                        {
+                            "id": "PRM432",
+                            "name": "Equipment",
+                            "rowId": "ROW34",
+                            "shortName": "Light Source",
+                            "category": "Special",
+                            "Intervals": [
+                                {"id": "INT1", "rowId": "ROW35"},
+                                {
+                                    "id": "INT2",
+                                    "value": "INVC237902",
+                                    "name": "Lamp",
+                                    "rowId": "ROW36",
+                                },
+                            ],
+                        },
+                        {
+                            "id": "PRM432",
+                            "name": "Equipment",
+                            "rowId": "ROW37",
+                            "shortName": "Radiometer",
+                            "category": "Special",
+                            "value": None,
+                        },
+                        {
+                            "id": "PRM1368",
+                            "name": "Height",
+                            "rowId": "ROW39",
+                            "category": "Normal",
+                            "value": "6.35",
+                        },
+                    ],
+                },
+                {
+                    "id": "PRG3579",
+                    "name": "Block Shear",
+                    "prgSequence": 2,
+                    "rowId": "ROW109",
+                    "Parameters": [
+                        {
+                            "id": "PRM432",
+                            "name": "Equipment",
+                            "rowId": "ROW110",
+                            "shortName": "Equipment",
+                            "category": "Special",
+                            "value": {"id": "INVC239794", "name": "Instron"},
+                        }
+                    ],
+                },
+            ],
+        }
+    )
+
+
+def _ambiguous_workflow() -> Workflow:
+    """Workflow selecting the same item on two different special parameters."""
+    return Workflow.model_validate(
+        {
+            "albertId": "WFL9",
+            "ParameterGroups": [
+                {
+                    "id": "PRG3547",
+                    "name": "Substrate Preparation",
+                    "prgSequence": 1,
+                    "rowId": "ROW8",
+                    "Parameters": [
+                        {
+                            "id": "PRM431",
+                            "name": "Consumables",
+                            "rowId": "ROW9",
+                            "shortName": "Substrate 1",
+                            "category": "Special",
+                            "Intervals": [{"id": "INT1", "value": "INVB258689", "rowId": "ROW10"}],
+                        },
+                        {
+                            "id": "PRM431",
+                            "name": "Consumables",
+                            "rowId": "ROW15",
+                            "shortName": "Substrate 2",
+                            "category": "Special",
+                            "Intervals": [{"id": "INT1", "value": "INVB258689", "rowId": "ROW16"}],
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+
+
+def test_resolve_parameter_row_id_intervalized_parameter_uses_interval_row():
+    """Test that an intervalized special parameter resolves to the matching interval row."""
+    row_id = resolve_parameter_row_id(workflow=_allocation_workflow(), inventory_id="INVC237902")
+
+    assert row_id == "ROW36"
+
+
+def test_resolve_parameter_row_id_fixed_parameter_uses_parameter_row():
+    """Test that a fixed special parameter resolves to its own row ID."""
+    row_id = resolve_parameter_row_id(workflow=_allocation_workflow(), inventory_id="INVC239794")
+
+    assert row_id == "ROW110"
+
+
+def test_resolve_parameter_row_id_entity_link_value_matches():
+    """Test that an EntityLink value on a fixed special parameter is matched by ID."""
+    workflow = Workflow(
+        id="WFL3",
+        parameter_group_setpoints=[
+            ParameterGroupSetpoints(
+                id="PRG1",
+                parameter_setpoints=[
+                    ParameterSetpoint(
+                        parameter_id="PRM2",
+                        category=ParameterCategory.SPECIAL,
+                        value=EntityLink(id="INVC1"),
+                        row_id="ROW7",
+                    )
+                ],
+            )
+        ],
+    )
+
+    assert resolve_parameter_row_id(workflow=workflow, inventory_id="INVC1") == "ROW7"
+
+
+def test_resolve_parameter_row_id_parameter_selector_disambiguates():
+    """Test that the parameter selector picks one row when an item sits on several."""
+    row_id = resolve_parameter_row_id(
+        workflow=_ambiguous_workflow(), inventory_id="INVB258689", parameter="Substrate 2"
+    )
+
+    assert row_id == "ROW16"
+
+
+def test_resolve_parameter_row_id_raises_when_not_selected():
+    """Test that an item absent from all special parameters raises."""
+    with pytest.raises(AlbertException, match="not selected on any special parameter"):
+        resolve_parameter_row_id(workflow=_allocation_workflow(), inventory_id="INV9")
+
+
+def test_resolve_parameter_row_id_raise_mentions_parameter_selector():
+    """Test that the no-match error names the parameter selector that filtered everything out."""
+    with pytest.raises(AlbertException, match="matching 'Nope'"):
+        resolve_parameter_row_id(
+            workflow=_allocation_workflow(), inventory_id="INVC237902", parameter="Nope"
+        )
+
+
+def test_resolve_parameter_row_id_raises_when_ambiguous():
+    """Test that an item on several rows raises and lists the candidate rows."""
+    with pytest.raises(AlbertException, match="multiple parameter rows.*ROW10.*ROW16"):
+        resolve_parameter_row_id(workflow=_ambiguous_workflow(), inventory_id="INVB258689")
+
+
+# ---------------------------------------------------------------------------
+# resolve_task_lot_target
+# ---------------------------------------------------------------------------
+
+
+def _task_with_lots(*infos: TaskInventoryInformation) -> PropertyTask:
+    return PropertyTask(id="TAS679481", name="Task", inventory_information=list(infos))
+
+
+def test_resolve_task_lot_target_returns_tuple_and_current_quantity():
+    """Test that a matching inventory row resolves its tuple ID and quantity used."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INVB258493",
+            lot_id="LOT218913",
+            inv_lot_unique_id="INVB258493#LOT218913#1",
+            quantity_used=1.5,
+        )
+    )
+
+    assert resolve_task_lot_target(task=task, inventory_id="INVB258493", lot_id="LOT218913") == (
+        "INVB258493#LOT218913#1",
+        1.5,
+    )
+
+
+def test_resolve_task_lot_target_missing_quantity_reads_as_zero():
+    """Test that a row without a recorded quantity resolves to a current quantity of 0."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INVB258493",
+            lot_id="LOT218913",
+            inv_lot_unique_id="INVB258493#LOT218913#1",
+        )
+    )
+
+    assert resolve_task_lot_target(task=task, inventory_id="INVB258493", lot_id="LOT218913") == (
+        "INVB258493#LOT218913#1",
+        0,
+    )
+
+
+def test_resolve_task_lot_target_raises_when_not_on_task():
+    """Test that an inventory + lot pair absent from the task raises."""
+    task = _task_with_lots(TaskInventoryInformation(inventory_id="INV1", lot_id="LOT1"))
+
+    with pytest.raises(AlbertException, match="is not on task 'TAS679481'"):
+        resolve_task_lot_target(task=task, inventory_id="INV2", lot_id="LOT1")
+
+
+def test_resolve_task_lot_target_raises_on_duplicate_rows_without_occurrence():
+    """Test that duplicated inventory + lot rows raise without an occurrence."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INV1", lot_id="LOT1", inv_lot_unique_id="INV1#LOT1#1"
+        ),
+        TaskInventoryInformation(
+            inventory_id="INV1", lot_id="LOT1", inv_lot_unique_id="INV1#LOT1#2"
+        ),
+    )
+
+    with pytest.raises(AlbertException, match="appears 2 times"):
+        resolve_task_lot_target(task=task, inventory_id="INV1", lot_id="LOT1")
+
+
+def test_resolve_task_lot_target_occurrence_disambiguates():
+    """Test that the occurrence selects among duplicated inventory + lot rows."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INV1", lot_id="LOT1", inv_lot_unique_id="INV1#LOT1#1"
+        ),
+        TaskInventoryInformation(
+            inventory_id="INV1",
+            lot_id="LOT1",
+            inv_lot_unique_id="INV1#LOT1#2",
+            quantity_used=3.0,
+        ),
+    )
+
+    assert resolve_task_lot_target(
+        task=task, inventory_id="INV1", lot_id="LOT1", occurrence=2
+    ) == ("INV1#LOT1#2", 3.0)
+
+
+def test_resolve_task_lot_target_raises_without_tuple_identifier():
+    """Test that a matching row with no tuple identifier raises."""
+    task = _task_with_lots(TaskInventoryInformation(inventory_id="INV1", lot_id="LOT1"))
+
+    with pytest.raises(AlbertException, match="no tuple identifier"):
+        resolve_task_lot_target(task=task, inventory_id="INV1", lot_id="LOT1")
+
+
+# ---------------------------------------------------------------------------
+# build_quantity_used_data
+# ---------------------------------------------------------------------------
+
+
+def _dump_data(data) -> list[dict]:
+    return [datum.model_dump(exclude_none=True, by_alias=True, mode="json") for datum in data]
+
+
+def test_build_quantity_used_data_task_level_allocation_updates_tuple():
+    """Test that a task-level allocation becomes an update datum on the inventory tuple."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INVB258493",
+            lot_id="LOT218913",
+            inv_lot_unique_id="INVB258493#LOT218913#1",
+        )
+    )
+
+    data = build_quantity_used_data(
+        task=task,
+        allocations=[
+            TaskLotAllocation(inventory_id="INVB258493", lot_id="LOT218913", quantity=0.5)
+        ],
+        block_id=None,
+        workflow=None,
+        workflow_id=None,
+    )
+
+    assert _dump_data(data) == [
+        {
+            "operation": "update",
+            "attribute": "quantityUsed",
+            "newValue": 0.5,
+            "oldValue": 0,
+            "invLotUniqueId": "INVB258493#LOT218913#1",
+        }
+    ]
+
+
+def test_build_quantity_used_data_groups_parameter_allocations_into_one_add():
+    """Test that special-parameter allocations combine into one add datum of row entries."""
+    data = build_quantity_used_data(
+        task=PropertyTask(id="TAS1", name="Task"),
+        allocations=[
+            TaskParameterAllocation(
+                inventory_id="INVC237902",
+                lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+            ),
+            TaskParameterAllocation(
+                inventory_id="INVC239794",
+                lots=[AllocatedLot(lot_id="LOT7", quantity=0)],
+            ),
+        ],
+        block_id="BLK2",
+        workflow=_allocation_workflow(),
+        workflow_id="WFL416155",
+    )
+
+    assert _dump_data(data) == [
+        {
+            "operation": "add",
+            "attribute": "quantityUsed",
+            "newValue": [
+                {
+                    "rowId": "ROW36",
+                    "workflowId": "WFL416155",
+                    "invId": "INVC237902",
+                    "blockId": "BLK2",
+                    "lot": [{"id": "LOT150566", "quantity": 1.5}],
+                },
+                {
+                    "rowId": "ROW110",
+                    "workflowId": "WFL416155",
+                    "invId": "INVC239794",
+                    "blockId": "BLK2",
+                    "lot": [{"id": "LOT7", "quantity": 0}],
+                },
+            ],
+        }
+    ]
+
+
+def test_build_quantity_used_data_mixed_allocations_produce_both_shapes():
+    """Test that task-level and special-parameter allocations produce their own datums."""
+    task = _task_with_lots(
+        TaskInventoryInformation(
+            inventory_id="INVB258493",
+            lot_id="LOT218913",
+            inv_lot_unique_id="INVB258493#LOT218913#1",
+        )
+    )
+
+    data = build_quantity_used_data(
+        task=task,
+        allocations=[
+            TaskLotAllocation(inventory_id="INVB258493", lot_id="LOT218913", quantity=0.5),
+            TaskParameterAllocation(
+                inventory_id="INVC237902",
+                lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+            ),
+        ],
+        block_id="BLK2",
+        workflow=_allocation_workflow(),
+        workflow_id="WFL416155",
+    )
+
+    dumped = _dump_data(data)
+    assert [datum["operation"] for datum in dumped] == ["update", "add"]
+    assert dumped[0]["invLotUniqueId"] == "INVB258493#LOT218913#1"
+    assert dumped[1]["newValue"][0]["rowId"] == "ROW36"
+
+
+def test_build_quantity_used_data_row_id_override_skips_resolution():
+    """Test that an explicit row_id is used directly, without consulting the workflow."""
+    data = build_quantity_used_data(
+        task=PropertyTask(id="TAS1", name="Task"),
+        allocations=[
+            TaskParameterAllocation(
+                inventory_id="INVC237902",
+                lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+                row_id="ROW99",
+            )
+        ],
+        block_id="BLK2",
+        workflow=None,
+        workflow_id="WFL416155",
+    )
+
+    assert _dump_data(data)[0]["newValue"][0]["rowId"] == "ROW99"
+
+
+def test_build_quantity_used_data_raises_without_block_id_for_parameter_row():
+    """Test that a special-parameter allocation without a block ID raises."""
+    with pytest.raises(AlbertException, match="block_id is required"):
+        build_quantity_used_data(
+            task=PropertyTask(id="TAS1", name="Task"),
+            allocations=[
+                TaskParameterAllocation(
+                    inventory_id="INVC237902",
+                    lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+                )
+            ],
+            block_id=None,
+            workflow=_allocation_workflow(),
+            workflow_id="WFL416155",
+        )
+
+
+def test_build_quantity_used_data_raises_without_workflow_for_unresolved_row():
+    """Test that a special-parameter allocation without row_id or workflow raises."""
+    with pytest.raises(AlbertException, match="A workflow is required"):
+        build_quantity_used_data(
+            task=PropertyTask(id="TAS1", name="Task"),
+            allocations=[
+                TaskParameterAllocation(
+                    inventory_id="INVC237902",
+                    lots=[AllocatedLot(lot_id="LOT150566", quantity=1.5)],
+                )
+            ],
+            block_id="BLK2",
+            workflow=None,
+            workflow_id="WFL416155",
+        )

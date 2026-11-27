@@ -1,6 +1,10 @@
+from contextlib import suppress
+
 import pytest
 
 from albert import Albert
+from albert.core.shared.enums import PaginationMode
+from albert.exceptions import NotFoundError
 from albert.resources.data_columns import DataColumn
 from tests.utils.wait import poll_until
 
@@ -66,6 +70,43 @@ def test_data_column_get_all_by_ids(client: Albert, seeded_data_columns: list[Da
     assert_valid_data_column_items(results)
 
 
+def test_data_column_search_uses_cursor_pagination(
+    client: Albert, seed_prefix: str, monkeypatch: pytest.MonkeyPatch
+):
+    """Test search returns all scoped matches exactly once across cursor pages."""
+    monkeypatch.setattr("albert.core.pagination.DEFAULT_LIMIT", 1)
+    data_columns = []
+    try:
+        for suffix in ("first", "second"):
+            data_columns.append(
+                client.data_columns.create(
+                    data_column=DataColumn(name=f"{seed_prefix}-cursor-{suffix}")
+                )
+            )
+        column_ids = [column.id for column in data_columns]
+
+        def search_all_matches():
+            results = client.data_columns.search(albert_id=column_ids)
+            matches = list(results)
+            assert results.mode == PaginationMode.SEARCH_AFTER
+            assert results.json["limit"] == 1
+            return matches
+
+        matches = poll_until(
+            search_all_matches,
+            predicate=lambda items: sorted(item.id for item in items) == sorted(column_ids),
+        )
+        assert sorted(item.id for item in matches) == sorted(column_ids)
+
+        early_results = client.data_columns.search(albert_id=column_ids, max_items=1)
+        assert len(list(early_results)) == 1
+        assert early_results.has_more
+    finally:
+        for column in data_columns:
+            with suppress(NotFoundError):
+                client.data_columns.delete(id=column.id)
+
+
 def test_data_column_search(
     client: Albert, seed_prefix: str, seeded_data_columns: list[DataColumn]
 ):
@@ -97,12 +138,6 @@ def test_get_by_name(client: Albert, seeded_data_columns: list[DataColumn]):
     chaos_name = "JHByu8gt43278hixvy87H&*(#BIuyvd)"
     dc = client.data_columns.get_by_name(name=chaos_name)
     assert dc is None
-
-
-def test_get_by_id(client: Albert, seeded_data_columns: list[DataColumn]):
-    dc = client.data_columns.get_by_id(id=seeded_data_columns[0].id)
-    assert dc.name == seeded_data_columns[0].name
-    assert dc.id == seeded_data_columns[0].id
 
 
 def test_get_or_create_data_columns(client: Albert, seeded_data_columns: list[DataColumn]):

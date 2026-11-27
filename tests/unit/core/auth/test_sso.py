@@ -17,8 +17,9 @@ import pytest
 import requests
 import responses
 
+from albert import Albert
 from albert.core.auth._manager import OAuthTokenInfo
-from albert.core.auth.sso import AlbertSSOClient
+from albert.core.auth.sso import DEFAULT_LOGIN_TIMEOUT, AlbertSSOClient
 from albert.exceptions import AlbertAuthError, UnauthorizedError
 from tests.unit.conftest import UNIT_BASE_URL
 
@@ -33,19 +34,24 @@ def _client(**kwargs) -> AlbertSSOClient:
 class _FakeLocalServer:
     """Stand-in for the real HTTPServer: no socket, no blocking handle_request()."""
 
-    def __init__(self, token: str | None) -> None:
+    def __init__(self, token: str | None, timed_out: bool = False) -> None:
         self.token = token
+        self.timed_out = timed_out
 
     def handle_request(self) -> None:
         pass
 
 
-def _fake_local_http_server(token: str | None):
+def _fake_local_http_server(
+    token: str | None, *, timed_out: bool = False, seen_timeouts: list[int] | None = None
+):
     """Build a drop-in replacement for ``local_http_server`` yielding a preset token."""
 
     @contextlib.contextmanager
     def _fake(*, minimum_port, maximum_port=None, timeout):
-        yield _FakeLocalServer(token), minimum_port
+        if seen_timeouts is not None:
+            seen_timeouts.append(timeout)
+        yield _FakeLocalServer(token, timed_out=timed_out), minimum_port
 
     return _fake
 
@@ -332,3 +338,74 @@ def test_authenticate_propagates_email_validation_failure(monkeypatch: pytest.Mo
         client.authenticate()
 
     assert opened_urls == []
+
+
+# --- login timeout --------------------------------------------------------------------
+
+
+@responses.activate
+def test_authenticate_uses_default_login_timeout(monkeypatch: pytest.MonkeyPatch):
+    """Test that authenticate() waits DEFAULT_LOGIN_TIMEOUT (120s) for the callback by default."""
+    seen: list[int] = []
+    monkeypatch.setattr("albert.core.auth.sso.webbrowser.open", lambda url: None)
+    monkeypatch.setattr(
+        "albert.core.auth.sso.local_http_server",
+        _fake_local_http_server("refresh-tok", seen_timeouts=seen),
+    )
+    responses.get(_LOGIN_URL, status=302)
+
+    _client().authenticate()
+
+    assert DEFAULT_LOGIN_TIMEOUT == 120
+    assert seen == [120]
+
+
+@responses.activate
+def test_authenticate_raises_clear_error_on_timeout(monkeypatch: pytest.MonkeyPatch):
+    """Test that a callback wait that times out raises an error naming the timeout."""
+    monkeypatch.setattr("albert.core.auth.sso.webbrowser.open", lambda url: None)
+    monkeypatch.setattr(
+        "albert.core.auth.sso.local_http_server",
+        _fake_local_http_server(None, timed_out=True),
+    )
+    responses.get(_LOGIN_URL, status=302)
+
+    with pytest.raises(AlbertAuthError, match="timed out after waiting 7 seconds"):
+        _client().authenticate(timeout=7)
+
+
+@responses.activate
+def test_validate_email_uses_extended_request_timeout(monkeypatch: pytest.MonkeyPatch):
+    """Test that the pre-login email check allows slow networks more than 5 seconds."""
+    seen: dict[str, object] = {}
+    real_get = requests.get
+
+    def _spy_get(*args, **kwargs):
+        seen["timeout"] = kwargs.get("timeout")
+        return real_get(*args, **kwargs)
+
+    monkeypatch.setattr("albert.core.auth.sso.requests.get", _spy_get)
+    responses.get(_LOGIN_URL, status=302)
+
+    _client()._validate_email(email="user@example.com", tenant_id=None)
+
+    assert seen["timeout"] == 30
+
+
+@responses.activate
+def test_from_sso_forwards_login_timeout(monkeypatch: pytest.MonkeyPatch):
+    """Test that Albert.from_sso passes login_timeout through to the SSO callback wait."""
+    seen: list[int] = []
+    monkeypatch.setattr("albert.core.auth.sso.webbrowser.open", lambda url: None)
+    monkeypatch.setattr(
+        "albert.core.auth.sso.local_http_server",
+        _fake_local_http_server("refresh-tok", seen_timeouts=seen),
+    )
+    responses.get(_LOGIN_URL, status=302)
+
+    client = Albert.from_sso(
+        base_url=UNIT_BASE_URL, email="user@example.com", login_timeout=60, timeout=10
+    )
+
+    assert seen == [60]
+    assert client.session._timeout == 10

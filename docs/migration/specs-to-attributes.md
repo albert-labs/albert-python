@@ -1,10 +1,9 @@
-# Specs → Attributes (🧪 Beta)
+# Specs → Attributes
 
-!!! warning "Beta Feature"
-    `client.attributes` is currently in beta. The existing `client.inventory.get_specs()`
-    and `client.inventory.add_specs()` methods continue to work but are deprecated and will
-    be removed in SDK 2.0. Adopting the new Attributes API now is entirely opt-in — you can
-    migrate at your own pace.
+!!! warning "Specs are deprecated"
+    The existing `client.inventory.get_specs()` and `client.inventory.add_specs()` methods
+    continue to work but are deprecated and will be removed in SDK 2.0. You can migrate at
+    your own pace.
 
 ## What's changing
 
@@ -24,7 +23,7 @@ from **value** (what that property measures for this specific item).
 
 | SDK version | What's available |
 |---|---|
-| 1.x (current) | Both `client.inventory.get_specs()` / `add_specs()` (deprecated) and `client.attributes` (beta) are available |
+| 1.x (current) | Both `client.inventory.get_specs()` / `add_specs()` (deprecated) and `client.attributes` are available |
 | 2.0 (planned) | `get_specs()`, `add_specs()`, `InventorySpec`, `InventorySpecValue`, `InventorySpecList` are removed |
 
 Migrating now means your code is ready for 2.0 without further changes.

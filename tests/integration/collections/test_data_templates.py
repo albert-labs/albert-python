@@ -1,14 +1,20 @@
 from contextlib import suppress
 from pathlib import Path
+from uuid import uuid4
 
+import pandas as pd
 import pytest
 
 from albert import Albert
+from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import ForbiddenError, NotFoundError
+from albert.exceptions import ForbiddenError, InternalServerError, NotFoundError
 from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import (
+    Axis,
+    CurveDataEntityLink,
+    CurveExample,
     DataColumnValue,
     DataTemplate,
     DataTemplateSearchItem,
@@ -46,20 +52,14 @@ def assert_valid_data_template_items(
 
 def test_data_template_get_all_basic(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test get_all returns hydrated DataTemplate results."""
-    results = list(client.data_templates.get_all(max_items=10))
+    results = poll_until(lambda: list(client.data_templates.get_all(max_items=10)))
     assert_valid_data_template_items(results, DataTemplate)
-
-
-def test_data_template_search_basic(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test search returns partial DataTemplateSearchItem results."""
-    results = list(client.data_templates.search(max_items=10))
-    assert_valid_data_template_items(results, DataTemplateSearchItem)
 
 
 def test_data_template_search(
     client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
 ):
-    """Test search with owner, tags, data columns, and additional fields."""
+    """Test search filters and additional fields."""
     seeded_ids = {dt.id for dt in seeded_data_templates}
     hits = poll_until(
         lambda: [
@@ -114,6 +114,49 @@ def test_data_template_search(
     assert_valid_data_template_items(results, DataTemplateSearchItem)
 
 
+def test_data_template_search_uses_cursor_pagination(
+    client: Albert, seed_prefix: str, monkeypatch: pytest.MonkeyPatch
+):
+    """Test search returns scoped matches exactly once across cursor pages."""
+    monkeypatch.setattr("albert.core.pagination.DEFAULT_LIMIT", 1)
+    search_token = uuid4().hex
+    data_templates = []
+    try:
+        for suffix in ("first", "second"):
+            data_templates.append(
+                client.data_templates.create(
+                    data_template=DataTemplate(
+                        name=f"{seed_prefix}-{search_token}-cursor-{suffix}"
+                    )
+                )
+            )
+        template_ids = [template.id for template in data_templates]
+
+        def search_all_matches():
+            results = client.data_templates.search(name=search_token)
+            matches = list(results)
+            assert results.mode == PaginationMode.SEARCH_AFTER
+            assert results.json["limit"] == 1
+            scoped_matches = [item for item in matches if item.id in template_ids]
+            return scoped_matches, results.has_more, results.json["searchAfter"]
+
+        matches, has_more, final_cursor = poll_until(
+            search_all_matches,
+            predicate=lambda result: sorted(item.id for item in result[0]) == sorted(template_ids),
+        )
+        assert sorted(item.id for item in matches) == sorted(template_ids)
+        assert not has_more
+        assert final_cursor
+
+        early_results = client.data_templates.search(name=search_token, max_items=1)
+        assert len(list(early_results)) == 1
+        assert early_results.has_more
+    finally:
+        for template in data_templates:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=template.id)
+
+
 def test_data_template_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test get_by_name returns a hydrated match or None if not found."""
     name = seeded_data_templates[0].name
@@ -148,6 +191,19 @@ def test_get_by_ids(client: Albert, seeded_data_templates: list[DataTemplate]):
     for i, d in enumerate(dt):
         assert d.name == seeded_data_templates[i].name
         assert d.id == seeded_data_templates[i].id
+
+
+def test_duplicate(client: Albert, seeded_data_templates: list[DataTemplate], seed_prefix: str):
+    """Test duplicating a data template creates a copy with a new ID."""
+    source = seeded_data_templates[0]
+    copy = client.data_templates.duplicate(id=source.id, name=f"{seed_prefix} - DT Duplicate")
+    try:
+        assert isinstance(copy, DataTemplate)
+        assert copy.id and copy.id != source.id
+        assert copy.name == f"{seed_prefix} - DT Duplicate"
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=copy.id)
 
 
 def test_update_tags(
@@ -403,6 +459,82 @@ def test_update_delete_data_column(
         assert seeded_data_columns[0].id in [
             x.data_column_id for x in updated_dt.data_column_values
         ]
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+
+
+def test_update_partial_data_column_list_keeps_omitted_columns_when_not_removing(
+    client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
+):
+    """Test that with remove_omitted_rows=False a partial list keeps the unlisted columns."""
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Partial Column Update Test",
+            data_column_values=[
+                DataColumnValue(data_column=seeded_data_columns[0]),
+                DataColumnValue(data_column=seeded_data_columns[1]),
+            ],
+        )
+    )
+    try:
+        original_ids = sorted(x.data_column_id for x in dt.data_column_values)
+        kept = next(
+            x for x in dt.data_column_values if x.data_column_id == seeded_data_columns[0].id
+        )
+
+        updated_dt = client.data_templates.update(
+            data_template=DataTemplate(id=dt.id, name=dt.name, data_column_values=[kept]),
+            remove_omitted_rows=False,
+        )
+
+        assert sorted(x.data_column_id for x in updated_dt.data_column_values) == original_ids
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+
+
+def test_enum_option_readded_reuses_original_id(
+    client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
+):
+    """Test that removing an enum option and re-adding the same text reuses its original ID."""
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Enum Re-add Test",
+            data_column_values=[
+                DataColumnValue(
+                    data_column=seeded_data_columns[0],
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.ENUM,
+                            value=[
+                                EnumValidationValue(text="Keep"),
+                                EnumValidationValue(text="Readd"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    try:
+        dt = client.data_templates.get_by_id(id=dt.id)
+        original = {x.text: x.id for x in dt.data_column_values[0].validation[0].value}
+        assert original["Readd"] is not None
+
+        dt.data_column_values[0].validation[0].value = [
+            x for x in dt.data_column_values[0].validation[0].value if x.text != "Readd"
+        ]
+        removed_dt = client.data_templates.update(data_template=dt)
+        assert [x.text for x in removed_dt.data_column_values[0].validation[0].value] == ["Keep"]
+
+        removed_dt.data_column_values[0].validation[0].value.append(
+            EnumValidationValue(text="Readd")
+        )
+        readded_dt = client.data_templates.update(data_template=removed_dt)
+
+        readded = {x.text: x.id for x in readded_dt.data_column_values[0].validation[0].value}
+        assert readded == original
     finally:
         with suppress(NotFoundError):
             client.data_templates.delete(id=dt.id)
@@ -784,3 +916,72 @@ def test_upload_and_attach_script_to_data_template_requires_py_suffix(
             name=f"{seed_prefix} invalid script file",
             extension_names=["csv"],
         )
+
+
+@pytest.mark.xfail(
+    reason="Curve settings update intermittently never persists on test tenants (SUP-2328)",
+    strict=False,
+)
+def test_get_curve_example_round_trip(client: Albert, seed_prefix: str):
+    """Test a curve example reads back as the uploaded CSV, and a missing example is None."""
+    dt_id = None
+    dc_ids = []
+    try:
+        dc_stress = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - example stress")
+        )
+        dc_strain = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - example strain")
+        )
+        dc_curve = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - example curve")
+        )
+        dc_ids = [dc_stress.id, dc_strain.id, dc_curve.id]
+        dt = client.data_templates.create(
+            data_template=DataTemplate(
+                name=f"{seed_prefix} - curve example dt",
+                data_column_values=[DataColumnValue(data_column=dc_curve)],
+            )
+        )
+        dt_id = dt.id
+        curve_col = dt.data_column_values[0]
+        curve_col.validation = [ValueValidation(datatype=DataType.CURVE)]
+        curve_col.curve_data = [
+            CurveDataEntityLink(id=dc_stress.id, name=dc_stress.name, axis=Axis.X),
+            CurveDataEntityLink(id=dc_strain.id, name=dc_strain.name, axis=Axis.Y),
+        ]
+
+        client.data_templates.update(data_template=dt)
+
+        assert (
+            client.data_templates.get_curve_example(
+                data_template_id=dt_id, data_column_id=dc_curve.id
+            )
+            is None
+        )
+
+        client.data_templates.set_curve_example(
+            data_template_id=dt_id,
+            data_column_id=dc_curve.id,
+            example=CurveExample(
+                file_path="tests/data/curve_test.csv",
+                field_mapping={"Stress": dc_stress.name, "Strain": dc_strain.name},
+            ),
+        )
+        df = client.data_templates.get_curve_example(
+            data_template_id=dt_id, data_column_name=dc_curve.name
+        )
+
+        expected = pd.read_csv("tests/data/curve_test.csv", dtype=str)
+        pd.testing.assert_frame_equal(df.astype(str), expected, check_dtype=False)
+    finally:
+        if dt_id:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=dt_id)
+        for dc_id in dc_ids:
+            # TODO(backend, SUP-2324): api-datacolumn's delete splices the parent template's
+            # column list by the curve child record's missing sequence (findIndex -> -1),
+            # emptying it, so the follow-up column delete 500s. Drop InternalServerError once
+            # fixed.
+            with suppress(NotFoundError, InternalServerError):
+                client.data_columns.delete(id=dc_id)

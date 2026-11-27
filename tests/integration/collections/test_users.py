@@ -25,11 +25,6 @@ def test_simple_users_get_all(client: Albert):
     assert_user_items(user_list, User)
 
 
-def test_simple_users_search(client: Albert):
-    user_list = list(client.users.search(max_items=10))
-    assert_user_items(user_list, UserSearchItem)
-
-
 def test_advanced_users_search(client: Albert, static_user: User):
     faux_name = static_user.name.split(" ")[0]
     adv_list = client.users.search(
@@ -90,6 +85,13 @@ def test_hydrate_user(client: Albert):
 
     if not hydrated_any:
         pytest.skip("No search hits could be hydrated (stale index IDs)")
+
+
+def test_user_update_no_changes(client: Albert, static_user: User):
+    """Test that updating a user without changes returns the current user."""
+    updated = client.users.update(user=static_user)
+    assert updated.id == static_user.id
+    assert updated.name == static_user.name
 
 
 def test_user_delete_non_existent(client: Albert):

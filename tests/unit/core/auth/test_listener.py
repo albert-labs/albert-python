@@ -120,6 +120,16 @@ def test_local_http_server_yields_server_and_port():
         assert 51200 <= port < 51210
 
 
+def test_local_http_server_flags_timeout_when_no_callback_arrives():
+    """Test that handle_request() marks the server as timed out when no callback arrives."""
+    with local_http_server(timeout=0, minimum_port=51500, maximum_port=51510) as (server, _p):
+        assert server.timed_out is False
+        server.handle_request()
+
+        assert server.timed_out is True
+        assert server.token is None
+
+
 def test_local_http_server_closes_socket_on_normal_exit():
     """Test that the server's socket is closed once the with-block exits normally."""
     with local_http_server(timeout=1, minimum_port=51300, maximum_port=51310) as (server, _port):

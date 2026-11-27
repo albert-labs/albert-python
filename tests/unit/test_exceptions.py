@@ -19,6 +19,7 @@ from albert.exceptions import (
     NotFoundError,
     PreconditionFailedError,
     PreconditionRequiredError,
+    TooManyRequestsError,
     UnauthorizedError,
     UnsupportedMediaTypeError,
     _get_http_error_cls,
@@ -194,6 +195,31 @@ def test_combination_generation_error_attributes():
     assert "Combination generation failed" in str(err)
 
 
+def test_combination_generation_error_tasks_default_to_the_task():
+    """Test that tasks holds the single task when only task is given."""
+    task = PropertyTask(id="TASFOR123", name="Test Task")
+
+    err = CombinationGenerationError("failed", task=task)
+
+    assert err.tasks == [task]
+
+
+def test_combination_generation_error_keeps_tasks_without_a_task():
+    """Test that an error over several tasks keeps them all and no single task."""
+    tasks = [PropertyTask(id="TASFOR1", name="A"), PropertyTask(id="TASFOR2", name="B")]
+
+    err = CombinationGenerationError(
+        "failed", tasks=tasks, failed_blocks=["TASFOR2/BLK1"], job_states={}
+    )
+
+    assert (err.task, err.tasks, err.failed_blocks) == (None, tasks, ["TASFOR2/BLK1"])
+
+
+def test_combination_generation_error_tasks_empty_without_tasks():
+    """Test that tasks is empty when no task is given."""
+    assert CombinationGenerationError("failed").tasks == []
+
+
 # --- status code -> exception class mapping -----------------------------------
 
 
@@ -209,7 +235,7 @@ def test_combination_generation_error_attributes():
         (412, PreconditionFailedError),
         (415, UnsupportedMediaTypeError),
         (428, PreconditionRequiredError),
-        (429, AlbertClientError),
+        (429, TooManyRequestsError),
         (500, InternalServerError),
         (502, BadGateway),
         (503, AlbertServerError),
@@ -251,13 +277,52 @@ def test_format_message_extracts_nested_errors_field():
     assert "'issue': 'required'" in message
 
 
-def test_format_message_falls_back_to_whole_payload_without_errors_key():
-    """Test that a JSON body with no 'errors' key uses the whole payload as the error."""
+def test_format_message_extracts_string_message_field():
+    """Test that a JSON body with a string 'message' field is used verbatim."""
     resp = _make_response(status_code=400, body=json.dumps({"message": "bad input"}).encode())
 
     message = AlbertHTTPError._format_message(resp)
 
-    assert "'message': 'bad input'" in message
+    assert "Errors: bad input" in message
+
+
+def test_format_message_prefers_errors_over_message():
+    """Test that 'errors' wins when a body carries both 'errors' and 'message' keys."""
+    resp = _make_response(
+        status_code=400,
+        body=json.dumps({"errors": "from errors", "message": "from message"}).encode(),
+    )
+
+    message = AlbertHTTPError._format_message(resp)
+
+    assert "Errors: from errors" in message
+
+
+def test_format_message_extracts_message_list_field():
+    """Test that an error body with a list-of-strings 'message' field surfaces its entries."""
+    resp = _make_response(
+        status_code=422,
+        body=json.dumps(
+            {
+                "statusCode": 422,
+                "message": ["No experiment records in dataset (0 training samples)."],
+                "time": "2026-10-13T12:00:00.000Z",
+            }
+        ).encode(),
+    )
+
+    exc = AlbertClientError(resp)
+
+    assert "No experiment records in dataset (0 training samples)." in exc.message
+
+
+def test_format_message_falls_back_to_whole_payload_without_errors_or_message_key():
+    """Test that a JSON body with no 'errors' or 'message' key uses the whole payload."""
+    resp = _make_response(status_code=400, body=json.dumps({"detail": "bad input"}).encode())
+
+    message = AlbertHTTPError._format_message(resp)
+
+    assert "'detail': 'bad input'" in message
 
 
 def test_format_message_omits_errors_suffix_for_empty_payload():

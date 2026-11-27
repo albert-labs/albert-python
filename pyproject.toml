@@ -37,6 +37,10 @@ dev = [
     "mkdocs>=1.5.3",
     "mkdocs-material>=9.5.10",
     "mkdocstrings>=0.29.1",
+    # mkdocstrings <1.0.7 calls pymdownx.highlight.Highlight without the `md`
+    # argument that pymdown-extensions 10.16 made required, breaking docs builds.
+    # mkdocstrings 1.0.7 needs Python >=3.11, so on 3.10 cap pymdown-extensions.
+    "pymdown-extensions>=10.2,<10.16",
     "mkdocstrings-python>=1.16.12",
     "mkdocs-gen-files>=0.5.0",
     "mkdocs-literate-nav>=0.6.0",
@@ -92,7 +96,7 @@ skip_empty = true
 
 [tool.pytest.ini_options]
 # Inert without -n; guarantees xdist_group semantics for any parallel invocation
-addopts = "--dist loadgroup"
+addopts = "--dist loadgroup --no-loadscope-reorder"
 env_files = [".env"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"

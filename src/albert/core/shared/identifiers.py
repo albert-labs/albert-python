@@ -18,6 +18,11 @@ _ALBERT_PREFIXES = {
     "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "DesignCandidateId": "DCN",
+    "DesignCandidateSetId": "DCS",
+    "DesignModelConfigId": "DMC",
+    "DesignRunId": "DSR",
+    "DesignSpaceId": "DSP",
     "DocumentId": "DOC",
     "EntityTypeId": "ETT",
     "InventoryId": "INV",
@@ -42,6 +47,7 @@ _ALBERT_PREFIXES = {
     "UnitFamilyId": "UNF",
     "TeamId": "TEM",
     "UserId": "USR",
+    "ViewId": "VEW",
     "WorksheetId": "WKS",
     "WorkflowId": "WFL",
     # Search Specific Ids
@@ -185,7 +191,6 @@ SearchInventoryId = Annotated[str, AfterValidator(ensure_search_inventory_id)]
 
 
 _ROW_CHAIN_RE = re.compile(r"^ROW\d+(?:XROW\d+)*$")
-_INTERVAL_BARCODE_LEN = 9
 
 
 def ensure_interval_id(id: str) -> str:
@@ -195,26 +200,15 @@ def ensure_interval_id(id: str) -> str:
     if id.lower() == "default":
         return "default"
 
-    # ROW chains and WFL ids follow Albert ID uppercasing. Barcodes are
-    # case-sensitive and must not be folded.
+    # ROW chains and WFL ids follow Albert ID uppercasing.
     upper = id.upper()
-    if _ROW_CHAIN_RE.fullmatch(upper):
+    if _ROW_CHAIN_RE.fullmatch(upper) or upper.startswith("WFL"):
         return upper
 
-    if upper.startswith("WFL"):
-        return upper
-
-    # Platform-generated combination barcodes are 9-character case-sensitive alphanumeric
-    # nanoids (e.g. "OhI8ap0HY", "V1a9Km2xL") that lack an identifying prefix. Matching
-    # solely on length is permissive (accepting any 9-character string), but unavoidable
-    # given barcode unpredictability across tenants while preserving exact case.
-    if len(id) == _INTERVAL_BARCODE_LEN:
-        return id
-
-    raise ValueError(
-        f"IntervalId {id} is invalid. Must be a ROW chain (ROW# or ROW#XROW#...), "
-        "a WFL id, a 9-character barcode, or 'default'"
-    )
+    # Any other form (a case-sensitive barcode, or a form Albert adds later) is passed
+    # through unchanged, not rejected. Albert owns the format of interval IDs, and this
+    # type also reads workflows, so rejecting an unknown form would break reads.
+    return id
 
 
 IntervalId = Annotated[str, AfterValidator(ensure_interval_id)]
@@ -306,6 +300,64 @@ def ensure_propertydata_id(id: str) -> str:
 
 
 PropertyDataId = Annotated[str, AfterValidator(ensure_propertydata_id)]
+
+
+# A bare uuid, which a candidate id follows with ``-<n>``.
+_BARE_UUID = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(-\d+)?", re.IGNORECASE
+)
+
+
+def _ensure_uuid_albert_id(id: str, id_type: str) -> str:
+    """Prefix a uuid-based Albert ID, keeping the rest of it exactly as given.
+
+    These IDs are the prefix plus a lowercase uuid, and lookups are case-sensitive, so only
+    the prefix is normalized. A bare uuid is prefixed even when it happens to start with
+    another entity's prefix (``dac...``); any other ID with another entity's prefix is
+    rejected.
+    """
+    prefix = _ALBERT_PREFIXES[id_type]
+    if id and _BARE_UUID.fullmatch(id):
+        return f"{prefix}{id}"
+    _ensure_albert_id(id, id_type)
+    if id[: len(prefix)].upper() == prefix:
+        return f"{prefix}{id[len(prefix) :]}"
+    return f"{prefix}{id}"
+
+
+def ensure_design_space_id(id: str) -> str:
+    return _ensure_uuid_albert_id(id, "DesignSpaceId")
+
+
+DesignSpaceId = Annotated[str, AfterValidator(ensure_design_space_id)]
+
+
+def ensure_design_model_config_id(id: str) -> str:
+    return _ensure_uuid_albert_id(id, "DesignModelConfigId")
+
+
+DesignModelConfigId = Annotated[str, AfterValidator(ensure_design_model_config_id)]
+
+
+def ensure_design_run_id(id: str) -> str:
+    return _ensure_uuid_albert_id(id, "DesignRunId")
+
+
+DesignRunId = Annotated[str, AfterValidator(ensure_design_run_id)]
+
+
+def ensure_design_candidate_set_id(id: str) -> str:
+    return _ensure_uuid_albert_id(id, "DesignCandidateSetId")
+
+
+DesignCandidateSetId = Annotated[str, AfterValidator(ensure_design_candidate_set_id)]
+
+
+def ensure_design_candidate_id(id: str) -> str:
+    return _ensure_uuid_albert_id(id, "DesignCandidateId")
+
+
+DesignCandidateId = Annotated[str, AfterValidator(ensure_design_candidate_id)]
 
 
 def ensure_task_id(id: str) -> str:
@@ -410,8 +462,32 @@ def ensure_user_id(id: str) -> str:
 UserId = Annotated[str, AfterValidator(ensure_user_id)]
 
 
+def ensure_view_id(id: str) -> str:
+    return _ensure_albert_id(id, "ViewId")
+
+
+ViewId = Annotated[str, AfterValidator(ensure_view_id)]
+
+
+_UNI_NUMERIC_ID_RE = re.compile(r"^uni\d+$", re.IGNORECASE)
+_ALBERT_PREFIX_HEADS = frozenset(_ALBERT_PREFIXES.values())
+
+
 def ensure_unit_id(id: str) -> str:
-    return _ensure_albert_id(id, "UnitId")
+    # Units use UNI + digits or UNI + case-sensitive UUID; only the numeric uni-prefix form is fully uppercased.
+    if not id:
+        raise ValueError("UnitId cannot be empty")
+    prefix = _ALBERT_PREFIXES["UnitId"]
+    if _UNI_NUMERIC_ID_RE.match(id):
+        return id.upper()
+    head = id[:3].upper() if len(id) >= 3 else ""
+    if head == prefix:
+        return prefix + id[3:]
+    if head in _ALBERT_PREFIX_HEADS:
+        raise ValueError(f"UnitId {id} has invalid prefix. Expected: {prefix}")
+    if id.isdigit():
+        return f"{prefix}{id}"
+    return id
 
 
 UnitId = Annotated[str, AfterValidator(ensure_unit_id)]

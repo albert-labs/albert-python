@@ -16,9 +16,8 @@ from tests.integration.seeding import generate_smart_dataset_seed
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
-ignore_in_ten0 = pytest.mark.xfail(
-    reason="No DWH available in TEN0 test environment.",
-    strict=False,
+ignore_in_ten0 = pytest.mark.skip(
+    reason="A data warehouse is not available in the TEN0 test environment.",
 )
 
 
@@ -103,6 +102,24 @@ def test_smart_dataset_update(client: Albert, seeded_smart_dataset: SmartDataset
     assert updated.build_state == SmartDatasetBuildState.FAILED
     assert updated.storage_key == f"smart/datasets/{fetched.id}.json"
     assert updated.schema_ == new_schema
+
+
+@pytest.mark.xfail(
+    reason="The platform does not yet accept build_error updates; support is rolling out separately.",
+    strict=False,
+)
+def test_smart_dataset_update_build_error(client: Albert, seeded_smart_dataset: SmartDataset):
+    """Test setting and clearing a smart dataset's build failure reason."""
+    fetched = client.smart_datasets.get_by_id(id=seeded_smart_dataset.id)
+    fetched.build_state = SmartDatasetBuildState.FAILED
+    fetched.build_error = "Sync failed because of a server error. Try syncing again."
+
+    updated = client.smart_datasets.update(smart_dataset=fetched)
+    assert updated.build_error == "Sync failed because of a server error. Try syncing again."
+
+    updated.build_error = None
+    cleared = client.smart_datasets.update(smart_dataset=updated)
+    assert cleared.build_error is None
 
 
 def test_smart_dataset_delete(

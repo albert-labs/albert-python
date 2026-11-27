@@ -22,15 +22,6 @@ def test_get_by_id(client: Albert, seeded_workflows: list[Workflow]):
     assert retrieved_wf.id == wf.id
 
 
-def test_blocks_dupes(client: Albert, seeded_workflows: list[Workflow]):
-    wf = seeded_workflows[0].model_copy()
-    wf.id = None
-    wf.status = None
-
-    r = client.workflows.create(workflows=wf)
-    assert r[0].id == seeded_workflows[0].id
-
-
 def test_create_returns_populated_workflow(client: Albert, seeded_workflows: list[Workflow]):
     """Test that create returns fully populated matched workflows."""
     wf = seeded_workflows[0].model_copy()
@@ -41,6 +32,22 @@ def test_create_returns_populated_workflow(client: Albert, seeded_workflows: lis
     assert matched.id == seeded_workflows[0].id
     assert matched.name
     assert matched.parameter_group_setpoints
+
+
+def test_create_accepts_fetched_workflow_with_interval_combinations(
+    client: Albert, seeded_workflows: list[Workflow]
+):
+    """Test that re-creating a fetched intervalized workflow drops its read-only combinations."""
+    fetched = [client.workflows.get_by_id(id=wf.id) for wf in seeded_workflows]
+    interval_wf = next((wf for wf in fetched if wf.interval_combinations), None)
+    assert interval_wf, "Expected a seeded workflow with interval combinations"
+
+    original_id = interval_wf.id
+    interval_wf.id = None
+    interval_wf.status = None
+
+    [matched] = client.workflows.create(workflows=[interval_wf])
+    assert matched.id == original_id
 
 
 def test_create_fallback_for_nameless_matched_workflow(client: Albert):

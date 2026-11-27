@@ -1,6 +1,10 @@
+import uuid
+from contextlib import suppress
+
 import pytest
 
 from albert import Albert
+from albert.exceptions import AlbertHTTPError
 from albert.resources.inventory import InventoryItem
 from albert.resources.worksheets import Worksheet
 from tests.utils.wait import poll_until
@@ -45,13 +49,51 @@ def test_worksheet_search(
     assert hits[0].id in seeded_ids
 
 
-# Need to seed a Sheet Template First
-# def test_setup_new_sheet_from_template(client: Albert, seeded_worksheet: Worksheet):
-#     existing_number = len(seeded_worksheet.sheets)
-#     updated_worksheet = client.worksheets.setup_new_sheet_from_template(
-#         project_id=seeded_worksheet.project_id,
-#         sheet_template_id=seeded_worksheet.sheets[0].id,
-#         sheet_name="New sheet from template",
-#     )
-#     assert isinstance(updated_worksheet, Worksheet)
-#     assert len(updated_worksheet.sheets) == existing_number + 1
+def test_delete_and_reactivate_sheet(client: Albert, seeded_worksheet: Worksheet):
+    """Test a private sheet can be deleted (archived) and reactivated."""
+    project_id = seeded_worksheet.project_id
+    # Sheet names are capped at 50 characters by the API.
+    sheet_name = f"TEST - del {uuid.uuid4()}"
+    worksheet = client.worksheets.add_sheet(project_id=project_id, sheet_name=sheet_name)
+    sheet = next(s for s in worksheet.sheets if s.name == sheet_name)
+
+    def _listed_sheet_ids() -> list[str]:
+        return [s.id for s in client.worksheets.get_by_project_id(project_id=project_id).sheets]
+
+    try:
+        client.worksheets.delete_sheet(project_id=project_id, sheet_id=sheet.id)
+        remaining = poll_until(_listed_sheet_ids, predicate=lambda ids: sheet.id not in ids)
+        assert sheet.id not in remaining
+
+        client.worksheets.reactivate_sheet(project_id=project_id, sheet_id=sheet.id)
+        restored = poll_until(_listed_sheet_ids, predicate=lambda ids: sheet.id in ids)
+        assert sheet.id in restored
+    finally:
+        with suppress(AlbertHTTPError):
+            client.worksheets.delete_sheet(project_id=project_id, sheet_id=sheet.id)
+
+
+def test_setup_new_sheet_from_template(client: Albert, seeded_worksheet: Worksheet):
+    project_id = seeded_worksheet.project_id
+    template = client.worksheets.create_sheet_template(
+        project_id=project_id,
+        source_sheet_name=seeded_worksheet.sheets[0].name,
+        template_name=f"TEST - tpl {uuid.uuid4()}",
+    )
+    sheet_name = f"TEST - tpl {uuid.uuid4()}"
+    sheet_id = None
+    try:
+        worksheet = client.worksheets.setup_new_sheet_from_template(
+            project_id=project_id,
+            sheet_template_id=template.id,
+            sheet_name=sheet_name,
+        )
+        sheet = next(s for s in worksheet.sheets if s.name == sheet_name)
+        sheet_id = sheet.id
+        assert sheet.process_design is not None
+    finally:
+        if sheet_id:
+            with suppress(AlbertHTTPError):
+                client.worksheets.delete_sheet(project_id=project_id, sheet_id=sheet_id)
+        with suppress(AlbertHTTPError):
+            client.custom_templates.delete(id=template.id)

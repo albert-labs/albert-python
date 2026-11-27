@@ -502,6 +502,16 @@ def test_generate_enum_patches_new_option_matching_existing_text_is_rehydrated()
     assert generate_enum_patches(existing, updated) == []
 
 
+def test_generate_enum_patches_remove_then_readd_same_text():
+    """Test that removing an option then re-adding its text emits a delete, then an add by text."""
+    original = [EnumValidationValue(id="E1", text="Low"), EnumValidationValue(id="E2", text="Hi")]
+    after_removal = [EnumValidationValue(id="E1", text="Low")]
+    readded = [EnumValidationValue(id="E1", text="Low"), EnumValidationValue(text="Hi")]
+
+    assert generate_enum_patches(original, after_removal) == [{"operation": "delete", "id": "E2"}]
+    assert generate_enum_patches(after_removal, readded) == [{"operation": "add", "text": "Hi"}]
+
+
 def test_generate_enum_patches_ignores_non_enum_validation_value_entries():
     """Test that non-EnumValidationValue entries in either list are filtered out."""
     existing = [EnumValidationValue(id="E1", text="Low"), "not-an-enum-value"]
@@ -626,6 +636,44 @@ def test_generate_data_column_patches_enum_newly_added_has_no_existing_options()
     _, _, enum_patches = generate_data_column_patches(initial, updated)
 
     assert enum_patches == {"1": [{"operation": "add", "text": "High"}]}
+
+
+@pytest.mark.parametrize(
+    "initial_validation",
+    [None, [], [ValueValidation(datatype=DataType.STRING)]],
+)
+def test_generate_data_column_patches_switch_to_enum_routes_options_to_enum_patches(
+    initial_validation,
+):
+    """Test that switching a column to ENUM sends options as enum adds, not inline validation."""
+    updated_validation = [
+        ValueValidation(
+            datatype=DataType.ENUM,
+            value=[EnumValidationValue(text="tbd"), EnumValidationValue(text="n/a")],
+        )
+    ]
+    initial = [_dc(sequence="1", validation=initial_validation)]
+    updated = [_dc(sequence="1", validation=updated_validation)]
+
+    patches, _, enum_patches = generate_data_column_patches(initial, updated)
+
+    assert patches == []
+    assert enum_patches == {
+        "1": [{"operation": "add", "text": "tbd"}, {"operation": "add", "text": "n/a"}]
+    }
+
+
+def test_generate_data_column_patches_switch_to_empty_enum_keeps_validation_patch():
+    """Test that switching to ENUM with no options still patches the validation."""
+    updated_validation = [ValueValidation(datatype=DataType.ENUM, value=[])]
+    initial = [_dc(sequence="1", validation=[ValueValidation(datatype=DataType.STRING)])]
+    updated = [_dc(sequence="1", validation=updated_validation)]
+
+    patches, _, enum_patches = generate_data_column_patches(initial, updated)
+
+    assert enum_patches == {"1": []}
+    assert len(patches) == 1
+    assert patches[0].actions[0].attribute == "validation"
 
 
 # ---------------------------------------------------------------------------
@@ -766,6 +814,100 @@ def test_generate_parameter_patches_datatype_switched_to_enum_skips_validation_o
     assert enum_patches == {"1": [{"operation": "add", "text": "A"}]}
 
 
+def _special_rows() -> list[ParameterValue]:
+    return [
+        _pv(id="PRM432", sequence="ROW1", short_name="Viscosimeter"),
+        _pv(id="PRM432", sequence="ROW2", short_name="Temperature unit"),
+        _pv(id="PRM432", sequence="ROW22", short_name="Temperature unit"),
+        _pv(id="PRM431", sequence="ROW3", short_name="Chamber"),
+        _pv(id="PRM49", sequence="ROW4"),
+    ]
+
+
+def _without_sequence(rows: list[ParameterValue]) -> list[ParameterValue]:
+    return [
+        ParameterValue(**row.model_dump(by_alias=True, exclude_none=True), sequence=None)
+        for row in rows
+    ]
+
+
+def test_generate_parameter_patches_unchanged_repeated_rows_without_sequence_is_no_op():
+    """Test that resending every row of a repeated parameter without sequences changes nothing."""
+    patches, new_params, enum_patches = generate_parameter_patches(
+        _special_rows(), _without_sequence(_special_rows()), "parameters"
+    )
+
+    assert patches == []
+    assert new_params == []
+    assert enum_patches == {}
+
+
+def test_generate_parameter_patches_repeated_rows_without_sequence_adopt_their_own_sequence():
+    """Test that each resent row of a repeated parameter keeps a distinct existing sequence."""
+    updated = _without_sequence(_special_rows())
+
+    generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert [p.sequence for p in updated] == ["ROW1", "ROW2", "ROW22", "ROW3", "ROW4"]
+
+
+def test_generate_parameter_patches_repeated_row_value_change_targets_its_own_row():
+    """Test that a value change on one repeated row patches only that row."""
+    updated = _without_sequence(_special_rows())
+    updated[2].value = "Kelvin"
+
+    patches, _, _ = generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert patches == [
+        PGPatchDatum(operation="add", attribute="value", newValue="Kelvin", rowId="ROW22")
+    ]
+
+
+def test_generate_parameter_patches_omitted_repeated_row_deletes_only_that_row():
+    """Test that dropping one repeated row deletes that row and keeps its siblings."""
+    updated = [p for p in _without_sequence(_special_rows()) if p.short_name != "Viscosimeter"]
+
+    patches, new_params, _ = generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert new_params == []
+    assert patches == [PGPatchDatum(operation="delete", attribute="parameters", oldValue=["ROW1"])]
+
+
+def test_generate_parameter_patches_repeated_rows_with_new_short_names_keep_every_row():
+    """Test that repeated rows whose short names changed each claim a distinct existing row."""
+    updated = _without_sequence(_special_rows())
+    updated[0].short_name = "Equipment A"
+    updated[1].short_name = "Equipment B"
+
+    patches, new_params, _ = generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert new_params == []
+    assert [p for p in patches if p.operation == "delete"] == []
+    assert sorted(p.sequence for p in updated[:3]) == ["ROW1", "ROW2", "ROW22"]
+
+
+def test_generate_parameter_patches_extra_repeated_row_is_new():
+    """Test that one more row of a repeated parameter than exists is treated as new."""
+    updated = [*_without_sequence(_special_rows()), _pv(id="PRM432", sequence=None)]
+
+    patches, new_params, _ = generate_parameter_patches(_special_rows(), updated, "parameters")
+
+    assert patches == []
+    assert [(p.id, p.sequence) for p in new_params] == [("PRM432", None)]
+
+
+def test_generate_parameter_patches_sequence_match_is_not_reused_by_id_match():
+    """Test that a row already matched by sequence is not claimed again by an id-only entry."""
+    initial = [_pv(id="PRM1", sequence="1", value="a"), _pv(id="PRM1", sequence="2", value="b")]
+    updated = [_pv(id="PRM1", sequence=None, value="b"), _pv(id="PRM1", sequence="1", value="a")]
+
+    patches, new_params, _ = generate_parameter_patches(initial, updated)
+
+    assert patches == []
+    assert new_params == []
+    assert [p.sequence for p in updated] == ["2", "1"]
+
+
 # ---------------------------------------------------------------------------
 # handle_tags
 # ---------------------------------------------------------------------------
@@ -799,6 +941,16 @@ def test_handle_tags_uses_custom_attribute_name():
 def test_handle_tags_none_lists_do_not_raise():
     """Test that None for either existing or updated tags behaves like an empty list."""
     assert handle_tags(None, None) == []
+
+
+def test_handle_tags_duplicate_updated_tag_emits_one_add_op():
+    """Test that a duplicate tag ID in updated_tags emits only one add op."""
+    updated = [Tag(id="T1", tag="a"), Tag(id="T1", tag="a"), Tag(id="T2", tag="b")]
+
+    patches = handle_tags([], updated)
+
+    ops = [(p.operation, p.new_value) for p in patches]
+    assert sorted(ops) == [("add", "T1"), ("add", "T2")]
 
 
 # ---------------------------------------------------------------------------
@@ -902,6 +1054,108 @@ def test_generate_data_template_patches_tags_explicit_empty_clears_all():
     assert [(p.operation, p.attribute, p.old_value) for p in general_patches.data] == [
         ("delete", "tag", "TAG1")
     ]
+
+
+def _two_row_template(**kwargs) -> DataTemplate:
+    return _data_template(
+        data_column_values=[
+            _dc(data_column_id="DAC1", sequence="1", value="10"),
+            _dc(data_column_id="DAC2", sequence="2", value="20"),
+        ],
+        parameter_values=[
+            _pv(id="PRM1", sequence="1", value="a"),
+            _pv(id="PRM2", sequence="2", value="b"),
+        ],
+        **kwargs,
+    )
+
+
+def test_generate_data_template_patches_partial_lists_keep_omitted_rows_when_not_removing():
+    """Test that with remove_omitted_rows=False, partial lists update listed rows only."""
+    existing = _two_row_template()
+    updated = _data_template(
+        data_column_values=[_dc(data_column_id="DAC1", sequence="1", value="11")],
+        parameter_values=[_pv(id="PRM1", sequence="1", value="z")],
+    )
+
+    general_patches, new_cols, _, new_params, _, p_patches, _, _ = generate_data_template_patches(
+        PatchPayload(data=[]),
+        updated_data_template=updated,
+        existing_data_template=existing,
+        remove_omitted_rows=False,
+    )
+
+    assert [(p.attribute, p.colId) for p in general_patches.data] == [("datacolumn", "1")]
+    assert [(p.operation, p.attribute, p.rowId) for p in p_patches] == [("update", "value", "1")]
+    assert new_cols == []
+    assert new_params == []
+
+
+def test_generate_data_template_patches_empty_lists_keep_all_rows_when_not_removing():
+    """Test that with remove_omitted_rows=False, explicit empty lists delete nothing."""
+    existing = _two_row_template()
+    updated = _data_template(data_column_values=[], parameter_values=[])
+
+    general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
+        PatchPayload(data=[]),
+        updated_data_template=updated,
+        existing_data_template=existing,
+        remove_omitted_rows=False,
+    )
+
+    assert general_patches.data == []
+    assert p_patches == []
+
+
+def test_generate_data_template_patches_deletes_unlisted_rows_by_default():
+    """Test that by default the columns and parameters left out of the lists are deleted."""
+    existing = _two_row_template()
+    updated = _data_template(
+        data_column_values=[_dc(data_column_id="DAC1", sequence="1", value="10")],
+        parameter_values=[_pv(id="PRM1", sequence="1", value="a")],
+    )
+
+    general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
+        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
+    )
+
+    assert [(p.operation, p.attribute, p.old_value) for p in general_patches.data] == [
+        ("delete", "datacolumns", ["2"])
+    ]
+    assert p_patches == [PGPatchDatum(operation="delete", attribute="parameters", oldValue=["2"])]
+
+
+def test_generate_data_template_patches_unset_lists_delete_nothing():
+    """Test that rows are never deleted when the lists are left unset."""
+    existing = _two_row_template()
+    updated = _data_template(name="Renamed")
+
+    general_patches, *_rest, p_patches, _, _ = generate_data_template_patches(
+        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
+    )
+
+    assert general_patches.data == []
+    assert p_patches == []
+
+
+def test_generate_data_column_patches_keeps_omitted_when_remove_omitted_is_false():
+    """Test that omitted columns emit no delete op when remove_omitted is False."""
+    initial = [_dc(sequence="1"), _dc(sequence="2")]
+
+    patches, new_cols, _ = generate_data_column_patches(initial, [], remove_omitted=False)
+
+    assert patches == []
+    assert new_cols == []
+
+
+def test_generate_parameter_patches_keeps_omitted_when_remove_omitted_is_false():
+    """Test that omitted parameters emit no delete op when remove_omitted is False."""
+    initial = [_pv(id="PRM1", sequence="1"), _pv(id="PRM2", sequence="2")]
+
+    patches, new_params, _ = generate_parameter_patches(initial, [], remove_omitted=False)
+
+    assert patches == []
+    assert new_params == []
 
 
 # ---------------------------------------------------------------------------

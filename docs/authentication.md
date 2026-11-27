@@ -43,6 +43,19 @@ client = Albert.from_sso(
 )
 ```
 
+!!! tip
+    The SDK waits up to 120 seconds for the browser login to complete. If your login takes
+    longer (for example due to MFA or a slow network), raise it with `login_timeout` on
+    `Albert.from_sso(...)` or `timeout` on `AlbertSSOClient.authenticate(...)`:
+
+    ```python
+    client = Albert.from_sso(
+        base_url="https://app.albertinvent.com",
+        email="your-name@albertinvent.com",
+        login_timeout=300,
+    )
+    ```
+
 ---
 
 ## 🔑 Client Credentials (Programmatic Access)

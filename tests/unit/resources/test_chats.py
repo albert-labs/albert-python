@@ -1,7 +1,11 @@
+import pytest
+
 from albert.resources.chats import (
     ChatComponentType,
     ChatMessage,
     ChatRole,
+    ChatSession,
+    ChatSessionKind,
     ChatUserType,
 )
 
@@ -36,6 +40,66 @@ def test_chat_message_page_context_wire_alias_round_trip():
     assert restored.page_context == page_context
 
 
+def test_chat_message_page_context_preserves_undeclared_keys():
+    """Test page_context keeps client context keys such as quoted_canvas_ids on dump and validate."""
+    page_context = {
+        "url": "https://example.com/canvas",
+        "canvas_id": "CVS1",
+        "quoted_canvas_ids": ["CVS1", "CVS2"],
+    }
+    message = ChatMessage(
+        component_type=ChatComponentType.TEXT,
+        user_type=ChatUserType.USER,
+        role=ChatRole.USER,
+        content="Revise this chart",
+        page_context=page_context,
+    )
+
+    dumped = message.model_dump(by_alias=True, exclude_unset=True, mode="json")
+    assert dumped["pageContext"] == page_context
+
+    restored = ChatMessage.model_validate(
+        {
+            "componentType": "text",
+            "userType": "user",
+            "role": "user",
+            "Content": "Revise this chart",
+            "pageContext": page_context,
+        }
+    )
+    assert restored.page_context == page_context
+
+
+def test_chat_message_page_context_declared_keys_only_round_trip():
+    """Test page_context with only documented keys still round-trips."""
+    page_context = {
+        "url": "https://example.com/#notebook",
+        "entity": "notebook",
+        "albert_id": "NTB1",
+    }
+    message = ChatMessage(
+        component_type=ChatComponentType.TEXT,
+        user_type=ChatUserType.USER,
+        role=ChatRole.USER,
+        content="hello",
+        page_context=page_context,
+    )
+
+    dumped = message.model_dump(by_alias=True, exclude_unset=True, mode="json")
+    assert dumped["pageContext"] == page_context
+
+    restored = ChatMessage.model_validate(
+        {
+            "componentType": "text",
+            "userType": "user",
+            "role": "user",
+            "Content": "hello",
+            "pageContext": page_context,
+        }
+    )
+    assert restored.page_context == page_context
+
+
 def test_chat_message_omits_page_context_when_unset():
     """Test page_context is excluded from the payload when not provided."""
     message = ChatMessage(
@@ -45,7 +109,7 @@ def test_chat_message_omits_page_context_when_unset():
         content="hello",
     )
 
-    assert "pageContext" not in message.model_dump(by_alias=True, exclude_none=True)
+    assert "pageContext" not in message.model_dump(by_alias=True, exclude_unset=True)
     assert message.page_context is None
 
 
@@ -162,3 +226,70 @@ def test_chat_message_parses_permission_request_component_type():
         }
     )
     assert restored.component_type is ChatComponentType.PERMISSION_REQUEST
+
+
+def test_chat_session_automation_fields_wire_alias_round_trip():
+    """Test kind, automation_id and automation_run_id serialize to and parse from their camelCase aliases."""
+    session = ChatSession(
+        name="Automation run",
+        source_session_id="11111111-1111-4111-8111-111111111111",
+        kind=ChatSessionKind.AUTOMATION,
+        automation_id="AUT1",
+        automation_run_id="RUN1",
+    )
+
+    dumped = session.model_dump(by_alias=True, exclude_none=True, mode="json")
+    assert dumped == {
+        "name": "Automation run",
+        "sourceSessionId": "11111111-1111-4111-8111-111111111111",
+        "kind": "automation",
+        "automationId": "AUT1",
+        "automationRunId": "RUN1",
+    }
+
+    restored = ChatSession.model_validate(
+        {
+            "id": "SES1",
+            "name": "Automation run",
+            "sourceSessionId": "11111111-1111-4111-8111-111111111111",
+            "kind": "automation",
+            "automationId": "AUT1",
+            "automationRunId": "RUN1",
+        }
+    )
+    assert restored.kind is ChatSessionKind.AUTOMATION
+    assert restored.automation_id == "AUT1"
+    assert restored.automation_run_id == "RUN1"
+
+
+def test_chat_session_omits_automation_fields_when_unset():
+    """Test the create payload is unchanged for a regular chat session."""
+    session = ChatSession(name="Plain chat", source_session_id="ext-123")
+
+    dumped = session.model_dump(by_alias=True, exclude_unset=True, mode="json")
+    assert dumped == {"name": "Plain chat", "sourceSessionId": "ext-123"}
+    assert session.kind is None
+    assert session.automation_id is None
+    assert session.automation_run_id is None
+
+
+def test_chat_session_parses_legacy_response_without_kind():
+    """Test a session response that predates the kind field still validates."""
+    restored = ChatSession.model_validate(
+        {"id": "SES1", "name": "Legacy", "sourceSessionId": "ext-123", "status": "active"}
+    )
+    assert restored.kind is None
+    assert restored.automation_id is None
+
+
+@pytest.mark.parametrize("value", ["chat", "automation"])
+def test_chat_session_parses_kind_values(value: str):
+    """Test both wire values of kind map onto ChatSessionKind."""
+    restored = ChatSession.model_validate({"name": "n", "sourceSessionId": "s", "kind": value})
+    assert restored.kind == ChatSessionKind(value)
+
+
+def test_chat_session_rejects_unknown_kind():
+    """Test an unknown kind value fails validation instead of passing through."""
+    with pytest.raises(ValueError):
+        ChatSession.model_validate({"name": "n", "sourceSessionId": "s", "kind": "bogus"})

@@ -98,7 +98,7 @@ class SmartDatasetCollection(BaseCollection):
 
     _api_version = "v3"
 
-    _updatable_attributes = {"scope", "build_state", "storage_key", "schema_"}
+    _updatable_attributes = {"scope", "build_state", "build_error", "storage_key", "schema_"}
 
     def __init__(self, *, session: AlbertSession):
         """Initialize a SmartDatasetCollection.
@@ -262,7 +262,9 @@ class SmartDatasetCollection(BaseCollection):
         Notes
         -----
         Only the following fields are updatable: ``scope``, ``build_state``,
-        ``storage_key``, and ``schema_``. Changes to any other field are ignored.
+        ``build_error``, ``storage_key``, and ``schema_``. Changes to any other
+        field are ignored. Setting ``build_error`` to None clears the stored
+        failure reason.
 
         Updating ``scope`` stores the new definition but does not rebuild the
         dataset: [`get_data`][albert.collections.smart_datasets.SmartDatasetCollection.get_data] keeps returning the

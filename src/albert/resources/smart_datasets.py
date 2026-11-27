@@ -103,6 +103,9 @@ class SmartDataset(BaseResource):
     build_state: SmartDatasetBuildState | None = Field(default=None, alias="buildState")
     """Where the dataset is in its build lifecycle. Data is available once this is ``ready``."""
 
+    build_error: str | None = Field(default=None, alias="buildError")
+    """Why the build failed, in words a user can act on. Only set on some failed datasets."""
+
     scope: SmartDatasetScope | None = Field(default=None)
     """The scope defining which projects, targets, and worksheets the dataset draws its experiment data from."""
 

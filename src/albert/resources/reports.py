@@ -71,8 +71,8 @@ class FilterState(BaseAlbertModel):
 class MetadataState(BaseAlbertModel):
     """The metadata state of a report."""
 
-    grouped_rows: list[str] = Field(default_factory=list, alias="groupedRows")
-    """The identifiers of rows that are grouped in the report."""
+    grouped_rows: list[str | None] = Field(default_factory=list, alias="groupedRows")
+    """The identifiers of rows that are grouped in the report. An entry can be ``None``."""
 
 
 class ChartConfiguration(BaseAlbertModel):

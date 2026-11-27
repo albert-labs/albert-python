@@ -1,28 +1,139 @@
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Mapping
+from itertools import zip_longest
 from pathlib import Path
 from typing import Any, Literal
+
+from requests.exceptions import RequestException
 
 from albert.collections.attachments import AttachmentCollection
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import DataTemplateId
+from albert.core.shared.identifiers import BlockId, DataTemplateId, WorkflowId
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
-from albert.core.shared.models.patch import PatchOperation
+from albert.core.shared.models.patch import PatchDatum, PatchOperation
+from albert.exceptions import AlbertException, AlbertHTTPError
 from albert.resources.data_templates import DataColumnValue
+from albert.resources.parameters import ParameterCategory
 from albert.resources.property_data import TaskDataColumn, TaskPropertyCreate
 from albert.resources.tasks import (
     BaseTask,
+    Block,
     PropertyTask,
-    TaskInventoryInformation,
+    QuantityUsedEntry,
+    QuantityUsedPatchDatum,
+    TaskLotAllocation,
     TaskMetadata,
     TaskMetadataBlockdata,
     TaskMetadataDataTemplate,
+    TaskMetadataInterval,
+    TaskMetadataIntervalCombo,
+    TaskMetadataIntervalDetail,
+    TaskMetadataIntervals,
+    TaskMetadataInventory,
     TaskMetadataWorkflow,
+    TaskParameterAllocation,
     TaskPatchPayload,
+    TaskState,
 )
+from albert.resources.worker_jobs import WorkerJob
+from albert.resources.workflows import ParameterSetpoint, Workflow
 
 CSV_EXTENSIONS: set[str] = {"csv"}
+
+
+def mirror_project_from_parent_id(*, payload: dict, parent_id: str | None) -> dict:
+    """Mirror ``parent_id`` into the payload's ``Project`` link when it is a Project ID."""
+    if parent_id is not None and "Project" not in payload and parent_id.upper().startswith("PRO"):
+        payload["Project"] = {"id": parent_id}
+    return payload
+
+
+def resolve_unassigned_task_state(*, state: TaskState | None) -> TaskState:
+    """Resolve the create-time lifecycle state for a task that has no assignee.
+
+    An unassigned task must start Unclaimed. A missing state defaults to
+    ``TaskState.UNCLAIMED`` and ownership states (``NOT_STARTED``,
+    ``IN_PROGRESS``) are rejected, since a task cannot be claimed or in
+    progress with no one assigned. Explicit terminal states (``COMPLETED``,
+    ``CLOSED``, ``CANCELLED``) pass through for ingestion flows.
+    """
+    if state is None:
+        return TaskState.UNCLAIMED
+    if state in (TaskState.NOT_STARTED, TaskState.IN_PROGRESS):
+        raise AlbertException(
+            f"Task state '{state.value}' requires an assignee. Set assigned_to, or leave "
+            "state unset to create the task as 'Unclaimed'."
+        )
+    return state
+
+
+COMBINATIONS_MODE_CHILD_WORKFLOWS = "child_workflows"
+"""Combinations mode of a block whose combinations are generated after it is added or its
+workflow changes (increased intervals enabled for the tenant)."""
+
+
+def child_workflow_block_ids(*, modes: Mapping[str, str | None]) -> list[str]:
+    """Return the IDs of the blocks whose combinations must be generated, in order.
+
+    ``modes`` maps block IDs to their combinations mode. Only ``"child_workflows"``
+    needs generation; any other mode, or none, is treated as legacy.
+    """
+    unreported = [block_id for block_id, mode in modes.items() if mode is None]
+    if unreported:
+        logger.debug("Blocks %s report no combinations mode; treated as legacy", unreported)
+    return [
+        block_id for block_id, mode in modes.items() if mode == COMBINATIONS_MODE_CHILD_WORKFLOWS
+    ]
+
+
+def added_block_modes(*, data: Any, task_id: str) -> dict[str, str | None]:
+    """Map each block an add-block call created to its combinations mode, in the order added.
+
+    Raises ``AlbertException`` when the added blocks were not reported.
+    """
+    blocks = data.get("blocks") if isinstance(data, dict) else None
+    if not blocks:
+        raise AlbertException(
+            f"Blocks were added to task {task_id}, but their IDs were not reported, so "
+            "their combinations were not generated."
+        )
+    return {block["id"]: block.get("combinationsMode") for block in blocks}
+
+
+def interleave_task_blocks(*, block_ids: Mapping[str, list[str]]) -> list[tuple[str, str]]:
+    """Order ``(task ID, block ID)`` pairs round robin across tasks.
+
+    Every task's first block comes first, then every task's second block, and so on,
+    so that blocks of the same task are as far apart as possible.
+    """
+    rounds = zip_longest(*([(task_id, b) for b in ids] for task_id, ids in block_ids.items()))
+    return [pair for round_ in rounds for pair in round_ if pair is not None]
+
+
+def wait_for_block_jobs(
+    *,
+    jobs: Mapping[tuple[str, str], WorkerJob],
+    wait: Callable[[tuple[str, str], WorkerJob], WorkerJob],
+) -> dict[tuple[str, str], WorkerJob | None]:
+    """Wait for each block's generation job, in order, and return the finished jobs.
+
+    ``jobs`` maps ``(task ID, block ID)`` pairs to their started jobs, and ``wait`` waits
+    for one of them to finish. A block whose wait times out, fails, or loses its
+    connection maps to ``None``, and the remaining blocks are still waited for.
+    """
+    finished: dict[tuple[str, str], WorkerJob | None] = {}
+    for key, job in jobs.items():
+        try:
+            finished[key] = wait(key, job)
+        except (TimeoutError, AlbertException, RequestException) as e:
+            logger.warning(
+                "Could not wait for combination generation for task %s block %s: %s",
+                *key,
+                e,
+            )
+            finished[key] = None
+    return finished
 
 
 def build_property_payload(
@@ -67,28 +178,138 @@ def build_property_payload(
 
 def build_task_metadata(
     *,
-    task: PropertyTask,
+    task: PropertyTask | BaseTask,
     block_id: str,
     filename: str | None,
+    session: AlbertSession | None = None,
+    schema_version: int | None = None,
 ) -> TaskMetadata:
-    """Construct task metadata payload for script-driven imports."""
+    """Construct task metadata payload for script-driven imports.
 
-    inventories: list[TaskInventoryInformation] = []
-    for inv in task.inventory_information or []:
-        inventories.append(
-            TaskInventoryInformation(
-                inventory_id=inv.inventory_id,
-                lot_id=inv.lot_id,
-                lot_number=inv.lot_number,
-                barcode_id=inv.barcode_id,
-            )
-        )
-
+    Supports both v1 (legacy ROW combinations and Blockdata) and v2
+    (Increased Intervals compact schemaVersion=2 and intervals.combos).
+    When schema_version is omitted, auto-detects from the block's
+    Increased Intervals attributes (combinationsMode, intervals_start_from, jobId,
+    combinationsCount).
+    """
     block_info = next((blk for blk in (task.blocks or []) if blk.id == block_id), None)
     if block_info is None:
         raise ValueError(
             f"Block '{block_id}' not found on task {task.id} for metadata construction."
         )
+
+    # Determine schema version
+    if schema_version is not None:
+        resolved_version = schema_version
+    else:
+        has_increased_intervals = (
+            block_info.combinations_mode == COMBINATIONS_MODE_CHILD_WORKFLOWS
+            or block_info.intervals_start_from is not None
+            or getattr(block_info, "job_id", None) is not None
+            or any(
+                getattr(wf, "combinations_count", None) is not None
+                for wf in (block_info.workflow or [])
+            )
+        )
+        resolved_version = 2 if has_increased_intervals else 1
+
+    inventories: list[TaskMetadataInventory] = []
+    for inv in task.inventory_information or []:
+        inv_id = getattr(inv, "inventory_id", None) or getattr(inv, "id", None)
+        inv_name = getattr(inv, "name", None) or getattr(inv, "inventory_name", None) or inv_id
+        inventories.append(
+            TaskMetadataInventory(
+                id=inv_id,
+                name=inv_name,
+                category=getattr(inv, "category", None),
+                lot_id=inv.lot_id,
+                lot_name=getattr(inv, "lot_name", None),
+                lot_number=inv.lot_number,
+                barcode_id=getattr(inv, "barcode_id", None),
+            )
+        )
+
+    if resolved_version == 2:
+        dt_list = block_info.data_template or []
+        first_dt = dt_list[0] if isinstance(dt_list, list) and dt_list else dt_list
+        data_template_id = getattr(first_dt, "id", None) or ""
+
+        columns: list[str] = []
+        combos: list[TaskMetadataIntervalCombo] = []
+
+        if session is not None:
+            final_wf = next(
+                (
+                    wf
+                    for wf in (block_info.workflow or [])
+                    if getattr(wf, "category", None) == "FINAL"
+                ),
+                (block_info.workflow[0] if block_info.workflow else None),
+            )
+            wf_id = getattr(final_wf, "id", None) if final_wf else None
+
+            if wf_id:
+                row_key_to_values: dict[str, list[str | None]] = {}
+                try:
+                    intervals_resp = session.get(
+                        "/api/v3/workflows/intervals", params={"id": wf_id}
+                    )
+                except AlbertHTTPError as e:
+                    logger.warning(
+                        "Could not fetch v2 workflow intervals for workflow %s: %s",
+                        wf_id,
+                        e,
+                    )
+                    intervals_resp = None
+
+                if intervals_resp is not None and intervals_resp.status_code == 200:
+                    intervals_data = intervals_resp.json()
+                    wfl_intervals = (
+                        intervals_data[0].get("Intervals", []) if intervals_data else []
+                    )
+                    if wfl_intervals:
+                        first_int_details = wfl_intervals[0].get("intervalDetails", [])
+                        columns = [d.get("name", "") for d in first_int_details if d.get("name")]
+                        for item in wfl_intervals:
+                            rkey = item.get("interval")
+                            vals = [d.get("value") for d in item.get("intervalDetails", [])]
+                            if rkey:
+                                row_key_to_values[rkey] = vals
+
+                try:
+                    combos_resp = session.get(
+                        f"/api/v3/tasks/{task.id}/blocks/{block_id}/combinations"
+                    )
+                except AlbertHTTPError as e:
+                    logger.warning(
+                        "Could not fetch v2 combinations for block %s on task %s: %s",
+                        block_id,
+                        task.id,
+                        e,
+                    )
+                    combos_resp = None
+
+                if combos_resp is not None and combos_resp.status_code == 200:
+                    combos_data = combos_resp.json().get("combinations", [])
+                    for c in combos_data:
+                        cid = c.get("id")
+                        rkey = c.get("intervalRowKey")
+                        c_vals = row_key_to_values.get(rkey, [])
+                        if cid:
+                            combos.append(TaskMetadataIntervalCombo(id=cid, values=c_vals))
+
+        intervals = TaskMetadataIntervals(columns=columns, combos=combos)
+        return TaskMetadata(
+            filename=filename,
+            task_id=task.id,
+            block_id=block_id,
+            schema_version=2,
+            data_template_id=data_template_id,
+            inventories=inventories,
+            intervals=intervals,
+        )
+
+    # resolved_version == 1
     data_templates: list[TaskMetadataDataTemplate] = []
     for dt in block_info.data_template or []:
         data_templates.append(
@@ -99,12 +320,64 @@ def build_task_metadata(
                 standards=getattr(dt, "standards", None),
             )
         )
+
     workflows: list[TaskMetadataWorkflow] = []
+    workflow_json: dict[str, Any] = {}
     for wf in block_info.workflow or []:
+        wf_id = getattr(wf, "id", None)
+        wf_intervals: list[TaskMetadataInterval] = []
+        if session is not None and wf_id:
+            try:
+                int_resp = session.get("/api/v3/workflows/intervals", params={"id": wf_id})
+            except AlbertHTTPError as e:
+                logger.warning(
+                    "Could not fetch v1 workflow intervals for workflow %s: %s", wf_id, e
+                )
+                int_resp = None
+
+            if int_resp is not None and int_resp.status_code == 200:
+                int_data = int_resp.json()
+                raw_intervals = int_data[0].get("Intervals", []) if int_data else []
+                for raw_int in raw_intervals:
+                    wf_intervals.append(
+                        TaskMetadataInterval(
+                            interval=raw_int.get("interval"),
+                            interval_params=raw_int.get("intervalParams"),
+                            interval_string=raw_int.get("intervalString"),
+                            sequence=raw_int.get("sequence"),
+                            interval_details=[
+                                TaskMetadataIntervalDetail(
+                                    name=d.get("name"),
+                                    value=d.get("value"),
+                                    unit_name=d.get("unitName"),
+                                )
+                                for d in raw_int.get("intervalDetails", [])
+                            ],
+                        )
+                    )
+
+            if not workflow_json:
+                try:
+                    wfl_resp = session.get(f"/api/v3/workflows/{wf_id}")
+                except AlbertHTTPError as e:
+                    logger.warning(
+                        "Could not fetch v1 workflow details for workflow %s: %s", wf_id, e
+                    )
+                    wfl_resp = None
+
+                if wfl_resp is not None and wfl_resp.status_code == 200:
+                    workflow_json = wfl_resp.json()
+
+        wf_name = (
+            getattr(wf, "name", None)
+            or (workflow_json.get("name") if isinstance(workflow_json, dict) else None)
+            or "Workflow"
+        )
         workflows.append(
             TaskMetadataWorkflow(
-                albert_id=getattr(wf, "id", None),
-                name=getattr(wf, "name", None),
+                albert_id=wf_id,
+                name=wf_name,
+                intervals=wf_intervals,
             )
         )
 
@@ -112,11 +385,13 @@ def build_task_metadata(
         id=block_id,
         datatemplate=data_templates,
         workflow=workflows,
+        workflow_json=workflow_json,
     )
     return TaskMetadata(
         filename=filename,
         task_id=task.id,
         block_id=block_id,
+        schema_version=1,
         inventories=inventories,
         blockdata=blockdata,
     )
@@ -344,21 +619,23 @@ def generate_adv_patch_payload(
                 if key not in existing_unique
             ]
 
-            if inv_to_remove:
-                base_payload.data.append(
-                    {
-                        "operation": PatchOperation.DELETE,
-                        "attribute": "inventory",
-                        "oldValue": inv_to_remove,
-                    }
-                )
-
+            # Add before removing: a task must always keep at least one inventory item,
+            # so replacing the only item fails if the removal is applied first.
             if inv_to_add:
                 base_payload.data.append(
                     {
                         "operation": PatchOperation.ADD,
                         "attribute": "inventory",
                         "newValue": inv_to_add,
+                    }
+                )
+
+            if inv_to_remove:
+                base_payload.data.append(
+                    {
+                        "operation": PatchOperation.DELETE,
+                        "attribute": "inventory",
+                        "oldValue": inv_to_remove,
                     }
                 )
 
@@ -427,6 +704,228 @@ def generate_adv_patch_payload(
                 )
 
     return base_payload
+
+
+def resolve_task_block(*, task: BaseTask, block_id: str) -> Block:
+    """Return the named block of a task, raising when the task has no such block."""
+    block = next((b for b in (getattr(task, "blocks", None) or []) if b.id == block_id), None)
+    if block is None:
+        raise AlbertException(f"Block '{block_id}' not found on task '{task.id}'.")
+    return block
+
+
+def get_current_workflow_id(*, workflows: list[Workflow | EntityLink] | None) -> str | None:
+    """Return the current (final) workflow ID from a task's workflow list.
+
+    The platform marks each entry's slot with a ``category``: ``"FINAL"`` is the
+    active workflow and ``"INITIAL"`` the one the task started from. When
+    no entry is marked ``"FINAL"`` (workflows recorded before categories were
+    assigned), the first entry that is neither an initial workflow nor the
+    platform default placeholder ("No Parameter Group", skipped only when another
+    workflow sits alongside it) is treated as current, falling back to the initial
+    workflow and then to the first entry.
+    """
+    if not workflows:
+        return None
+    initial_workflow_id: str | None = None
+    uncategorized_workflow_id: str | None = None
+    for workflow in workflows:
+        if workflow.category == "FINAL":
+            return workflow.id
+        if workflow.category == "INITIAL":
+            if initial_workflow_id is None:
+                initial_workflow_id = workflow.id
+            continue
+        if workflow.name == "No Parameter Group" and len(workflows) > 1:
+            # platform built-in placeholder; a real workflow alongside it is the current one
+            continue
+        if uncategorized_workflow_id is None:
+            uncategorized_workflow_id = workflow.id
+    return uncategorized_workflow_id or initial_workflow_id or workflows[0].id
+
+
+def _special_parameter_value_id(*, value: Any) -> str | None:
+    """Return the entity ID referenced by a special-parameter value, if any.
+
+    Intervalized special values are plain ID strings; fixed values are
+    ``{"id": ...}`` mappings or entity links.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value or None
+    if isinstance(value, Mapping):
+        return value.get("id")
+    return getattr(value, "id", None)
+
+
+def _parameter_label_matches(*, setpoint: ParameterSetpoint, parameter: str) -> bool:
+    """Return True when a setpoint's name or short name matches the given selector."""
+    lowered = parameter.lower()
+    return any(lowered == label.lower() for label in (setpoint.short_name, setpoint.name) if label)
+
+
+def resolve_parameter_row_id(
+    *, workflow: Workflow, inventory_id: str, parameter: str | None = None
+) -> str:
+    """Resolve the allocation row ID of an inventory-linked special parameter.
+
+    An intervalized parameter contributes the row ID of the interval entry whose
+    value selects the inventory item; a fixed special parameter contributes its
+    own row ID.
+    """
+    matches: list[tuple[str, str]] = []
+    for group in workflow.parameter_group_setpoints:
+        for setpoint in group.parameter_setpoints:
+            if setpoint.category != ParameterCategory.SPECIAL:
+                continue
+            if parameter is not None and not _parameter_label_matches(
+                setpoint=setpoint, parameter=parameter
+            ):
+                continue
+            label = setpoint.short_name or setpoint.name or setpoint.parameter_id or "unknown"
+            if setpoint.intervals:
+                for interval in setpoint.intervals:
+                    if (
+                        _special_parameter_value_id(value=interval.value) == inventory_id
+                        and interval.row_id
+                    ):
+                        matches.append((interval.row_id, label))
+            elif setpoint.row_id and (
+                _special_parameter_value_id(value=setpoint.value) == inventory_id
+            ):
+                matches.append((setpoint.row_id, label))
+    unique_rows = {row_id for row_id, _ in matches}
+    if not unique_rows:
+        raise AlbertException(
+            f"Inventory item '{inventory_id}' is not selected on any special parameter"
+            + (f" matching '{parameter}'" if parameter is not None else "")
+            + f" of workflow '{workflow.id}'."
+        )
+    if len(unique_rows) > 1:
+        candidates = ", ".join(f"{row_id} ({label})" for row_id, label in matches)
+        raise AlbertException(
+            f"Inventory item '{inventory_id}' matches multiple parameter rows on workflow "
+            f"'{workflow.id}': {candidates}. Pass 'parameter' or 'row_id' to disambiguate."
+        )
+    return matches[0][0]
+
+
+def _tuple_occurrence(*, inv_lot_unique_id: str | None) -> int | None:
+    """Return the trailing occurrence number of an inventory tuple identifier."""
+    if not inv_lot_unique_id:
+        return None
+    try:
+        return int(inv_lot_unique_id.rsplit("#", 1)[-1])
+    except ValueError:
+        return None
+
+
+def resolve_task_lot_target(
+    *, task: BaseTask, inventory_id: str, lot_id: str, occurrence: int | None = None
+) -> tuple[str, float]:
+    """Resolve the inventory tuple identifier and current quantity for a task-level allocation."""
+    candidates = [
+        info
+        for info in task.inventory_information or []
+        if info.inventory_id == inventory_id and info.lot_id == lot_id
+    ]
+    if occurrence is not None:
+        candidates = [
+            info
+            for info in candidates
+            if _tuple_occurrence(inv_lot_unique_id=info.inv_lot_unique_id) == occurrence
+        ]
+    if not candidates:
+        raise AlbertException(
+            f"Inventory item '{inventory_id}' with lot '{lot_id}' is not on task '{task.id}'."
+        )
+    if len(candidates) > 1:
+        raise AlbertException(
+            f"Inventory item '{inventory_id}' with lot '{lot_id}' appears "
+            f"{len(candidates)} times on task '{task.id}'. Pass 'occurrence' to disambiguate."
+        )
+    target = candidates[0]
+    if not target.inv_lot_unique_id:
+        raise AlbertException(
+            f"The inventory row for '{inventory_id}' with lot '{lot_id}' on task "
+            f"'{task.id}' has no tuple identifier to allocate against."
+        )
+    return target.inv_lot_unique_id, target.quantity_used or 0
+
+
+def build_quantity_used_data(
+    *,
+    task: BaseTask,
+    allocations: list[TaskLotAllocation | TaskParameterAllocation],
+    block_id: BlockId | None,
+    workflow: Workflow | None,
+    workflow_id: WorkflowId | None,
+) -> list[PatchDatum]:
+    """Assemble the quantityUsed patch data for ``allocate_inventory``.
+
+    Task-level allocations each become an ``update`` datum addressed by their
+    inventory tuple; special-parameter allocations are grouped into a single
+    ``add`` datum whose new value lists one entry per allocation.
+    """
+    data: list[PatchDatum] = []
+    entries: list[QuantityUsedEntry] = []
+    for allocation in allocations:
+        if isinstance(allocation, TaskLotAllocation):
+            tuple_id, current_quantity = resolve_task_lot_target(
+                task=task,
+                inventory_id=allocation.inventory_id,
+                lot_id=allocation.lot_id,
+                occurrence=allocation.occurrence,
+            )
+            data.append(
+                QuantityUsedPatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute="quantityUsed",
+                    new_value=allocation.quantity,
+                    old_value=current_quantity,
+                    inv_lot_unique_id=tuple_id,
+                )
+            )
+            continue
+        if block_id is None or workflow_id is None:
+            raise AlbertException(
+                "block_id is required when allocating against a special parameter row."
+            )
+        if allocation.row_id is not None:
+            row_id = allocation.row_id
+        elif workflow is not None:
+            row_id = resolve_parameter_row_id(
+                workflow=workflow,
+                inventory_id=allocation.inventory_id,
+                parameter=allocation.parameter,
+            )
+        else:
+            raise AlbertException(
+                "A workflow is required to resolve the parameter row for inventory item "
+                f"'{allocation.inventory_id}'."
+            )
+        entries.append(
+            QuantityUsedEntry(
+                row_id=row_id,
+                workflow_id=workflow_id,
+                inventory_id=allocation.inventory_id,
+                block_id=block_id,
+                lots=allocation.lots,
+            )
+        )
+    if entries:
+        data.append(
+            PatchDatum(
+                operation=PatchOperation.ADD,
+                attribute="quantityUsed",
+                new_value=[
+                    entry.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    for entry in entries
+                ],
+            )
+        )
+    return data
 
 
 def _assign_mapping(

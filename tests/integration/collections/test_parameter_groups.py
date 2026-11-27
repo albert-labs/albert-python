@@ -1,14 +1,19 @@
+from contextlib import suppress
+
 import pytest
 
 from albert.client import Albert
+from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import BadRequestError
+from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
+    ParameterCategory,
     ParameterGroup,
     ParameterGroupSearchItem,
     ParameterValue,
+    PGType,
     ValueValidation,
 )
 from albert.resources.tags import Tag
@@ -48,27 +53,57 @@ def test_get_by_ids(client: Albert, seeded_parameter_groups: list[ParameterGroup
         assert u.name == seeded_parameter_groups[i].name
 
 
-def test_parameter_group_search_basic(
-    client: Albert, seeded_parameter_groups: list[ParameterGroup]
-):
-    """Test basic search for Parameter Groups."""
-    results = list(client.parameter_groups.search(max_items=10))
-    assert_valid_parameter_groups(results, ParameterGroupSearchItem)
-
-
 def test_parameter_group_get_all(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
     """Test get_all for fully hydrated Parameter Groups."""
     results = list(client.parameter_groups.get_all(max_items=10))
     assert_valid_parameter_groups(results, ParameterGroup)
 
 
-def test_parameter_group_search_with_filters(
-    client: Albert, seeded_parameter_groups: list[ParameterGroup]
+def test_parameter_group_search_uses_cursor_pagination(
+    client: Albert, seed_prefix: str, monkeypatch: pytest.MonkeyPatch
 ):
-    """Test search with text and type filters."""
-    pg = seeded_parameter_groups[0]
-    results = list(client.parameter_groups.search(text=pg.name, types=[pg.type], max_items=10))
-    assert_valid_parameter_groups(results, ParameterGroupSearchItem)
+    """Test cursor search returns every scoped match exactly once and stops early."""
+    monkeypatch.setattr("albert.core.pagination.DEFAULT_LIMIT", 1)
+    tag = None
+    parameter_groups = []
+    try:
+        tag = client.tags.create(tag=Tag(tag=f"{seed_prefix}-cursor-pagination"))
+        for suffix in ("first", "second"):
+            parameter_groups.append(
+                client.parameter_groups.create(
+                    parameter_group=ParameterGroup(
+                        name=f"{seed_prefix}-cursor-{suffix}",
+                        type=PGType.GENERAL,
+                        tags=[tag],
+                    )
+                )
+            )
+        group_ids = {group.id for group in parameter_groups}
+
+        def search_all_matches():
+            results = client.parameter_groups.search(tags=[tag.tag])
+            matches = [item for item in results if item.id in group_ids]
+            assert results.mode is PaginationMode.SEARCH_AFTER
+            assert results.json["limit"] == 1
+            return matches
+
+        matches = poll_until(
+            search_all_matches,
+            predicate=lambda items: {item.id for item in items} == group_ids,
+        )
+        assert {item.id for item in matches} == group_ids
+        assert len(matches) == len(group_ids)
+
+        early_results = client.parameter_groups.search(tags=[tag.tag], max_items=1)
+        assert len(list(early_results)) == 1
+        assert early_results.has_more
+    finally:
+        for group in parameter_groups:
+            with suppress(NotFoundError):
+                client.parameter_groups.delete(id=group.id)
+        if tag is not None:
+            with suppress(NotFoundError):
+                client.tags.delete(id=tag.id)
 
 
 def test_parameter_group_search(
@@ -106,6 +141,7 @@ def test_parameter_group_search(
             for hit in client.parameter_groups.search(
                 text=seed_prefix,
                 owner=[owner],
+                types=[pg.type],
                 tags=[tag],
                 parameters=[parameter],
                 additional_field=["owner", "tags", "createdByName"],
@@ -147,6 +183,21 @@ def test_dupe_raises_error(client: Albert, seeded_parameter_groups: list[Paramet
     pg.parameters = []
     with pytest.raises(BadRequestError):
         client.parameter_groups.create(parameter_group=pg)
+
+
+def test_duplicate(
+    client: Albert, seeded_parameter_groups: list[ParameterGroup], seed_prefix: str
+):
+    """Test duplicating a parameter group creates a copy with a new ID."""
+    source = seeded_parameter_groups[0]
+    copy = client.parameter_groups.duplicate(id=source.id, name=f"{seed_prefix} - PG Duplicate")
+    try:
+        assert isinstance(copy, ParameterGroup)
+        assert copy.id and copy.id != source.id
+        assert copy.name == f"{seed_prefix} - PG Duplicate"
+    finally:
+        with suppress(NotFoundError):
+            client.parameter_groups.delete(id=copy.id)
 
 
 def test_update(
@@ -343,3 +394,39 @@ def test_new_parameter_enum_ids_populated(
     assert len(new_param.validation[0].value) == 2
     for v in new_param.validation[0].value:
         assert v.id is not None, f"Enum value '{v.text}' has no ID"
+
+
+def test_update_keeps_repeated_parameter_rows(
+    client: Albert, seed_prefix: str, static_consumeable_parameter
+):
+    """Test that renaming a group keeps every row of a parameter used more than once."""
+    pg = client.parameter_groups.create(
+        parameter_group=ParameterGroup(
+            name=f"{seed_prefix} - Repeated Rows PG",
+            type=PGType.GENERAL,
+            parameters=[
+                ParameterValue(
+                    parameter=static_consumeable_parameter,
+                    category=ParameterCategory.SPECIAL,
+                    short_name=short_name,
+                )
+                for short_name in ("Mold 1", "Mold 2", "Mold 3")
+            ],
+        )
+    )
+    try:
+        fetched = client.parameter_groups.get_by_id(id=pg.id)
+        before = sorted((p.sequence, p.short_name) for p in fetched.parameters)
+        assert len(before) == 3
+        payload = fetched.model_dump(by_alias=True, exclude_none=True)
+        payload["name"] = f"{seed_prefix} - Repeated Rows PG renamed"
+        resent = ParameterGroup(**payload)
+        assert all(p.sequence is None for p in resent.parameters)
+
+        updated = client.parameter_groups.update(parameter_group=resent)
+
+        assert updated.name == f"{seed_prefix} - Repeated Rows PG renamed"
+        assert sorted((p.sequence, p.short_name) for p in updated.parameters) == before
+    finally:
+        with suppress(NotFoundError):
+            client.parameter_groups.delete(id=pg.id)

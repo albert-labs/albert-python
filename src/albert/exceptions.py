@@ -10,7 +10,7 @@ import requests
 from albert.core.logging import logger
 
 if TYPE_CHECKING:
-    from albert.resources.tasks import PropertyTask
+    from albert.resources.tasks import BatchTask, PropertyTask
 
 
 class AlbertException(Exception):
@@ -52,7 +52,7 @@ class AlbertHTTPError(AlbertException):
     def _format_message(cls, response: requests.Response | httpx.Response) -> str:
         try:
             payload = response.json()
-            errors = payload.get("errors") or payload
+            errors = payload.get("errors") or payload.get("message") or payload
         except ValueError:
             errors = response.text.strip()
         reason = (
@@ -115,6 +115,10 @@ class PreconditionRequiredError(AlbertClientError):
     """HTTP Error due to a 428 Precondition Required response."""
 
 
+class TooManyRequestsError(AlbertClientError):
+    """HTTP Error due to a 429 Too Many Requests response."""
+
+
 class AlbertServerError(AlbertHTTPError):
     """HTTP Error due to a server error response."""
 
@@ -145,6 +149,8 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
             return UnsupportedMediaTypeError
         case 428:
             return PreconditionRequiredError
+        case 429:
+            return TooManyRequestsError
         case 500:
             return InternalServerError
         case 502:
@@ -179,11 +185,11 @@ def handle_http_errors() -> Iterator[None]:
 
 
 class AlbertPartialError(AlbertException):
-    """Raised when a bulk operation partially succeeds (HTTP 206) with failed items.
+    """Raised when a bulk operation completes with one or more failed items.
 
-    Some bulk endpoints answer a request where only some items succeeded with a
-    partial-success response carrying the created items and per-item failure details.
-    This error surfaces those failures instead of letting them pass silently.
+    A bulk operation can fail for some or all of its items. This error carries
+    the succeeded items and the per-item failure details, surfacing the failures
+    instead of letting them pass silently.
 
     Attributes
     ----------
@@ -209,24 +215,24 @@ class AlbertPartialError(AlbertException):
 
 
 class CombinationGenerationError(AlbertException):
-    """Raised when background combination generation fails for one or more task blocks.
+    """Raised when interval combinations could not be generated for one or more task blocks.
 
-    Raised by [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
-    when ``wait=True`` and combination generation does not complete successfully on all blocks.
+    When increased intervals is enabled for your tenant, combinations are generated for a
+    Property or Batch task block whenever it is added or its workflow changes. This is
+    raised by [`create`][albert.collections.tasks.TaskCollection.create],
+    [`create_many`][albert.collections.tasks.TaskCollection.create_many],
+    [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
+    [`add_block`][albert.collections.tasks.TaskCollection.add_block],
+    [`add_blocks`][albert.collections.tasks.TaskCollection.add_blocks], and
+    [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow]
+    when generation fails or does not finish in time on any block, or could not be
+    started.
 
-    Because the task itself has already been created on the platform, this exception
-    carries the created task instance and details about which blocks failed. This allows
-    callers to inspect the task state and retry generation for only the failed blocks
-    using [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
-
-    Attributes
-    ----------
-    task : PropertyTask or None
-        The created Property task, re-fetched from the platform.
-    failed_blocks : list[str]
-        List of block IDs (format ``BLK...``) whose combination generation failed.
-    job_states : dict[str, str]
-        Mapping of block IDs to their final job states (e.g. ``{"BLK1": "successful", "BLK2": "failed"}``).
+    The tasks and blocks were already created or changed, so do not repeat the call: that
+    would create duplicates. Retry generation for only the failed blocks with
+    [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations],
+    which keeps interval barcodes. When the failure followed a workflow change, results
+    recorded under the previous workflow may need to be entered again.
 
     !!! example
         ```python
@@ -236,7 +242,7 @@ class CombinationGenerationError(AlbertException):
 
         client = Albert()
         try:
-            task = client.tasks.create_with_combinations(task=prop_task)
+            task = client.tasks.create(task=prop_task)
         except CombinationGenerationError as err:
             print(f"Task {err.task.id} was created, but some blocks failed combination generation.")
             for block_id in err.failed_blocks:
@@ -246,9 +252,26 @@ class CombinationGenerationError(AlbertException):
                     block_id=block_id,
                 )
         ```
+
+    Attributes
+    ----------
+    task : PropertyTask or BatchTask or None
+        The task holding the failed blocks, fully populated. ``None`` when raised by
+        ``create_many``; use ``tasks`` there.
+    tasks : list[PropertyTask or BatchTask]
+        Every task holding a block that was generated, fully populated.
+    failed_blocks : list[str]
+        Block IDs (format ``BLK...``) whose combination generation failed. When raised by
+        ``create_many``, each entry also names its task (``TAS.../BLK...``). Empty when
+        ``add_block`` or ``add_blocks`` could not identify the added blocks; find them in
+        ``task.blocks``.
+    job_states : dict[str, str]
+        Final generation state of each block, keyed like ``failed_blocks`` (e.g.
+        ``{"BLK1": "successful", "BLK2": "failed"}``).
     """
 
-    task: PropertyTask | None
+    task: PropertyTask | BatchTask | None
+    tasks: list[PropertyTask | BatchTask]
     failed_blocks: list[str]
     job_states: dict[str, str]
 
@@ -256,11 +279,13 @@ class CombinationGenerationError(AlbertException):
         self,
         message: str,
         *,
-        task: PropertyTask | None = None,
+        task: PropertyTask | BatchTask | None = None,
+        tasks: list[PropertyTask | BatchTask] | None = None,
         failed_blocks: list[str] | None = None,
         job_states: dict[str, str] | None = None,
     ):
         super().__init__(message)
         self.task = task
+        self.tasks = tasks if tasks is not None else ([task] if task is not None else [])
         self.failed_blocks = failed_blocks or []
         self.job_states = job_states or {}

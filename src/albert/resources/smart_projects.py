@@ -7,11 +7,17 @@ from typing import Any
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+from albert.core.logging import logger
 from albert.core.shared.identifiers import ProjectId, SmartDatasetId, TargetId
 from albert.core.shared.models.base import BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.exceptions import AlbertHTTPError
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.targets import Target
+from albert.utils.projects import (
+    build_default_smart_dataset_scope,
+    parse_linked_parent_project_ids,
+)
 
 _PROJECTS_BASE_PATH = "/api/v3/projects"
 
@@ -256,6 +262,14 @@ class SmartProject(BaseSessionResource):
         existing smart dataset built via
         [`SmartDatasetCollection`][albert.collections.smart_datasets.SmartDatasetCollection]
         is attached instead.
+
+        When ``dataset`` is omitted (``None``), the default build scope automatically
+        discovers all cross-project linked reference formulas on this project and
+        includes their parent project IDs alongside this project's ID. This pulls
+        historical experimental results from linked projects into the smart dataset
+        snapshot, enabling Target Overview reference columns, Compare Formula Data
+        reference bars, and Breakthrough inverse design machine learning without
+        re-entering data.
         """
 
         # Existing dataset ID (SmartDatasetId is an Annotated[str, ...] alias, so check str)
@@ -275,11 +289,22 @@ class SmartProject(BaseSessionResource):
         if isinstance(dataset, SmartDatasetScope):
             scope = dataset
         else:
-            scope = SmartDatasetScope(
-                project_ids=[self.project_id],
+            linked_parent_project_ids: list[ProjectId] = []
+            try:
+                response = self.session.get(
+                    f"{_PROJECTS_BASE_PATH}/{self.project_id}/referenceFormulas",
+                    params={"worksheetId": "external"},
+                )
+                linked_parent_project_ids = parse_linked_parent_project_ids(response.json())
+            except AlbertHTTPError as e:
+                logger.warning(
+                    f"Could not fetch linked reference formulas for project {self.project_id}: {e}"
+                )
+
+            scope = build_default_smart_dataset_scope(
+                project_id=self.project_id,
                 target_ids=self.scope.targets,
-                sheet_ids=None,
-                target_parent_ids={t: self.project_id for t in self.scope.targets},
+                linked_parent_project_ids=linked_parent_project_ids,
             )
 
         _ = self.session.post(

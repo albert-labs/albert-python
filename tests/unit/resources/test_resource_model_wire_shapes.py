@@ -4,6 +4,7 @@ Pure validation helpers and model parsing: no client, no session, no network.
 """
 
 from albert.collections.users import UserCollection
+from albert.resources.batch_data import BatchValueId, BatchValuePatchDatum, BatchValuePatchPayload
 from albert.resources.data_columns import DataColumn
 from albert.resources.roles import Role
 from albert.resources.un_numbers import UnNumber
@@ -54,3 +55,15 @@ def test_user_filter_id_prefixes_bare_ids_by_type() -> None:
     """Test bare filter ids get the prefix implied by the filter type."""
     assert UserCollection._normalize_filter_id("12", type=None) == "USR12"
     assert UserCollection._normalize_filter_id("1", type=UserFilterType.ROLE) == "ROL1"
+
+
+def test_batch_lot_add_sends_lot_id_on_the_datum() -> None:
+    """Test a lot add serializes ``lotId`` inside the ``data`` entry, where the API links the lot."""
+    patch = BatchValuePatchPayload(
+        id=BatchValueId(row_id="ROW2", col_id="COL4"),
+        data=[BatchValuePatchDatum(operation="add", lot_id="LOT123", new_value="0")],
+    )
+    assert patch.model_dump(exclude_none=True, by_alias=True, mode="json") == {
+        "Id": {"rowId": "ROW2", "colId": "COL4"},
+        "data": [{"attribute": "lotId", "lotId": "LOT123", "newValue": "0", "operation": "add"}],
+    }
