@@ -330,7 +330,10 @@ def test_enum_validation_update(client: Albert, seeded_parameter_groups: list[Pa
 
 
 def test_update_units(
-    client: Albert, seeded_parameter_groups: list[ParameterGroup], seeded_units: list[Unit]
+    client: Albert,
+    seeded_parameter_groups: list[ParameterGroup],
+    seeded_units: list[Unit],
+    seeded_unit_families: dict[str, str],
 ):
     pg = [x for x in seeded_parameter_groups if "Numbers Parameter Group" in x.name][0]
     param = pg.parameters[0]  # Parameter with number validation and unit
@@ -339,12 +342,14 @@ def test_update_units(
     # Update unit
     new_unit = seeded_units[2]
     param.unit = EntityLink(id=new_unit.id)
+    param.unit_family = EntityLink(id=seeded_unit_families[new_unit.id])
     updated_pg = client.parameter_groups.update(parameter_group=pg)
 
     assert updated_pg is not None
     updated_param = updated_pg.parameters[0]
     assert updated_param.unit.id == new_unit.id
     assert updated_param.unit.id != original_unit.id
+    assert updated_param.unit_family.id == seeded_unit_families[new_unit.id]
 
 
 def test_update_required(client: Albert, seeded_parameter_groups: list[ParameterGroup]):

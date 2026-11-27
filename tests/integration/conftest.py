@@ -12,6 +12,7 @@ import pytest_asyncio
 from albert import Albert, AlbertClientCredentials, AsyncAlbert
 from albert.collections.worksheets import WorksheetCollection
 from albert.core.shared.enums import Status
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import (
     AlbertServerError,
     BadRequestError,
@@ -90,6 +91,7 @@ from tests.integration.seeding import (
     generate_workflow_seeds,
     pick_report_type_id,
 )
+from tests.utils.wait import poll_until
 
 _HEAVY_XDIST_GROUPS = ("tasks", "sheets", "sheetcolumns", "inventory", "projects", "datatemplates")
 
@@ -167,6 +169,23 @@ def _delete_all(delete_fn: Callable, items, *suppressed: type[Exception]) -> Non
             delete_fn(item)
 
     _pmap(_one, items)
+
+
+def _get_unit_by_name_or_empty(client: Albert, name: str) -> list[Unit]:
+    unit = client.units.get_by_name(name=name)
+    return [unit] if unit is not None else []
+
+
+def _get_unit_v4_or_empty(client: Albert, id: str) -> list:
+    with suppress(NotFoundError):
+        return [client.session.get(f"/api/v4/master-data/units/{id}")]
+    return []
+
+
+def _link_unit_families(values, family_by_unit: dict[str, str]) -> None:
+    for value in values:
+        if value.unit is not None:
+            value.unit_family = EntityLink(id=family_by_unit[value.unit.id])
 
 
 @pytest.fixture(scope="session")
@@ -548,12 +567,70 @@ def seeded_units(client: Albert, seed_prefix: str) -> Iterator[list[Unit]]:
 
     # Avoid race condition while it populated through search DBs
     time.sleep(1.5)
+    _pmap(
+        lambda unit: poll_until(lambda: _get_unit_by_name_or_empty(client, unit.name)),
+        seeded,
+    )
 
     yield seeded
 
     _delete_all(
         lambda unit: client.units.delete(id=unit.id), seeded, NotFoundError, BadRequestError
     )
+
+
+@pytest.fixture(scope="session")
+def seeded_unit_families(client: Albert, seeded_units: list[Unit]) -> dict[str, str]:
+    reference_symbols = ["m", "kg", "°C", "J", "L"]
+    families = {}
+    for unit, reference_symbol in zip(seeded_units, reference_symbols, strict=True):
+        current = poll_until(lambda unit=unit: _get_unit_v4_or_empty(client, unit.id))[0]
+        compatible = client.session.get(
+            "/api/v4/master-data/units/compatible",
+            params={"type": "symbol", "value": reference_symbol},
+        ).json()
+        family = compatible["unitFamilies"][0]
+        family_id = family.get("familyId") or family.get("id")
+        try:
+            client.session.post(
+                "/api/v4/master-data/units/setup",
+                json={
+                    "id": unit.id,
+                    "name": current.json()["name"],
+                    "symbol": current.json().get("symbol"),
+                    "type": "Convertible",
+                    "refUnit": reference_symbol,
+                    "unitFamilyId": family_id,
+                },
+                headers={"If-Match": current.headers["ETag"]},
+            )
+        except NotFoundError:
+            client.session.patch(
+                f"/api/v4/master-data/units/{unit.id}",
+                json={"type": "Convertible", "refUnit": reference_symbol},
+                headers={
+                    "Content-Type": "application/merge-patch+json",
+                    "If-Match": current.headers["ETag"],
+                },
+            )
+        families[unit.id] = family_id
+    return families
+
+
+@pytest.fixture(scope="session")
+def static_length_units(client: Albert) -> dict[str, dict]:
+    response = client.session.post(
+        "/api/v4/master-data/units/search",
+        json={
+            "text": "m",
+            "origin": ["Albert Managed"],
+            "familyName": ["Length"],
+            "limit": 100,
+        },
+        retry_safe=True,
+    )
+    items = response.json().get("items") or response.json().get("Items") or []
+    return {unit["symbol"]: unit for unit in items if unit["symbol"] in {"m", "mm"}}
 
 
 @pytest.fixture(scope="session")
@@ -612,23 +689,28 @@ def seeded_data_templates(
     static_user: User,
     seeded_data_columns: list[DataColumn],
     seeded_units: list[Unit],
+    seeded_unit_families: dict[str, str],
     seeded_tags: list[Tag],
     seeded_parameters: list[Parameter],
     static_custom_fields: list[CustomField],
     static_lists: list[ListItem],
 ) -> Iterator[list[DataTemplate]]:
+    seeds = generate_data_template_seeds(
+        user=static_user,
+        seed_prefix=seed_prefix,
+        seeded_data_columns=seeded_data_columns,
+        seeded_units=seeded_units,
+        seeded_tags=seeded_tags,
+        seeded_parameters=seeded_parameters,
+        static_custom_fields=static_custom_fields,
+        static_lists=static_lists,
+    )
+    for template in seeds:
+        _link_unit_families(template.data_column_values or [], seeded_unit_families)
+        _link_unit_families(template.parameter_values or [], seeded_unit_families)
     seeded = _pmap(
         lambda data_template: client.data_templates.create(data_template=data_template),
-        generate_data_template_seeds(
-            user=static_user,
-            seed_prefix=seed_prefix,
-            seeded_data_columns=seeded_data_columns,
-            seeded_units=seeded_units,
-            seeded_tags=seeded_tags,
-            seeded_parameters=seeded_parameters,
-            static_custom_fields=static_custom_fields,
-            static_lists=static_lists,
-        ),
+        seeds,
     )
 
     # Avoid race condition while it populated through search DBs
@@ -725,21 +807,25 @@ def seeded_parameter_groups(
     seeded_parameters,
     seeded_tags,
     seeded_units,
+    seeded_unit_families: dict[str, str],
     static_consumeable_parameter: Parameter,
     static_custom_fields: list[CustomField],
     static_lists: list[ListItem],
 ) -> Iterator[list[ParameterGroup]]:
+    seeds = generate_parameter_group_seeds(
+        seed_prefix=seed_prefix,
+        seeded_parameters=seeded_parameters,
+        seeded_tags=seeded_tags,
+        seeded_units=seeded_units,
+        static_consumeable_parameter=static_consumeable_parameter,
+        static_custom_fields=static_custom_fields,
+        static_lists=static_lists,
+    )
+    for group in seeds:
+        _link_unit_families(group.parameters or [], seeded_unit_families)
     seeded = _pmap(
         lambda parameter_group: client.parameter_groups.create(parameter_group=parameter_group),
-        generate_parameter_group_seeds(
-            seed_prefix=seed_prefix,
-            seeded_parameters=seeded_parameters,
-            seeded_tags=seeded_tags,
-            seeded_units=seeded_units,
-            static_consumeable_parameter=static_consumeable_parameter,
-            static_custom_fields=static_custom_fields,
-            static_lists=static_lists,
-        ),
+        seeds,
     )
 
     # Avoid race condition while it populates through DBs

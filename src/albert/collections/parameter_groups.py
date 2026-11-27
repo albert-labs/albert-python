@@ -20,6 +20,7 @@ from albert.resources.parameter_groups import (
 )
 from albert.utils._patch import (
     create_parameters_with_enums,
+    ensure_new_row_unit_pair,
     generate_parameter_group_patches,
 )
 from albert.utils.tags import resolve_tags
@@ -587,6 +588,8 @@ class ParameterGroupCollection(BaseCollection):
         """
         if parameter_group.tags:
             parameter_group.tags = resolve_tags(session=self.session, tags=parameter_group.tags)
+        for parameter in parameter_group.parameters:
+            ensure_new_row_unit_pair(parameter)
 
         response = self.session.post(
             self.base_path,
@@ -684,8 +687,8 @@ class ParameterGroupCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``description``, ``metadata``,
-        ``name``, ``tags``, and, per parameter, ``value``, ``unit``, ``required``, and
-        ``validation``.
+        ``name``, ``tags``, and, per parameter, ``value``, ``unit``, ``unit_family``,
+        ``required``, and ``validation``.
         Any tags that do not yet exist in Albert are created automatically.
         """
         if "tags" in parameter_group.model_fields_set and parameter_group.tags:

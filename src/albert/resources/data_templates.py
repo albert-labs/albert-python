@@ -140,6 +140,9 @@ class DataColumnValue(BaseResource):
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
     """The unit of measure for the column."""
 
+    unit_family: EntityLink | None = Field(default=None, alias="UnitFamily")
+    """The unit family reference. Required together with ``unit`` when unit management is enabled."""
+
     calculation: str | None = None
     """A calculation expression for a computed column."""
 
