@@ -27,6 +27,8 @@ def _parameter_unit_patches(
 ) -> PGPatchDatum | None:
     """Generate unit patch for a parameter value."""
 
+    if "unit" not in updated_parameter_value.model_fields_set:
+        return None
     if initial_parameter_value.unit == updated_parameter_value.unit:
         return None
     if initial_parameter_value.unit is None:
@@ -61,6 +63,8 @@ def _data_column_unit_patches(
 ) -> DTPatchDatum | None:
     """Generate unit patch for a data column value."""
 
+    if "unit" not in updated_data_column_value.model_fields_set:
+        return None
     if initial_data_column_value.unit == updated_data_column_value.unit:
         return None
     elif initial_data_column_value.unit is None:
@@ -159,6 +163,64 @@ def _data_column_unit_family_patches(
             colId=initial_data_column_value.sequence,
         )
     return None
+
+
+def ensure_new_row_unit_pair(value: ParameterValue | DataColumnValue) -> None:
+    """Reject a family-only reference on a row being added."""
+    if value.unit_family is not None and value.unit is None:
+        raise ValueError("unit_family cannot be provided without unit when adding a row.")
+
+
+def split_unit_pair_replacements(
+    patches: list[PatchDatum],
+    *,
+    unit_attribute: str,
+    family_attribute: str,
+    row_attribute: str,
+) -> tuple[list[PatchDatum], list[PatchDatum], list[PatchDatum]]:
+    """Split two-sided pair updates into clear and add phases."""
+    candidates: dict[str, dict[str, PatchDatum]] = {}
+    for patch in patches:
+        row_id = getattr(patch, row_attribute, None)
+        if (
+            row_id is not None
+            and patch.operation == "update"
+            and patch.attribute in {unit_attribute, family_attribute}
+        ):
+            candidates.setdefault(row_id, {})[patch.attribute] = patch
+
+    replacements = {
+        row_id: operations
+        for row_id, operations in candidates.items()
+        if set(operations) == {unit_attribute, family_attribute}
+    }
+    if not replacements:
+        return patches, [], []
+
+    remaining = []
+    for patch in patches:
+        row_id = getattr(patch, row_attribute, None)
+        if (
+            row_id in replacements
+            and patch.operation == "update"
+            and patch.attribute in {unit_attribute, family_attribute}
+        ):
+            continue
+        remaining.append(patch)
+
+    clears = []
+    additions = []
+    for operations in replacements.values():
+        unit = operations[unit_attribute]
+        family = operations[family_attribute]
+        clears.append(unit.model_copy(update={"operation": "delete", "new_value": None}))
+        additions.extend(
+            [
+                unit.model_copy(update={"operation": "add", "old_value": None}),
+                family.model_copy(update={"operation": "add", "old_value": None}),
+            ]
+        )
+    return remaining, clears, additions
 
 
 def _parameter_value_patches(
@@ -963,6 +1025,7 @@ def create_parameters_with_enums(
     pending: dict[str, list[EnumValidationValue]] = {}
     payloads: list[dict] = []
     for p in parameters:
+        ensure_new_row_unit_pair(p)
         d = p.model_dump(mode="json", by_alias=True, exclude_none=True)
         if (
             p.id is not None
@@ -1035,6 +1098,7 @@ def create_data_columns_with_enums(
     pending: dict[str, list[EnumValidationValue]] = {}
     payloads: list[dict] = []
     for col in data_columns:
+        ensure_new_row_unit_pair(col)
         ensure_data_column_validation(col)
         d = col.model_dump(mode="json", by_alias=True, exclude_none=True)
         if (

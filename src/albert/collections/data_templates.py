@@ -34,7 +34,9 @@ from albert.utils._patch import (
     build_acl_patch_payload,
     create_data_columns_with_enums,
     create_parameters_with_enums,
+    ensure_new_row_unit_pair,
     generate_data_template_patches,
+    split_unit_pair_replacements,
 )
 from albert.utils.curve_data import fetch_curve_dataframe
 from albert.utils.data_template import (
@@ -193,6 +195,7 @@ class DataTemplateCollection(BaseCollection):
             data_template.data_column_values = None
         if data_template.data_column_values is not None:
             for column_value in data_template.data_column_values:
+                ensure_new_row_unit_pair(column_value)
                 ensure_data_column_validation(column_value)
         # remove them on the initial post
         parameter_values = data_template.parameter_values
@@ -640,6 +643,10 @@ class DataTemplateCollection(BaseCollection):
         Only scalar data column values (text, number, dropdown) can be updated with
         this method. Use [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example] or [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example] to set
         example values for curve and image data column types.
+
+        Replacing both ``unit`` and ``unit_family`` on an existing row clears the old
+        pair before applying the new pair. If the new pair is rejected, the row can
+        remain cleared.
         """
         if "tags" in data_template.model_fields_set and data_template.tags:
             data_template.tags = resolve_tags(session=self.session, tags=data_template.tags)
@@ -663,6 +670,20 @@ class DataTemplateCollection(BaseCollection):
             updated_data_template=data_template,
             existing_data_template=existing,
             remove_omitted_rows=remove_omitted_rows,
+        )
+        general_patches.data, column_pair_clears, column_pair_adds = split_unit_pair_replacements(
+            general_patches.data,
+            unit_attribute="unit",
+            family_attribute="unitFamily",
+            row_attribute="colId",
+        )
+        parameter_patches, parameter_pair_clears, parameter_pair_adds = (
+            split_unit_pair_replacements(
+                parameter_patches,
+                unit_attribute="unitId",
+                family_attribute="unitFamilyId",
+                row_attribute="rowId",
+            )
         )
 
         if len(new_data_columns) > 0:
@@ -738,6 +759,14 @@ class DataTemplateCollection(BaseCollection):
                 # Add enum validation patches (these replace any filtered validation patches)
         # Don't add enum validation patches to all_parameter_patches - apply them separately
 
+        for pair_patches in (parameter_pair_clears, parameter_pair_adds):
+            if pair_patches:
+                payload = PGPatchPayload(data=pair_patches)
+                self.session.patch(
+                    path + "/parameters",
+                    json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+                )
+
         # Apply all parameter patches in one request to avoid duplicates
         if len(all_parameter_patches) > 0:
             # Apply enum validation patches one by one to avoid duplicate validation errors
@@ -773,6 +802,14 @@ class DataTemplateCollection(BaseCollection):
                 path,
                 json=acl_delete_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
             )
+
+        for pair_patches in (column_pair_clears, column_pair_adds):
+            if pair_patches:
+                payload = GeneralPatchPayload(data=pair_patches)
+                self.session.patch(
+                    path,
+                    json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+                )
 
         if len(general_patches.data) > 0:
             payload = GeneralPatchPayload(data=general_patches.data)

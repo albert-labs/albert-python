@@ -11,6 +11,7 @@ from albert.core.shared.models.patch import (
     DTPatchDatum,
     GeneralPatchDatum,
     GeneralPatchPayload,
+    PatchDatum,
     PatchPayload,
     PGPatchDatum,
 )
@@ -39,6 +40,7 @@ from albert.utils._patch import (
     build_acl_patch_payload,
     data_column_curve_data_patches,
     data_column_validation_patches,
+    ensure_new_row_unit_pair,
     generate_data_column_patches,
     generate_data_template_patches,
     generate_enum_patches,
@@ -46,6 +48,7 @@ from albert.utils._patch import (
     generate_parameter_patches,
     handle_tags,
     parameter_validation_patch,
+    split_unit_pair_replacements,
 )
 
 
@@ -245,6 +248,105 @@ def test_unit_patches_same_id_different_metadata_is_no_op(builder, patch_fn):
     updated = builder(unit=Unit(id="UNI1", name="millilitre", symbol="ml"))
 
     assert patch_fn(initial, updated) is None
+
+
+def test_sparse_parameter_family_add_leaves_existing_unit_unchanged():
+    """Test that adding only a family does not delete the existing unit."""
+    initial = _pv(unit=Unit(id="UNI1", name="m"))
+    updated = _pv(unit_family=EntityLink(id="UNF1"))
+
+    patches, new_parameters, enum_patches = generate_parameter_patches(
+        [initial], [updated], remove_omitted=False
+    )
+
+    assert patches == [
+        PGPatchDatum(operation="add", attribute="unitFamilyId", newValue="UNF1", rowId="1")
+    ]
+    assert new_parameters == []
+    assert enum_patches == {}
+
+
+def test_sparse_data_column_family_add_leaves_existing_unit_unchanged():
+    """Test that adding only a family does not delete the existing column unit."""
+    initial = _dc(unit=Unit(id="UNI1", name="m"))
+    updated = _dc(unit_family=EntityLink(id="UNF1"))
+
+    patches, new_columns, enum_patches = generate_data_column_patches(
+        [initial], [updated], remove_omitted=False
+    )
+
+    assert patches == [
+        DTPatchDatum(operation="add", attribute="unitFamily", newValue="UNF1", colId="1")
+    ]
+    assert new_columns == []
+    assert enum_patches == {}
+
+
+@pytest.mark.parametrize("builder", [_pv, _dc], ids=["parameter", "data-column"])
+def test_new_row_family_without_unit_is_rejected(builder):
+    """Test that a new row cannot supply a family without its unit."""
+    value = builder(unit_family=EntityLink(id="UNF1"))
+
+    with pytest.raises(ValueError, match="without unit"):
+        ensure_new_row_unit_pair(value)
+
+
+@pytest.mark.parametrize("builder", [_pv, _dc], ids=["parameter", "data-column"])
+def test_new_row_unit_without_family_remains_supported(builder):
+    """Test that existing unit-only rows remain valid without unit management."""
+    value = builder(unit=Unit(id="UNI1", name="m"))
+
+    assert ensure_new_row_unit_pair(value) is None
+
+
+@pytest.mark.parametrize(
+    "patch_type,row_attribute,unit_attribute,family_attribute",
+    [
+        pytest.param(PGPatchDatum, "rowId", "unitId", "unitFamilyId", id="parameter"),
+        pytest.param(DTPatchDatum, "colId", "unit", "unitFamily", id="data-column"),
+    ],
+)
+def test_split_unit_pair_replacements_clears_then_adds(
+    patch_type, row_attribute, unit_attribute, family_attribute
+):
+    """Test that two-sided replacements become a clear followed by a complete pair add."""
+    row = {row_attribute: "1"}
+    unit = patch_type(
+        operation="update", attribute=unit_attribute, oldValue="UNI1", newValue="UNI2", **row
+    )
+    family = patch_type(
+        operation="update", attribute=family_attribute, oldValue="UNF1", newValue="UNF2", **row
+    )
+    unrelated = PatchDatum(operation="update", attribute="value", oldValue="a", newValue="b")
+
+    remaining, clears, additions = split_unit_pair_replacements(
+        [unit, family, unrelated],
+        unit_attribute=unit_attribute,
+        family_attribute=family_attribute,
+        row_attribute=row_attribute,
+    )
+
+    assert remaining == [unrelated]
+    assert clears == [
+        patch_type(operation="delete", attribute=unit_attribute, oldValue="UNI1", **row)
+    ]
+    assert additions == [
+        patch_type(operation="add", attribute=unit_attribute, newValue="UNI2", **row),
+        patch_type(operation="add", attribute=family_attribute, newValue="UNF2", **row),
+    ]
+
+
+def test_split_unit_pair_replacements_leaves_unit_only_update_unchanged():
+    """Test that a unit-only update does not require a family operation."""
+    unit = PGPatchDatum(
+        operation="update", attribute="unitId", oldValue="UNI1", newValue="UNI2", rowId="1"
+    )
+
+    result = split_unit_pair_replacements(
+        [unit], unit_attribute="unitId", family_attribute="unitFamilyId", row_attribute="rowId"
+    )
+
+    assert result == ([unit], [], [])
 
 
 # ---------------------------------------------------------------------------

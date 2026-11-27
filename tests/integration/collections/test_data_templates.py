@@ -598,6 +598,81 @@ def test_update_units(client: Albert, seed_prefix: str, static_length_units: dic
             client.data_columns.delete(id=data_column.id)
 
 
+def test_update_unit_pairs_across_families(
+    client: Albert, seed_prefix: str, static_length_units: dict[str, dict]
+):
+    """Test replacing column and parameter unit pairs with a different family."""
+    mass_items = client.session.post(
+        "/api/v4/master-data/units/search",
+        json={
+            "text": "kg",
+            "origin": ["Albert Managed"],
+            "familyName": ["Mass"],
+            "limit": 100,
+        },
+        retry_safe=True,
+    ).json()
+    kilogram = next(
+        unit
+        for unit in (mass_items.get("items") or mass_items.get("Items") or [])
+        if unit["symbol"] == "kg"
+    )
+    meter = static_length_units["m"]
+    length_family_id = meter["unitFamilies"][0]["familyId"]
+    mass_family_id = kilogram["unitFamilies"][0]["familyId"]
+    data_column = client.data_columns.create(
+        data_column=DataColumn(name=f"{seed_prefix} - Pair replacement column")
+    )
+    parameter = client.parameters.create(
+        parameter=Parameter(name=f"{seed_prefix} - Pair replacement parameter")
+    )
+    dt = None
+    try:
+        dt = client.data_templates.create(
+            data_template=DataTemplate(
+                name=f"{seed_prefix} - Pair replacement",
+                data_column_values=[
+                    DataColumnValue(
+                        data_column=data_column,
+                        unit=EntityLink(id=meter["id"]),
+                        unit_family=EntityLink(id=length_family_id),
+                    )
+                ],
+                parameter_values=[
+                    ParameterValue(
+                        id=parameter.id,
+                        unit=EntityLink(id=meter["id"]),
+                        unit_family=EntityLink(id=length_family_id),
+                    )
+                ],
+            )
+        )
+        dt = client.data_templates.get_by_id(id=dt.id)
+        column = dt.data_column_values[0]
+        parameter_value = dt.parameter_values[0]
+        column.unit = EntityLink(id=kilogram["id"])
+        column.unit_family = EntityLink(id=mass_family_id)
+        parameter_value.unit = EntityLink(id=kilogram["id"])
+        parameter_value.unit_family = EntityLink(id=mass_family_id)
+
+        updated = client.data_templates.update(data_template=dt)
+
+        updated_column = updated.data_column_values[0]
+        updated_parameter = updated.parameter_values[0]
+        assert updated_column.unit.id == kilogram["id"]
+        assert updated_column.unit_family.id == mass_family_id
+        assert updated_parameter.unit.id == kilogram["id"]
+        assert updated_parameter.unit_family.id == mass_family_id
+    finally:
+        if dt is not None:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=dt.id)
+        with suppress(NotFoundError):
+            client.data_columns.delete(id=data_column.id)
+        with suppress(NotFoundError):
+            client.parameters.delete(id=parameter.id)
+
+
 def test_update_parameters_and_data_columns(
     client: Albert,
     seeded_data_templates: list[DataTemplate],
