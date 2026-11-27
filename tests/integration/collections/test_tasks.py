@@ -668,7 +668,7 @@ def test_task_get_history(client: Albert, seeded_tasks):
     assert isinstance(task_history.items, list)
 
 
-@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+@pytest.mark.skip(reason="Increased intervals are not available in the TEN0 test environment.")
 def test_get_and_set_block_rules(
     client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
 ):
@@ -743,7 +743,7 @@ def test_get_and_set_block_rules(
         client.tasks.remove_block(task_id=task.id, block_id=block.id)
 
 
-@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+@pytest.mark.skip(reason="Increased intervals are not available in the TEN0 test environment.")
 def test_add_and_remove_block_inventory_exclusions(
     client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
 ):
@@ -798,7 +798,7 @@ def test_add_and_remove_block_inventory_exclusions(
         client.tasks.remove_block(task_id=task.id, block_id=block.id)
 
 
-@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+@pytest.mark.skip(reason="Increased intervals are not available in the TEN0 test environment.")
 def test_block_inventory_exclusions_empty_input_noop(
     client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
 ):
@@ -844,7 +844,7 @@ def test_block_inventory_exclusions_empty_input_noop(
         client.tasks.remove_block(task_id=task.id, block_id=block.id)
 
 
-@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+@pytest.mark.skip(reason="Increased intervals are not available in the TEN0 test environment.")
 def test_generate_block_combinations_integration(
     client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
 ):
@@ -870,7 +870,7 @@ def test_generate_block_combinations_integration(
         client.tasks.remove_block(task_id=task.id, block_id=block.id)
 
 
-@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+@pytest.mark.skip(reason="Increased intervals are not available in the TEN0 test environment.")
 def test_generate_block_combinations_batch_task_integration(
     client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
 ):
@@ -896,7 +896,7 @@ def test_generate_block_combinations_batch_task_integration(
         client.tasks.remove_block(task_id=task.id, block_id=block.id)
 
 
-@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+@pytest.mark.skip(reason="Increased intervals are not available in the TEN0 test environment.")
 def test_create_with_combinations_integration(
     client: Albert, seeded_projects, seeded_data_templates, seeded_workflows
 ):

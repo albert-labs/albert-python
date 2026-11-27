@@ -21,14 +21,12 @@ from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
-ignore_in_ten0 = pytest.mark.xfail(
-    reason="The v4 design service is not enabled for the TEN0 test tenant.",
-    strict=False,
+ignore_in_ten0 = pytest.mark.skip(
+    reason="Design functionality is not available in the TEN0 test environment.",
 )
 
-builder_not_deployed = pytest.mark.xfail(
-    reason="design-space builder not yet deployed",
-    strict=False,
+builder_not_deployed = pytest.mark.skip(
+    reason="Design-space builder is not available in the TEN0 test environment.",
 )
 
 
