@@ -7,6 +7,7 @@ silently lost, using payload fragments recorded from the live API.
 """
 
 import pytest
+from pydantic import ValidationError
 
 from albert.resources.product_design import (
     CasLevelSubstance,
@@ -760,6 +761,35 @@ def test_unit_v4_keeps_full_convertible_record():
     assert unit.updated is not None
 
 
+@pytest.mark.parametrize(
+    ("raw_value", "expected"),
+    [(1, "1"), (0.001, "0.001")],
+    ids=["integer", "float"],
+)
+def test_unit_v4_coerces_numeric_conversion_factors(raw_value: int | float, expected: str):
+    """Test that numeric unit conversion factors are accepted and coerced to strings."""
+    unit = UnitV4.model_validate(
+        {
+            **UNIT_V4_CONVERTIBLE_PAYLOAD,
+            "siValue": raw_value,
+            "refUnitValue": raw_value,
+        }
+    )
+
+    assert unit.si_value == expected
+    assert unit.ref_unit_value == expected
+    dumped = unit.model_dump(by_alias=True, mode="json", exclude_none=True)
+    assert dumped["siValue"] == expected
+    assert dumped["refUnitValue"] == expected
+
+
+@pytest.mark.parametrize("field", ["siValue", "refUnitValue"])
+def test_unit_v4_rejects_boolean_conversion_factors(field: str):
+    """Test that booleans are not accepted as numeric unit conversion factors."""
+    with pytest.raises(ValidationError, match="Boolean values are not valid"):
+        UnitV4.model_validate({**UNIT_V4_CONVERTIBLE_PAYLOAD, field: True})
+
+
 def test_unit_v4_accepts_non_convertible_and_search_shapes():
     """Non-convertible records omit SI fields; search hits omit ``updated``."""
     unit = UnitV4.model_validate(
@@ -823,6 +853,48 @@ def test_unit_v4_lookup_and_compatible_shapes():
     assert compatible.unit_families[0].name == "Mass"
 
 
+@pytest.mark.parametrize(
+    ("raw_value", "expected"),
+    [(1, "1"), (0.001, "0.001")],
+    ids=["integer", "float"],
+)
+def test_unit_v4_compatible_coerces_numeric_conversion_factors(
+    raw_value: int | float, expected: str
+):
+    """Test that numeric compatibility conversion factors are coerced to strings."""
+    compatible = UnitV4Compatible.model_validate({"siValue": raw_value, "refUnitValue": raw_value})
+
+    assert compatible.si_value == expected
+    assert compatible.ref_unit_value == expected
+    dumped = compatible.model_dump(by_alias=True, mode="json", exclude_none=True)
+    assert dumped["siValue"] == expected
+    assert dumped["refUnitValue"] == expected
+
+
+def test_unit_v4_compatible_accepts_numeric_expression_response():
+    """Test the expression response with integer SI and reference values."""
+    compatible = UnitV4Compatible.model_validate(
+        {
+            "refUnit": "g",
+            "siUnit": "kg",
+            "siValue": 1,
+            "refUnitValue": 1000,
+            "unitFamilies": [{"familyId": "UNF1", "familyName": "Mass"}],
+            "dimension": "Mass",
+        }
+    )
+
+    assert compatible.si_value == "1"
+    assert compatible.ref_unit_value == "1000"
+
+
+@pytest.mark.parametrize("field", ["siValue", "refUnitValue"])
+def test_unit_v4_compatible_rejects_boolean_conversion_factors(field: str):
+    """Test that booleans are not accepted as compatibility conversion factors."""
+    with pytest.raises(ValidationError, match="Boolean values are not valid"):
+        UnitV4Compatible.model_validate({field: False})
+
+
 def test_unit_family_v4_ref_accepts_both_wire_spellings():
     """Units endpoints send ``familyId``/``familyName``; the ``id``/``name`` spelling
     stays accepted, and serialization keeps the ``id``/``name`` keys."""
@@ -848,6 +920,34 @@ def test_unit_v4_legacy_record_without_type_validates():
 
     assert unit.type is None
     assert unit.origin is UnitV4Origin.CUSTOM_LEGACY
+
+
+def test_unit_v4_legacy_record_without_symbol_validates():
+    """Test that a Custom (Legacy) response may omit the symbol key entirely."""
+    unit = UnitV4.model_validate(
+        {
+            "id": "UNI1",
+            "name": "Legacy Batch",
+            "status": "active",
+            "origin": "Custom (Legacy)",
+            "created": _AUDIT,
+        }
+    )
+
+    assert unit.symbol is None
+    assert unit.type is None
+
+
+def test_unit_v4_lookup_allows_legacy_match_without_symbol():
+    """Test that lookup matches may omit the symbol on Custom (Legacy) records."""
+    lookup = UnitV4Lookup.model_validate(
+        {
+            "exists": True,
+            "similarMatches": [{"id": "UNI1", "name": "Legacy Batch"}],
+        }
+    )
+
+    assert lookup.similar_matches[0].symbol is None
 
 
 def test_unit_family_v4_keeps_full_record():

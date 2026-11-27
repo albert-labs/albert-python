@@ -1,9 +1,17 @@
 from enum import Enum
 
-from pydantic import AliasChoices, Field, PrivateAttr
+from pydantic import AliasChoices, Field, PrivateAttr, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
+
+
+def _coerce_numeric_conversion_factor(value: object) -> object:
+    if isinstance(value, bool):
+        raise ValueError("Boolean values are not valid unit conversion factors.")
+    if isinstance(value, int | float):
+        return str(value)
+    return value
 
 
 class UnitV4Type(str, Enum):
@@ -67,8 +75,8 @@ class UnitV4Ref(BaseAlbertModel):
     name: str
     """The unit name."""
 
-    symbol: str
-    """The unit symbol."""
+    symbol: str | None = None
+    """The unit symbol. May be absent on Custom (Legacy) records."""
 
 
 class UnitV4(BaseResource):
@@ -108,10 +116,11 @@ class UnitV4(BaseResource):
     type: UnitV4Type | None = None
     """Whether the unit is convertible (has an SI mapping) or non-convertible. Required on
     create; absent on Custom (Legacy) units until they are set up via
-    [`update`][albert.collections.units_v4.UnitV4Collection.update]."""
+    [`setup`][albert.collections.units_v4.UnitV4Collection.setup]."""
 
-    symbol: str
-    """The unit symbol (for example ``"g"``). Unique within the tenant."""
+    symbol: str | None = None
+    """The unit symbol (for example ``"g"``). Unique within the tenant. Required when creating
+    or setting up a unit; may be absent on Custom (Legacy) records."""
 
     synonyms: list[str] | None = None
     """Alternate names or spellings that also refer to this unit."""
@@ -139,6 +148,11 @@ class UnitV4(BaseResource):
     unit_families: list[UnitFamilyV4Ref] | None = Field(default=None, alias="unitFamilies")
     """The unit families this unit belongs to. Resolved by Albert for convertible units;
     provide the family IDs for non-convertible units."""
+
+    @field_validator("si_value", "ref_unit_value", mode="before")
+    @classmethod
+    def _coerce_numeric_values(cls, value: object) -> object:
+        return _coerce_numeric_conversion_factor(value)
 
     _etag: str | None = PrivateAttr(default=None)
     _snapshot: "UnitV4 | None" = PrivateAttr(default=None)
@@ -179,3 +193,8 @@ class UnitV4Compatible(BaseAlbertModel):
 
     unit_families: list[UnitFamilyV4Ref] = Field(default_factory=list, alias="unitFamilies")
     """Unit families that share the resolved SI unit."""
+
+    @field_validator("si_value", "ref_unit_value", mode="before")
+    @classmethod
+    def _coerce_numeric_values(cls, value: object) -> object:
+        return _coerce_numeric_conversion_factor(value)
