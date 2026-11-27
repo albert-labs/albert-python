@@ -341,6 +341,8 @@ class EntityTypeCollection(BaseCollection):
         if updated.search_query_string is not None:
             field_info = EntityTypeSearchQueryStrings.model_fields
             for field_name, field in field_info.items():
+                if field_name not in updated.search_query_string.model_fields_set:
+                    continue
                 new_value = getattr(updated.search_query_string, field_name)
                 old_value = (
                     getattr(existing.search_query_string, field_name)

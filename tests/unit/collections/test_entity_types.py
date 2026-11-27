@@ -267,3 +267,41 @@ def test_unset_search_query_string_emits_no_patches(offline_session) -> None:
     )
 
     assert patches == []
+
+
+def test_partial_search_query_string_update_preserves_unset_subfields(offline_session) -> None:
+    """Test that updating one search_query_string field leaves unset sibling fields untouched."""
+    existing = _entity_type(
+        search_query_string=EntityTypeSearchQueryStrings(DAT="field={f}", PRG="group={g}")
+    )
+    updated = _entity_type(search_query_string=EntityTypeSearchQueryStrings(DAT="field2={f}"))
+
+    patches = EntityTypeCollection(session=offline_session)._generate_special_attribute_patches(
+        existing=existing, updated=updated
+    )
+
+    assert len(patches) == 1
+    assert patches[0].attribute == "searchQueryString.DAT"
+    assert patches[0].operation == PatchOperation.UPDATE
+    assert patches[0].old_value == "field={f}"
+    assert patches[0].new_value == "field2={f}"
+
+
+def test_explicit_none_search_query_string_subfield_emits_update(offline_session) -> None:
+    """Test that explicitly passing None clears an existing search_query_string sub-field."""
+    existing = _entity_type(
+        search_query_string=EntityTypeSearchQueryStrings(DAT="field={f}", PRG="group={g}")
+    )
+    updated = _entity_type(
+        search_query_string=EntityTypeSearchQueryStrings(DAT="field={f}", PRG=None)
+    )
+
+    patches = EntityTypeCollection(session=offline_session)._generate_special_attribute_patches(
+        existing=existing, updated=updated
+    )
+
+    assert len(patches) == 1
+    assert patches[0].attribute == "searchQueryString.PRG"
+    assert patches[0].operation == PatchOperation.UPDATE
+    assert patches[0].old_value == "group={g}"
+    assert patches[0].new_value is None
