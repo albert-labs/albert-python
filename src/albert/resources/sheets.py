@@ -1298,14 +1298,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
 
     def _clear_formulation_from_column(self, *, column: Column) -> list[Cell]:
-        """Blank the column's ingredient cells and return their prior state.
+        """Blank the column's Product Design ingredient cells and return their prior state.
 
-        Calculated property rows are left alone: the sheet computes them.
+        Calculated property rows and cells in other sheet designs (such as Apps)
+        are left alone.
         """
+        product_design_id = self.product_design.id
         original_cells = [
             cell
             for cell in column.cells
             if isinstance(cell, Cell)
+            and cell.design_id == product_design_id
             and cell.type == CellType.INVENTORY
             and cell.row_type not in (CellType.TOTAL, CellType.CALCULATED_PROPERTY)
         ]

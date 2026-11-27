@@ -314,6 +314,185 @@ def test_clear_formulation_ignores_empty_grid_padding(monkeypatch):
     assert [[cell.value for cell in cells] for cells in writes] == [[""]]
 
 
+def test_clear_formulation_preserves_apps_and_non_ingredient_cells(monkeypatch):
+    """Test clearing a formulation column clears only Product Design ingredient cells."""
+    sheet = _empty_sheet()
+    ingredient = Cell(
+        colId="COL1",
+        rowId="ROW1",
+        value="7",
+        type=CellType.INVENTORY,
+        row_type=CellType.INVENTORY,
+        design_id="DES1",
+    )
+    total = Cell(
+        colId="COL1",
+        rowId="ROW2",
+        value="7",
+        type=CellType.INVENTORY,
+        row_type=CellType.TOTAL,
+        design_id="DES1",
+    )
+    calculated = Cell(
+        colId="COL1",
+        rowId="ROW3",
+        value="100",
+        type=CellType.INVENTORY,
+        row_type=CellType.CALCULATED_PROPERTY,
+        design_id="DES1",
+    )
+    apps_cells = [
+        Cell(
+            colId="COL1",
+            rowId="APP_TAGS",
+            value="approved",
+            type=CellType.INVENTORY,
+            row_type=CellType.TAG,
+            design_id="DES3",
+        ),
+        Cell(
+            colId="COL1",
+            rowId="APP_PRICING",
+            value="12.50",
+            type=CellType.INVENTORY,
+            row_type=CellType.APP,
+            design_id="DES3",
+        ),
+        Cell(
+            colId="COL1",
+            rowId="APP_PREDECESSOR",
+            value="F0",
+            type=CellType.INVENTORY,
+            row_type=CellType.APP,
+            design_id="DES3",
+        ),
+        Cell(
+            colId="COL1",
+            rowId="APP_BATCHES",
+            value="B-001",
+            type=CellType.INVENTORY,
+            row_type=CellType.APP,
+            design_id="DES3",
+        ),
+    ]
+    column = Column(colId="COL1", name="F1", type=CellType.INVENTORY, sheet=sheet)
+    writes: list[list[Cell]] = []
+
+    def _update_cells(*, cells):
+        writes.append(cells)
+        return cells, []
+
+    monkeypatch.setattr(
+        Column,
+        "cells",
+        property(lambda self: [ingredient, total, calculated, *apps_cells]),
+    )
+    monkeypatch.setattr(
+        Sheet, "update_cells", lambda self, *, cells, **_: _update_cells(cells=cells)
+    )
+
+    cleared = sheet._clear_formulation_from_column(column=column)
+
+    assert cleared == [ingredient]
+    assert [[(c.design_id, c.row_id, c.value) for c in cells] for cells in writes] == [
+        [("DES1", "ROW1", "")]
+    ]
+
+
+@responses.activate
+def test_add_formulations_clear_preserves_apps_section_cells(offline_session):
+    """Test rebuilding a formulation column with clear=True leaves Apps cells untouched."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=offline_session,
+    )
+    products_grid = {
+        "Items": [
+            {
+                "rowId": "ROW1",
+                "rowUniqueId": "DES1#ROW1",
+                "name": "Total",
+                "type": "TOT",
+                "Values": [
+                    {
+                        "colId": "COL1",
+                        "value": "10",
+                        "calculation": "=COL1ROW2",
+                        "id": "INVF0",
+                        "type": "INV",
+                    }
+                ],
+            },
+            {
+                "rowId": "ROW2",
+                "rowUniqueId": "DES1#ROW2",
+                "name": "Salt",
+                "type": "INV",
+                "id": "INVA1",
+                "Values": [{"colId": "COL1", "value": "10", "id": "INVF0", "type": "INV"}],
+            },
+        ],
+        "Formulas": [{"colId": "COL1", "name": "Existing", "state": {}}],
+    }
+    apps_grid = {
+        "Items": [
+            {
+                "rowId": "ROW_TAG",
+                "rowUniqueId": "DES3#ROW_TAG",
+                "name": "Tags",
+                "type": "TAG",
+                "Values": [{"colId": "COL1", "value": "stable", "id": "INVF0", "type": "INV"}],
+            },
+            {
+                "rowId": "ROW_PRICE",
+                "rowUniqueId": "DES3#ROW_PRICE",
+                "name": "Pricing",
+                "type": "APP",
+                "Values": [{"colId": "COL1", "value": "42.0", "id": "INVF0", "type": "INV"}],
+            },
+        ],
+        "Formulas": [{"colId": "COL1", "name": "Existing", "state": {}}],
+    }
+    responses.get(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/products/grid", json=products_grid)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/worksheet/DES2/results/grid", json={"Items": [], "Formulas": []}
+    )
+    responses.get(f"{UNIT_BASE_URL}/api/v3/worksheet/DES3/apps/grid", json=apps_grid)
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES1/values", status=204)
+    responses.patch(f"{UNIT_BASE_URL}/api/v3/worksheet/DES3/values", status=204)
+
+    sheet.add_formulations(
+        formulations=[
+            FormulationSpec(
+                name="Existing", components=[Component(inventory_id="INVA1", amount=25.0)]
+            )
+        ],
+        clear=True,
+    )
+
+    apps_patches = [
+        c for c in responses.calls if c.request.method == "PATCH" and "DES3" in c.request.url
+    ]
+    assert apps_patches == []
+    des1_patches = [
+        json.loads(c.request.body)
+        for c in responses.calls
+        if c.request.method == "PATCH" and "DES1" in c.request.url
+    ]
+    assert [(e["Id"]["rowId"], e["data"][0]["operation"]) for e in des1_patches[0]] == [
+        ("ROW2", "delete")
+    ]
+
+
 def _empty_sheet() -> Sheet:
     return Sheet(
         albertId="SHEET1",
